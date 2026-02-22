@@ -39,11 +39,13 @@ import EmpAnnouncements from './pages/employee/EmpAnnouncements';
 import EmpShift from './pages/employee/EmpShift';
 import EmpSubmissions from './pages/employee/EmpSubmissions';
 import EmpProjects from './pages/employee/EmpProjects';
+import InstallPrompt from './components/InstallPrompt';
 
 function App() {
   console.log('App: Rendering routes');
   return (
     <AuthProvider>
+      <InstallPrompt />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<AuthPage />} />
