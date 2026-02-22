@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiBriefcase, FiShield, FiLogOut, FiMessageSquare, FiSend, FiLoader, FiClock, FiFileText } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiBriefcase, FiShield, FiLogOut, FiMessageSquare, FiSend, FiLoader, FiClock, FiFileText, FiLock, FiCheck } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { getMyLeaves } from '../../services/leaveService';
 import { getMyTickets, submitTicket } from '../../services/ticketService';
@@ -21,6 +22,12 @@ export default function EmpProfile() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [helpdeskForm, setHelpdeskForm] = useState({ category: 'IT', subject: '', description: '' });
+    // Account editing
+    const [newEmail, setNewEmail] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [accountMsg, setAccountMsg] = useState({ text: '', type: '' });
+    const [savingAccount, setSavingAccount] = useState(false);
 
     useEffect(() => {
         async function load() {
@@ -100,9 +107,10 @@ export default function EmpProfile() {
                     { key: 'info', label: 'Info' },
                     { key: 'leave', label: 'Cuti' },
                     { key: 'docs', label: 'Dokumen' },
-                    { key: 'tickets', label: 'Tiket' }
+                    { key: 'tickets', label: 'Tiket' },
+                    { key: 'account', label: 'Akun' }
                 ].map(t => (
-                    <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ flex: '0 0 auto', minWidth: 80, padding: '10px 8px', borderRadius: 'var(--radius-sm)', border: 'none', background: activeTab === t.key ? 'var(--primary)' : 'transparent', color: activeTab === t.key ? '#fff' : 'var(--muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                    <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ flex: '0 0 auto', minWidth: 70, padding: '10px 8px', borderRadius: 'var(--radius-sm)', border: 'none', background: activeTab === t.key ? 'var(--primary)' : 'transparent', color: activeTab === t.key ? '#fff' : 'var(--muted)', fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s ease' }}>
                         {t.label}
                     </button>
                 ))}
@@ -205,6 +213,107 @@ export default function EmpProfile() {
                     ) : (
                         <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)', fontSize: 13 }}>Belum ada dokumen yang diunggah</div>
                     )}
+                </div>
+            )}
+
+            {/* Account Tab */}
+            {activeTab === 'account' && (
+                <div>
+                    {accountMsg.text && (
+                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, fontWeight: 600, background: accountMsg.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: accountMsg.type === 'success' ? 'var(--success)' : 'var(--danger)' }}>
+                            {accountMsg.text}
+                        </div>
+                    )}
+
+                    {/* Update Email */}
+                    <div className="emp-card" style={{ marginBottom: 14 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <FiMail size={16} /> Ubah Email
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Email saat ini: {user?.email}</div>
+                        <input
+                            type="email"
+                            placeholder="Email baru"
+                            value={newEmail}
+                            onChange={e => setNewEmail(e.target.value)}
+                            style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: 10, fontSize: 13 }}
+                        />
+                        <button
+                            disabled={savingAccount || !newEmail}
+                            onClick={async () => {
+                                setSavingAccount(true);
+                                setAccountMsg({ text: '', type: '' });
+                                const { error } = await supabase.auth.updateUser({ email: newEmail });
+                                if (error) {
+                                    setAccountMsg({ text: error.message, type: 'error' });
+                                } else {
+                                    setAccountMsg({ text: 'Link konfirmasi dikirim ke email baru. Cek inbox Anda.', type: 'success' });
+                                    setNewEmail('');
+                                }
+                                setSavingAccount(false);
+                            }}
+                            style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: savingAccount || !newEmail ? 0.5 : 1 }}
+                        >
+                            {savingAccount ? 'Menyimpan...' : 'Update Email'}
+                        </button>
+                    </div>
+
+                    {/* Change Password */}
+                    <div className="emp-card">
+                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <FiLock size={16} /> Ubah Password
+                        </div>
+                        <input
+                            type="password"
+                            placeholder="Password baru"
+                            value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                            style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: 10, fontSize: 13 }}
+                        />
+                        {newPassword && (
+                            <div style={{ marginBottom: 10, display: 'grid', gap: 3 }}>
+                                {[
+                                    { label: 'Minimal 8 karakter', ok: newPassword.length >= 8 },
+                                    { label: 'Minimal 1 huruf kapital (A-Z)', ok: /[A-Z]/.test(newPassword) },
+                                    { label: 'Minimal 1 angka (0-9)', ok: /[0-9]/.test(newPassword) },
+                                    { label: 'Minimal 1 karakter spesial (!@#$...)', ok: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) },
+                                ].map((r, i) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: r.ok ? 'var(--success)' : 'var(--muted)' }}>
+                                        <span style={{ fontSize: 12 }}>{r.ok ? '✓' : '○'}</span> {r.label}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <input
+                            type="password"
+                            placeholder="Konfirmasi password baru"
+                            value={confirmPassword}
+                            onChange={e => setConfirmPassword(e.target.value)}
+                            style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: 4, fontSize: 13 }}
+                        />
+                        {confirmPassword && newPassword !== confirmPassword && (
+                            <div style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 8 }}>Password tidak cocok</div>
+                        )}
+                        <button
+                            disabled={savingAccount || !newPassword || !(newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) && /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)) || newPassword !== confirmPassword}
+                            onClick={async () => {
+                                setSavingAccount(true);
+                                setAccountMsg({ text: '', type: '' });
+                                const { error } = await supabase.auth.updateUser({ password: newPassword });
+                                if (error) {
+                                    setAccountMsg({ text: error.message, type: 'error' });
+                                } else {
+                                    setAccountMsg({ text: 'Password berhasil diubah!', type: 'success' });
+                                    setNewPassword('');
+                                    setConfirmPassword('');
+                                }
+                                setSavingAccount(false);
+                            }}
+                            style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginTop: 6, opacity: savingAccount || !newPassword || !(newPassword.length >= 8 && /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) && /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword)) || newPassword !== confirmPassword ? 0.5 : 1 }}
+                        >
+                            {savingAccount ? 'Menyimpan...' : 'Ubah Password'}
+                        </button>
+                    </div>
                 </div>
             )}
 

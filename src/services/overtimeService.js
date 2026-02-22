@@ -29,6 +29,7 @@ export async function submitOvertime(employeeId, overtimeData) {
             hours: overtimeData.hours,
             rate: overtimeData.rate || 1.5,
             reason: overtimeData.reason,
+            project_id: overtimeData.projectId || null,
             status: 'pending',
         })
         .select()

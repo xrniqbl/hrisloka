@@ -27,12 +27,18 @@ import GeofenceAttendance from './pages/GeofenceAttendance';
 import ExpenseOCR from './pages/ExpenseOCR';
 import Settings from './pages/Settings';
 import Announcements from './pages/Announcements';
+import ProjectManagement from './pages/ProjectManagement';
+import TimesheetAdmin from './pages/TimesheetAdmin';
 import EmployeeLayout from './layouts/EmployeeLayout';
 import EmpDashboard from './pages/employee/EmpDashboard';
 import EmpAbsen from './pages/employee/EmpAbsen';
 import EmpPayslip from './pages/employee/EmpPayslip';
 import EmpProfile from './pages/employee/EmpProfile';
 import CompanyDirectory from './pages/employee/CompanyDirectory';
+import EmpAnnouncements from './pages/employee/EmpAnnouncements';
+import EmpShift from './pages/employee/EmpShift';
+import EmpSubmissions from './pages/employee/EmpSubmissions';
+import EmpProjects from './pages/employee/EmpProjects';
 
 function App() {
   console.log('App: Rendering routes');
@@ -89,6 +95,8 @@ function App() {
 
             <Route path="settings" element={<Settings />} />
             <Route path="announcements" element={<Announcements />} />
+            <Route path="projects" element={<ProjectManagement />} />
+            <Route path="timesheets" element={<TimesheetAdmin />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
 
@@ -100,6 +108,10 @@ function App() {
             <Route path="payslip" element={<EmpPayslip />} />
             <Route path="profile" element={<EmpProfile />} />
             <Route path="directory" element={<CompanyDirectory />} />
+            <Route path="announcements" element={<EmpAnnouncements />} />
+            <Route path="shift" element={<EmpShift />} />
+            <Route path="submissions" element={<EmpSubmissions />} />
+            <Route path="projects" element={<EmpProjects />} />
           </Route>
         </Routes>
       </BrowserRouter>

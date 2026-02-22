@@ -50,6 +50,18 @@ export function AuthProvider({ children }) {
         return { data, error };
     };
 
+    const signInWithPassword = async (email, password) => {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        return { data, error };
+    };
+
+    const resetPassword = async (email) => {
+        const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + '/login',
+        });
+        return { data, error };
+    };
+
     const verifyOtp = async (email, token) => {
         const { data, error } = await supabase.auth.verifyOtp({
             email,
@@ -116,6 +128,8 @@ export function AuthProvider({ children }) {
         session,
         loading,
         signInWithOtp,
+        signInWithPassword,
+        resetPassword,
         verifyOtp,
         signInWithGoogle,
         signUp,

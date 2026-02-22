@@ -4,7 +4,7 @@ import '../styles/shared.css';
 
 const initialForm = {
     name: '', email: '', phone: '', division: '', position: '',
-    status: 'permanent', joinDate: '', birthDate: '', address: '', nik: '',
+    status: 'permanent', joinDate: '', birthDate: '', gender: '', address: '', nik: '',
     contractStart: '', contractEnd: '',
     baseSalary: '', allowance: '',
     emergencyName: '', emergencyRelation: '', emergencyPhone: '',
@@ -48,20 +48,17 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
                     <button className="modal-close" onClick={onClose}><FiX /></button>
                 </div>
 
-                <div style={{ padding: '0 28px' }}>
-                    <div className="tab-bar">
-                        {['personal', 'employment', 'emergency', 'bank', 'education'].map((tab) => (
-                            <button key={tab} className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
-                                onClick={() => setActiveTab(tab)}>
-                                {tab === 'personal' ? 'Data Pribadi' : tab === 'employment' ? 'Kepegawaian' :
-                                    tab === 'emergency' ? 'Kontak Darurat' : tab === 'bank' ? 'Rekening Bank' : 'Pendidikan'}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
+                        <div className="tab-bar" style={{ margin: '0 0 16px' }}>
+                            {['personal', 'employment', 'emergency', 'bank', 'education'].map((tab) => (
+                                <button key={tab} type="button" className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                                    onClick={() => setActiveTab(tab)}>
+                                    {tab === 'personal' ? 'Data Pribadi' : tab === 'employment' ? 'Kepegawaian' :
+                                        tab === 'emergency' ? 'Kontak Darurat' : tab === 'bank' ? 'Rekening Bank' : 'Pendidikan'}
+                                </button>
+                            ))}
+                        </div>
                         {/* Personal */}
                         {activeTab === 'personal' && (
                             <div className="form-grid">
@@ -84,6 +81,14 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
                                 <div className="form-group">
                                     <label className="form-label">Tanggal Lahir</label>
                                     <input className="form-input" name="birthDate" type="date" value={form.birthDate} onChange={handleChange} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Jenis Kelamin</label>
+                                    <select className="form-select" name="gender" value={form.gender} onChange={handleChange}>
+                                        <option value="">Pilih</option>
+                                        <option value="male">Laki-laki</option>
+                                        <option value="female">Perempuan</option>
+                                    </select>
                                 </div>
                                 <div className="form-group full-width">
                                     <label className="form-label">Alamat</label>

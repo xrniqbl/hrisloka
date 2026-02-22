@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { FiHome, FiMapPin, FiFileText, FiUser, FiBell } from 'react-icons/fi';
+import { FiHome, FiMapPin, FiFileText, FiUser, FiBell, FiClock } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import './EmployeeLayout.css';
 
 const navItems = [
     { label: 'Home', icon: <FiHome />, path: '/app/home' },
     { label: 'Absen', icon: <FiMapPin />, path: '/app/absen' },
-    { label: 'Payslip', icon: <FiFileText />, path: '/app/payslip' },
+    { label: 'Pengajuan', icon: <FiFileText />, path: '/app/submissions' },
+    { label: 'Jadwal', icon: <FiClock />, path: '/app/shift' },
     { label: 'Profil', icon: <FiUser />, path: '/app/profile' },
 ];
 
@@ -27,7 +28,7 @@ export default function EmployeeLayout() {
                     <div className="emp-logo">HR</div>
                     <span className="emp-brand-text">HRISync</span>
                 </div>
-                <button className="emp-header-bell" onClick={() => { }} aria-label="Notifikasi">
+                <button className="emp-header-bell" onClick={() => navigate('/app/announcements')} aria-label="Notifikasi">
                     <FiBell />
                     <span className="emp-bell-dot" />
                 </button>

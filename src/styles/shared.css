@@ -508,8 +508,29 @@
     overflow: hidden;
 }
 
+.modal-box form {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
 .modal-box.large {
     max-width: 720px;
+}
+
+.modal-content {
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-xl);
+    animation: modalSlideIn 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    overflow-y: auto;
 }
 
 .modal-header {

@@ -58,6 +58,14 @@ const navItems = [
         ],
     },
     {
+        label: 'Proyek',
+        icon: <FiFolder />,
+        children: [
+            { label: 'Manajemen Proyek', path: '/projects', icon: <FiFolder /> },
+            { label: 'Timesheet', path: '/timesheets', icon: <FiClock /> },
+        ],
+    },
+    {
         label: 'Performa',
         icon: <FiTarget />,
         children: [
