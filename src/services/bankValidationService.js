@@ -11,16 +11,10 @@ function getApiKey() {
     return import.meta.env.VITE_BANK_VALIDATION_API_KEY || '';
 }
 
-function getBaseUrl() {
-    // In development, use Vite proxy to avoid CORS
-    if (import.meta.env.DEV) return '/api-bank';
-    // In production, call API directly (or use edge function)
-    return 'https://use.api.co.id/validation';
-}
-
 /**
  * Get list of all available Indonesian banks (FREE endpoint)
- * Returns array of { bank_name, bank_code }
+ * - Dev: uses Vite proxy /api-bank → api.co.id
+ * - Production: uses Vercel serverless /api/banks
  * Results are cached in memory after first call
  */
 let cachedBanks = null;
@@ -29,10 +23,17 @@ export async function getAvailableBanks() {
     if (cachedBanks) return { data: cachedBanks, error: null };
 
     try {
-        const res = await fetch(`${getBaseUrl()}/bank/available`, {
-            method: 'GET',
-            headers: { 'x-api-co-id': getApiKey() },
-        });
+        let res;
+        if (import.meta.env.DEV) {
+            // Dev: Vite proxy
+            res = await fetch('/api-bank/bank/available', {
+                method: 'GET',
+                headers: { 'x-api-co-id': getApiKey() },
+            });
+        } else {
+            // Production: Vercel serverless function (no CORS issue)
+            res = await fetch('/api/banks');
+        }
 
         const json = await res.json();
 
@@ -41,12 +42,11 @@ export async function getAvailableBanks() {
             return { data: COMMON_BANKS, error: json.message || `HTTP ${res.status}` };
         }
 
-        cachedBanks = json.data.banks || [];
-        console.log(`[BankService] Loaded ${cachedBanks.length} banks from API.co.id`);
+        cachedBanks = json.data?.banks || json.data || [];
+        console.log(`[BankService] Loaded ${cachedBanks.length} banks from API`);
         return { data: cachedBanks, error: null };
     } catch (err) {
         console.warn('[BankService] Network error, using fallback:', err.message);
-        // Fallback to local list on network error
         return { data: COMMON_BANKS, error: err.message };
     }
 }
