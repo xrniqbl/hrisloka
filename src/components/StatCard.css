@@ -1,0 +1,90 @@
+.stat-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    box-shadow: var(--shadow-card);
+    transition: all var(--transition-normal);
+    cursor: default;
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-3px);
+}
+
+.stat-card-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.stat-card-icon.blue {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.stat-card-icon.green {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.stat-card-icon.orange {
+    background: var(--warning-light);
+    color: #B45309;
+}
+
+.stat-card-icon.cyan {
+    background: #ECFEFF;
+    color: #0891B2;
+}
+
+.stat-card-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-card-label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.stat-card-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+}
+
+.stat-card-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 8px;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+}
+
+.stat-card-change.up {
+    color: var(--success);
+    background: var(--success-light);
+}
+
+.stat-card-change.down {
+    color: var(--danger);
+    background: var(--danger-light);
+}
