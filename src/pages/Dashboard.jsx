@@ -21,6 +21,8 @@ import * as employeeService from '../services/employeeService';
 import * as attendanceService from '../services/attendanceService';
 import * as leaveService from '../services/leaveService';
 import * as overtimeService from '../services/overtimeService';
+import BranchFilter from '../components/BranchFilter';
+import { useBranch } from '../context/BranchContext';
 import './Dashboard.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -63,15 +65,17 @@ export default function Dashboard() {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
 
-    useEffect(() => { fetchData(); }, []);
+    const { selectedBranchId } = useBranch();
+
+    useEffect(() => { fetchData(); }, [selectedBranchId]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data: empData } = await employeeService.getAllEmployees();
-            const { data: attData } = await attendanceService.getAllAttendanceToday();
-            const { data: leaveData } = await leaveService.getAllLeaves();
-            const { data: otData } = await overtimeService.getAllOvertime();
+            const { data: empData } = await employeeService.getAllEmployees(selectedBranchId);
+            const { data: attData } = await attendanceService.getAllAttendanceToday(selectedBranchId);
+            const { data: leaveData } = await leaveService.getAllLeaves(selectedBranchId);
+            const { data: otData } = await overtimeService.getAllOvertime(selectedBranchId);
             setEmployees(empData || []);
             setTodayAttendance(attData || []);
             setLeaves(leaveData || []);
@@ -314,6 +318,7 @@ export default function Dashboard() {
                     <h1>Dashboard</h1>
                     <p>{formattedDate}</p>
                 </div>
+                <BranchFilter />
             </div>
 
             {/* Stats */}

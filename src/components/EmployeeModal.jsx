@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiSearch } from 'react-icons/fi';
+import { getActiveDepartments } from '../services/departmentService';
+import { getAvailableBanks, COMMON_BANKS } from '../services/bankValidationService';
 import '../styles/shared.css';
 
 const initialForm = {
@@ -26,6 +28,43 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
 
     const [activeTab, setActiveTab] = useState('personal');
 
+    // Dynamic data from DB + API
+    const [departments, setDepartments] = useState([]);
+    const [bankList, setBankList] = useState(COMMON_BANKS);
+    const [bankSearch, setBankSearch] = useState('');
+
+    // Fallback departments (matches departments_setup.sql seed data)
+    const FALLBACK_DEPTS = [
+        { id: 1, name: 'Human Resources & General Affairs' },
+        { id: 2, name: 'Finance & Accounting' },
+        { id: 3, name: 'Information Technology' },
+        { id: 4, name: 'Legal & Compliance' },
+        { id: 5, name: 'Sales & Business Development' },
+        { id: 6, name: 'Marketing & Communications' },
+        { id: 7, name: 'Customer Service' },
+        { id: 8, name: 'Product & Design' },
+        { id: 9, name: 'Operations & Logistics' },
+        { id: 10, name: 'Production & Manufacturing' },
+    ];
+
+    useEffect(() => {
+        if (!isOpen) return;
+        // Fetch departments from Supabase (fallback to hardcoded list)
+        getActiveDepartments().then(({ data, error }) => {
+            if (data && data.length > 0) {
+                setDepartments(data);
+            } else {
+                console.warn('[EmployeeModal] Departments fetch failed, using fallback:', error);
+                setDepartments(FALLBACK_DEPTS);
+            }
+        }).catch(() => setDepartments(FALLBACK_DEPTS));
+
+        // Fetch 130+ banks from API.co.id (free endpoint, via proxy)
+        getAvailableBanks().then(({ data }) => {
+            if (data && data.length > 0) setBankList(data);
+        });
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const handleChange = (e) => {
@@ -38,7 +77,10 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
         onClose();
     };
 
-    // divisions comes from parent prop now
+    // Filter banks by search query
+    const filteredBanks = bankSearch
+        ? bankList.filter(b => b.bank_name.toLowerCase().includes(bankSearch.toLowerCase()))
+        : bankList;
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -104,8 +146,10 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
                                     <label className="form-label">Divisi *</label>
                                     <select className="form-select" name="division" value={form.division} onChange={handleChange} required>
                                         <option value="">Pilih Divisi</option>
-                                        {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
-                                        <option value="Other">Lainnya</option>
+                                        {departments.length > 0
+                                            ? departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)
+                                            : divisions.map((d) => <option key={d} value={d}>{d}</option>)
+                                        }
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -171,20 +215,34 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
                             </div>
                         )}
 
-                        {/* Bank */}
+                        {/* Bank — Dynamic 130+ banks from API.co.id */}
                         {activeTab === 'bank' && (
                             <div className="form-grid">
                                 <div className="form-group">
                                     <label className="form-label">Nama Bank</label>
-                                    <select className="form-select" name="bankName" value={form.bankName} onChange={handleChange}>
-                                        <option value="">Pilih Bank</option>
-                                        <option value="BCA">BCA</option>
-                                        <option value="Mandiri">Mandiri</option>
-                                        <option value="BNI">BNI</option>
-                                        <option value="BRI">BRI</option>
-                                        <option value="CIMB">CIMB Niaga</option>
-                                        <option value="Other">Lainnya</option>
-                                    </select>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ position: 'relative', marginBottom: 6 }}>
+                                            <FiSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                                            <input
+                                                type="text"
+                                                placeholder="Cari bank..."
+                                                value={bankSearch}
+                                                onChange={(e) => setBankSearch(e.target.value)}
+                                                className="form-input"
+                                                style={{ paddingLeft: 32, fontSize: 12 }}
+                                            />
+                                        </div>
+                                        <select className="form-select" name="bankName" value={form.bankName} onChange={handleChange}
+                                            style={{ maxHeight: 200 }}>
+                                            <option value="">Pilih Bank</option>
+                                            {filteredBanks.map((b) => (
+                                                <option key={b.bank_code} value={b.bank_name}>{b.bank_name}</option>
+                                            ))}
+                                        </select>
+                                        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                                            {bankList.length} bank tersedia via API.co.id
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Nomor Rekening</label>

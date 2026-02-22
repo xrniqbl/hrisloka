@@ -1,12 +1,17 @@
 import { supabase } from '../lib/supabase';
 
-// Get all overtime requests (admin)
-export async function getAllOvertime() {
-    const { data, error } = await supabase
+// Get all overtime requests (admin, optionally filtered by branch)
+export async function getAllOvertime(branchId) {
+    let query = supabase
         .from('overtime_requests')
-        .select('*, employees(name, division, position)')
+        .select('*, employees(name, division, position, branch_id)')
         .order('created_at', { ascending: false });
-    return { data: data || [], error };
+    if (branchId) {
+        query = query.eq('employees.branch_id', branchId);
+    }
+    const { data, error } = await query;
+    const filtered = branchId ? (data || []).filter(r => r.employees) : (data || []);
+    return { data: filtered, error };
 }
 
 // Get overtime for specific employee

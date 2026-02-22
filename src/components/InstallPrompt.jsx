@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export default function InstallPrompt() {
+    const { user } = useAuth();
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showBanner, setShowBanner] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
 
     useEffect(() => {
+        // Only show on mobile devices and for non-logged-in users
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+            || window.innerWidth <= 768;
+        if (!isMobile || user) return;
+
         // Detect iOS (Safari doesn't support beforeinstallprompt)
         const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
@@ -31,7 +38,7 @@ export default function InstallPrompt() {
         }
 
         return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
+    }, [user]);
 
     const handleInstall = async () => {
         if (deferredPrompt) {

@@ -5,6 +5,8 @@ import * as leaveService from '../services/leaveService';
 import * as employeeService from '../services/employeeService';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import BranchFilter from '../components/BranchFilter';
+import { useBranch } from '../context/BranchContext';
 import '../styles/shared.css';
 
 export default function LeaveManagement() {
@@ -23,14 +25,16 @@ export default function LeaveManagement() {
         employeeId: ''
     });
 
+    const { selectedBranchId } = useBranch();
+
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [selectedBranchId]);
 
     const fetchData = async () => {
         setLoading(true);
-        const { data: leaveData } = await leaveService.getAllLeaves();
-        const { data: empData } = await employeeService.getAllEmployees();
+        const { data: leaveData } = await leaveService.getAllLeaves(selectedBranchId);
+        const { data: empData } = await employeeService.getAllEmployees(selectedBranchId);
         setLeaves(leaveData || []);
         setAllEmployees(empData || []);
         setLoading(false);
@@ -70,7 +74,10 @@ export default function LeaveManagement() {
         <div>
             <div className="page-header">
                 <h1>Manajemen Cuti & Izin</h1>
-                <button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Ajukan Cuti</button>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <BranchFilter />
+                    <button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Ajukan Cuti</button>
+                </div>
             </div>
 
             {/* Leave Quota Cards */}

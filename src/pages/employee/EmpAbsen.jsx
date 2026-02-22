@@ -3,6 +3,7 @@ import { FiMapPin, FiCamera, FiCheck, FiAlertTriangle, FiLoader } from 'react-ic
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { clockIn as serviceClockIn, getOfficeLocations, getAttendanceHistory } from '../../services/attendanceService';
+import { getBranchById } from '../../services/branchService';
 import './EmpAbsen.css';
 
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -32,7 +33,7 @@ export default function EmpAbsen() {
     const streamRef = useRef(null);
     const canvasRef = useRef(null);
 
-    // Load employee + office data
+    // Load employee + branch/office data
     useEffect(() => {
         async function load() {
             const email = user?.email || user?.user_metadata?.email || 'ahmad.rizky@company.com';
@@ -41,9 +42,25 @@ export default function EmpAbsen() {
                 setEmp(empData);
                 const { data: hist } = await getAttendanceHistory(empData.id, 7);
                 setHistory(hist);
+                // Use branch-specific geofence if employee has a branch
+                if (empData.branch_id) {
+                    const { data: branchData } = await getBranchById(empData.branch_id);
+                    if (branchData) {
+                        setOffice({
+                            id: branchData.id,
+                            name: branchData.name,
+                            latitude: branchData.latitude,
+                            longitude: branchData.longitude,
+                            radius_meters: branchData.radius_meters,
+                        });
+                    }
+                }
             }
-            const { data: locs } = await getOfficeLocations();
-            if (locs?.length) setOffice(locs[0]);
+            // Fallback to office_locations if no branch-specific geofence was set
+            if (!emp?.branch_id) {
+                const { data: locs } = await getOfficeLocations();
+                if (locs?.length) setOffice(prev => prev || locs[0]);
+            }
             setPageLoading(false);
         }
         load();

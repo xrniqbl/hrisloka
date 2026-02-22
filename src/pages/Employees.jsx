@@ -8,6 +8,8 @@ import EmployeeModal from '../components/EmployeeModal';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 import * as XLSX from 'xlsx';
+import BranchFilter from '../components/BranchFilter';
+import { useBranch } from '../context/BranchContext';
 import '../styles/shared.css';
 
 export default function Employees() {
@@ -19,12 +21,13 @@ export default function Employees() {
     const [employeeList, setEmployeeList] = useState([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+    const { selectedBranchId } = useBranch();
 
-    useEffect(() => { fetchEmployees(); }, []);
+    useEffect(() => { fetchEmployees(); }, [selectedBranchId]);
 
     const fetchEmployees = async () => {
         setLoading(true);
-        const { data } = await employeeService.getAllEmployees();
+        const { data } = await employeeService.getAllEmployees(selectedBranchId);
         setEmployeeList(data || []);
         setLoading(false);
     };
@@ -109,7 +112,8 @@ export default function Employees() {
         <div className="animate-in">
             <div className="page-header">
                 <h1>Data Karyawan</h1>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <BranchFilter />
                     <button className="btn-secondary" onClick={handleExportExcel} disabled={filtered.length === 0}>
                         <FiDownload /> Export Excel
                     </button>
@@ -165,6 +169,7 @@ export default function Employees() {
                                     <th>Karyawan</th>
                                     <th>Divisi</th>
                                     <th>Jabatan</th>
+                                    <th>Cabang</th>
                                     <th>Status</th>
                                     <th>Gaji Pokok</th>
                                     <th>Aksi</th>
@@ -185,6 +190,7 @@ export default function Employees() {
                                         </td>
                                         <td>{emp.division}</td>
                                         <td>{emp.position}</td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{emp.branches?.name || '-'}</td>
                                         <td><ContractBadge status={emp.status} contractEnd={emp.contract_end || emp.contractEnd} /></td>
                                         <td style={{ fontWeight: 600 }}>{formatCurrency(emp.base_salary || emp.baseSalary)}</td>
                                         <td>

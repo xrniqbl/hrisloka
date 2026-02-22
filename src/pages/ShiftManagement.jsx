@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiX, FiTrash2 } from 'react-icons/fi';
 import * as shiftService from '../services/shiftService';
 import * as employeeService from '../services/employeeService';
+import BranchFilter from '../components/BranchFilter';
+import { useBranch } from '../context/BranchContext';
 import '../styles/shared.css';
 
 const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
@@ -15,12 +17,14 @@ export default function ShiftManagement() {
     const [form, setForm] = useState({ name: '', startTime: '', endTime: '', color: '#0047AB' });
     const [activeCell, setActiveCell] = useState(null); // { empId, day }
 
-    useEffect(() => { fetchData(); }, []);
+    const { selectedBranchId } = useBranch();
+
+    useEffect(() => { fetchData(); }, [selectedBranchId]);
 
     const fetchData = async () => {
         setLoading(true);
-        const { data: shiftData } = await shiftService.getAllShifts();
-        const { data: empData } = await employeeService.getAllEmployees();
+        const { data: shiftData } = await shiftService.getAllShifts(selectedBranchId);
+        const { data: empData } = await employeeService.getAllEmployees(selectedBranchId);
         const { data: assignData } = await shiftService.getShiftAssignments();
         setShifts(shiftData || []);
         setEmployees(empData || []);
@@ -73,7 +77,10 @@ export default function ShiftManagement() {
         <div>
             <div className="page-header">
                 <h1>Manajemen Shift</h1>
-                <button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Tambah Shift</button>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <BranchFilter />
+                    <button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Tambah Shift</button>
+                </div>
             </div>
 
             {/* Shift Legend */}

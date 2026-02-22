@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hrisync-v2';
+const CACHE_NAME = 'hrisync-v3';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -42,6 +42,9 @@ self.addEventListener('fetch', (event) => {
 
     // Skip Vite internal requests and HMR
     if (url.pathname.includes('/@vite/') || url.pathname.includes('/@id/') || url.search.includes('token=')) return;
+
+    // Skip ALL caching in development (localhost)
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return;
 
     // Navigation requests — network first, fallback to cache
     if (request.mode === 'navigate') {

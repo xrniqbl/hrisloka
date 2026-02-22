@@ -1,0 +1,359 @@
+/* ═══════════════════════════════════ */
+/*  Employee Profile Page Styles      */
+/* ═══════════════════════════════════ */
+
+/* ─── Profile Header ─── */
+.profile-header {
+    text-align: center;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.profile-avatar-wrap {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 14px;
+}
+
+.profile-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    overflow: hidden;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-avatar-edit {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 2;
+}
+
+.profile-avatar-edit:active {
+    transform: scale(0.9);
+}
+
+.profile-name {
+    font-size: 19px;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.profile-title {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.profile-badges {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.profile-badge {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.profile-badge.status-permanent {
+    background: rgba(22, 163, 74, 0.25);
+}
+
+.profile-badge.status-contract {
+    background: rgba(245, 158, 11, 0.25);
+}
+
+/* ─── Section Card ─── */
+.profile-section {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.profile-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.profile-section-header:active {
+    background: var(--bg);
+}
+
+.profile-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.profile-section-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.profile-section-chevron {
+    color: var(--muted);
+    font-size: 16px;
+    transition: transform 0.2s ease;
+}
+
+.profile-section-chevron.open {
+    transform: rotate(180deg);
+}
+
+.profile-section-body {
+    padding: 0 16px 16px;
+    animation: sectionFadeIn 0.2s ease;
+}
+
+@keyframes sectionFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ─── Info Row ─── */
+.profile-info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.profile-info-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.profile-info-icon {
+    color: var(--primary);
+    margin-top: 2px;
+    flex-shrink: 0;
+    font-size: 14px;
+}
+
+.profile-info-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.profile-info-value {
+    font-size: 13px;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.profile-info-value.empty {
+    color: var(--muted);
+    font-style: italic;
+}
+
+/* ─── Locked field badge ─── */
+.profile-locked-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+
+/* ─── Request Update Button ─── */
+.profile-request-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 10px 16px;
+    margin-top: 12px;
+    border-radius: var(--radius-md);
+    border: 1.5px dashed var(--primary);
+    background: rgba(0, 71, 171, 0.04);
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.profile-request-btn:active {
+    background: rgba(0, 71, 171, 0.1);
+    transform: scale(0.98);
+}
+
+/* ─── Timeline (Work History / Certifications) ─── */
+.profile-timeline {
+    position: relative;
+    padding-left: 20px;
+}
+
+.profile-timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--border);
+    border-radius: 2px;
+}
+
+.profile-timeline-item {
+    position: relative;
+    padding: 8px 0;
+}
+
+.profile-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -17px;
+    top: 14px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--surface);
+    z-index: 1;
+}
+
+.profile-timeline-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.profile-timeline-sub {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* ─── Photo uploading overlay ─── */
+.profile-upload-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+}
+
+/* ─── Pending requests list ─── */
+.profile-pending-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.profile-pending-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 10px;
+}
+
+.profile-pending-badge.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: #D97706;
+}
+
+.profile-pending-badge.approved {
+    background: rgba(22, 163, 74, 0.15);
+    color: #16A34A;
+}
+
+.profile-pending-badge.rejected {
+    background: rgba(220, 38, 38, 0.15);
+    color: #DC2626;
+}
+
+/* ─── Bottom Sheet form for update request ─── */
+.profile-update-form label {
+    font-size: 13px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.profile-update-form input,
+.profile-update-form select,
+.profile-update-form textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    margin-bottom: 14px;
+    background: var(--surface);
+}

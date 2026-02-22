@@ -66,30 +66,40 @@ export async function getOfficeLocations() {
     return { data: data || [], error };
 }
 
-// Get all attendance for a date (admin)
-export async function getAttendanceByDate(date) {
-    const { data, error } = await supabase
+// Get all attendance for a date (admin, optionally filtered by branch)
+export async function getAttendanceByDate(date, branchId) {
+    let query = supabase
         .from('attendance')
-        .select('*, employees(name, division, position)')
-        .eq('date', date)
-        .order('clock_in');
-    return { data: data || [], error };
+        .select('*, employees(name, division, position, branch_id)')
+        .eq('date', date);
+    if (branchId) {
+        query = query.eq('employees.branch_id', branchId);
+    }
+    const { data, error } = await query.order('clock_in');
+    // If branch filter, remove rows where employee join returned null
+    const filtered = branchId ? (data || []).filter(r => r.employees) : (data || []);
+    return { data: filtered, error };
 }
 
 // Get all attendance today (admin)
-export async function getAllAttendanceToday() {
+export async function getAllAttendanceToday(branchId) {
     const today = new Date().toISOString().split('T')[0];
-    return getAttendanceByDate(today);
+    return getAttendanceByDate(today, branchId);
 }
 
 // Get all attendance records (admin, with limit)
-export async function getAllAttendance(limit = 500) {
-    const { data, error } = await supabase
+export async function getAllAttendance(limit = 500, branchId) {
+    let query = supabase
         .from('attendance')
-        .select('*, employees(name, division, position)')
+        .select('*, employees(name, division, position, branch_id)')
         .order('date', { ascending: false })
         .limit(limit);
-    return { data: data || [], error };
+    if (branchId) {
+        query = query.eq('employees.branch_id', branchId);
+    }
+    const { data, error } = await query;
+    const filtered = branchId ? (data || []).filter(r => r.employees) : (data || []);
+    return { data: filtered, error };
 }
 
 // Get attendance summary by month (admin)

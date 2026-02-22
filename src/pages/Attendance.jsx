@@ -3,6 +3,8 @@ import { FiClock, FiMapPin, FiCamera, FiCheckCircle, FiDownload } from 'react-ic
 import { useAuth } from '../context/AuthContext';
 import * as attendanceService from '../services/attendanceService';
 import { exportToExcel, formatAttendanceForExport } from '../lib/excelExport';
+import BranchFilter from '../components/BranchFilter';
+import { useBranch } from '../context/BranchContext';
 import '../styles/shared.css';
 
 export default function Attendance() {
@@ -15,15 +17,17 @@ export default function Attendance() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
+    const { selectedBranchId } = useBranch();
+
     useEffect(() => {
         fetchData();
-    }, [employee]);
+    }, [employee, selectedBranchId]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
             // Admin view: show all today attendance
-            const { data: allAtt } = await attendanceService.getAllAttendanceToday();
+            const { data: allAtt } = await attendanceService.getAllAttendanceToday(selectedBranchId);
             if (allAtt && allAtt.length > 0) {
                 setTodayLogs(allAtt);
             }
@@ -64,13 +68,16 @@ export default function Attendance() {
         <div>
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h1 style={{ margin: 0 }}>Absensi Harian</h1>
-                <button
-                    className="btn-secondary"
-                    style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
-                    onClick={() => exportToExcel(formatAttendanceForExport(todayLogs), `Absensi_${new Date().toISOString().split('T')[0]}.xlsx`)}
-                >
-                    <FiDownload /> Export Excel
-                </button>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <BranchFilter />
+                    <button
+                        className="btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+                        onClick={() => exportToExcel(formatAttendanceForExport(todayLogs), `Absensi_${new Date().toISOString().split('T')[0]}.xlsx`)}
+                    >
+                        <FiDownload /> Export Excel
+                    </button>
+                </div>
             </div>
 
             {/* Clock In/Out Widget */}

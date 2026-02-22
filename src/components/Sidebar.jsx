@@ -6,7 +6,7 @@ import {
     FiList, FiFileText, FiCalendar, FiMap, FiFolder,
     FiRepeat, FiCreditCard, FiRefreshCw,
     FiTarget, FiAward, FiBriefcase, FiUserPlus,
-    FiHardDrive, FiMessageSquare, FiCpu, FiUserMinus, FiMapPin, FiCamera, FiBell,
+    FiHardDrive, FiMessageSquare, FiCpu, FiUserMinus, FiMapPin, FiCamera, FiBell, FiGitBranch, FiEdit3,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
@@ -27,8 +27,11 @@ const navItems = [
         icon: <FiUsers />,
         children: [
             { label: 'Data Karyawan', path: '/employees', icon: <FiList /> },
+            { label: 'Departemen', path: '/departments', icon: <FiBriefcase /> },
             { label: 'Struktur Organisasi', path: '/org-chart', icon: <FiMap /> },
             { label: 'Dokumen', path: '/documents', icon: <FiFolder /> },
+            { label: 'Perubahan Profil', path: '/profile-requests', icon: <FiEdit3 /> },
+            { label: 'Cabang', path: '/branches', icon: <FiGitBranch /> },
             { label: 'Exit Clearance', path: '/offboarding', icon: <FiUserMinus /> },
         ],
     },

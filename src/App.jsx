@@ -40,6 +40,10 @@ import EmpShift from './pages/employee/EmpShift';
 import EmpSubmissions from './pages/employee/EmpSubmissions';
 import EmpProjects from './pages/employee/EmpProjects';
 import InstallPrompt from './components/InstallPrompt';
+import { BranchProvider } from './context/BranchContext';
+import BranchManagement from './pages/BranchManagement';
+import ProfileRequests from './pages/ProfileRequests';
+import Departments from './pages/Departments';
 
 function App() {
   console.log('App: Rendering routes');
@@ -49,7 +53,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<AuthPage />} />
-          <Route path="/" element={<DashboardLayout />}>
+          <Route path="/" element={<BranchProvider><DashboardLayout /></BranchProvider>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="approvals" element={<ApprovalDashboard />} />
@@ -59,6 +63,9 @@ function App() {
             <Route path="employees/:id" element={<EmployeeProfile />} />
             <Route path="org-chart" element={<OrgChart />} />
             <Route path="documents" element={<Documents />} />
+            <Route path="branches" element={<BranchManagement />} />
+            <Route path="profile-requests" element={<ProfileRequests />} />
+            <Route path="departments" element={<Departments />} />
 
             {/* Time & Attendance */}
             <Route path="attendance" element={<Attendance />} />

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { FiEye, FiX, FiMapPin, FiSettings, FiCamera, FiCheck, FiAlertTriangle } from 'react-icons/fi';
 import * as attendanceService from '../services/attendanceService';
+import BranchFilter from '../components/BranchFilter';
+import { useBranch } from '../context/BranchContext';
 import '../styles/shared.css';
 
 export default function GeofenceAttendance() {
@@ -12,11 +14,13 @@ export default function GeofenceAttendance() {
     const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
     const [locationForm, setLocationForm] = useState({ name: '', latitude: '', longitude: '', radiusMeters: 100 });
 
-    useEffect(() => { fetchData(); }, [filterDate]);
+    const { selectedBranchId, branches } = useBranch();
+
+    useEffect(() => { fetchData(); }, [filterDate, selectedBranchId]);
 
     const fetchData = async () => {
         setLoading(true);
-        const { data: attData } = await attendanceService.getAttendanceByDate(filterDate);
+        const { data: attData } = await attendanceService.getAttendanceByDate(filterDate, selectedBranchId);
         const { data: locData } = await attendanceService.getOfficeLocations();
         setLogs(attData || []);
         setLocations(locData || []);
@@ -51,7 +55,8 @@ export default function GeofenceAttendance() {
         <div>
             <div className="page-header">
                 <h1>Geofencing & Liveness Detection</h1>
-                <div className="page-header-actions">
+                <div className="page-header-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <BranchFilter />
                     <button className="btn-secondary" onClick={openSettings}><FiSettings /> Office Location</button>
                 </div>
             </div>

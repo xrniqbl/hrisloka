@@ -1,11 +1,15 @@
 import { supabase } from '../lib/supabase';
 
-// Get all shifts
-export async function getAllShifts() {
-    const { data, error } = await supabase
+// Get all shifts (optionally filtered by branch)
+export async function getAllShifts(branchId) {
+    let query = supabase
         .from('shifts')
-        .select('*')
+        .select('*, branches(name)')
         .order('start_time');
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+    const { data, error } = await query;
     return { data: data || [], error };
 }
 
@@ -18,6 +22,7 @@ export async function createShift(shift) {
             start_time: shift.startTime,
             end_time: shift.endTime,
             color: shift.color || '#6D8196',
+            branch_id: shift.branchId || null,
         })
         .select()
         .single();
