@@ -19,14 +19,11 @@ export default function AuthPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
-    const [otpMode, setOtpMode] = useState(false);
     const [forgotMode, setForgotMode] = useState(false);
-    const [otpSent, setOtpSent] = useState(false);
-    const [otp, setOtp] = useState('');
     const [message, setMessage] = useState({ text: '', type: '' });
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { signInWithPassword, signInWithOtp, resetPassword, verifyOtp, signInWithGoogle, signUp, demoLogin } = useAuth();
+    const { signInWithPassword, resetPassword, signInWithGoogle, signUp } = useAuth();
 
     // Password validation
     const passwordRules = [
@@ -37,10 +34,7 @@ export default function AuthPage() {
     ];
     const isPasswordValid = passwordRules.every(r => r.test(password));
 
-    const handleDemoLogin = () => {
-        demoLogin();
-        navigate('/app/home');
-    };
+
 
     // Sign In with email + password
     const handlePasswordLogin = async (e) => {
@@ -59,36 +53,7 @@ export default function AuthPage() {
         setLoading(false);
     };
 
-    // Send OTP for passwordless login
-    const handleSendOtp = async () => {
-        if (!email) return;
-        setLoading(true);
-        setMessage({ text: '', type: '' });
-        const { error } = await signInWithOtp(email);
-        if (error) {
-            setMessage({ text: error.message, type: 'error' });
-        } else {
-            setOtpSent(true);
-            setMessage({ text: 'Kode OTP telah dikirim ke email Anda.', type: 'success' });
-        }
-        setLoading(false);
-    };
 
-    // Verify OTP
-    const handleVerifyOtp = async (e) => {
-        e.preventDefault();
-        if (!otp) return;
-        setLoading(true);
-        setMessage({ text: '', type: '' });
-        const { error } = await verifyOtp(email, otp);
-        if (error) {
-            setMessage({ text: error.message, type: 'error' });
-        } else {
-            const savedRole = localStorage.getItem('hrisync_role');
-            navigate(savedRole === 'admin' ? '/dashboard' : '/app/home');
-        }
-        setLoading(false);
-    };
 
     // Google OAuth
     const handleGoogleLogin = async () => {
@@ -137,10 +102,7 @@ export default function AuthPage() {
     const togglePanel = () => {
         setIsSignUp(!isSignUp);
         setMessage({ text: '', type: '' });
-        setOtpMode(false);
         setForgotMode(false);
-        setOtpSent(false);
-        setOtp('');
         setPassword('');
     };
 
@@ -172,7 +134,7 @@ export default function AuthPage() {
                         <div className={`auth-message ${message.type}`}>{message.text}</div>
                     )}
 
-                    {!otpMode && !forgotMode ? (
+                    {!forgotMode ? (
                         /* Email + Password Sign In */
                         <form onSubmit={handlePasswordLogin}>
                             <div className="auth-input-group">
@@ -200,7 +162,7 @@ export default function AuthPage() {
                             <button type="submit" className="auth-btn-primary" disabled={loading}>
                                 {loading ? 'Memproses...' : 'Masuk'}
                             </button>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
                                 <button
                                     type="button"
                                     onClick={() => { setForgotMode(true); setMessage({ text: '', type: '' }); }}
@@ -208,16 +170,9 @@ export default function AuthPage() {
                                 >
                                     Lupa Password?
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setOtpMode(true); setMessage({ text: '', type: '' }); }}
-                                    style={{ background: 'none', border: 'none', color: 'var(--primary, #2563EB)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                                >
-                                    Masuk dengan OTP
-                                </button>
                             </div>
                         </form>
-                    ) : forgotMode ? (
+                    ) : (
                         /* Forgot Password */
                         <form onSubmit={handleForgotPassword}>
                             <div style={{ background: 'rgba(239,68,68,0.06)', borderRadius: 'var(--radius-md)', padding: 14, marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -245,57 +200,6 @@ export default function AuthPage() {
                                 ← Kembali ke login
                             </button>
                         </form>
-                    ) : (
-                        /* OTP Mode */
-                        <form onSubmit={handleVerifyOtp}>
-                            <div className="auth-input-group">
-                                <label className="auth-input-label">Email</label>
-                                <div className="auth-otp-row">
-                                    <input
-                                        type="email"
-                                        className="auth-input"
-                                        placeholder="nama@perusahaan.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        className="auth-btn-send"
-                                        onClick={handleSendOtp}
-                                        disabled={loading || !email}
-                                    >
-                                        {otpSent ? 'Kirim Ulang' : 'Kirim OTP'}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {otpSent && (
-                                <div className="auth-input-group">
-                                    <label className="auth-input-label">Kode OTP</label>
-                                    <input
-                                        type="text"
-                                        className="auth-input"
-                                        placeholder="Masukkan 6 digit kode"
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value)}
-                                        maxLength={6}
-                                        required
-                                    />
-                                </div>
-                            )}
-
-                            <button type="submit" className="auth-btn-primary" disabled={loading || !otpSent}>
-                                {loading ? 'Memverifikasi...' : 'Verifikasi & Masuk'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => { setOtpMode(false); setOtpSent(false); setOtp(''); setMessage({ text: '', type: '' }); }}
-                                style={{ width: '100%', marginTop: 10, background: 'none', border: 'none', color: 'var(--primary, #2563EB)', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}
-                            >
-                                ← Kembali ke login password
-                            </button>
-                        </form>
                     )}
 
                     <div className="auth-divider"><span>atau</span></div>
@@ -303,23 +207,6 @@ export default function AuthPage() {
                     <button className="auth-btn-google" onClick={handleGoogleLogin}>
                         <GoogleIcon />
                         Masuk dengan Google
-                    </button>
-
-                    <div className="auth-divider"><span>coba dulu</span></div>
-
-                    <button
-                        className="auth-btn-demo"
-                        onClick={handleDemoLogin}
-                        style={{
-                            width: '100%', padding: '14px', borderRadius: 'var(--radius-md)',
-                            background: 'linear-gradient(135deg, #10B981, #059669)',
-                            color: '#fff', fontWeight: 700, fontSize: '15px',
-                            border: 'none', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                            transition: 'all 0.2s ease',
-                        }}
-                    >
-                        📱 Demo Karyawan (PWA)
                     </button>
                 </div>
 
