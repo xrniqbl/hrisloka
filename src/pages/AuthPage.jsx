@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './AuthPage.css';
 
@@ -23,7 +23,7 @@ export default function AuthPage() {
     const [message, setMessage] = useState({ text: '', type: '' });
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { signInWithPassword, resetPassword, signInWithGoogle, signUp } = useAuth();
+    const { user, isPWA, loading: authLoading, signInWithPassword, resetPassword, signInWithGoogle, signUp } = useAuth();
 
     // Password validation
     const passwordRules = [
@@ -34,6 +34,11 @@ export default function AuthPage() {
     ];
     const isPasswordValid = passwordRules.every(r => r.test(password));
 
+    // Redirect if already logged in
+    if (!authLoading && user) {
+        return <Navigate to={isPWA ? '/app/home' : '/dashboard'} replace />;
+    }
+
 
 
     // Sign In with email + password
@@ -42,13 +47,11 @@ export default function AuthPage() {
         if (!email || !password) return;
         setLoading(true);
         setMessage({ text: '', type: '' });
-        localStorage.setItem('hrisync_role', 'employee');
         const { data, error } = await signInWithPassword(email, password);
         if (error) {
             setMessage({ text: error.message, type: 'error' });
         } else {
-            const role = localStorage.getItem('hrisync_role');
-            navigate(role === 'admin' ? '/dashboard' : '/app/home');
+            navigate(isPWA ? '/app/home' : '/dashboard');
         }
         setLoading(false);
     };
@@ -57,7 +60,6 @@ export default function AuthPage() {
 
     // Google OAuth
     const handleGoogleLogin = async () => {
-        localStorage.setItem('hrisync_role', 'admin');
         const { error } = await signInWithGoogle();
         if (error) {
             setMessage({ text: error.message, type: 'error' });
@@ -89,7 +91,6 @@ export default function AuthPage() {
         }
         setLoading(true);
         setMessage({ text: '', type: '' });
-        localStorage.setItem('hrisync_role', 'employee');
         const { error } = await signUp(email, password, { full_name: fullName, role: 'employee' });
         if (error) {
             setMessage({ text: error.message, type: 'error' });

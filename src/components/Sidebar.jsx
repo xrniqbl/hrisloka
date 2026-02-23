@@ -211,9 +211,9 @@ export default function Sidebar() {
                         <div className="sidebar-user-avatar">{userInitials}</div>
                         <div className="sidebar-user-info">
                             <div className="sidebar-user-name">
-                                {user?.user_metadata?.full_name || user?.email || 'Admin User'}
+                                {user?.user_metadata?.full_name || user?.email || 'User'}
                             </div>
-                            <div className="sidebar-user-role">Administrator</div>
+                            <div className="sidebar-user-role">{user?.user_metadata?.role || 'Admin'}</div>
                         </div>
                         <button className="sidebar-logout" onClick={handleLogout} title="Sign Out">
                             <FiLogOut />

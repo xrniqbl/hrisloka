@@ -6,11 +6,17 @@ const AuthContext = createContext({});
 
 export const useAuth = () => useContext(AuthContext);
 
+// Detect if running as installed PWA (standalone mode)
+const getIsPWA = () =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone === true;
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [employee, setEmployee] = useState(null);
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isPWA] = useState(getIsPWA);
 
     useEffect(() => {
         const fetchEmployee = async (u) => {
@@ -22,10 +28,22 @@ export function AuthProvider({ children }) {
             }
         };
 
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            fetchEmployee(session?.user);
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+            // Desktop: check 12-hour session expiry
+            if (s && !getIsPWA()) {
+                const loginTime = localStorage.getItem('hrisync_login_time');
+                if (loginTime && Date.now() - parseInt(loginTime) > 12 * 60 * 60 * 1000) {
+                    // Session expired on desktop — sign out
+                    supabase.auth.signOut();
+                    localStorage.removeItem('hrisync_login_time');
+                    localStorage.removeItem('hrisync_role');
+                    setLoading(false);
+                    return;
+                }
+            }
+            setSession(s);
+            setUser(s?.user ?? null);
+            fetchEmployee(s?.user);
             setLoading(false);
         });
 
@@ -35,10 +53,14 @@ export function AuthProvider({ children }) {
             setUser(newUser);
             fetchEmployee(newUser);
 
+            // Record login time for desktop session expiry
+            if (_event === 'SIGNED_IN') {
+                localStorage.setItem('hrisync_login_time', Date.now().toString());
+            }
+
             // Auto-redirect after OAuth callback (token in hash)
             if (_event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
-                const role = localStorage.getItem('hrisync_role');
-                window.location.replace(role === 'employee' ? '/app/home' : '/dashboard');
+                window.location.replace(getIsPWA() ? '/app/home' : '/dashboard');
             }
         });
 
@@ -93,40 +115,19 @@ export function AuthProvider({ children }) {
     const signOut = async () => {
         const { error } = await supabase.auth.signOut();
         localStorage.removeItem('hrisync_role');
-        localStorage.removeItem('hrisync_demo_user');
+        localStorage.removeItem('hrisync_login_time');
         setUser(null);
         setSession(null);
+        setEmployee(null);
         return { error };
     };
-
-    // Demo login for PWA testing (no Supabase auth needed)
-    const demoLogin = () => {
-        const demoUser = {
-            id: 'demo-employee-001',
-            email: 'ahmad.rizky@company.com',
-            user_metadata: { full_name: 'Ahmad Rizky Pratama', role: 'employee' },
-        };
-        setUser(demoUser);
-        setSession({ user: demoUser });
-        localStorage.setItem('hrisync_role', 'employee');
-        localStorage.setItem('hrisync_demo_user', JSON.stringify(demoUser));
-    };
-
-    // Restore demo session on reload
-    useEffect(() => {
-        const saved = localStorage.getItem('hrisync_demo_user');
-        if (saved && !user) {
-            const parsed = JSON.parse(saved);
-            setUser(parsed);
-            setSession({ user: parsed });
-        }
-    }, []);
 
     const value = {
         user,
         employee,
         session,
         loading,
+        isPWA,
         signInWithOtp,
         signInWithPassword,
         resetPassword,
@@ -134,7 +135,6 @@ export function AuthProvider({ children }) {
         signInWithGoogle,
         signUp,
         signOut,
-        demoLogin,
     };
 
     return (
