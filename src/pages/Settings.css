@@ -1,0 +1,224 @@
+/* ════════════════════════════════════════════════ */
+/* Settings Page — Premium Tabbed Layout            */
+/* ════════════════════════════════════════════════ */
+
+/* Tab Navigation */
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+  box-shadow: var(--shadow-card);
+}
+
+.settings-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.settings-tab-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.settings-tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 71, 171, 0.25);
+}
+
+/* Settings Card */
+.settings-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+}
+
+.settings-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.settings-card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Section separator */
+.settings-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+/* Toggle Switch */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.toggle-row:last-child { border-bottom: none; }
+
+.toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.toggle-desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle-switch input { display: none; }
+
+.toggle-track {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: #D1D5DB;
+  transition: background 0.2s ease;
+}
+
+.toggle-track.on { background: var(--primary); }
+
+.toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: left 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toggle-thumb.on { left: 23px; }
+
+/* Appearance grid */
+.appearance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.appearance-option {
+  padding: 20px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 2px solid var(--border);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.appearance-option.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.appearance-option-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.appearance-option-label {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.appearance-option-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Saved indicator */
+.settings-saved {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--success);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 14px;
+  background: var(--success-light);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(22, 163, 74, 0.15);
+  animation: adminFadeUp 0.2s ease;
+}
+
+/* Company code display */
+.company-code-display {
+  flex: 1;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0,71,171,0.06), rgba(37,99,235,0.04));
+  border: 2px solid rgba(0,71,171,0.2);
+  font-family: 'Fira Code', monospace;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--primary);
+  text-align: center;
+}
+
+/* Info banner */
+.settings-info-banner {
+  padding: 14px 18px;
+  background: rgba(0, 71, 171, 0.05);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 71, 171, 0.15);
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 500;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* Regulatory badge */
+.badge-regulatory {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--warning);
+  background: var(--warning-light);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  flex-shrink: 0;
+}

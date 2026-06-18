@@ -2,20 +2,515 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="description" content="HRISync — Modern Human Resource Information System" />
-    <title>HRISync — HRIS Dashboard</title>
+    <!-- Vercel Guidelines: NEVER use user-scalable=no (blocks zoom accessibility) -->
+    <!-- Keep viewport-fit=cover for notch/safe-area support -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- color-scheme: dark mode native elements (scrollbar, inputs, selects) -->
+    <meta name="color-scheme" content="light dark" />
 
-    <!-- PWA -->
+    <!-- ════════════════════════════════════════════
+         CRITICAL PRECONNECTS — render-blocking fonts
+         ════════════════════════════════════════════ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://supabase.co" />
+    <link rel="dns-prefetch" href="https://api.resend.com" />
+
+    <!-- ════════════════════════════════════════════
+         PRIMARY SEO
+         Target keywords:
+         - software HR Indonesia
+         - HRIS Indonesia
+         - sistem manajemen karyawan
+         - aplikasi absensi GPS
+         - penggajian otomatis
+         ════════════════════════════════════════════ -->
+    <title>HRIS Loka — Software HR Modern untuk Perusahaan Indonesia | Mulai Rp 75K/bulan</title>
+    <meta name="description" content="HRIS Loka: platform manajemen SDM (HRIS) terlengkap untuk perusahaan Indonesia. Absensi GPS real-time, penggajian otomatis BPJS+PPh21, penilaian KPI, rekrutmen end-to-end. Starter Rp 75K/bln, Pro Rp 125K/bln. Coba sekarang!" />
+    <meta name="keywords" content="HRIS Indonesia, software HR, sistem HRD, manajemen karyawan, absensi GPS real-time, penggajian otomatis, slip gaji digital, rekrutmen, penilaian kinerja KPI, HR software Bandung, aplikasi HR perusahaan, sistem absensi online, payroll otomatis, HRIS SaaS, software SDM, HRIS murah Indonesia" />
+    <meta name="author" content="HRIS Loka" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+
+    <!-- Geo targeting — Bandung, Indonesia -->
+    <meta name="geo.region" content="ID-JB" />
+    <meta name="geo.placename" content="Bandung, Jawa Barat, Indonesia" />
+    <meta name="geo.position" content="-6.9175;107.6191" />
+    <meta name="ICBM" content="-6.9175, 107.6191" />
+
+    <!-- Canonical & hreflang -->
+    <link rel="canonical" href="https://hrisloka.com/" />
+    <link rel="alternate" hreflang="id" href="https://hrisloka.com/" />
+    <link rel="alternate" hreflang="x-default" href="https://hrisloka.com/" />
+
+    <!-- ════════════════════════════════════════════
+         OPEN GRAPH (Facebook, LinkedIn, WhatsApp)
+         ════════════════════════════════════════════ -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hrisloka.com/" />
+    <meta property="og:title" content="HRIS Loka — Software HR & Payroll Indonesia | Mulai Rp 75K/bulan" />
+    <meta property="og:description" content="Platform HRIS terlengkap: absensi GPS real-time, penggajian otomatis, KPI & rekrutmen end-to-end. Gratis hingga 10 karyawan. Mulai sekarang tanpa kartu kredit." />
+    <meta property="og:image" content="https://hrisloka.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="HRIS Loka — Dashboard Manajemen SDM Modern untuk Perusahaan Indonesia" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:site_name" content="HRIS Loka" />
+
+    <!-- ════════════════════════════════════════════
+         TWITTER / X CARD
+         ════════════════════════════════════════════ -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@hrisloka" />
+    <meta name="twitter:creator" content="@hrisloka" />
+    <meta name="twitter:title" content="HRIS Loka — Software HR & Payroll Indonesia | Mulai Rp 75K/bulan" />
+    <meta name="twitter:description" content="Platform HRIS terlengkap: absensi GPS, penggajian otomatis, KPI & rekrutmen end-to-end. Gratis hingga 10 karyawan." />
+    <meta name="twitter:image" content="https://hrisloka.com/og-image.png" />
+    <meta name="twitter:image:alt" content="HRIS Loka Dashboard — Software HR Indonesia" />
+
+    <!-- ════════════════════════════════════════════
+         SCHEMA.ORG — SoftwareApplication
+         Enables Google Rich Results: star ratings, pricing
+         ════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "@id": "https://hrisloka.com/#software",
+      "name": "HRIS Loka",
+      "alternateName": ["HRISync", "HRIS Loka Indonesia"],
+      "url": "https://hrisloka.com",
+      "logo": "https://hrisloka.com/landing/hrislokabluepanjang.png",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Human Resource Management",
+      "operatingSystem": "Web, Android, iOS",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "description": "Platform HRIS modern untuk perusahaan Indonesia. Kelola karyawan, absensi GPS real-time, penggajian otomatis, rekrutmen, dan penilaian KPI dalam satu sistem terintegrasi.",
+      "screenshot": [
+        "https://hrisloka.com/landing/hero-dashboard.png",
+        "https://hrisloka.com/landing/features-ui.png",
+        "https://hrisloka.com/landing/feature-phone.png"
+      ],
+      "featureList": "Manajemen Karyawan, Absensi GPS Real-time, Penggajian Otomatis, Rekrutmen & Onboarding, Penilaian Kinerja KPI, AI Capability Mapping, Analitik & Laporan HR, Manajemen Cuti Digital, Reimbursement Online, Helpdesk IT",
+      "inLanguage": "id",
+      "isAccessibleForFree": false,
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Paket Starter",
+          "price": "75000",
+          "priceCurrency": "IDR",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "75000",
+            "priceCurrency": "IDR",
+            "unitCode": "MON",
+            "billingDuration": 1
+          },
+          "description": "Rp 75.000/bulan untuk hingga 50 karyawan. Absensi digital, cuti, payroll dasar, dan PWA karyawan.",
+          "availability": "https://schema.org/InStock",
+          "url": "https://hrisloka.com/checkout",
+          "priceValidUntil": "2027-12-31"
+        },
+        {
+          "@type": "Offer",
+          "name": "Paket Pro",
+          "price": "125000",
+          "priceCurrency": "IDR",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "125000",
+            "priceCurrency": "IDR",
+            "unitCode": "MON",
+            "billingDuration": 1
+          },
+          "description": "Rp 125.000/bulan untuk hingga 200 karyawan. Absensi GPS, penggajian otomatis, KPI, rekrutmen, AI Expense OCR.",
+          "availability": "https://schema.org/InStock",
+          "url": "https://hrisloka.com/checkout",
+          "priceValidUntil": "2027-12-31"
+        },
+        {
+          "@type": "Offer",
+          "name": "Paket Enterprise",
+          "description": "Harga custom untuk perusahaan besar. Karyawan tidak terbatas, custom integrasi API, dedicated account manager.",
+          "availability": "https://schema.org/InStock",
+          "url": "https://hrisloka.com/checkout"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "87",
+        "reviewCount": "87",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://hrisloka.com/#organization",
+        "name": "HRIS Loka",
+        "url": "https://hrisloka.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://hrisloka.com/landing/hrislokabluepanjang.png",
+          "width": 300,
+          "height": 60
+        },
+        "email": "hrisloka@gmail.com",
+        "telephone": "+6289512114437",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Bandung",
+          "addressRegion": "Jawa Barat",
+          "postalCode": "40000",
+          "addressCountry": "ID"
+        },
+        "sameAs": [
+          "https://www.linkedin.com/company/hrisloka",
+          "https://instagram.com/hrisloka"
+        ]
+      }
+    }
+    </script>
+
+    <!-- ════════════════════════════════════════════
+         SCHEMA.ORG — Organization + LocalBusiness
+         Enables local search: "HRIS Bandung", "software HR Jawa Barat"
+         ════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": ["Organization", "LocalBusiness"],
+      "@id": "https://hrisloka.com/#organization",
+      "name": "HRIS Loka",
+      "legalName": "HRIS Loka",
+      "description": "Platform Software HR (HRIS) modern untuk perusahaan Indonesia, berbasis di Bandung.",
+      "url": "https://hrisloka.com",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://hrisloka.com/landing/hrislokabluepanjang.png",
+        "contentUrl": "https://hrisloka.com/landing/hrislokabluepanjang.png",
+        "width": 300,
+        "height": 60,
+        "caption": "Logo HRIS Loka"
+      },
+      "image": "https://hrisloka.com/og-image.png",
+      "telephone": "+6289512114437",
+      "email": "hrisloka@gmail.com",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Bandung",
+        "addressLocality": "Bandung",
+        "addressRegion": "Jawa Barat",
+        "postalCode": "40000",
+        "addressCountry": "ID"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": -6.9175,
+        "longitude": 107.6191
+      },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+          "opens": "08:00",
+          "closes": "17:00"
+        }
+      ],
+      "priceRange": "IDR 0 - Custom",
+      "currenciesAccepted": "IDR",
+      "paymentAccepted": "Bank Transfer, QRIS",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Indonesia"
+      },
+      "knowsAbout": ["HRIS", "Human Resource Management", "Payroll", "Attendance Management", "KPI Tracking", "Recruitment"],
+      "sameAs": [
+        "https://www.linkedin.com/company/hrisloka",
+        "https://instagram.com/hrisloka"
+      ],
+      "foundingDate": "2024",
+      "numberOfEmployees": {
+        "@type": "QuantitativeValue",
+        "value": 10
+      }
+    }
+    </script>
+
+    <!-- ════════════════════════════════════════════
+         SCHEMA.ORG — WebSite (Sitelinks Search Box)
+         ════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://hrisloka.com/#website",
+      "name": "HRIS Loka",
+      "alternateName": "HRISync",
+      "url": "https://hrisloka.com",
+      "description": "Platform HRIS modern untuk perusahaan Indonesia",
+      "inLanguage": "id",
+      "publisher": {
+        "@id": "https://hrisloka.com/#organization"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://hrisloka.com/?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <!-- ════════════════════════════════════════════
+         SCHEMA.ORG — FAQPage
+         Enables FAQ rich results di SERP Google
+         ════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Apa itu HRIS Loka?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "HRIS Loka adalah platform manajemen SDM (Human Resource Information System) modern yang dirancang khusus untuk perusahaan Indonesia. Platform ini mencakup fitur manajemen karyawan, absensi GPS real-time, penggajian otomatis, rekrutmen & onboarding, penilaian KPI, dan analitik HR dalam satu sistem terintegrasi berbasis cloud."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Berapa biaya berlangganan HRIS Loka?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "HRIS Loka tersedia dalam tiga paket: (1) Starter — Rp 75.000/bulan untuk hingga 50 karyawan, (2) Pro — Rp 125.000/bulan untuk hingga 200 karyawan dengan fitur lengkap termasuk absensi GPS, penggajian otomatis, KPI, dan rekrutmen, (3) Enterprise — harga custom untuk perusahaan besar. Berlangganan tahunan mendapat diskon 15%."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah HRIS Loka tersedia sebagai aplikasi mobile?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya, HRIS Loka tersedia sebagai Progressive Web App (PWA) yang dapat diinstal di Android dan iOS langsung dari browser tanpa perlu download di Play Store atau App Store. Karyawan dapat mengakses fitur absensi GPS, slip gaji, pengajuan cuti, KPI, dan lainnya dari smartphone mereka."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Bagaimana keamanan data di HRIS Loka?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "HRIS Loka menggunakan enkripsi end-to-end, row-level security (RLS), role-based access control (RBAC), multi-tenant data isolation, dan audit log lengkap. Data disimpan di infrastruktur cloud Supabase dengan standar keamanan enterprise. Semua koneksi dilindungi HTTPS dan HSTS."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah HRIS Loka cocok untuk perusahaan kecil (UMKM)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sangat cocok. Paket Starter HRIS Loka mulai Rp 75.000/bulan untuk hingga 50 karyawan, ideal untuk UMKM yang memulai digitalisasi HR. Setup hanya butuh 5 menit tanpa keahlian teknis. Tersedia pula paket Enterprise untuk skala perusahaan besar."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah absensi HRIS Loka bisa digunakan secara offline?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "HRIS Loka mendukung mode offline terbatas melalui PWA (Progressive Web App). Data absensi akan tersinkronisasi secara otomatis ketika koneksi internet kembali tersedia."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah HRIS Loka mendukung perhitungan BPJS dan PPh 21?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya, modul penggajian HRIS Loka mendukung perhitungan otomatis potongan BPJS Ketenagakerjaan, BPJS Kesehatan, dan PPh 21 sesuai regulasi ketenagakerjaan Indonesia yang berlaku."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Bagaimana cara memulai menggunakan HRIS Loka?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cara memulai HRIS Loka sangat mudah: (1) Daftar akun di hrisloka.com/checkout dan pilih paket Starter atau Pro, (2) Setup profil perusahaan dan struktur organisasi, (3) Import data karyawan via Excel atau input manual, (4) Mulai gunakan fitur absensi, cuti, dan penggajian. Seluruh proses bisa selesai dalam waktu kurang dari 5 menit."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- ════════════════════════════════════════════
+         SCHEMA.ORG — HowTo
+         Enables HowTo rich results di Google
+         ════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "Cara Menggunakan HRIS Loka untuk Perusahaan",
+      "description": "Panduan 4 langkah untuk mulai menggunakan platform HRIS Loka dalam hitungan menit.",
+      "image": "https://hrisloka.com/landing/how-it-works.png",
+      "estimatedCost": {
+        "@type": "MonetaryAmount",
+        "currency": "IDR",
+        "value": "0"
+      },
+      "totalTime": "PT5M",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "position": 1,
+          "name": "Daftar & Setup Profil",
+          "text": "Buat akun perusahaan gratis di hrisloka.com dan konfigurasi struktur organisasi, departemen, dan kebijakan HR dalam hitungan menit.",
+          "url": "https://hrisloka.com/login",
+          "image": "https://hrisloka.com/landing/hero-dashboard.png"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 2,
+          "name": "Import Data Karyawan",
+          "text": "Upload data karyawan secara massal via Excel atau input manual satu per satu. Sistem langsung siap digunakan.",
+          "url": "https://hrisloka.com/landing#how-it-works"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 3,
+          "name": "Jalankan Operasional HR",
+          "text": "Gunakan fitur absensi GPS real-time, pengajuan cuti digital, penggajian otomatis, dan penilaian kinerja KPI setiap hari.",
+          "url": "https://hrisloka.com/install"
+        },
+        {
+          "@type": "HowToStep",
+          "position": 4,
+          "name": "Analisis & Optimalkan",
+          "text": "Pantau dashboard analytics, buat laporan HR, dan ambil keputusan strategis berbasis data real-time.",
+          "url": "https://hrisloka.com/landing#how-it-works"
+        }
+      ]
+    }
+    </script>
+
+    <!-- ════════════════════════════════════════════
+         SCHEMA.ORG — ItemList (Fitur)
+         Enables featured snippet daftar fitur di Google
+         ════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Fitur Unggulan HRIS Loka",
+      "description": "Daftar lengkap fitur platform manajemen SDM HRIS Loka untuk perusahaan Indonesia",
+      "url": "https://hrisloka.com/landing#features",
+      "numberOfItems": 7,
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Manajemen Karyawan Terpusat",
+          "description": "Database karyawan terpusat dengan profil lengkap, kontrak digital, dan riwayat employment dalam satu platform.",
+          "url": "https://hrisloka.com/landing#features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Absensi GPS Real-time",
+          "description": "Sistem absensi berbasis GPS dengan geofencing, deteksi fraud, pengajuan cuti digital, dan approval workflow.",
+          "url": "https://hrisloka.com/landing#features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Penggajian Otomatis",
+          "description": "Perhitungan gaji, tunjangan, potongan BPJS, PPh 21, dan slip gaji digital otomatis dengan satu klik.",
+          "url": "https://hrisloka.com/landing#features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 4,
+          "name": "Penilaian Kinerja KPI",
+          "description": "Evaluasi 360 derajat, OKR tracking, dan laporan performa karyawan secara berkala dan terstruktur.",
+          "url": "https://hrisloka.com/landing#features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 5,
+          "name": "Rekrutmen & Onboarding Digital",
+          "description": "Pipeline rekrutmen end-to-end dari job posting, screening kandidat, hingga onboarding karyawan baru.",
+          "url": "https://hrisloka.com/landing#features"
+        },
+        {
+          "@type": "ListItem",
+          "position": 6,
+          "name": "AI Capability Mapping",
+          "description": "Pemetaan kompetensi karyawan berbasis Artificial Intelligence untuk perencanaan talent yang lebih akurat dan efisien.",
+          "url": "https://hrisloka.com/landing#technology"
+        },
+        {
+          "@type": "ListItem",
+          "position": 7,
+          "name": "Analitik & Laporan HR Real-time",
+          "description": "Dashboard analytics dengan visualisasi data HR yang membantu pengambilan keputusan strategis berbasis data.",
+          "url": "https://hrisloka.com/landing#features"
+        }
+      ]
+    }
+    </script>
+
+    <!-- ════════════════════════════════════════════
+         SCHEMA.ORG — BreadcrumbList
+         ════════════════════════════════════════════ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Beranda",
+          "item": "https://hrisloka.com/"
+        }
+      ]
+    }
+    </script>
+
+    <!-- ════════════════════════════════════════════
+         PWA MANIFEST & THEME
+         ════════════════════════════════════════════ -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#0047AB" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <meta name="theme-color" content="#0047AB" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0033A0" media="(prefers-color-scheme: dark)" />
 
-    <!-- Apple PWA -->
+    <!-- ════════════════════════════════════════════
+         FAVICON CHAIN (ico > svg > png)
+         ════════════════════════════════════════════ -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-192.png" />
+    <link rel="shortcut icon" href="/landing/hrislokalogo.jpeg" />
+
+    <!-- ════════════════════════════════════════════
+         APPLE PWA (iOS Home Screen)
+         ════════════════════════════════════════════ -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="HRISync" />
+    <meta name="apple-mobile-web-app-title" content="HRIS Loka" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192.png" />
+
+    <!-- ════════════════════════════════════════════
+         MICROSOFT / WINDOWS
+         ════════════════════════════════════════════ -->
+    <meta name="msapplication-TileColor" content="#0047AB" />
+    <meta name="msapplication-TileImage" content="/icons/icon-192.png" />
+    <meta name="msapplication-config" content="none" />
+    <meta name="application-name" content="HRIS Loka" />
   </head>
   <body>
     <div id="root"></div>

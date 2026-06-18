@@ -1,0 +1,771 @@
+/* ================================================================== */
+/* EmployeeProfile — Premium HR Admin Profile Page                      */
+/* Clean, professional design without emoji                             */
+/* ================================================================== */
+
+/* ── Page wrapper ── */
+.ep-wrapper {
+  animation: ep-fadeUp 0.3s ease both;
+  max-width: 1200px;
+}
+
+@keyframes ep-fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Page header ── */
+.ep-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ep-page-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ep-back-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+
+.ep-back-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.ep-page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.ep-page-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── Hero Card ── */
+.ep-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+.ep-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary) 0%, #6366F1 50%, #8B5CF6 100%);
+  border-radius: 20px 20px 0 0;
+}
+
+/* ── Avatar ── */
+.ep-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ep-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--primary) 0%, #6366F1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  box-shadow: 0 8px 24px rgba(0, 71, 171, 0.25);
+}
+
+.ep-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 24px;
+}
+
+.ep-status-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2.5px solid var(--surface);
+}
+
+.ep-status-dot.active   { background: #22C55E; }
+.ep-status-dot.inactive { background: #94A3B8; }
+
+/* ── Hero Info ── */
+.ep-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ep-hero-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.ep-hero-position {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin: 0 0 16px;
+}
+
+.ep-hero-meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.ep-hero-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ep-hero-meta-item svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* ── Hero badges ── */
+.ep-hero-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ep-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.ep-badge.permanent {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16A34A;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.ep-badge.contract {
+  background: rgba(245, 158, 11, 0.1);
+  color: #D97706;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.ep-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ep-nip-badge {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+
+/* ── Tab Bar ── */
+.ep-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 5px;
+  margin-bottom: 24px;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ep-tab-btn {
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s;
+}
+
+.ep-tab-btn:hover:not(.active) {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.ep-tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0, 71, 171, 0.3);
+  font-weight: 700;
+}
+
+/* ── Section Grid ── */
+.ep-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.ep-grid-full {
+  grid-column: 1 / -1;
+}
+
+/* ── Info Card ── */
+.ep-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: ep-fadeUp 0.3s ease both;
+}
+
+.ep-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ep-card-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.ep-card-icon.blue   { background: rgba(0,71,171,0.1);   color: #0047AB; }
+.ep-card-icon.green  { background: rgba(34,197,94,0.1);  color: #16A34A; }
+.ep-card-icon.purple { background: rgba(139,92,246,0.1); color: #7C3AED; }
+.ep-card-icon.orange { background: rgba(245,158,11,0.1); color: #D97706; }
+.ep-card-icon.red    { background: rgba(220,38,38,0.1);  color: #DC2626; }
+.ep-card-icon.teal   { background: rgba(20,184,166,0.1); color: #0D9488; }
+
+.ep-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.1px;
+}
+
+.ep-card-body {
+  padding: 4px 0;
+}
+
+/* ── Info Row ── */
+.ep-info-row {
+  display: flex;
+  padding: 13px 24px;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-light, rgba(0,0,0,0.04));
+  transition: background 0.15s;
+}
+
+.ep-info-row:last-child {
+  border-bottom: none;
+}
+
+.ep-info-row:hover {
+  background: var(--bg);
+}
+
+.ep-info-label {
+  width: 148px;
+  min-width: 148px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+
+.ep-info-value {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.ep-info-value.muted {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.ep-info-value.highlight {
+  color: var(--primary);
+}
+
+.ep-info-value.danger {
+  color: var(--danger, #DC2626);
+}
+
+.ep-info-value.success {
+  color: var(--success, #16A34A);
+}
+
+.ep-info-value.warning {
+  color: #D97706;
+}
+
+/* ── Divider row ── */
+.ep-info-divider {
+  padding: 2px 24px 10px;
+  border-bottom: none;
+}
+
+.ep-info-divider-line {
+  height: 1px;
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* ── Payroll Hero Card ── */
+.ep-payroll-hero {
+  background: linear-gradient(135deg, #0047AB 0%, #1D4ED8 50%, #4F46E5 100%);
+  border-radius: 16px;
+  padding: 28px 32px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.ep-payroll-hero::after {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+
+.ep-payroll-hero-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+.ep-payroll-hero-amount {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.ep-payroll-hero-sub {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* ── Payroll stats bar ── */
+.ep-payroll-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ep-payroll-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+
+.ep-payroll-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.ep-payroll-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.ep-payroll-stat-value.red    { color: #DC2626; }
+.ep-payroll-stat-value.green  { color: #16A34A; }
+.ep-payroll-stat-value.blue   { color: var(--primary); }
+
+/* ── Leave progress ── */
+.ep-leave-bar-wrap {
+  padding: 14px 24px 18px;
+}
+
+.ep-leave-bar-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ep-leave-bar-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ep-leave-bar-stat {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.ep-leave-bar-track {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 100px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.ep-leave-bar-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--primary), #6366F1);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ep-leave-details {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.ep-leave-detail-item {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ep-leave-detail-item span {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ── Document table ── */
+.ep-doc-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.ep-doc-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  font-size: 22px;
+  color: var(--border);
+}
+
+.ep-doc-empty p {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 4px;
+}
+
+.ep-doc-empty small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Contract expiry ── */
+.ep-contract-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ep-contract-days.critical { background: rgba(220,38,38,0.1); color: #DC2626; }
+.ep-contract-days.warning  { background: rgba(245,158,11,0.1); color: #D97706; }
+.ep-contract-days.safe     { background: rgba(34,197,94,0.1);  color: #16A34A; }
+
+/* ── Access Tab ── */
+.ep-access-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 480px) 1fr;
+  gap: 20px;
+}
+
+.ep-role-current {
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ep-role-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ep-role-select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+.ep-role-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.ep-role-desc {
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.ep-role-warning {
+  padding: 12px 16px;
+  background: rgba(220,38,38,0.05);
+  border: 1px solid rgba(220,38,38,0.15);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #DC2626;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.ep-role-save-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 800;
+  font-size: 14px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.ep-role-save-btn.primary {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0,71,171,0.3);
+}
+
+.ep-role-save-btn.primary:hover {
+  box-shadow: 0 6px 20px rgba(0,71,171,0.4);
+  transform: translateY(-1px);
+}
+
+.ep-role-save-btn.disabled {
+  background: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.ep-role-note {
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+  border: 1px solid var(--border);
+}
+
+.ep-ref-item {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ep-ref-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.ep-ref-role-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+
+.ep-ref-access-item {
+  font-size: 12px;
+  color: var(--muted);
+  padding-left: 17px;
+  margin-bottom: 3px;
+  position: relative;
+}
+
+.ep-ref-access-item::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+/* ── Dark mode ── */
+[data-theme='dark'] .ep-hero {
+  background: var(--surface);
+}
+
+[data-theme='dark'] .ep-card {
+  background: var(--surface);
+}
+
+[data-theme='dark'] .ep-info-row:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+[data-theme='dark'] .ep-tabs {
+  background: var(--surface);
+}
+
+[data-theme='dark'] .ep-tab-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.05);
+}
+
+[data-theme='dark'] .ep-payroll-stat {
+  background: var(--surface);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .ep-hero { flex-direction: column; gap: 16px; padding: 20px; }
+  .ep-hero-badges { flex-direction: row; align-items: center; }
+  .ep-grid { grid-template-columns: 1fr; }
+  .ep-payroll-stats { grid-template-columns: 1fr 1fr; }
+  .ep-info-label { width: 120px; min-width: 120px; }
+  .ep-access-grid { grid-template-columns: 1fr; }
+  .ep-avatar { width: 68px; height: 68px; font-size: 22px; border-radius: 18px; }
+  .ep-tabs { width: 100%; }
+}

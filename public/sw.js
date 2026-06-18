@@ -1,4 +1,8 @@
-const CACHE_NAME = 'hrisync-v3';
+const CACHE_NAME = 'HRIS Loka-v4';
+// Separate cache for face AI models — these are large (7MB) and never change
+const FACE_MODEL_CACHE = 'face-models-v1';
+// Background sync queue name
+const SYNC_QUEUE = 'attendance-sync';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -17,16 +21,25 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
-// Activate — clean old caches
+// Activate — clean old caches (but keep face model cache)
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
             Promise.all(
-                keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+                keys
+                  .filter((key) => key !== CACHE_NAME && key !== FACE_MODEL_CACHE)
+                  .map((key) => caches.delete(key))
             )
         )
     );
     self.clients.claim();
+
+    // Notify all clients that a new SW is active (for update prompt)
+    self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((client) => {
+            client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
+        });
+    });
 });
 
 // Fetch — network-first for navigations, cache-first for assets
@@ -80,6 +93,23 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Face AI models — aggressive cache-first (these are huge, CDN-served, immutable)
+    if (url.pathname.startsWith('/models/')) {
+        event.respondWith(
+            caches.open(FACE_MODEL_CACHE).then((cache) =>
+                cache.match(request).then((cached) => {
+                    if (cached) return cached;
+                    return fetch(request).then((response) => {
+                        // Only cache successful responses
+                        if (response.ok) cache.put(request, response.clone());
+                        return response;
+                    });
+                })
+            )
+        );
+        return;
+    }
+
     // Everything else — network first
     event.respondWith(
         fetch(request)
@@ -92,10 +122,68 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-// Push Notifications
+// ── Background Sync — retry failed attendance clock-ins ──────────────────────
+self.addEventListener('sync', (event) => {
+    if (event.tag === SYNC_QUEUE) {
+        event.waitUntil(replayAttendanceQueue());
+    }
+});
+
+async function replayAttendanceQueue() {
+    try {
+        const db = await openSyncDB();
+        const tx = db.transaction('sync_queue', 'readwrite');
+        const store = tx.objectStore('sync_queue');
+        const items = await getAllFromStore(store);
+
+        for (const item of items) {
+            try {
+                const res = await fetch(item.url, {
+                    method: item.method,
+                    headers: item.headers,
+                    body: item.body,
+                });
+                if (res.ok) {
+                    // Remove from queue on success
+                    const delTx = db.transaction('sync_queue', 'readwrite');
+                    delTx.objectStore('sync_queue').delete(item.id);
+                }
+            } catch {
+                // Will be retried on next sync
+                console.log('[SW] Background sync: retry failed for', item.id);
+            }
+        }
+    } catch (err) {
+        console.error('[SW] Background sync error:', err);
+    }
+}
+
+function openSyncDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('hrisloka_sync', 1);
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('sync_queue')) {
+                db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+function getAllFromStore(store) {
+    return new Promise((resolve, reject) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+// ── Push Notifications ───────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
     const data = event.data ? event.data.json() : {};
-    const title = data.title || 'HRISync';
+    const title = data.title || 'HRIS Loka';
     const options = {
         body: data.body || 'Ada notifikasi baru untuk Anda.',
         icon: '/icons/icon-192.png',
@@ -104,8 +192,18 @@ self.addEventListener('push', (event) => {
         data: {
             url: data.url || '/app/home',
         },
+        // Show notification badge on app icon (Badge API)
+        tag: data.tag || 'hrisloka-notification',
+        renotify: true,
     };
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(
+        self.registration.showNotification(title, options).then(() => {
+            // Update badge count if supported
+            if (navigator.setAppBadge) {
+                navigator.setAppBadge().catch(() => {});
+            }
+        })
+    );
 });
 
 // Notification Click — open the relevant page
@@ -120,4 +218,11 @@ self.addEventListener('notificationclick', (event) => {
             return self.clients.openWindow(url);
         })
     );
+});
+
+// ── Message handler — for app update coordination ────────────────────────────
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });

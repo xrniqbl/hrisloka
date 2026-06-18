@@ -1,5 +1,5 @@
 /**
- * HRISync Utility Functions
+ * HRIS Loka Utility Functions
  * Extracted from mockData to eliminate the dependency
  */
 
@@ -9,7 +9,7 @@
  * @returns {string}
  */
 export function formatCurrency(value) {
-    return `Rp ${(value || 0).toLocaleString('id-ID')}`;
+ return `Rp ${(value || 0).toLocaleString('id-ID')}`;
 }
 
 /**
@@ -18,10 +18,10 @@ export function formatCurrency(value) {
  * @returns {number|null}
  */
 export function getContractDaysRemaining(contractEnd) {
-    if (!contractEnd) return null;
-    const end = new Date(contractEnd);
-    const now = new Date();
-    return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+ if (!contractEnd) return null;
+ const end = new Date(contractEnd);
+ const now = new Date();
+ return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
 }
 
 /**
@@ -30,5 +30,5 @@ export function getContractDaysRemaining(contractEnd) {
  * @returns {string[]}
  */
 export function getDivisions(employees = []) {
-    return [...new Set(employees.map(e => e.division).filter(Boolean))].sort();
+ return [...new Set(employees.map(e => e.division).filter(Boolean))].sort();
 }

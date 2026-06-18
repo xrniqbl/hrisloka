@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import PageHeader from '../components/PageHeader';
 import {
+
     FiPlus, FiEdit2, FiTrash2, FiMapPin, FiUsers, FiX, FiCheck,
     FiGlobe, FiChevronDown, FiSearch, FiPhone, FiHome, FiBriefcase,
     FiSettings, FiNavigation, FiUser
@@ -7,16 +9,18 @@ import {
 import * as branchService from '../services/branchService';
 import { getAllEmployees } from '../services/employeeService';
 import '../styles/shared.css';
+import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+
 
 const LOCATION_TYPES = [
-    { value: 'headquarter', label: 'Headquarter (Pusat)', icon: '🏛️' },
-    { value: 'branch_office', label: 'Branch Office (Cabang)', icon: '🏢' },
+    { value: 'headquarter', label: 'Headquarter (Pusat)', icon: '🏢' },
+    { value: 'branch_office', label: 'Branch Office (Cabang)', icon: '🏬' },
     { value: 'warehouse', label: 'Warehouse (Gudang)', icon: '🏭' },
     { value: 'outlet', label: 'Outlet', icon: '🏪' },
 ];
 
 const locationLabel = (v) => LOCATION_TYPES.find(t => t.value === v)?.label || v;
-const locationIcon = (v) => LOCATION_TYPES.find(t => t.value === v)?.icon || '🏢';
+const locationIcon = (v) => LOCATION_TYPES.find(t => t.value === v)?.icon || '📍';
 
 export default function BranchManagement() {
     const [branches, setBranches] = useState([]);
@@ -109,16 +113,13 @@ export default function BranchManagement() {
 
     if (loading) {
         return (
-            <div className="shared-page">
-                <div className="shared-header">
-                    <div>
-                        <h1>🏢 Manajemen Cabang</h1>
-                        <p>Kelola lokasi dan cabang perusahaan</p>
-                    </div>
+            <div className="animate-in">
+                <PageHeader titleKey="branches.title" subtitleKey="branches.subtitle" />
+  <div className="page-header-actions">
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="shared-card" style={{ height: 200, background: 'var(--bg)', borderRadius: 16 }}>
+                        <div key={i} className="info-card" style={{ height: 200, background: 'var(--bg)', borderRadius: 16 }}>
                             <div style={{ height: 20, width: '60%', background: 'var(--border)', borderRadius: 8, marginBottom: 12 }} />
                             <div style={{ height: 14, width: '40%', background: 'var(--border)', borderRadius: 6 }} />
                         </div>
@@ -129,13 +130,10 @@ export default function BranchManagement() {
     }
 
     return (
-        <div className="shared-page">
-            <div className="shared-header">
-                <div>
-                    <h1>🏢 Manajemen Cabang</h1>
-                    <p>Kelola lokasi dan cabang perusahaan</p>
-                </div>
-                <button className="shared-btn-primary" onClick={openAdd}>
+        <div className="animate-in">
+            <PageHeader titleKey="branches.title" subtitleKey="branches.subtitle" />
+  <div className="page-header-actions">
+                <button className="btn-primary" onClick={openAdd}>
                     <FiPlus /> Tambah Cabang
                 </button>
             </div>
@@ -160,7 +158,7 @@ export default function BranchManagement() {
             {/* Branch Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
                 {branches.map((b) => (
-                    <div key={b.id} className="shared-card" style={{
+                    <div key={b.id} className="info-card" style={{
                         padding: 0, borderRadius: 16, overflow: 'hidden',
                         border: '1.5px solid var(--border)', transition: 'all 0.2s',
                         opacity: b.is_active ? 1 : 0.6,
@@ -194,7 +192,7 @@ export default function BranchManagement() {
                         <div style={{ padding: '16px 20px' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                                 <FiMapPin style={{ color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 2 }} />
-                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{b.address || '—'}</span>
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{b.address || '���'}</span>
                             </div>
 
                             {/* Manager */}
@@ -229,7 +227,7 @@ export default function BranchManagement() {
                                     <FiGlobe size={10} /> {b.timezone === 'Asia/Jakarta' ? 'WIB' : b.timezone === 'Asia/Makassar' ? 'WITA' : b.timezone === 'Asia/Jayapura' ? 'WIT' : b.timezone}
                                 </span>
                                 <span style={tagStyle}>
-                                    📍 {Number(b.latitude).toFixed(4)}, {Number(b.longitude).toFixed(4)}
+                                    ���� {Number(b.latitude).toFixed(4)}, {Number(b.longitude).toFixed(4)}
                                 </span>
                                 {!b.is_active && <span style={{ ...tagStyle, background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>Nonaktif</span>}
                             </div>
@@ -245,20 +243,20 @@ export default function BranchManagement() {
                 </div>
             )}
 
-            {/* ═══════ MODAL WITH 3 ACCORDION SECTIONS ═══════ */}
+            {/* ��������������������� MODAL WITH 3 ACCORDION SECTIONS ��������������������� */}
             {showModal && (
                 <div style={overlay} onClick={() => setShowModal(false)}>
                     <div style={modal} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
-                                {editBranch ? '✏️ Edit Cabang' : '🏢 Tambah Cabang Baru'}
+                                {editBranch ? 'ԣŴ�� Edit Cabang' : '���� Tambah Cabang Baru'}
                             </h2>
                             <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
                                 <FiX size={20} />
                             </button>
                         </div>
 
-                        {/* ─── Section 1: Informasi Dasar ─── */}
+                        {/* ��������� Section 1: Informasi Dasar ��������� */}
                         <AccordionSection
                             icon={<FiBriefcase />}
                             iconBg="#6366F1"
@@ -296,7 +294,7 @@ export default function BranchManagement() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(0,71,171,0.06)', borderRadius: 6, marginTop: 6, fontSize: 12 }}>
                                                 <FiUser size={14} color="var(--primary)" />
                                                 <span style={{ fontWeight: 600 }}>{selectedManager.name}</span>
-                                                <span style={{ color: 'var(--text-tertiary)' }}>— {selectedManager.position}</span>
+                                                <span style={{ color: 'var(--text-tertiary)' }}>��� {selectedManager.position}</span>
                                                 <button onClick={() => { setForm(f => ({ ...f, manager_id: '' })); setManagerSearch(''); }} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}><FiX size={12} /></button>
                                             </div>
                                         )}
@@ -328,7 +326,7 @@ export default function BranchManagement() {
                                                         </div>
                                                         <div>
                                                             <div style={{ fontWeight: 600 }}>{emp.name}</div>
-                                                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{emp.nip} • {emp.position}</div>
+                                                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{emp.nip} ��� {emp.position}</div>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -339,7 +337,7 @@ export default function BranchManagement() {
                             </div>
                         </AccordionSection>
 
-                        {/* ─── Section 2: Lokasi & Geofencing ─── */}
+                        {/* ��������� Section 2: Lokasi & Geofencing ��������� */}
                         <AccordionSection
                             icon={<FiNavigation />}
                             iconBg="#0EA5E9"
@@ -380,13 +378,13 @@ export default function BranchManagement() {
                                         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600 }}>meter</span>
                                     </div>
                                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, lineHeight: 1.4 }}>
-                                        💡 HP karyawan di luar radius ini → tombol Clock-In terkunci otomatis.
+                                        ���� HP karyawan di luar radius ini ��� tombol Clock-In terkunci otomatis.
                                     </div>
                                 </FormField>
                             </div>
                         </AccordionSection>
 
-                        {/* ─── Section 3: Pengaturan Operasional ─── */}
+                        {/* ��������� Section 3: Pengaturan Operasional ��������� */}
                         <AccordionSection
                             icon={<FiSettings />}
                             iconBg="#16A34A"
@@ -397,9 +395,9 @@ export default function BranchManagement() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                 <FormField label="Zona Waktu" required>
                                     <select value={form.timezone} onChange={e => setForm(f => ({ ...f, timezone: e.target.value }))} style={inputStyle}>
-                                        <option value="Asia/Jakarta">🕐 WIB (Asia/Jakarta)</option>
-                                        <option value="Asia/Makassar">🕐 WITA (Asia/Makassar)</option>
-                                        <option value="Asia/Jayapura">🕐 WIT (Asia/Jayapura)</option>
+                                        <option value="Asia/Jakarta">���� WIB (Asia/Jakarta)</option>
+                                        <option value="Asia/Makassar">���� WITA (Asia/Makassar)</option>
+                                        <option value="Asia/Jayapura">���� WIT (Asia/Jayapura)</option>
                                     </select>
                                 </FormField>
                                 <FormField label="No. Telepon Cabang">
@@ -432,7 +430,7 @@ export default function BranchManagement() {
                                         </div>
                                         <div>
                                             <div style={{ fontSize: 13, fontWeight: 600, color: form.is_active ? '#059669' : 'var(--text-secondary)' }}>
-                                                {form.is_active ? '✅ Cabang Aktif' : '⛔ Cabang Nonaktif'}
+                                                {form.is_active ? 'ԣ� Cabang Aktif' : '��� Cabang Nonaktif'}
                                             </div>
                                             <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                                                 {form.is_active ? 'Karyawan dapat melakukan absensi di lokasi ini' : 'Absensi di lokasi ini dinonaktifkan'}
@@ -464,7 +462,7 @@ export default function BranchManagement() {
     );
 }
 
-// ─── Sub-components & Style Constants ───
+// ��������� Sub-components & Style Constants ���������
 
 function AccordionSection({ icon, iconBg, title, open, onToggle, children }) {
     return (

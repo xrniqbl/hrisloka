@@ -3,6 +3,8 @@ import { FiUser, FiLock, FiGlobe, FiBell, FiMapPin, FiMoon, FiSun, FiSave, FiChe
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import '../styles/shared.css';
+import './Settings.css';
+import SubscriptionStatus from '../components/SubscriptionStatus';
 
 const tabs = [
     { key: 'account', label: 'Profil Akun', icon: <FiUser /> },
@@ -10,6 +12,7 @@ const tabs = [
     { key: 'company', label: 'Perusahaan', icon: <FiGlobe /> },
     { key: 'notifications', label: 'Notifikasi', icon: <FiBell /> },
     { key: 'appearance', label: 'Tampilan', icon: <FiMoon /> },
+    { key: 'subscription', label: 'Langganan', icon: <FiShield /> },
 ];
 
 export default function Settings() {
@@ -26,22 +29,32 @@ export default function Settings() {
         position: '',
     });
 
-    // Company form
-    const [companyForm, setCompanyForm] = useState({
-        name: 'PT HRISync Indonesia',
-        address: 'Jl. Sudirman No. 123, Jakarta Selatan',
-        phone: '(021) 555-0123',
-        website: 'hrisync.id',
+    // Company form — persisted to localStorage
+    const [companyForm, setCompanyForm] = useState(() => {
+        try {
+            const saved = localStorage.getItem('hrisync_company_settings');
+            return saved ? JSON.parse(saved) : {
+                name: 'PT HRISync Indonesia',
+                address: 'Jl. Sudirman No. 123, Jakarta Selatan',
+                phone: '(021) 555-0123',
+                website: 'hrisync.id',
+            };
+        } catch { return { name: 'PT HRISync Indonesia', address: 'Jl. Sudirman No. 123, Jakarta Selatan', phone: '(021) 555-0123', website: 'hrisync.id' }; }
     });
 
-    // Notification toggles
-    const [notifications, setNotifications] = useState({
-        emailLeave: true,
-        emailPayroll: true,
-        emailReimbursement: true,
-        pushAttendance: true,
-        pushApproval: true,
-        pushAnnouncement: true,
+    // Notification toggles — persisted to localStorage
+    const [notifications, setNotifications] = useState(() => {
+        try {
+            const saved = localStorage.getItem('hrisync_notifications');
+            return saved ? JSON.parse(saved) : {
+                emailLeave: true,
+                emailPayroll: true,
+                emailReimbursement: true,
+                pushAttendance: true,
+                pushApproval: true,
+                pushAnnouncement: true,
+            };
+        } catch { return { emailLeave: true, emailPayroll: true, emailReimbursement: true, pushAttendance: true, pushApproval: true, pushAnnouncement: true }; }
     });
 
     // Security form
@@ -51,8 +64,20 @@ export default function Settings() {
         confirmPassword: '',
     });
 
-    // Theme
-    const [darkMode, setDarkMode] = useState(false);
+    // Theme — synced with actual data-theme attribute
+    const [darkMode, setDarkMode] = useState(() => localStorage.getItem('hrisync_theme') === 'dark');
+
+    // Apply dark mode when toggled
+    useEffect(() => {
+        const theme = darkMode ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('hrisync_theme', theme);
+    }, [darkMode]);
+
+    // Persist notification toggles
+    useEffect(() => {
+        localStorage.setItem('hrisync_notifications', JSON.stringify(notifications));
+    }, [notifications]);
 
     useEffect(() => {
         if (employee) {
@@ -90,7 +115,21 @@ export default function Settings() {
             alert('Password minimal 6 karakter.');
             return;
         }
+        if (!securityForm.currentPassword) {
+            alert('Masukkan password saat ini terlebih dahulu.');
+            return;
+        }
         setSaving(true);
+        // Verify current password before allowing change
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email: user?.email,
+            password: securityForm.currentPassword,
+        });
+        if (verifyError) {
+            setSaving(false);
+            alert('Password saat ini salah.');
+            return;
+        }
         const { error } = await supabase.auth.updateUser({ password: securityForm.newPassword });
         setSaving(false);
         if (error) {
@@ -117,27 +156,19 @@ export default function Settings() {
             <div className="page-header">
                 <h1>Settings</h1>
                 {saved && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#16A34A', fontWeight: 600, fontSize: 14 }}>
-                        <FiCheck /> Tersimpan!
+                    <div className="settings-saved">
+                        <FiCheck size={14} /> Tersimpan!
                     </div>
                 )}
             </div>
 
             {/* Tab Navigation */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 24, overflowX: 'auto', paddingBottom: 4 }}>
+            <div className="settings-tabs">
                 {tabs.map(tab => (
                     <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px',
-                            borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer',
-                            fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap',
-                            background: activeTab === tab.key ? 'var(--primary)' : 'var(--surface)',
-                            color: activeTab === tab.key ? '#fff' : 'var(--text)',
-                            boxShadow: activeTab === tab.key ? 'var(--shadow-sm)' : 'none',
-                            transition: 'all 0.2s ease',
-                        }}
+                        className={`settings-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
                     >
                         {tab.icon} {tab.label}
                     </button>
@@ -194,6 +225,16 @@ export default function Settings() {
                     <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}><FiShield style={{ marginRight: 8 }} /> Keamanan Akun</h3>
 
                     <div className="form-grid">
+                        <div className="form-group full-width">
+                            <label className="form-label">Password Saat Ini</label>
+                            <input
+                                type="password"
+                                className="form-input"
+                                value={securityForm.currentPassword}
+                                onChange={e => setSecurityForm({ ...securityForm, currentPassword: e.target.value })}
+                                placeholder="Masukkan password saat ini"
+                            />
+                        </div>
                         <div className="form-group full-width">
                             <label className="form-label">Password Baru</label>
                             <input
@@ -256,7 +297,10 @@ export default function Settings() {
                     </div>
 
                     <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn-primary" onClick={showSaved}>
+                        <button className="btn-primary" onClick={() => {
+                            localStorage.setItem('hrisync_company_settings', JSON.stringify(companyForm));
+                            showSaved();
+                        }}>
                             <FiSave /> Simpan
                         </button>
                     </div>
@@ -378,7 +422,7 @@ export default function Settings() {
                         >
                             <FiMoon style={{ fontSize: 28, color: '#818CF8', marginBottom: 8 }} />
                             <div style={{ fontWeight: 700, fontSize: 14 }}>Dark Mode</div>
-                            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>Tema gelap (akan datang)</div>
+                            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>Tema gelap untuk kenyamanan mata</div>
                         </div>
                     </div>
 
@@ -389,6 +433,34 @@ export default function Settings() {
                         <div style={{ fontSize: 12, color: '#3B82F6', marginTop: 4 }}>
                             Saat ini hanya mendukung Bahasa Indonesia.
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Subscription Tab ─────────────────────────────────────────── */}
+            {activeTab === 'subscription' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Status Langganan</h3>
+                    <SubscriptionStatus />
+
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Informasi Plan</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, fontSize: 13 }}>
+                            {[
+                                { label: 'Siklus Billing', key: 'billing' },
+                                { label: 'Durasi', key: 'duration' },
+                                { label: 'Mulai', key: 'start' },
+                                { label: 'Berakhir', key: 'end' },
+                            ].map(item => (
+                                <div key={item.key} style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
+                                    <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 3 }}>{item.label}</div>
+                                    <div style={{ fontWeight: 700, color: 'var(--text)' }}>—</div>
+                                </div>
+                            ))}
+                        </div>
+                        <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
+                            Untuk upgrade, downgrade, atau pertanyaan billing silakan hubungi tim kami.
+                        </p>
                     </div>
                 </div>
             )}

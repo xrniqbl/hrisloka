@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+
+  <!-- ════════════════════════════════════════════════════
+       HRIS Loka — Pages Sitemap
+       https://hrisloka.com/sitemap-pages.xml
+       Diperbarui: 2026-05-28
+       ════════════════════════════════════════════════════ -->
+
+  <!-- ── 1. HOMEPAGE / LANDING (Priority Tertinggi) ── -->
+  <url>
+    <loc>https://hrisloka.com/</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/"/>
+  </url>
+
+  <!-- ── 2. LANDING PAGE (explicit route) ── -->
+  <url>
+    <loc>https://hrisloka.com/landing</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/landing"/>
+  </url>
+
+  <!-- ── 3. INSTALL / PANDUAN APLIKASI PWA ── -->
+  <!-- Target keyword: "cara install aplikasi HRIS", "download HRIS Loka", "HRIS mobile app" -->
+  <url>
+    <loc>https://hrisloka.com/install</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/install"/>
+  </url>
+
+  <!-- ── 4. LOGIN / MASUK ── -->
+  <!-- Termasuk agar Google indexing login page (brand name search) -->
+  <url>
+    <loc>https://hrisloka.com/login</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- ── 5. CHECKOUT ── -->
+  <!-- Untuk indexing "beli HRIS Loka", "harga HRIS Loka" -->
+  <url>
+    <loc>https://hrisloka.com/checkout</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- ── DEDICATED SEO PAGES (high priority) ── -->
+
+  <!-- 🔵 HARGA DEDICATED PAGE -->
+  <!-- Target: "harga HRIS Indonesia", "biaya software HR", "paket HRIS gratis", "HRIS murah" -->
+  <url>
+    <loc>https://hrisloka.com/harga</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/harga"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/harga"/>
+  </url>
+
+  <!-- 🔵 FITUR DEDICATED PAGE -->
+  <!-- Target: "fitur HRIS Indonesia", "absensi GPS karyawan", "penggajian otomatis BPJS" -->
+  <url>
+    <loc>https://hrisloka.com/fitur</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/fitur"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/fitur"/>
+  </url>
+
+  <!-- Fitur sub-sections -->
+  <url>
+    <loc>https://hrisloka.com/fitur#absensi</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://hrisloka.com/fitur#penggajian</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://hrisloka.com/fitur#kpi</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://hrisloka.com/fitur#rekrutmen</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <!-- 🔵 KEBIJAKAN PRIVASI — E-E-A-T Trust Signal -->
+  <url>
+    <loc>https://hrisloka.com/privacy</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.30</priority>
+  </url>
+
+  <!-- ── HASH ANCHORS (existing landing page sections) ── -->
+
+  <!-- Target: "fitur HRIS Indonesia", "fitur software HR", "manajemen karyawan digital" -->
+  <url>
+    <loc>https://hrisloka.com/landing#features</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#features"/>
+  </url>
+
+  <!-- Target: "harga HRIS Loka", "biaya software HR Indonesia", "paket HRIS gratis" -->
+  <url>
+    <loc>https://hrisloka.com/landing#pricing</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#pricing"/>
+  </url>
+
+  <!-- Target: "cara kerja HRIS", "implementasi HRIS", "setup HRIS cepat" -->
+  <url>
+    <loc>https://hrisloka.com/landing#how-it-works</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#how-it-works"/>
+  </url>
+
+  <!-- Target: "teknologi HRIS cloud", "HRIS berbasis cloud", "HR software SaaS" -->
+  <url>
+    <loc>https://hrisloka.com/landing#technology</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.55</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#technology"/>
+  </url>
+
+  <!-- Target: "review HRIS Loka", "testimoni software HR Indonesia" -->
+  <url>
+    <loc>https://hrisloka.com/landing#testimonials</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.55</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#testimonials"/>
+  </url>
+
+  <!-- Target: "integrasi HRIS", "HRIS Google Workspace", "HRIS WhatsApp" -->
+  <url>
+    <loc>https://hrisloka.com/landing#integrations</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.50</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#integrations"/>
+  </url>
+
+
+  <!-- ── BLOG PAGES (content marketing / keyword targeting) ── -->
+
+  <!-- Target: "blog HR Indonesia", "panduan HRIS", "tips manajemen SDM" -->
+  <url>
+    <loc>https://hrisloka.com/blog</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.88</priority>
+    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/blog"/>
+  </url>
+
+  <!-- Target: "apa itu HRIS", "HRIS adalah", "sistem HR digital" -->
+  <url>
+    <loc>https://hrisloka.com/blog/apa-itu-hris</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Target: "absensi karyawan digital", "sistem absensi online", "absensi GPS" -->
+  <url>
+    <loc>https://hrisloka.com/blog/absensi-karyawan-digital</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.82</priority>
+  </url>
+
+  <!-- Target: "penggajian otomatis", "hitung gaji BPJS PPh21", "payroll Indonesia" -->
+  <url>
+    <loc>https://hrisloka.com/blog/penggajian-otomatis-bpjs</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.82</priority>
+  </url>
+
+  <!-- Target: "software HR terbaik Indonesia", "HRIS terbaik", "aplikasi HR perusahaan" -->
+  <url>
+    <loc>https://hrisloka.com/blog/software-hr-terbaik-indonesia</loc>
+    <lastmod>2026-05-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+</urlset>

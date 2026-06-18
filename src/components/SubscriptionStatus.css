@@ -1,0 +1,259 @@
+/* SubscriptionStatus.css */
+
+.sub-status-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.sub-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sub-plan-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 99px;
+  border: 1.5px solid;
+}
+
+.sub-cycle-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 99px;
+  letter-spacing: 0.3px;
+}
+
+.sub-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Days Hero ─────────────────────────────────────────── */
+.sub-days-hero {
+  background: var(--bg, #F8FAFC);
+  border-radius: 12px;
+  padding: 14px 16px 10px;
+}
+
+.sub-days-number {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.sub-days-number > span:first-child {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.sub-days-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted, #94A3B8);
+}
+
+/* Progress bar */
+.sub-progress-wrap {
+  height: 6px;
+  background: var(--border, #E2E8F0);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.sub-progress-bar {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 3px;
+}
+
+.sub-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted, #94A3B8);
+  font-weight: 600;
+}
+
+/* ── Warning Banner ────────────────────────────────────── */
+.sub-warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 600;
+  animation: sub-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sub-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* ── Details Row ───────────────────────────────────────── */
+.sub-details-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sub-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg, #F8FAFC);
+  border-radius: 8px;
+  padding: 6px 10px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.sub-detail-label {
+  font-size: 10px;
+  color: var(--muted, #94A3B8);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sub-detail-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text, #0F172A);
+  line-height: 1.4;
+  text-transform: capitalize;
+}
+
+/* ── CTA Buttons ───────────────────────────────────────── */
+.sub-cta-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sub-btn-renew {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #DC2626, #EF4444);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 12px rgba(220,38,38,0.35);
+}
+.sub-btn-renew:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(220,38,38,0.45);
+}
+
+.sub-btn-renew-soft {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0047AB, #3B82F6);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.15s ease;
+}
+
+.sub-btn-refresh {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg, #F8FAFC);
+  border: 1px solid var(--border, #E2E8F0);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted, #94A3B8);
+  flex-shrink: 0;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.sub-btn-refresh:hover { color: var(--primary, #0047AB); border-color: var(--primary, #0047AB); }
+
+/* ── Compact Mode ──────────────────────────────────────── */
+.sub-status-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1.5px solid;
+  cursor: pointer;
+  background: var(--surface, #fff);
+  transition: box-shadow 0.15s ease;
+}
+.sub-status-compact:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+
+/* ── None / Upgrade CTA ────────────────────────────────── */
+.sub-status-none {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #0047AB15, #7C3AED15);
+  border: 1.5px dashed #0047AB50;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #0047AB;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background 0.15s ease;
+}
+.sub-status-none:hover { background: linear-gradient(135deg, #0047AB20, #7C3AED20); }
+
+/* ── Skeleton ──────────────────────────────────────────── */
+.sub-status-skeleton { padding: 4px 0; }
+.sub-skeleton-bar {
+  height: 14px;
+  background: var(--border, #E2E8F0);
+  border-radius: 6px;
+  animation: sub-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes sub-shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}

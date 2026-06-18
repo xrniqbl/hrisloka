@@ -1,0 +1,110 @@
+# robots.txt — HRIS Loka
+# https://hrisloka.com
+# Diperbarui: 2026-05-17
+# Panduan: https://developers.google.com/search/docs/crawling-indexing/robots/create-robots-txt
+
+# ── Semua crawler: izinkan halaman publik ─────────────────────
+User-agent: *
+Allow: /
+Allow: /landing
+Allow: /landing#*
+Allow: /install
+Allow: /login
+Allow: /checkout
+
+# Block semua route auth/admin — tidak ada nilai SEO, butuh login
+Disallow: /app/
+Disallow: /dashboard/
+Disallow: /dashboard
+Disallow: /founder/
+Disallow: /maintenance
+Disallow: /employees
+Disallow: /payroll
+Disallow: /attendance
+Disallow: /approvals
+Disallow: /settings
+Disallow: /audit-trail
+Disallow: /recruitment
+Disallow: /helpdesk/
+Disallow: /analytics
+
+# Block API endpoints
+Disallow: /api/
+
+# Block internal Vite/React build artifacts
+Disallow: /@vite/
+Disallow: /src/
+Disallow: /node_modules/
+
+# ── Googlebot: setting crawl khusus ──────────────────────────
+User-agent: Googlebot
+Allow: /
+Allow: /landing
+Allow: /harga
+Allow: /install
+Allow: /login
+Allow: /checkout
+Allow: /og-image.png
+Allow: /sitemap*.xml
+Allow: /robots.txt
+Allow: /manifest.json
+Disallow: /api/
+Disallow: /app/
+Disallow: /founder/
+
+# ── Googlebot-Image: izinkan semua gambar landing ─────────────
+User-agent: Googlebot-Image
+Allow: /landing/
+Allow: /icons/
+Allow: /og-image.png
+
+# ── Bing Adbot ───────────────────────────────────────────────
+User-agent: Bingbot
+Allow: /
+Allow: /landing
+Allow: /install
+Disallow: /api/
+Disallow: /app/
+Disallow: /founder/
+Crawl-delay: 1
+
+# ── Social media crawlers (OG preview) ───────────────────────
+User-agent: facebookexternalhit
+Allow: /
+Allow: /og-image.png
+
+User-agent: Twitterbot
+Allow: /
+Allow: /og-image.png
+
+User-agent: LinkedInBot
+Allow: /
+Allow: /og-image.png
+
+User-agent: WhatsApp
+Allow: /
+Allow: /og-image.png
+
+# ── AI Crawlers — block untuk melindungi konten ──────────────
+User-agent: GPTBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: AdsBot-Google
+Disallow: /
+
+# ── Sitemap references ────────────────────────────────────────
+Sitemap: https://hrisloka.com/sitemap.xml
+Sitemap: https://hrisloka.com/sitemap-pages.xml
+Sitemap: https://hrisloka.com/sitemap-images.xml

@@ -1,0 +1,485 @@
+/* ═══════════════════════════════════════════════════
+   PREMIUM FORMS & CALENDAR — Global Upgrade
+   Applies to: .form-input, .form-select, .form-textarea,
+               input[type=date], input[type=time],
+               .form-label, .form-group, .modal-box
+═══════════════════════════════════════════════════ */
+
+/* ── CSS Variables (premium form tokens) ── */
+:root {
+  --form-bg:        #F8FAFF;
+  --form-border:    #DDE3F0;
+  --form-radius:    14px;
+  --form-shadow:    0 1px 4px rgba(0,71,171,0.06);
+  --form-focus-ring:0 0 0 3px rgba(0,71,171,0.12), 0 0 0 1px #0047AB;
+  --form-height:    46px;
+  --label-color:    #374151;
+  --input-font:     14px;
+}
+[data-theme="dark"] {
+  --form-bg:      #13151D;
+  --form-border:  #2A2D3A;
+  --form-shadow:  0 1px 4px rgba(0,0,0,0.25);
+}
+
+/* ── Floating Label Group ── */
+.form-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+/* ── Label ── */
+.form-label,
+label.form-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--label-color);
+  letter-spacing: 0.3px;
+  margin-bottom: 7px;
+  text-transform: none;
+}
+[data-theme="dark"] .form-label,
+[data-theme="dark"] label.form-label { color: #C9D1E3; }
+
+/* Required dot */
+.form-label .required,
+label.form-label .required { color: #EF4444; margin-left: 2px; }
+
+/* ── Core Input / Select / Textarea ── */
+.form-input,
+.form-select,
+.form-textarea,
+input[type="text"].form-input,
+input[type="email"].form-input,
+input[type="password"].form-input,
+input[type="number"].form-input,
+input[type="tel"].form-input,
+input[type="url"].form-input,
+input[type="search"].form-input,
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+select,
+textarea {
+  width: 100%;
+  min-height: var(--form-height);
+  padding: 11px 14px;
+  border-radius: var(--form-radius);
+  border: 1.5px solid var(--form-border);
+  background: var(--form-bg);
+  color: var(--text);
+  font-size: var(--input-font);
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: var(--form-shadow);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  box-sizing: border-box;
+}
+
+/* Hover */
+.form-input:hover,
+.form-select:hover,
+.form-textarea:hover,
+input[type="date"]:hover,
+input[type="time"]:hover,
+input[type="datetime-local"]:hover,
+select:hover,
+textarea:hover {
+  border-color: #B8C5E0;
+}
+
+/* Focus */
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="datetime-local"]:focus,
+select:focus,
+textarea:focus {
+  border-color: #0047AB;
+  box-shadow: var(--form-focus-ring);
+  background: #fff;
+  outline: none;
+}
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .form-select:focus,
+[data-theme="dark"] .form-textarea:focus,
+[data-theme="dark"] input[type="date"]:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  background: #1A1D27;
+  box-shadow: 0 0 0 3px rgba(74,144,217,0.18), 0 0 0 1px #4A90D9;
+}
+
+/* Placeholder */
+.form-input::placeholder,
+.form-textarea::placeholder,
+textarea::placeholder { color: #9CA3AF; font-weight: 400; }
+
+/* Textarea */
+.form-textarea,
+textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: 1.65;
+}
+
+/* Select arrow */
+.form-select,
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+[data-theme="dark"] .form-select,
+[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* Date/time calendar icon color fix */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  filter: invert(30%);
+}
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(80%);
+  opacity: 0.7;
+}
+
+/* Disabled */
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--bg);
+}
+
+/* Error state */
+.form-input.error,
+.form-select.error,
+.form-textarea.error,
+.form-group.has-error .form-input,
+.form-group.has-error .form-select,
+.form-group.has-error textarea {
+  border-color: #EF4444;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.1);
+}
+.form-error-msg {
+  font-size: 11.5px;
+  color: #EF4444;
+  margin-top: 5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Input with Icon Wrapper ── */
+.input-icon-wrap {
+  position: relative;
+}
+.input-icon-wrap .form-input,
+.input-icon-wrap input {
+  padding-left: 40px;
+}
+.input-icon-wrap .input-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9CA3AF;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+.input-icon-wrap .input-icon-right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9CA3AF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Form Grid ── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.form-grid .full-width { grid-column: 1 / -1; }
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Checkbox & Radio ── */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--form-border);
+  background: var(--form-bg);
+  cursor: pointer;
+  accent-color: #0047AB;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+input[type="radio"] { border-radius: 50%; }
+input[type="checkbox"]:checked,
+input[type="radio"]:checked { border-color: #0047AB; }
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0,71,171,0.2);
+}
+
+.checkbox-label,
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.4;
+}
+
+/* ── File Input ── */
+input[type="file"] {
+  width: 100%;
+  min-height: auto;
+  padding: 10px 12px;
+  border-radius: var(--form-radius);
+  border: 1.5px dashed var(--form-border);
+  background: var(--form-bg);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: border-color 0.2s, background 0.2s;
+}
+input[type="file"]:hover {
+  border-color: #0047AB;
+  background: #F0F5FF;
+}
+
+/* ── Range Slider ── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-height: auto;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--form-border);
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  cursor: pointer;
+  accent-color: #0047AB;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #0047AB;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,71,171,0.3);
+  cursor: pointer;
+}
+
+/* ── Filter Bar Inputs (admin pages) ── */
+.filter-search,
+.filter-select {
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--form-border);
+  background: var(--surface);
+  font-size: 13px;
+  padding: 0 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.filter-search:focus,
+.filter-select:focus {
+  border-color: #0047AB;
+  box-shadow: 0 0 0 3px rgba(0,71,171,0.1);
+  outline: none;
+}
+
+/* ── Modal Upgrade ── */
+.modal-box {
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.06);
+  border: 1px solid rgba(255,255,255,0.8);
+}
+[data-theme="dark"] .modal-box {
+  border: 1px solid #2A2D3A;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
+.modal-header {
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(to bottom, var(--surface), var(--surface));
+  padding: 18px 24px;
+}
+.modal-header h2 {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+  border-radius: 0 0 20px 20px;
+  padding: 14px 24px;
+}
+
+/* ── Section Divider in Forms ── */
+.form-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+  margin-top: 8px;
+}
+
+/* ── Input Addons ── */
+.input-group {
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--form-radius);
+  overflow: hidden;
+  border: 1.5px solid var(--form-border);
+  background: var(--form-bg);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.input-group:focus-within {
+  border-color: #0047AB;
+  box-shadow: var(--form-focus-ring);
+}
+.input-group .form-input,
+.input-group input {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+}
+.input-group .form-input:focus,
+.input-group input:focus {
+  box-shadow: none;
+  border: none;
+}
+.input-addon {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg);
+  border-right: 1.5px solid var(--form-border);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.input-addon-right {
+  border-right: none;
+  border-left: 1.5px solid var(--form-border);
+}
+
+/* ── Premium Calendar (native date input wrapper) ── */
+.date-input-wrap {
+  position: relative;
+}
+.date-input-wrap input[type="date"],
+.date-input-wrap input[type="time"],
+.date-input-wrap input[type="datetime-local"] {
+  padding-right: 44px;
+}
+.date-input-icon {
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0047AB;
+  pointer-events: none;
+}
+
+/* ── Dark Mode Form Overrides ── */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .form-textarea,
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] input[type="datetime-local"],
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--form-bg);
+  border-color: var(--form-border);
+  color: #E8EAED;
+}
+[data-theme="dark"] .form-input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: #4B5563; }
+[data-theme="dark"] input[type="file"] { border-color: #2A2D3A; }
+[data-theme="dark"] .input-addon {
+  background: #0F1117;
+  border-color: #2A2D3A;
+  color: #6B7280;
+}
+[data-theme="dark"] .input-group {
+  border-color: #2A2D3A;
+  background: #13151D;
+}
+[data-theme="dark"] .filter-search,
+[data-theme="dark"] .filter-select {
+  background: #1A1D27;
+  border-color: #2A2D3A;
+  color: #E8EAED;
+}
+[data-theme="dark"] input[type="checkbox"],
+[data-theme="dark"] input[type="radio"] {
+  background: #13151D;
+  border-color: #2A2D3A;
+}
+
+/* ── Smooth transitions on all interactive form elements ── */
+button, .btn-primary, .btn-secondary, .btn-danger {
+  transition: background-color 0.18s ease, border-color 0.18s ease,
+              box-shadow 0.18s ease, transform 0.15s ease, color 0.18s ease;
+}
+.btn-primary { border-radius: 12px; font-size: 14px; padding: 11px 22px; }
+.btn-secondary { border-radius: 12px; font-size: 14px; padding: 11px 22px; }
+.btn-danger { border-radius: 12px; font-size: 14px; padding: 11px 22px; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,71,171,0.28); }
+.btn-secondary:hover { transform: translateY(-1px); }

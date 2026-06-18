@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- ════════════════════════════════════════════════════
+       HRIS Loka — Images Sitemap
+       https://hrisloka.com/sitemap-images.xml
+       Google menggunakan ini untuk Google Images & Rich Results
+       ════════════════════════════════════════════════════ -->
+
+  <!-- ── Homepage / Landing ── -->
+  <url>
+    <loc>https://hrisloka.com/</loc>
+    <image:image>
+      <image:loc>https://hrisloka.com/og-image.png</image:loc>
+      <image:title>HRIS Loka — Software HR Modern untuk Perusahaan Indonesia</image:title>
+      <image:caption>Dashboard manajemen SDM HRIS Loka — kelola karyawan, absensi GPS, dan penggajian otomatis</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hrisloka.com/landing/hero-dashboard.png</image:loc>
+      <image:title>Dashboard HRIS Loka — Tampilan Utama Manajemen Karyawan</image:title>
+      <image:caption>Tampilan dashboard HR HRIS Loka dengan statistik karyawan, absensi real-time, dan laporan penggajian</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hrisloka.com/landing/features-ui.png</image:loc>
+      <image:title>Fitur Manajemen Karyawan dan Absensi HRIS Loka</image:title>
+      <image:caption>Antarmuka fitur manajemen karyawan, absensi GPS real-time, dan pengajuan cuti digital HRIS Loka</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hrisloka.com/landing/feature-phone.png</image:loc>
+      <image:title>HRIS Loka Mobile App — Aplikasi HR untuk Smartphone</image:title>
+      <image:caption>Aplikasi mobile HRIS Loka (PWA) untuk karyawan — absensi, slip gaji, dan pengajuan cuti dari smartphone</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hrisloka.com/landing/how-it-works.png</image:loc>
+      <image:title>Cara Kerja HRIS Loka — 4 Langkah Mudah</image:title>
+      <image:caption>Cara menggunakan HRIS Loka: daftar, import data karyawan, jalankan operasional, dan analisis performa</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hrisloka.com/landing/integration-globe.png</image:loc>
+      <image:title>Integrasi HRIS Loka dengan Aplikasi Bisnis Populer</image:title>
+      <image:caption>HRIS Loka terintegrasi dengan Google Workspace, WhatsApp Business, Microsoft Teams, Zoom, dan lebih banyak lagi</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://hrisloka.com/landing/hrislokabluepanjang.png</image:loc>
+      <image:title>Logo HRIS Loka</image:title>
+      <image:caption>Logo resmi HRIS Loka — Platform Software HR Modern Indonesia</image:caption>
+    </image:image>
+  </url>
+
+  <!-- ── Install Guide ── -->
+  <url>
+    <loc>https://hrisloka.com/install</loc>
+    <image:image>
+      <image:loc>https://hrisloka.com/og-image.png</image:loc>
+      <image:title>Panduan Install Aplikasi HRIS Loka di Android dan iOS</image:title>
+      <image:caption>Langkah-langkah menginstal aplikasi HRIS Loka sebagai PWA di smartphone Android dan iPhone</image:caption>
+    </image:image>
+  </url>
+
+</urlset>

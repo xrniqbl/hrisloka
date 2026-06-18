@@ -1,4 +1,11 @@
 {
+    "redirects": [
+        {
+            "source": "https://www.hrisloka.com/:path*",
+            "destination": "https://hrisloka.com/:path*",
+            "permanent": true
+        }
+    ],
     "rewrites": [
         {
             "source": "/api/(.*)",
@@ -8,5 +15,109 @@
             "source": "/(.*)",
             "destination": "/index.html"
         }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                { "key": "X-Content-Type-Options", "value": "nosniff" },
+                { "key": "X-Frame-Options", "value": "DENY" },
+                { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+                { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=(self)" },
+                { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+                { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.fonnte.com https://api.resend.com https://generativelanguage.googleapis.com; worker-src 'self' blob:; frame-ancestors 'none'" }
+            ]
+        },
+        {
+            "source": "/app/:path*",
+            "headers": [
+                { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+            ]
+        },
+        {
+            "source": "/dashboard/:path*",
+            "headers": [
+                { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+            ]
+        },
+        {
+            "source": "/founder/:path*",
+            "headers": [
+                { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+            ]
+        },
+        {
+            "source": "/api/(.*)",
+            "headers": [
+                { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+            ]
+        },
+        {
+            "source": "/sitemap.xml",
+            "headers": [
+                { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
+                { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=3600" }
+            ]
+        },
+        {
+            "source": "/sitemap-pages.xml",
+            "headers": [
+                { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
+                { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=3600" }
+            ]
+        },
+        {
+            "source": "/sitemap-images.xml",
+            "headers": [
+                { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
+                { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=3600" }
+            ]
+        },
+        {
+            "source": "/robots.txt",
+            "headers": [
+                { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
+                { "key": "Cache-Control", "value": "public, max-age=86400" }
+            ]
+        },
+        {
+            "source": "/og-image.png",
+            "headers": [
+                { "key": "Cache-Control", "value": "public, max-age=2592000, immutable" }
+            ]
+        },
+        {
+            "source": "/landing/(.*)",
+            "headers": [
+                { "key": "Cache-Control", "value": "public, max-age=2592000, stale-while-revalidate=86400" }
+            ]
+        },
+        {
+            "source": "/icons/(.*)",
+            "headers": [
+                { "key": "Cache-Control", "value": "public, max-age=2592000, immutable" }
+            ]
+        },
+        {
+            "source": "/models/(.*)",
+            "headers": [
+                { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+            ]
+        }
+    ],
+    "functions": {
+        "api/send-email.js":               { "maxDuration": 10 },
+        "api/send-whatsapp.js":            { "maxDuration": 10 },
+        "api/ai-review.js":                { "maxDuration": 30 },
+        "api/send-push.js":                { "maxDuration": 30 },
+        "api/banks.js":                    { "maxDuration": 10 },
+        "api/cron-check-subscriptions.js": { "maxDuration": 60 }
+    },
+    "crons": [
+        {
+            "path": "/api/cron-check-subscriptions",
+            "schedule": "0 0 * * *"
+        }
     ]
 }
+

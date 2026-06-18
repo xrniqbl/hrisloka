@@ -1,13 +1,19 @@
 {
-    "name": "HRISync Employee",
-    "short_name": "HRISync",
+    "name": "HRIS Loka Employee",
+    "short_name": "HRIS Loka",
     "description": "Modern Human Resource Information System — Employee Self-Service Portal",
-    "start_url": "/",
+    "start_url": "/app/home",
     "display": "standalone",
     "orientation": "portrait",
     "theme_color": "#0047AB",
-    "background_color": "#F4F6F9",
+    "background_color": "#F7F8FA",
     "icons": [
+        {
+            "src": "/landing/hrislokalogo.jpeg",
+            "sizes": "any",
+            "type": "image/jpeg",
+            "purpose": "any"
+        },
         {
             "src": "/icons/icon-192.png",
             "sizes": "192x192",
@@ -19,6 +25,26 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Clock In / Absensi",
+            "short_name": "Clock In",
+            "url": "/app/home",
+            "icons": [{ "src": "/landing/hrislokalogo.jpeg", "sizes": "any" }]
+        },
+        {
+            "name": "Slip Gaji",
+            "short_name": "Payslip",
+            "url": "/app/payslip",
+            "icons": [{ "src": "/landing/hrislokalogo.jpeg", "sizes": "any" }]
+        },
+        {
+            "name": "Pengajuan",
+            "short_name": "Submissions",
+            "url": "/app/submissions",
+            "icons": [{ "src": "/landing/hrislokalogo.jpeg", "sizes": "any" }]
         }
     ],
     "categories": [

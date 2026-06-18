@@ -1,0 +1,429 @@
+/* ============================================================
+   FaceScanner.css — Face ID-style scanning UI
+   Mimics iPhone Face ID animation: oval frame, scan line, glow
+   ============================================================ */
+
+/* --- Outer container --- */
+.face-scanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 0;
+  position: relative;
+}
+
+/* --- Camera viewport with Face ID oval overlay --- */
+.face-scanner__viewport {
+  position: relative;
+  width: 260px;
+  height: 300px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.face-scanner__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror front camera */
+  display: block;
+  border-radius: 50%;
+  background: #000;
+}
+
+/* --- Oval frame overlay --- */
+.face-scanner__oval {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10;
+  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+/* State: idle */
+.face-scanner__oval--idle {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.3),
+    0 0 0 6px rgba(255, 255, 255, 0.08),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.15);
+  border: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+/* State: scanning (blue pulse) */
+.face-scanner__oval--scanning {
+  box-shadow:
+    0 0 0 4px #3b82f6,
+    0 0 20px 8px rgba(59, 130, 246, 0.4),
+    0 0 40px 16px rgba(59, 130, 246, 0.15),
+    inset 0 0 0 4px rgba(59, 130, 246, 0.2);
+  border: 4px solid #3b82f6;
+  animation: scanPulse 1.5s ease-in-out infinite;
+}
+
+/* State: challenge (orange) */
+.face-scanner__oval--challenge {
+  box-shadow:
+    0 0 0 4px #f59e0b,
+    0 0 20px 8px rgba(245, 158, 11, 0.4),
+    0 0 40px 16px rgba(245, 158, 11, 0.15),
+    inset 0 0 0 4px rgba(245, 158, 11, 0.2);
+  border: 4px solid #f59e0b;
+  animation: challengePulse 1s ease-in-out infinite;
+}
+
+/* State: success (green flash) */
+.face-scanner__oval--success {
+  box-shadow:
+    0 0 0 4px #22c55e,
+    0 0 24px 12px rgba(34, 197, 94, 0.5),
+    0 0 50px 20px rgba(34, 197, 94, 0.2),
+    inset 0 0 0 4px rgba(34, 197, 94, 0.3);
+  border: 4px solid #22c55e;
+  animation: successFlash 0.6s ease-out;
+}
+
+/* State: error (red) */
+.face-scanner__oval--error {
+  box-shadow:
+    0 0 0 4px #ef4444,
+    0 0 20px 8px rgba(239, 68, 68, 0.4),
+    0 0 40px 16px rgba(239, 68, 68, 0.15),
+    inset 0 0 0 4px rgba(239, 68, 68, 0.2);
+  border: 4px solid #ef4444;
+  animation: errorShake 0.5s ease;
+}
+
+/* --- Scan line (the sweeping line like Face ID) --- */
+.face-scanner__scanline {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.6) 20%,
+    rgba(59, 130, 246, 1) 50%,
+    rgba(59, 130, 246, 0.6) 80%,
+    transparent 100%
+  );
+  border-radius: 2px;
+  z-index: 11;
+  animation: scanLine 2s linear infinite;
+  filter: blur(0.5px);
+  box-shadow: 0 0 8px 2px rgba(59, 130, 246, 0.4);
+  pointer-events: none;
+}
+
+/* Scan line for challenge mode — orange */
+.face-scanner__scanline--challenge {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(245, 158, 11, 0.6) 20%,
+    rgba(245, 158, 11, 1) 50%,
+    rgba(245, 158, 11, 0.6) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.4);
+}
+
+/* --- Corner bracket indicators (like Face ID corners) --- */
+.face-scanner__corners {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 12;
+}
+
+.face-scanner__corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: white;
+  border-style: solid;
+  opacity: 0.7;
+  transition: opacity 0.3s ease, border-color 0.3s ease;
+}
+
+.face-scanner__oval--scanning ~ .face-scanner__corners .face-scanner__corner,
+.face-scanner__oval--challenge ~ .face-scanner__corners .face-scanner__corner {
+  opacity: 1;
+}
+
+.face-scanner__corner--tl { top: 12%; left: 12%; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
+.face-scanner__corner--tr { top: 12%; right: 12%; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
+.face-scanner__corner--bl { bottom: 12%; left: 12%; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
+.face-scanner__corner--br { bottom: 12%; right: 12%; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
+
+/* --- Face detection dots (landmark visualization) --- */
+.face-scanner__dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.face-dot {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.8);
+  transform: translate(-50%, -50%);
+  animation: dotPulse 1s ease-in-out infinite;
+}
+
+/* --- Success checkmark overlay --- */
+.face-scanner__success-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  animation: fadeInScale 0.4s ease-out;
+}
+
+.face-scanner__success-check {
+  width: 64px;
+  height: 64px;
+  background: #22c55e;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
+  animation: checkBounce 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* --- Status text area --- */
+.face-scanner__status {
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.face-scanner__instruction {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  transition: all 0.3s ease;
+}
+
+.face-scanner__instruction--challenge {
+  color: #f59e0b;
+  font-size: 16px;
+}
+
+.face-scanner__instruction--success {
+  color: #22c55e;
+}
+
+.face-scanner__instruction--error {
+  color: #ef4444;
+}
+
+.face-scanner__sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* --- Challenge badge --- */
+.face-scanner__challenge-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f59e0b;
+  animation: badgePop 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* --- Challenge progress dots --- */
+.face-scanner__challenge-dots {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.face-scanner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.3s ease;
+}
+
+.face-scanner__dot--done {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.face-scanner__dot--active {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+  animation: dotBlink 0.8s ease-in-out infinite;
+}
+
+/* --- Progress bar (for model loading) --- */
+.face-scanner__progress {
+  width: 100%;
+  max-width: 260px;
+}
+
+.face-scanner__progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.face-scanner__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.face-scanner__progress-text {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* --- No face warning --- */
+.face-scanner__no-face {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 100px;
+  white-space: nowrap;
+  z-index: 20;
+  animation: fadeIn 0.3s ease;
+}
+
+/* --- Mini timer ring (countdown for each challenge) --- */
+.face-scanner__timer {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 32px;
+  height: 32px;
+  z-index: 15;
+}
+
+.face-scanner__timer svg circle {
+  transition: stroke-dashoffset 0.1s linear;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+
+@keyframes scanPulse {
+  0%, 100% { box-shadow: 0 0 0 4px #3b82f6, 0 0 20px 8px rgba(59,130,246,0.4), 0 0 40px 16px rgba(59,130,246,0.15); }
+  50% { box-shadow: 0 0 0 6px #3b82f6, 0 0 30px 12px rgba(59,130,246,0.5), 0 0 60px 20px rgba(59,130,246,0.2); }
+}
+
+@keyframes challengePulse {
+  0%, 100% { box-shadow: 0 0 0 4px #f59e0b, 0 0 20px 8px rgba(245,158,11,0.4), 0 0 40px 16px rgba(245,158,11,0.15); }
+  50% { box-shadow: 0 0 0 6px #f59e0b, 0 0 30px 12px rgba(245,158,11,0.5), 0 0 60px 20px rgba(245,158,11,0.2); }
+}
+
+@keyframes successFlash {
+  0% { box-shadow: 0 0 0 4px #22c55e, 0 0 40px 20px rgba(34,197,94,0.8); }
+  100% { box-shadow: 0 0 0 4px #22c55e, 0 0 24px 12px rgba(34,197,94,0.4); }
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+
+@keyframes scanLine {
+  0% { top: 5%; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: 95%; opacity: 0; }
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+}
+
+@keyframes dotBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes checkBounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0.8); opacity: 0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* --- Particle effect on success --- */
+.face-scanner__particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 16;
+}
+
+.face-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  left: 50%;
+  top: 50%;
+  animation: particleBurst 0.8s ease-out forwards;
+}
+
+@keyframes particleBurst {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+}
