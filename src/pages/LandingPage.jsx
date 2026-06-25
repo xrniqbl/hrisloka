@@ -3,559 +3,292 @@ import { Link } from 'react-router-dom';
 import { updateSEOTags } from '../lib/seo';
 import './LandingPage.css';
 
-/* ── Scroll Reveal ── */
+/* ── Scroll reveal ── */
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('.lp-reveal');
-    if (!els.length) return;
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
-    );
-    els.forEach(el => io.observe(el));
+    const els = document.querySelectorAll('.reveal');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    els.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
 }
 
-/* ── Navbar ── */
-function Navbar() {
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 32);
-    window.addEventListener('scroll', fn);
-    return () => window.removeEventListener('scroll', fn);
-  }, []);
-  const links = [
-    { href: '#home', label: 'Home' },
-    { href: '#features', label: 'Features' },
-    { href: '#how', label: 'How it Works' },
-    { href: '#pricing', label: 'Pricing' },
-    { href: '#faq', label: 'FAQ' },
-  ];
+/* ── Icons ── */
+const I = {
+  db: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>),
+  clock: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>),
+  chart: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>),
+  play: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>),
+  check: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M20 6 9 17l-5-5"/></svg>),
+  star: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01z"/></svg>),
+  arrow: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>),
+  chevron: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>),
+};
+
+function Logo({ light }) {
   return (
-    <nav className={`lp-nav ${scrolled ? 'scrolled' : ''}`}>
-      <div className="lp-container lp-nav-inner">
-        <Link to="/landing" className="lp-logo">
-          <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" className="lp-logo-img" />
-        </Link>
-        <div className="lp-nav-links-desktop">
-          {links.map(l => <a key={l.href} href={l.href}>{l.label}</a>)}
-        </div>
-        <div className="lp-nav-actions">
-          <Link to="/login" className="lp-nav-login">Sign in</Link>
-          <Link to="/login" className="lp-nav-cta">Get Started</Link>
-          <button className="lp-hamburger" onClick={() => setOpen(!open)} aria-label="Menu">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-      {open && (
-        <div className="lp-mobile-menu">
-          {links.map(l => <a key={l.href} href={l.href} className="lp-mobile-link" onClick={() => setOpen(false)}>{l.label}</a>)}
-          <div className="lp-mobile-btns">
-            <Link to="/login" className="lp-nav-login" onClick={() => setOpen(false)}>Sign in</Link>
-            <Link to="/login" className="lp-nav-cta" onClick={() => setOpen(false)}>Get Started</Link>
-          </div>
-        </div>
-      )}
-    </nav>
+    <div className={'lp-logo' + (light ? ' light' : '')}>
+      <span className="lp-logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3 4 7v6c0 4.5 3.4 7.3 8 8 4.6-.7 8-3.5 8-8V7z"/><path d="m9 12 2 2 4-4"/></svg>
+      </span>
+      <span className="lp-logo-text">SolveHR</span>
+    </div>
   );
 }
 
-/* ── Hero ── */
-function Hero() {
-  return (
-    <section className="lp-hero" id="home">
-      <div className="lp-container lp-hero-inner">
-        <div className="lp-hero-badge-wrap">
-          <span className="lp-hero-badge">✦ Platform HRIS #1 Indonesia</span>
-        </div>
-        <h1 className="lp-hero-title">
-          Revolutionizing<br />
-          <span className="lp-hero-gradient">Workforce Management</span>
-        </h1>
-        <p className="lp-hero-sub">
-          Streamline HR operations, track attendance, manage payroll, and boost employee performance — all in one powerful platform.
-        </p>
-        <div className="lp-hero-btns">
-          <Link to="/login" className="lp-btn-primary">Get Started Free</Link>
-          <Link to="/login" className="lp-btn-ghost">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Watch Demo
-          </Link>
-        </div>
-        <div className="lp-hero-trust">
-          <span>✓ No credit card required</span>
-          <span>·</span>
-          <span>✓ 14-day free trial</span>
-          <span>·</span>
-          <span>✓ Setup in 5 minutes</span>
-        </div>
-        <div className="lp-hero-visual">
-          <div className="lp-hero-img-wrap">
-            <img src="/landing/hero-dashboard.png" alt="HRIS Loka Dashboard" className="lp-hero-img-main" />
-            <div className="lp-hero-float lp-hero-float-tl">
-              <div className="lp-float-dot" style={{ background: '#22c55e' }}></div>
-              <span>500+ Active Employees</span>
-            </div>
-            <div className="lp-hero-float lp-hero-float-br">
-              <div className="lp-float-dot" style={{ background: '#6366f1' }}></div>
-              <span>98% Attendance Rate</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+const FAQS = [
+  { q: 'How secure is SolveHR?', a: 'SolveHR uses bank-grade AES-256 encryption, role-based access control, and continuous security monitoring to keep your HR data fully protected at all times.' },
+  { q: 'Is SolveHR suitable for small businesses?', a: 'Absolutely. Our Basic plan is designed for growing teams and small businesses, giving you essential HR tools without the enterprise price tag.' },
+  { q: 'Can I upgrade my plan later?', a: 'Yes. You can upgrade or downgrade your plan anytime directly from your dashboard, and changes take effect immediately.' },
+  { q: 'What kind of support do you offer?', a: 'We provide email and chat support on all plans, with priority and dedicated support available on Pro and Enterprise plans.' },
+  { q: 'Can SolveHR integrate with other software we use?', a: 'SolveHR offers seamless integrations and an open API so you can connect payroll, accounting, and collaboration tools you already use.' },
+];
 
-/* ── Logo Bar ── */
-function LogoBar() {
-  const logos = [
-    { name: 'Be The First To Know', icon: '★' },
-    { name: 'PT. Soltan Pilau', icon: '◆' },
-    { name: 'NKRI', icon: '🇮🇩', isText: true },
-    { name: 'FedEx', icon: null, isFedex: true },
-    { name: 'Enterprise Co.', icon: '◉' },
-  ];
-  return (
-    <section className="lp-logos">
-      <div className="lp-container">
-        <p className="lp-logos-label">Dipercaya ratusan perusahaan di seluruh Indonesia</p>
-        <div className="lp-logos-row">
-          {logos.map((l, i) => (
-            <div key={i} className="lp-logo-item">
-              {l.isFedex ? (
-                <span style={{ fontWeight: 900, fontSize: 20, letterSpacing: -1 }}>
-                  <span style={{ color: '#4D148C' }}>Fed</span>
-                  <span style={{ color: '#FF6600' }}>Ex</span>
-                </span>
-              ) : (
-                <span>{l.name}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Features ── */
-function Features() {
-  const items = [
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        </svg>
-      ),
-      label: 'Employee Database',
-      desc: 'Direktori lengkap data karyawan, kontrak & dokumen dengan akses berbasis peran.',
-      color: '#6366f1',
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-      ),
-      label: 'Attendance Tracking',
-      desc: 'Absensi biometrik & GPS real-time dengan verifikasi wajah AI yang akurat.',
-      color: '#8b5cf6',
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-        </svg>
-      ),
-      label: 'Performance Analytics',
-      desc: 'Dashboard analitik real-time untuk monitoring KPI dan laporan kinerja karyawan.',
-      color: '#06b6d4',
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-        </svg>
-      ),
-      label: 'Payroll Automation',
-      desc: 'Hitung gaji, PPh21, dan slip gaji secara otomatis — akurat tanpa kesalahan manual.',
-      color: '#10b981',
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-      ),
-      label: 'Leave Management',
-      desc: 'Pengajuan & approval cuti otomatis dengan notifikasi dan saldo yang selalu terupdate.',
-      color: '#f59e0b',
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
-      ),
-      label: 'Enterprise Security',
-      desc: 'Enkripsi end-to-end, audit log, dan role-based access control tingkat enterprise.',
-      color: '#ef4444',
-    },
-  ];
-  return (
-    <section className="lp-features" id="features">
-      <div className="lp-container">
-        <div className="lp-section-head lp-reveal">
-          <span className="lp-eyebrow">Features</span>
-          <h2>How it works in<br /><em>simple way</em></h2>
-          <p>Semua yang dibutuhkan tim HR Anda dalam satu platform yang terintegrasi.</p>
-        </div>
-        <div className="lp-features-grid">
-          {items.map((f, i) => (
-            <div key={i} className="lp-feature-card lp-reveal" style={{ '--fc': f.color }}>
-              <div className="lp-feature-icon-wrap">
-                <span style={{ color: f.color }}>{f.icon}</span>
-              </div>
-              <h3>{f.label}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── How It Works ── */
-function HowItWorks() {
-  const steps = [
-    { num: '01', title: 'Sign Up for Free Tool', desc: 'Daftar dalam 2 menit. Tidak perlu kartu kredit, tidak perlu instalasi.' },
-    { num: '02', title: 'Configure Your HR Settings', desc: 'Atur struktur organisasi, jadwal kerja, dan kebijakan cuti sesuai perusahaan Anda.' },
-    { num: '03', title: 'Start Optimizing Your HR Processes', desc: 'Kelola absensi, payroll, dan laporan secara real-time dari satu dashboard.' },
-  ];
-  return (
-    <section className="lp-how" id="how">
-      <div className="lp-container">
-        <div className="lp-section-head lp-reveal">
-          <span className="lp-eyebrow">How it works</span>
-          <h2>Mulai dalam 3 langkah mudah</h2>
-        </div>
-        <div className="lp-how-grid">
-          {steps.map((s, i) => (
-            <div key={i} className="lp-how-card lp-reveal">
-              <div className="lp-how-num">{s.num}</div>
-              <h3>{s.title}</h3>
-              <p>{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Split: Efficiency ── */
-function EfficiencySection() {
-  const items = ['Kurangi waktu HR hingga 70%', 'Otomasi payroll & slip gaji', 'Laporan real-time kapan saja', 'Integrasi dengan sistem existing'];
-  return (
-    <section className="lp-split lp-split-light">
-      <div className="lp-container lp-split-inner">
-        <div className="lp-split-img lp-reveal">
-          <img src="/landing/features-ui.png" alt="Efficiency Dashboard" />
-        </div>
-        <div className="lp-split-text lp-reveal">
-          <span className="lp-eyebrow">Efficiency Boost</span>
-          <h2>Transform Your HR<br />Operations</h2>
-          <p>Platform HRIS Loka membantu tim HR Anda bekerja lebih efisien dengan otomasi proses yang sebelumnya memakan waktu berjam-jam.</p>
-          <ul className="lp-check-list">
-            {items.map((item, i) => (
-              <li key={i}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                {item}
-              </li>
-            ))}
-          </ul>
-          <Link to="/login" className="lp-btn-primary" style={{ marginTop: 24 }}>Mulai Sekarang</Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Split: Mobile ── */
-function MobileSection() {
-  return (
-    <section className="lp-split">
-      <div className="lp-container lp-split-inner lp-split-reverse">
-        <div className="lp-split-text lp-reveal">
-          <span className="lp-eyebrow">Mobile First</span>
-          <h2>Mobile Accessibility</h2>
-          <p>Karyawan dapat melakukan absensi, pengajuan cuti, dan cek slip gaji langsung dari smartphone — kapan saja, di mana saja.</p>
-          <div className="lp-mobile-chips">
-            <span className="lp-chip">Android & iOS PWA</span>
-            <span className="lp-chip">GPS Geofencing</span>
-            <span className="lp-chip">Face Recognition</span>
-            <span className="lp-chip">Offline Mode</span>
-          </div>
-        </div>
-        <div className="lp-split-img lp-split-phone lp-reveal">
-          <img src="/landing/feature-phone.png" alt="Mobile App" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── CTA Banner ── */
-function CTABanner() {
-  return (
-    <section className="lp-cta-banner">
-      <div className="lp-container lp-cta-inner">
-        <div className="lp-cta-left">
-          <h2>Ready to optimize your<br />HR operations?</h2>
-          <p>Bergabung dengan ratusan perusahaan yang telah mempercayakan HR mereka kepada HRIS Loka.</p>
-          <div className="lp-cta-btns">
-            <Link to="/login" className="lp-btn-white">Get Started Free</Link>
-            <a href="https://wa.me/6289512114437" target="_blank" rel="noopener noreferrer" className="lp-btn-glass">Contact Sales</a>
-          </div>
-        </div>
-        <div className="lp-cta-price">
-          <div className="lp-cta-price-badge">Mulai dari</div>
-          <div className="lp-cta-price-num">Rp 75K<span>/month</span></div>
-          <div className="lp-cta-price-sub">Per perusahaan · hingga 50 karyawan</div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Pricing ── */
-function Pricing() {
-  const [cycle, setCycle] = useState('monthly');
-  const plans = [
-    {
-      name: 'Starter', price: 75000, featured: false,
-      features: ['Hingga 50 karyawan', 'Absensi & Cuti digital', 'Payroll dasar', 'PWA Karyawan', 'Email support'],
-      cta: 'Get Started', link: '/login',
-    },
-    {
-      name: 'Pro', price: 125000, featured: true, badge: 'Most Popular',
-      features: ['Hingga 200 karyawan', 'Semua fitur Starter', 'GPS Geofence', 'KPI & Kinerja', 'AI Expense OCR', 'Laporan lanjutan', 'Priority support'],
-      cta: 'Choose Pro', link: '/login',
-    },
-    {
-      name: 'Enterprise', price: null, featured: false,
-      features: ['Karyawan tidak terbatas', 'Semua fitur Pro', 'Custom integrasi API', 'Dedicated manager', 'SLA 99.9%'],
-      cta: 'Contact Us', link: 'https://wa.me/6289512114437',
-    },
-  ];
-  return (
-    <section className="lp-pricing" id="pricing">
-      <div className="lp-container">
-        <div className="lp-section-head lp-reveal">
-          <span className="lp-eyebrow">Pricing plan</span>
-          <h2>Pilih paket yang tepat<br />untuk bisnis Anda</h2>
-          <p>Harga transparan, tanpa biaya tersembunyi.</p>
-        </div>
-        <div className="lp-pricing-toggle">
-          {['monthly', 'yearly'].map(c => (
-            <button key={c} className={`lp-toggle-btn ${cycle === c ? 'active' : ''}`} onClick={() => setCycle(c)}>
-              {c === 'monthly' ? 'Bulanan' : 'Tahunan'}
-              {c === 'yearly' && <span className="lp-toggle-save">Hemat 15%</span>}
-            </button>
-          ))}
-        </div>
-        <div className="lp-pricing-grid">
-          {plans.map((p, i) => {
-            const price = cycle === 'yearly' && p.price ? Math.round(p.price * 12 * 0.85) : p.price;
-            const period = cycle === 'yearly' ? 'tahun' : 'bulan';
-            return (
-              <div key={i} className={`lp-pricing-card lp-reveal ${p.featured ? 'featured' : ''}`}>
-                {p.badge && <div className="lp-pricing-badge">{p.badge}</div>}
-                <div className="lp-pricing-name">{p.name}</div>
-                <div className="lp-pricing-price">
-                  {price ? <><span className="lp-price-num">Rp {(price / 1000).toFixed(0)}K</span><span className="lp-price-per">/{period}</span></> : <span className="lp-price-num">Custom</span>}
-                </div>
-                <ul className="lp-pricing-features">
-                  {p.features.map((f, j) => (
-                    <li key={j}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                {p.link.startsWith('http')
-                  ? <a href={p.link} target="_blank" rel="noopener noreferrer" className={p.featured ? 'lp-btn-primary pricing-cta' : 'lp-btn-outline pricing-cta'}>{p.cta}</a>
-                  : <Link to={p.link} className={p.featured ? 'lp-btn-primary pricing-cta' : 'lp-btn-outline pricing-cta'}>{p.cta}</Link>
-                }
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Testimonials ── */
-function Testimonials() {
-  const items = [
-    { name: 'Budd Luwena', role: 'HR Manager, PT Soltan Pilau', avatar: 'B', text: '"HRIS Loka sangat membantu kami dalam proses HR dari rekrutan hingga penggajian karyawan."' },
-    { name: 'Dewi Kartika', role: 'CEO, PT Rosari Indonesia', avatar: 'D', text: '"Fitur pengajuan cuti dan approval sangat mudah. Karyawan kami sangat puas dengan tampilannya."' },
-    { name: 'Agus Sakhono', role: 'IT Director, PT Nusantara Dinan', avatar: 'A', text: '"Implementasi berjalan lancar, tim support sangat responsif. Direkomendasikan untuk perusahaan menengah."' },
-  ];
-  return (
-    <section className="lp-testi">
-      <div className="lp-container">
-        <div className="lp-section-head lp-reveal">
-          <span className="lp-eyebrow">Testimonials</span>
-          <h2>Dipercaya perusahaan<br />di seluruh Indonesia</h2>
-        </div>
-        <div className="lp-testi-grid">
-          {items.map((t, i) => (
-            <div key={i} className="lp-testi-card lp-reveal">
-              <div className="lp-testi-stars">{'★★★★★'}</div>
-              <p className="lp-testi-text">{t.text}</p>
-              <div className="lp-testi-author">
-                <div className="lp-testi-avatar">{t.avatar}</div>
-                <div>
-                  <div className="lp-testi-name">{t.name}</div>
-                  <div className="lp-testi-role">{t.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="lp-testi-logos lp-reveal">
-          {['PT. Soltan Pilau', 'PT. Rosari Indonesia', 'Ox The Slush & Base', 'PT. Nusantara Dinan'].map((name, i) => (
-            <div key={i} className="lp-testi-logo-item">{name}</div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── FAQ ── */
-function FAQ() {
-  const [open, setOpen] = useState(null);
-  const faqs = [
-    { q: 'Apakah HRIS Loka cocok untuk perusahaan kecil?', a: 'Ya! Paket Starter mulai Rp 75.000/bulan untuk hingga 50 karyawan — ideal untuk startup dan UKM yang ingin digitalisasi HR.' },
-    { q: 'Berapa lama proses implementasi?', a: 'Setup hanya 5-10 menit setelah mendaftar. Tidak ada instalasi atau konfigurasi teknis yang rumit.' },
-    { q: 'Apakah data karyawan aman?', a: 'Sangat aman. Kami menggunakan enkripsi end-to-end, backup berkala, role-based access control, dan audit log.' },
-    { q: 'Apakah tersedia aplikasi mobile?', a: 'Ya, tersedia PWA yang dapat diinstall di Android dan iOS. Karyawan bisa absensi GPS, pengajuan cuti, dan cek slip gaji dari ponsel.' },
-    { q: 'Bagaimana jika ingin upgrade atau downgrade?', a: 'Bisa kapan saja melalui menu pengaturan akun. Perubahan berlaku di siklus billing berikutnya.' },
-    { q: 'Apakah ada dukungan teknis?', a: 'Support 24/7 via email dan WhatsApp. Tim kami siap membantu dengan cepat dan profesional.' },
-  ];
-  return (
-    <section className="lp-faq" id="faq">
-      <div className="lp-container lp-faq-inner">
-        <div className="lp-faq-head lp-reveal">
-          <span className="lp-eyebrow">FAQ</span>
-          <h2>Frequently asked<br />questions</h2>
-          <p>Tidak menemukan jawaban? <a href="https://wa.me/6289512114437" target="_blank" rel="noopener noreferrer">Hubungi kami</a></p>
-        </div>
-        <div className="lp-faq-list">
-          {faqs.map((f, i) => (
-            <div key={i} className={`lp-faq-item ${open === i ? 'open' : ''} lp-reveal`}>
-              <button className="lp-faq-q" onClick={() => setOpen(open === i ? null : i)}>
-                <span>{f.q}</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform: open === i ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s', flexShrink: 0 }}><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              {open === i && <div className="lp-faq-a">{f.a}</div>}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Footer ── */
-function Footer() {
-  return (
-    <footer className="lp-footer" id="contact">
-      <div className="lp-container lp-footer-inner">
-        <div className="lp-footer-brand">
-          <img src="/landing/hrislokawhitepanjang.png" alt="HRIS Loka" style={{ height: 30, marginBottom: 12, filter: 'brightness(0) invert(1)' }} />
-          <p>Platform HRIS modern untuk perusahaan Indonesia. Kelola SDM lebih efisien dan terukur.</p>
-        </div>
-        <div className="lp-footer-cols">
-          <div>
-            <h4>Product</h4>
-            <Link to="/landing">Home</Link>
-            <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
-            <Link to="/blog">Blog</Link>
-          </div>
-          <div>
-            <h4>Company</h4>
-            <a href="#contact">About Us</a>
-            <Link to="/blog">Blog</Link>
-            <Link to="/privacy">Privacy Policy</Link>
-          </div>
-          <div>
-            <h4>Support</h4>
-            <a href="https://wa.me/6289512114437" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-            <Link to="/install">Install Guide</Link>
-            <Link to="/checkout">Subscribe</Link>
-          </div>
-          <div>
-            <h4>Contact</h4>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 2 }}>
-              Bandung, Indonesia<br />
-              hrisloka@gmail.com<br />
-              +62 895-1211-4437
-            </p>
-          </div>
-        </div>
-      </div>
-      <div className="lp-footer-bottom">
-        <div className="lp-container lp-footer-bottom-inner">
-          <span>© {new Date().getFullYear()} HRIS Loka. All rights reserved.</span>
-          <span><Link to="/privacy">Terms</Link> · <Link to="/privacy">Privacy</Link></span>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-/* ── ROOT ── */
 export default function LandingPage() {
   useReveal();
+  const [faqOpen, setFaqOpen] = useState(0);
+  const [tab, setTab] = useState(0);
+
   useEffect(() => {
-    updateSEOTags({ page: 'landing' });
-    // Remove any legacy overlays injected by old code/SW
-    document.querySelectorAll('[class*="nkri"], [class*="NKRI"], [id*="nkri"]').forEach(el => el.remove());
-    // Unregister stale service workers that may serve cached old pages
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(reg => reg.unregister());
-      });
-    }
+    updateSEOTags?.({
+      title: 'SolveHR — Revolutionizing Workforce Management',
+      description: 'Empower your HR Operators with seamless efficiency and insightful analytics.',
+    });
   }, []);
+
   return (
-    <div className="lp" lang="id">
-      <Navbar />
-      <main>
-        <Hero />
-        <LogoBar />
-        <Features />
-        <HowItWorks />
-        <EfficiencySection />
-        <MobileSection />
-        <CTABanner />
-        <Pricing />
-        <Testimonials />
-        <FAQ />
-      </main>
-      <Footer />
+    <div className="lp">
+      {/* NAVBAR */}
+      <header className="lp-nav-wrap">
+        <nav className="lp-nav">
+          <Logo />
+          <ul className="lp-nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+          <Link to="/login" className="lp-btn lp-btn-primary lp-nav-cta">Sign in</Link>
+        </nav>
+      </header>
+
+      {/* HERO */}
+      <section className="lp-hero" id="home">
+        <div className="lp-container">
+          <h1 className="lp-hero-title reveal">Revolutionizing<br/>Workforce<br/>Management</h1>
+          <p className="lp-hero-sub reveal">Empower your HR Operators with Seamless Efficiency<br/>and Insightful Analytics.</p>
+          <div className="lp-hero-actions reveal">
+            <Link to="/login" className="lp-btn lp-btn-primary">Get Started</Link>
+            <a href="#about" className="lp-btn lp-btn-ghost"><span className="lp-play">{I.play}</span> Watch Video</a>
+          </div>
+          <div className="lp-hero-shot reveal">
+            <div className="lp-browser">
+              <div className="lp-browser-bar"><span/><span/><span/><div className="lp-browser-url">app.solvehr.com/dashboard</div></div>
+              <img src="/landing/hero-dashboard.png" alt="SolveHR dashboard" loading="lazy" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TRUSTED */}
+      <section className="lp-trusted">
+        <div className="lp-container">
+          <p className="lp-trusted-label">Trusted by the world's best companies</p>
+          <div className="lp-trusted-logos">
+            <span className="lp-tlogo nyt">The New York Times</span>
+            <span className="lp-tlogo">TELEMUNDO</span>
+            <span className="lp-tlogo">Nestle</span>
+            <span className="lp-tlogo lego">LEGO</span>
+            <span className="lp-tlogo fedex">FedEx</span>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section className="lp-features" id="features">
+        <div className="lp-container lp-feat-grid">
+          {[
+            { ic: I.db, t: 'Employee Database Management', d: 'Centralized employee information for easy access.' },
+            { ic: I.clock, t: 'Attendance Tracking', d: 'Real-time attendance monitoring and reporting.' },
+            { ic: I.chart, t: 'Performance Analytics', d: 'In-depth analytics for strategic decision-making.' },
+          ].map((f, i) => (
+            <div className="lp-feat reveal" key={i} style={{ transitionDelay: i * 80 + 'ms' }}>
+              <div className="lp-feat-icon">{f.ic}</div>
+              <h3>{f.t}</h3>
+              <p>{f.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="lp-how">
+        <div className="lp-container">
+          <h2 className="lp-h2 reveal">How it <em>works</em> in<br/>simple way</h2>
+          <div className="lp-how-grid">
+            {[
+              { t: 'Sign Up for Free Trial', d: 'Create your account in minutes.' },
+              { t: 'Configure Your HR Settings', d: "Tailor the system to your company's unique needs." },
+              { t: 'Start Optimizing Your HR Processes', d: 'Streamline operations and insightful analytics.' },
+            ].map((s, i) => (
+              <div className="lp-how-card reveal" key={i} style={{ transitionDelay: i * 80 + 'ms' }}>
+                <h4>{s.t}</h4>
+                <div className="lp-how-mock">
+                  {i === 0 && (<><div className="lp-mock-field"><label>Full Name</label><span className="lp-mock-input"/></div><div className="lp-mock-field"><label>Email</label><span className="lp-mock-input"/></div><div className="lp-mock-btn">Get Started</div></>)}
+                  {i === 1 && (<><div className="lp-mock-row"><span className="lp-mock-dot"/><span className="lp-mock-line w70"/><span className="lp-mock-toggle on"/></div><div className="lp-mock-row"><span className="lp-mock-dot"/><span className="lp-mock-line w50"/><span className="lp-mock-toggle"/></div><div className="lp-mock-row"><span className="lp-mock-dot"/><span className="lp-mock-line w60"/><span className="lp-mock-toggle on"/></div></>)}
+                  {i === 2 && (<><div className="lp-mock-task"><span className="lp-mock-check">{I.check}</span><span className="lp-mock-line w60"/></div><div className="lp-mock-task"><span className="lp-mock-check">{I.check}</span><span className="lp-mock-line w40"/></div><div className="lp-mock-task"><span className="lp-mock-check">{I.check}</span><span className="lp-mock-line w70"/></div></>)}
+                </div>
+                <p>{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* EFFICIENCY BOOST */}
+      <section className="lp-split lp-eff" id="about">
+        <div className="lp-container lp-split-grid">
+          <div className="lp-split-media reveal"><img src="/cewe.png" alt="HR professional" loading="lazy" /></div>
+          <div className="lp-split-text reveal">
+            <span className="lp-eyebrow">How it works</span>
+            <h2 className="lp-h2 left">Efficiency Boost:<br/>Transform Your HR<br/>Operations</h2>
+            <p>Our HR SaaS platform is designed to bring a substantial boost to the efficiency of your HR operations, streamlining processes and freeing up valuable time for strategic initiatives.</p>
+            <Link to="/login" className="lp-btn lp-btn-primary">Get Started</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* MOBILE ACCESSIBILITY */}
+      <section className="lp-split lp-mobile">
+        <div className="lp-container lp-split-grid reverse">
+          <div className="lp-split-text reveal">
+            <span className="lp-eyebrow">How it works</span>
+            <h2 className="lp-h2 left">Mobile Accessibility</h2>
+            <div className="lp-tabs">
+              {['Geofencing', 'Funding alternatives', 'Performance Analytics'].map((t, i) => (
+                <button key={i} className={'lp-tab' + (tab === i ? ' active' : '')} onClick={() => setTab(i)}>{t}</button>
+              ))}
+            </div>
+            <p>Enable your HR team to stay productive on the go. SolveHR's mobile accessibility ensures that key HR functions are accessible anytime, anywhere.</p>
+            <Link to="/login" className="lp-btn lp-btn-primary">Get Started</Link>
+          </div>
+          <div className="lp-split-media phone reveal"><img src="/hp.png" alt="SolveHR mobile app" loading="lazy" /></div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="lp-cta">
+        <div className="lp-container lp-cta-inner reveal">
+          <div className="lp-cta-left">
+            <h2>Ready to optimize<br/>your HR operations?</h2>
+            <p>Choose the plan that suits your business needs and root your journey toward more efficient and effective HR management. Have questions? Contact our team for personalized assistance.</p>
+          </div>
+          <div className="lp-cta-right">
+            <div className="lp-cta-price"><span className="lp-price-amt">$19.99</span><span className="lp-price-per">/month</span></div>
+            <Link to="/login" className="lp-btn lp-btn-primary">Start Your Free Trial Now</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section className="lp-pricing" id="pricing">
+        <div className="lp-container">
+          <span className="lp-eyebrow center">Our Pricing</span>
+          <h2 className="lp-h2 reveal">Pricing plan</h2>
+          <p className="lp-h2-sub reveal">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+          <div className="lp-price-grid">
+            {[
+              { name: 'Basic Plan', price: '$19.99', per: '/month', featured: false,
+                feats: ['Centralized Employee Database Management', 'Real-Time Attendance Tracking', 'Automated HR Tasks'],
+                perfect: 'Small teams and startups looking to streamline basic HR processes.' },
+              { name: 'Pro Plan', price: '$39.99', per: '/month', featured: true,
+                feats: ['Performance Analytics for Informed Decision-Making', 'Seamless Collaboration Tools', 'Mobile Accessibility'],
+                perfect: 'Growing businesses that require advanced analytics and collaboration features.' },
+              { name: 'Enterprise Plan', price: 'Custom Pricing', per: '', featured: false,
+                feats: ['Scalable Solutions for growing teams', 'Dedicated Support', 'Customized HR Solutions'],
+                perfect: 'Small teams and startups looking to streamline basic HR processes.' },
+            ].map((p, i) => (
+              <div className={'lp-price-card reveal' + (p.featured ? ' featured' : '')} key={i} style={{ transitionDelay: i * 80 + 'ms' }}>
+                <span className="lp-price-name">{p.name}</span>
+                <div className="lp-price-val"><span className="lp-price-num">{p.price}</span><span className="lp-price-unit">{p.per}</span></div>
+                <p className="lp-price-feat-label">Essential Features:</p>
+                <ul className="lp-price-feats">
+                  {p.feats.map((f, j) => (<li key={j}><span className="lp-fcheck">{I.check}</span>{f}</li>))}
+                </ul>
+                <p className="lp-price-perfect"><strong>Perfect For:</strong><br/>{p.perfect}</p>
+                <Link to="/login" className={'lp-btn ' + (p.featured ? 'lp-btn-light' : 'lp-btn-primary')}>{p.name === 'Enterprise Plan' ? 'Start Free Trial' : 'Subscribe'}</Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIAL */}
+      <section className="lp-testi">
+        <div className="lp-container lp-testi-inner reveal">
+          <div className="lp-stars">{[0,1,2,3,4].map(i => <span key={i}>{I.star}</span>)}</div>
+          <blockquote>"SolveHR has transformed our HR processes. It's intuitive,<br/>powerful, and has saved us countless hours."</blockquote>
+          <div className="lp-testi-foot">
+            <div className="lp-testi-person">
+              <img src="/users-1.svg" alt="Lisan Al-Ghaib" className="lp-testi-avatar" />
+              <div><strong>Lisan Al-Ghaib</strong><span>Employee Relations Manager, The New York Times</span></div>
+            </div>
+            <span className="lp-tlogo nyt big">The New York Times</span>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="lp-faq">
+        <div className="lp-container">
+          <span className="lp-eyebrow center">FAQ</span>
+          <h2 className="lp-h2 reveal">Frequently asked questions</h2>
+          <p className="lp-h2-sub reveal">Frequently asked questions ordered by popularity. Remember that if the visitor has not<br/>committed to the call to action, they may still have questions (doubts) that can be answered.</p>
+          <div className="lp-faq-list">
+            {FAQS.map((f, i) => (
+              <div className={'lp-faq-item' + (faqOpen === i ? ' open' : '')} key={i}>
+                <button className="lp-faq-q" onClick={() => setFaqOpen(faqOpen === i ? -1 : i)}>
+                  <span>{f.q}</span><span className="lp-faq-ic">{I.chevron}</span>
+                </button>
+                <div className="lp-faq-a"><p>{f.a}</p></div>
+              </div>
+            ))}
+          </div>
+          <div className="lp-faq-talk" id="contact">
+            <span>Do you have any question?</span>
+            <div className="lp-faq-talk-row">
+              <h3>Lets talk with us</h3>
+              <Link to="/login" className="lp-btn lp-btn-primary">Contact Us</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="lp-footer">
+        <div className="lp-container lp-footer-inner">
+          <Logo />
+          <ul className="lp-footer-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#features">Products</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+          <div className="lp-footer-social">
+            <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 22v-9h3l.5-4H13V6.5c0-1.1.3-1.9 1.9-1.9H17V1.1C16.6 1 15.6 1 14.4 1 11.9 1 10 2.6 10 5.6V9H7v4h3v9z"/></svg></a>
+            <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 5.9c-.7.3-1.5.5-2.3.6.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4 4 0 0 0-6.8 3.6A11.3 11.3 0 0 1 3.7 4.6a4 4 0 0 0 1.2 5.3c-.6 0-1.2-.2-1.8-.5a4 4 0 0 0 3.2 4 4 4 0 0 1-1.8.1 4 4 0 0 0 3.7 2.8A8 8 0 0 1 2 18a11.3 11.3 0 0 0 6.1 1.8c7.3 0 11.4-6.1 11.4-11.4v-.5c.8-.6 1.5-1.3 2-2z"/></svg></a>
+            <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.9 8H3.6v12h3.3zM5.3 3.3a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8M20.4 20v-6.6c0-3.5-.7-6.2-4.8-6.2-2 0-3.3 1.1-3.8 2.1h-.1V8H8.5v12h3.3v-5.9c0-1.6.3-3 2.2-3s1.9 1.7 1.9 3.2V20z"/></svg></a>
+            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg></a>
+          </div>
+        </div>
+        <div className="lp-footer-bottom lp-container">
+          <span>© 2024 SolveHR. All rights reserved.</span>
+          <div className="lp-footer-legal"><a href="#">Privacy Policy</a><a href="#">Terms of Service</a><a href="#">Cookies Settings</a></div>
+        </div>
+      </footer>
     </div>
   );
 }
