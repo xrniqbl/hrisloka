@@ -54,20 +54,27 @@ export async function createKPI(employeeId, period, overallScore, metrics, compa
   return { data: record, error: null };
 }
 
-// Update KPI record
-export async function updateKPI(id, updates) {
+// Update KPI record — MANDATORY company ownership
+export async function updateKPI(id, updates, companyId) {
+  if (!guardCompanyId(companyId, 'updateKPI')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   const { data, error } = await supabase
     .from('kpi_records')
     .update({ overall_score: updates.overallScore })
     .eq('id', id)
+    .eq('company_id', companyId)
     .select()
     .single();
   return { data, error };
 }
 
-// Delete KPI record (cascades metrics)
-export async function deleteKPI(id) {
-  const { error } = await supabase.from('kpi_records').delete().eq('id', id);
+// Delete KPI record (cascades metrics) — MANDATORY company ownership
+export async function deleteKPI(id, companyId) {
+  if (!guardCompanyId(companyId, 'deleteKPI')) {
+    return { error: { message: 'company_id required' } };
+  }
+  const { error } = await supabase.from('kpi_records').delete().eq('id', id).eq('company_id', companyId);
   return { error };
 }
 

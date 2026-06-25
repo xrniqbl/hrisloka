@@ -81,7 +81,11 @@ export async function deleteEmployee(id, companyId) {
 }
 
 // Create employee — auto-assigns a gender-appropriate avatar if no photo_url provided
+// MANDATORY company_id for tenant isolation
 export async function createEmployee(employeeData) {
+  if (!guardCompanyId(employeeData.company_id, 'createEmployee')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   // Auto-assign avatar based on gender if no photo set
   const data_with_avatar = { ...employeeData };
   if (!data_with_avatar.photo_url) {
@@ -120,18 +124,20 @@ export async function getDivisions(companyId) {
 }
 
 // Update freely-editable profile fields (no HR approval needed)
-export async function updateEmployeeDirectFields(id, fields) {
+// Employee can only update their own profile
+export async function updateEmployeeDirectFields(id, fields, authUserId = null) {
   const allowed = ['photo_url', 'address', 'phone', 'whatsapp', 'personal_email'];
   const safe = {};
   for (const key of Object.keys(fields)) {
     if (allowed.includes(key)) safe[key] = fields[key];
   }
-  const { data, error } = await supabase
+  let query = supabase
     .from('employees')
     .update(safe)
-    .eq('id', id)
-    .select()
-    .single();
+    .eq('id', id);
+  // If authUserId is provided, verify ownership (employee can only edit own profile)
+  if (authUserId) query = query.eq('auth_user_id', authUserId);
+  const { data, error } = await query.select().single();
   return { data, error };
 }
 

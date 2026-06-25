@@ -58,8 +58,17 @@ export async function createOffboarding(offboardingData) {
   return { data: record, error: null };
 }
 
-// Update offboarding status
-export async function updateOffboarding(id, updates) {
+// Update offboarding status — MANDATORY company ownership via employee join
+export async function updateOffboarding(id, updates, companyId) {
+  if (companyId) {
+    const { data: rec } = await supabase
+      .from('offboarding')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!rec) return { data: null, error: { message: 'Offboarding record not found in your company' } };
+  }
   const { data, error } = await supabase
     .from('offboarding')
     .update({
@@ -74,8 +83,17 @@ export async function updateOffboarding(id, updates) {
   return { data, error };
 }
 
-// Toggle checklist item
-export async function toggleChecklistItem(itemId, completed) {
+// Toggle checklist item — MANDATORY company ownership via offboarding → employee join
+export async function toggleChecklistItem(itemId, completed, companyId) {
+  if (companyId) {
+    const { data: item } = await supabase
+      .from('offboarding_checklist')
+      .select('id, offboarding!inner(employee_id, employees!inner(company_id))')
+      .eq('id', itemId)
+      .eq('offboarding.employees.company_id', companyId)
+      .maybeSingle();
+    if (!item) return { data: null, error: { message: 'Checklist item not found in your company' } };
+  }
   const { data, error } = await supabase
     .from('offboarding_checklist')
     .update({ completed })
@@ -85,8 +103,17 @@ export async function toggleChecklistItem(itemId, completed) {
   return { data, error };
 }
 
-// Delete offboarding (cascades checklist)
-export async function deleteOffboarding(id) {
+// Delete offboarding (cascades checklist) — MANDATORY company ownership
+export async function deleteOffboarding(id, companyId) {
+  if (companyId) {
+    const { data: rec } = await supabase
+      .from('offboarding')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!rec) return { error: { message: 'Offboarding record not found in your company' } };
+  }
   const { error } = await supabase.from('offboarding').delete().eq('id', id);
   return { error };
 }

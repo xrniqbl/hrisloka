@@ -14,8 +14,11 @@ export async function getAllShifts(branchId, companyId) {
   return { data: data || [], error };
 }
 
-// Create shift — always attach company_id
+// Create shift — MANDATORY company_id
 export async function createShift(shift) {
+  if (!guardCompanyId(shift.companyId, 'createShift')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   const { data, error } = await supabase
     .from('shifts')
     .insert({
@@ -24,16 +27,19 @@ export async function createShift(shift) {
       end_time: shift.endTime,
       color: shift.color || '#6D8196',
       branch_id: shift.branchId || null,
-      company_id: shift.companyId || null,
+      company_id: shift.companyId,
     })
     .select()
     .single();
   return { data, error };
 }
 
-// Update shift — verify company ownership
+// Update shift — MANDATORY company ownership
 export async function updateShift(id, shift, companyId) {
-  let query = supabase
+  if (!guardCompanyId(companyId, 'updateShift')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const { data, error } = await supabase
     .from('shifts')
     .update({
       name: shift.name,
@@ -41,17 +47,23 @@ export async function updateShift(id, shift, companyId) {
       end_time: shift.endTime,
       color: shift.color,
     })
-    .eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.select().single();
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select()
+    .single();
   return { data, error };
 }
 
-// Delete shift — verify company ownership
+// Delete shift — MANDATORY company ownership
 export async function deleteShift(id, companyId) {
-  let query = supabase.from('shifts').delete().eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { error } = await query;
+  if (!guardCompanyId(companyId, 'deleteShift')) {
+    return { error: { message: 'company_id required' } };
+  }
+  const { error } = await supabase
+    .from('shifts')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId);
   return { error };
 }
 
@@ -81,8 +93,19 @@ export async function assignShift(employeeId, shiftId, dayOfWeek, effectiveDate)
   return { data, error };
 }
 
-// Remove shift assignment
-export async function removeShiftAssignment(id) {
+// Remove shift assignment — MANDATORY company ownership via join
+export async function removeShiftAssignment(id, companyId) {
+  if (!guardCompanyId(companyId, 'removeShiftAssignment')) {
+    return { error: { message: 'company_id required' } };
+  }
+  // Verify the assignment belongs to an employee in this company before deleting
+  const { data: assignment } = await supabase
+    .from('shift_assignments')
+    .select('id, employees!inner(company_id)')
+    .eq('id', id)
+    .eq('employees.company_id', companyId)
+    .maybeSingle();
+  if (!assignment) return { error: { message: 'Shift assignment not found in your company' } };
   const { error } = await supabase.from('shift_assignments').delete().eq('id', id);
   return { error };
 }

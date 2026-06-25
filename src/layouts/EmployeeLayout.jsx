@@ -44,6 +44,7 @@ import { isFounder, getRole } from '../lib/rbac';
 import { supabase } from '../lib/supabase';
 import { requestPersistentStorage } from '../lib/backgroundSync';
 import UpdatePrompt from '../components/UpdatePrompt';
+import InstallPrompt from '../components/InstallPrompt';
 import EmpProfileSetup from '../pages/employee/EmpProfileSetup';
 import './EmployeeLayout.css';
 import { isDemoMode } from '../lib/demoGuard';
@@ -504,6 +505,8 @@ export default function EmployeeLayout() {
     <div className="emp-layout">
       {/* App Update Prompt */}
       <UpdatePrompt />
+      {/* PWA Install Banner */}
+      <InstallPrompt />
       {/* Offline banners */}
       {isOffline && (
         <div className="offline-banner">

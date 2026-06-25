@@ -426,7 +426,7 @@ function StepConfirmation({ plan, pricePaid, status }) {
 // ═══════════════════ ROOT CHECKOUT PAGE ═══════════════════════════════════════
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { user, refreshEmployee, fetchSubscription, refreshOnboarding } = useAuth();
+  const { user, refreshEmployee, fetchSubscription, refreshOnboarding, signOut } = useAuth();
 
   const [step, setStep]             = useState(1);
   const [plans, setPlans]           = useState([]);
@@ -534,8 +534,30 @@ export default function CheckoutPage() {
             <img src="/landing/hrislokawhitepanjang.png" alt="HRIS Loka" />
           </picture>
         </div>
-        <div className="co-topbar-right">
-          Sudah berlangganan?{' '}<Link to="/login">Masuk</Link>
+        <div className="co-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {user && (
+            <button
+              onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
+              style={{
+                background: 'rgba(239,68,68,0.15)',
+                border: '1.5px solid rgba(239,68,68,0.4)',
+                color: '#F87171',
+                padding: '8px 18px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              ← Keluar
+            </button>
+          )}
+          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Sudah berlangganan?</span>
+          <Link to="/login" style={{ color: '#60A5FA', fontWeight: 700, fontSize: 13 }}>Masuk</Link>
         </div>
       </div>
 

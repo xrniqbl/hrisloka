@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { guardCompanyId } from '../lib/tenantGuard';
 
 // ── Snapshot ──────────────────────────────────────────────────
 export async function createSnapshot(companyId) {
@@ -10,43 +11,54 @@ export async function runAllSnapshots() {
 }
 
 export async function getSnapshots(companyId, limit = 30) {
-  let q = supabase
+  if (!guardCompanyId(companyId, 'getSnapshots')) return { data: [], error: null };
+  const { data, error } = await supabase
     .from('company_snapshots')
     .select('id, company_id, snapshot_date, attendance_count, leave_count, payroll_summary, created_at')
+    .eq('company_id', companyId)
     .order('snapshot_date', { ascending: false })
     .limit(limit);
-  if (companyId) q = q.eq('company_id', companyId);
-  return q;
+  return { data: data || [], error };
 }
 
-export async function getSnapshotDetail(id) {
-  return supabase
+// Get snapshot detail — MANDATORY company ownership
+export async function getSnapshotDetail(id, companyId) {
+  if (!guardCompanyId(companyId, 'getSnapshotDetail')) return { data: null, error: { message: 'company_id required' } };
+  const { data, error } = await supabase
     .from('company_snapshots')
     .select('*')
     .eq('id', id)
+    .eq('company_id', companyId)
     .single();
+  return { data, error };
 }
 
 // ── Backup Logs ───────────────────────────────────────────────
-export async function getBackupLogs(limit = 50) {
-  return supabase
+// MANDATORY company scope
+export async function getBackupLogs(companyId, limit = 50) {
+  if (!guardCompanyId(companyId, 'getBackupLogs')) return { data: [], error: null };
+  const { data, error } = await supabase
     .from('backup_logs')
     .select('*, companies(name)')
+    .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .limit(limit);
+  return { data: data || [], error };
 }
 
 // ── Deleted Records (Soft Delete) ────────────────────────────
 export async function getDeletedRecords({ tableName, companyId, limit = 50 } = {}) {
+  if (!guardCompanyId(companyId, 'getDeletedRecords')) return { data: [], error: null };
   let q = supabase
     .from('deleted_records')
     .select('id, company_id, table_name, record_id, deleted_at, restore_key, is_restored, record_data')
     .eq('is_restored', false)
+    .eq('company_id', companyId)
     .order('deleted_at', { ascending: false })
     .limit(limit);
   if (tableName) q = q.eq('table_name', tableName);
-  if (companyId) q = q.eq('company_id', companyId);
-  return q;
+  const { data, error } = await q;
+  return { data: data || [], error };
 }
 
 export async function restoreRecord(restoreKey) {
@@ -57,31 +69,52 @@ export async function cleanupOldBackups() {
   return supabase.rpc('fn_cleanup_old_backups');
 }
 
-// ── Export CSV (client-side) ──────────────────────────────────
+// ── Export CSV (client-side) — FIXED: resolves subqueries before using .in() ──
 export async function exportCompanyDataCSV(companyId, tableName) {
-  const tableMap = {
-    employees: () => supabase
+  if (!guardCompanyId(companyId, 'exportCompanyDataCSV')) return { error: 'company_id required' };
+
+  if (tableName === 'employees') {
+    const { data, error } = await supabase
       .from('employees')
-      .select('id, employee_id, full_name, position, department_id, role, status, created_at')
-      .eq('company_id', companyId),
-    payroll_records: () => supabase
-      .from('payroll_records')
-      .select('id, employee_id, pay_period_start, pay_period_end, gross_salary, net_salary, status')
-      .in('employee_id', supabase.from('employees').select('id').eq('company_id', companyId)),
-    attendance: () => supabase
-      .from('attendance')
-      .select('id, employee_id, date, check_in, check_out, status')
-      .in('employee_id', supabase.from('employees').select('id').eq('company_id', companyId)),
-  };
+      .select('id, employee_id, name, nip, position, division, role, status, created_at')
+      .eq('company_id', companyId);
+    if (error) return { error };
+    return buildCSVResult(data, tableName, companyId);
+  }
 
-  const query = tableMap[tableName];
-  if (!query) return { error: 'Table not supported for export' };
+  if (tableName === 'payroll_records' || tableName === 'attendance') {
+    // First resolve employee IDs for this company
+    const { data: emps, error: empErr } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('company_id', companyId);
+    if (empErr) return { error: empErr };
+    const employeeIds = (emps || []).map(e => e.id);
+    if (employeeIds.length === 0) return { data: '', count: 0 };
 
-  const { data, error } = await query();
-  if (error || !data) return { error };
+    let query;
+    if (tableName === 'payroll_records') {
+      query = supabase
+        .from('payroll_records')
+        .select('id, employee_id, period, base_salary, take_home_pay, status')
+        .in('employee_id', employeeIds);
+    } else {
+      query = supabase
+        .from('attendance')
+        .select('id, employee_id, date, clock_in, clock_out, status')
+        .in('employee_id', employeeIds);
+    }
 
-  // Convert to CSV
-  if (data.length === 0) return { data: '', count: 0 };
+    const { data, error } = await query;
+    if (error) return { error };
+    return buildCSVResult(data, tableName, companyId);
+  }
+
+  return { error: 'Table not supported for export' };
+}
+
+function buildCSVResult(data, tableName, companyId) {
+  if (!data || data.length === 0) return { data: '', count: 0 };
   const headers = Object.keys(data[0]).join(',');
   const rows = data.map(r =>
     Object.values(r).map(v =>

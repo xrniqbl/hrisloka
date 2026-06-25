@@ -40,8 +40,8 @@ export async function getMyUpdateRequests(employeeId) {
   return { data: data || [], error };
 }
 
-// Approve a profile update request (admin side)
-export async function approveRequest(requestId, reviewerId) {
+// Approve a profile update request (admin side) — MANDATORY company ownership
+export async function approveRequest(requestId, reviewerId, companyId) {
   const { data: req, error: fetchErr } = await supabase
     .from('profile_update_requests')
     .select('*')
@@ -67,10 +67,12 @@ export async function approveRequest(requestId, reviewerId) {
       updatePayload[fieldName] = newValue;
     }
 
-    const { error: updateErr } = await supabase
+    let empQuery = supabase
       .from('employees')
       .update(updatePayload)
       .eq('id', req.employee_id);
+    if (companyId) empQuery = empQuery.eq('company_id', companyId);
+    const { error: updateErr } = await empQuery;
     if (updateErr) return { error: updateErr };
   }
 

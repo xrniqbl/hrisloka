@@ -11,7 +11,7 @@ export async function submitReimbursement(employeeId, reimbData) {
       employee_id: employeeId,
       category: reimbData.category,
       date: reimbData.date || new Date().toISOString().split('T')[0],
-      amount: parseInt(reimbData.amount),
+      amount: parseFloat(reimbData.amount) || 0,
       receipt_url: reimbData.receiptUrl || null,
       notes: reimbData.notes,
       status: 'pending',

@@ -73,23 +73,31 @@ export async function deleteAsset(id, companyId) {
   return { error };
 }
 
-// Assign asset to employee
-export async function assignAsset(assetId, employeeId) {
+// Assign asset to employee — MANDATORY company ownership
+export async function assignAsset(assetId, employeeId, companyId) {
+  if (!guardCompanyId(companyId, 'assignAsset')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   const { data, error } = await supabase
     .from('assets')
     .update({ assigned_to: employeeId, status: 'in-use' })
     .eq('id', assetId)
+    .eq('company_id', companyId)
     .select()
     .single();
   return { data, error };
 }
 
-// Unassign asset
-export async function unassignAsset(assetId) {
+// Unassign asset — MANDATORY company ownership
+export async function unassignAsset(assetId, companyId) {
+  if (!guardCompanyId(companyId, 'unassignAsset')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   const { data, error } = await supabase
     .from('assets')
     .update({ assigned_to: null, status: 'available' })
     .eq('id', assetId)
+    .eq('company_id', companyId)
     .select()
     .single();
   return { data, error };

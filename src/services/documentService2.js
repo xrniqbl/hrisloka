@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { guardCompanyId } from '../lib/tenantGuard';
 
 // ── Employee Documents ────────────────────────────────────────────
 export async function getEmployeeDocuments(employeeId) {
@@ -19,7 +20,17 @@ export async function uploadEmployeeDocument({ employeeId, documentType, fileUrl
   }).select().single();
 }
 
-export async function reviewDocument(id, { status, notes, reviewerId }) {
+// Review document — MANDATORY company ownership via employee join
+export async function reviewDocument(id, { status, notes, reviewerId }, companyId) {
+  if (companyId) {
+    const { data: doc } = await supabase
+      .from('employee_documents')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!doc) return { data: null, error: { message: 'Document not found in your company' } };
+  }
   return supabase.from('employee_documents').update({
     status,
     notes,
@@ -33,13 +44,14 @@ export async function deleteEmployeeDocument(id) {
   return supabase.from('employee_documents').delete().eq('id', id);
 }
 
-// Get all pending documents (admin view)
+// Get all pending documents (admin view) — MANDATORY company scope
 export async function getPendingDocuments(companyId = null) {
-  let q = supabase
+  if (!guardCompanyId(companyId, 'getPendingDocuments')) return { data: [], error: null };
+  const { data, error } = await supabase
     .from('employee_documents')
-    .select('*, employees(name, nip, division, company_id)')
+    .select('*, employees!inner(name, nip, division, company_id)')
     .eq('status', 'pending')
+    .eq('employees.company_id', companyId)
     .order('created_at', { ascending: true });
-  if (companyId) q = q.eq('employees.company_id', companyId);
-  return q;
+  return { data: data || [], error };
 }

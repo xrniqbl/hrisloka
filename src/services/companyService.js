@@ -3,7 +3,7 @@ import { guardCompanyId } from '../lib/tenantGuard';
 
 // ── Company Code Validation ──────────────────────────────────────────────────
 
-/** Validate a company code and return company info if valid */
+/** Validate a company code and return company info if valid — also verifies company is active */
 export async function validateCompanyCode(code) {
   const { data, error } = await supabase
     .from('companies')
@@ -145,9 +145,12 @@ export async function selfRegisterEmployee({
 
 // ── Admin: Verify / Reject ────────────────────────────────────────────────────
 
-/** Accept a pending employee registration — verify company ownership */
+/** Accept a pending employee registration — MANDATORY company ownership */
 export async function acceptEmployeeRegistration(employeeId, verifiedById, assignRole = 'employee', companyId) {
-  let query = supabase
+  if (!guardCompanyId(companyId, 'acceptEmployeeRegistration')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const { data, error } = await supabase
     .from('employees')
     .update({
       account_status: 'active',
@@ -156,15 +159,19 @@ export async function acceptEmployeeRegistration(employeeId, verifiedById, assig
       verified_at: new Date().toISOString(),
       rejection_reason: null,
     })
-    .eq('id', employeeId);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.select().single();
+    .eq('id', employeeId)
+    .eq('company_id', companyId)
+    .select()
+    .single();
   return { data, error };
 }
 
-/** Reject a pending employee registration — verify company ownership */
+/** Reject a pending employee registration — MANDATORY company ownership */
 export async function rejectEmployeeRegistration(employeeId, verifiedById, reason, companyId) {
-  let query = supabase
+  if (!guardCompanyId(companyId, 'rejectEmployeeRegistration')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const { data, error } = await supabase
     .from('employees')
     .update({
       account_status: 'rejected',
@@ -172,9 +179,10 @@ export async function rejectEmployeeRegistration(employeeId, verifiedById, reaso
       verified_at: new Date().toISOString(),
       rejection_reason: reason || 'Tidak memenuhi syarat.',
     })
-    .eq('id', employeeId);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.select().single();
+    .eq('id', employeeId)
+    .eq('company_id', companyId)
+    .select()
+    .single();
   return { data, error };
 }
 

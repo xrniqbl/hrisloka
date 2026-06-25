@@ -19,11 +19,15 @@ export async function getActiveBranches(companyId) {
   return { data: data || [], error };
 }
 
-// Get branch by ID — companyId recommended to prevent cross-tenant reads
+// Get branch by ID — MANDATORY company_id for tenant isolation
 export async function getBranchById(id, companyId = null) {
-  let query = supabase.from('branches').select('*').eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.single();
+  if (!guardCompanyId(companyId, 'getBranchById')) return { data: null, error: { message: 'company_id required' } };
+  const { data, error } = await supabase
+    .from('branches')
+    .select('*')
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .single();
   return { data, error };
 }
 
@@ -100,8 +104,17 @@ export async function getBranchEmployeeCounts(companyId) {
   return { data: counts, error: null };
 }
 
-// Get branch holidays
-export async function getBranchHolidays(branchId) {
+// Get branch holidays — MANDATORY company ownership via branch
+export async function getBranchHolidays(branchId, companyId) {
+  if (!guardCompanyId(companyId, 'getBranchHolidays')) return { data: [], error: null };
+  // Verify branch belongs to this company
+  const { data: branch } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', branchId)
+    .eq('company_id', companyId)
+    .maybeSingle();
+  if (!branch) return { data: [], error: { message: 'Branch not found in your company' } };
   const { data, error } = await supabase
     .from('branch_holidays')
     .select('*, holidays(*)')
@@ -109,8 +122,18 @@ export async function getBranchHolidays(branchId) {
   return { data: data || [], error };
 }
 
-// Assign holiday to branch
-export async function assignHolidayToBranch(branchId, holidayId) {
+// Assign holiday to branch — MANDATORY company ownership via branch
+export async function assignHolidayToBranch(branchId, holidayId, companyId) {
+  if (!guardCompanyId(companyId, 'assignHolidayToBranch')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const { data: branch } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', branchId)
+    .eq('company_id', companyId)
+    .maybeSingle();
+  if (!branch) return { data: null, error: { message: 'Branch not found in your company' } };
   const { data, error } = await supabase
     .from('branch_holidays')
     .upsert({ branch_id: branchId, holiday_id: holidayId }, { onConflict: 'branch_id,holiday_id' })
@@ -119,8 +142,18 @@ export async function assignHolidayToBranch(branchId, holidayId) {
   return { data, error };
 }
 
-// Remove holiday from branch
-export async function removeHolidayFromBranch(branchId, holidayId) {
+// Remove holiday from branch — MANDATORY company ownership via branch
+export async function removeHolidayFromBranch(branchId, holidayId, companyId) {
+  if (!guardCompanyId(companyId, 'removeHolidayFromBranch')) {
+    return { error: { message: 'company_id required' } };
+  }
+  const { data: branch } = await supabase
+    .from('branches')
+    .select('id')
+    .eq('id', branchId)
+    .eq('company_id', companyId)
+    .maybeSingle();
+  if (!branch) return { error: { message: 'Branch not found in your company' } };
   const { error } = await supabase
     .from('branch_holidays')
     .delete()

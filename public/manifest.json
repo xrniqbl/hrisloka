@@ -2,11 +2,13 @@
     "name": "HRIS Loka Employee",
     "short_name": "HRIS Loka",
     "description": "Modern Human Resource Information System — Employee Self-Service Portal",
+    "id": "/app/home",
     "start_url": "/app/home",
     "display": "standalone",
     "orientation": "portrait",
     "theme_color": "#0047AB",
     "background_color": "#F7F8FA",
+    "prefer_related_applications": false,
     "icons": [
         {
             "src": "/landing/hrislokalogo.jpeg",
@@ -32,21 +34,22 @@
             "name": "Clock In / Absensi",
             "short_name": "Clock In",
             "url": "/app/home",
-            "icons": [{ "src": "/landing/hrislokalogo.jpeg", "sizes": "any" }]
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
         },
         {
             "name": "Slip Gaji",
             "short_name": "Payslip",
             "url": "/app/payslip",
-            "icons": [{ "src": "/landing/hrislokalogo.jpeg", "sizes": "any" }]
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
         },
         {
             "name": "Pengajuan",
             "short_name": "Submissions",
             "url": "/app/submissions",
-            "icons": [{ "src": "/landing/hrislokalogo.jpeg", "sizes": "any" }]
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
         }
     ],
+    "screenshots": [],
     "categories": [
         "business",
         "productivity"

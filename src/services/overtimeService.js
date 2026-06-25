@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { guardCompanyId } from '../lib/tenantGuard';
+import { sendWhatsApp } from './whatsappService';
+import { sendPushToEmployee } from './pushService';
 
 // Get all overtime requests (admin) — MANDATORY company scope
 export async function getAllOvertime(branchId, companyId) {
@@ -42,30 +44,88 @@ export async function submitOvertime(employeeId, overtimeData) {
   return { data, error };
 }
 
-// Approve overtime
-export async function approveOvertime(id, approverId) {
+// Approve overtime — MANDATORY company ownership via employee join
+export async function approveOvertime(id, approverId, companyId) {
+  if (companyId) {
+    const { data: ot } = await supabase
+      .from('overtime_requests')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!ot) return { data: null, error: { message: 'Overtime request not found in your company' } };
+  }
   const { data, error } = await supabase
     .from('overtime_requests')
     .update({ status: 'approved', approved_by: approverId })
     .eq('id', id)
-    .select()
+    .select('*, employees(name, email, phone, auth_user_id)')
     .single();
+
+  // Auto-notify employee when approved
+  if (!error && data) {
+    const emp = data.employees;
+    const otDate = data.date || '';
+    const otHours = data.hours || 0;
+    if (emp?.phone) {
+      const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} (${otHours} jam) telah *DISETUJUI*.\n\n_HRIS Loka — Smart HR Platform_`;
+      sendWhatsApp(emp.phone, msg).catch(e => console.warn('[overtimeService] WA error:', e));
+    }
+    if (emp?.auth_user_id) {
+      sendPushToEmployee(emp.auth_user_id, 'HRIS Loka — Lembur Disetujui ✅', `Lembur ${otDate} (${otHours} jam) telah disetujui.`, '/app/overtime')
+        .catch(e => console.warn('[overtimeService] push error:', e));
+    }
+  }
+
   return { data, error };
 }
 
-// Reject overtime
-export async function rejectOvertime(id) {
+// Reject overtime — MANDATORY company ownership via employee join
+export async function rejectOvertime(id, companyId) {
+  if (companyId) {
+    const { data: ot } = await supabase
+      .from('overtime_requests')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!ot) return { data: null, error: { message: 'Overtime request not found in your company' } };
+  }
   const { data, error } = await supabase
     .from('overtime_requests')
     .update({ status: 'rejected' })
     .eq('id', id)
-    .select()
+    .select('*, employees(name, email, phone, auth_user_id)')
     .single();
+
+  // Auto-notify employee when rejected
+  if (!error && data) {
+    const emp = data.employees;
+    const otDate = data.date || '';
+    if (emp?.phone) {
+      const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} telah *DITOLAK*.\n\n_HRIS Loka — Smart HR Platform_`;
+      sendWhatsApp(emp.phone, msg).catch(e => console.warn('[overtimeService] WA error:', e));
+    }
+    if (emp?.auth_user_id) {
+      sendPushToEmployee(emp.auth_user_id, 'HRIS Loka — Lembur Ditolak ❌', `Lembur ${otDate} ditolak.`, '/app/overtime')
+        .catch(e => console.warn('[overtimeService] push error:', e));
+    }
+  }
+
   return { data, error };
 }
 
-// Delete overtime
-export async function deleteOvertime(id) {
+// Delete overtime — MANDATORY company ownership
+export async function deleteOvertime(id, companyId) {
+  if (companyId) {
+    const { data: ot } = await supabase
+      .from('overtime_requests')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!ot) return { error: { message: 'Overtime request not found in your company' } };
+  }
   const { error } = await supabase.from('overtime_requests').delete().eq('id', id);
   return { error };
 }

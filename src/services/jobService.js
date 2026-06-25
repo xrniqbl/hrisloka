@@ -26,7 +26,11 @@ export async function getOpenJobs(companyId) {
   return { data: data || [], error };
 }
 
+// Create job — MANDATORY company_id
 export async function createJob(job) {
+  if (!guardCompanyId(job.companyId, 'createJob')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   const { data, error } = await supabase
     .from('job_postings')
     .insert({
@@ -38,16 +42,19 @@ export async function createJob(job) {
       description: job.description,
       requirements: job.requirements || [],
       deadline: job.deadline,
-      company_id: job.companyId || null,
+      company_id: job.companyId,
     })
     .select()
     .single();
   return { data, error };
 }
 
-// Update job — verify company ownership
+// Update job — MANDATORY company ownership
 export async function updateJob(id, job, companyId) {
-  let query = supabase
+  if (!guardCompanyId(companyId, 'updateJob')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const { data, error } = await supabase
     .from('job_postings')
     .update({
       title: job.title,
@@ -59,17 +66,23 @@ export async function updateJob(id, job, companyId) {
       requirements: job.requirements,
       deadline: job.deadline,
     })
-    .eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.select().single();
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select()
+    .single();
   return { data, error };
 }
 
-// Delete job — verify company ownership
+// Delete job — MANDATORY company ownership
 export async function deleteJob(id, companyId) {
-  let query = supabase.from('job_postings').delete().eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { error } = await query;
+  if (!guardCompanyId(companyId, 'deleteJob')) {
+    return { error: { message: 'company_id required' } };
+  }
+  const { error } = await supabase
+    .from('job_postings')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId);
   return { error };
 }
 
@@ -114,7 +127,17 @@ export async function createCandidate(candidate) {
   return { data, error };
 }
 
-export async function updateCandidate(id, updates) {
+// Update candidate — verify ownership via job_postings company
+export async function updateCandidate(id, updates, companyId) {
+  if (companyId) {
+    const { data: cand } = await supabase
+      .from('candidates')
+      .select('id, job_postings!inner(company_id)')
+      .eq('id', id)
+      .eq('job_postings.company_id', companyId)
+      .maybeSingle();
+    if (!cand) return { data: null, error: { message: 'Candidate not found in your company' } };
+  }
   const { data, error } = await supabase
     .from('candidates')
     .update({
@@ -131,7 +154,17 @@ export async function updateCandidate(id, updates) {
   return { data, error };
 }
 
-export async function deleteCandidate(id) {
+// Delete candidate — verify ownership via job_postings company
+export async function deleteCandidate(id, companyId) {
+  if (companyId) {
+    const { data: cand } = await supabase
+      .from('candidates')
+      .select('id, job_postings!inner(company_id)')
+      .eq('id', id)
+      .eq('job_postings.company_id', companyId)
+      .maybeSingle();
+    if (!cand) return { error: { message: 'Candidate not found in your company' } };
+  }
   const { error } = await supabase.from('candidates').delete().eq('id', id);
   return { error };
 }

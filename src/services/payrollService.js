@@ -14,8 +14,9 @@ export async function getAllPayroll(period, companyId) {
   return { data: data || [], error };
 }
 
-// Get payroll for specific employee
+// Get payroll for specific employee — scoped by employee ownership
 export async function getMyPayroll(employeeId) {
+  if (!employeeId) return { data: [], error: null };
   const { data, error } = await supabase
     .from('payroll_records')
     .select('*')
@@ -24,8 +25,18 @@ export async function getMyPayroll(employeeId) {
   return { data: data || [], error };
 }
 
-// Save payroll record
-export async function savePayroll(record) {
+// Save payroll record — verify employee belongs to the caller's company
+export async function savePayroll(record, companyId) {
+  if (companyId) {
+    // Verify the employee belongs to this company before saving
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', record.employee_id)
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (!emp) return { data: null, error: { message: 'Employee not found in your company' } };
+  }
   const { data, error } = await supabase
     .from('payroll_records')
     .upsert({
@@ -49,8 +60,20 @@ export async function savePayroll(record) {
   return { data, error };
 }
 
-// Batch save payroll records
-export async function batchSavePayroll(records) {
+// Batch save payroll records — verify all employees belong to the caller's company
+export async function batchSavePayroll(records, companyId) {
+  if (companyId) {
+    const employeeIds = [...new Set(records.map(r => r.employee_id))];
+    const { data: emps } = await supabase
+      .from('employees')
+      .select('id')
+      .in('id', employeeIds)
+      .eq('company_id', companyId);
+    const validIds = new Set((emps || []).map(e => e.id));
+    const validRecords = records.filter(r => validIds.has(r.employee_id));
+    if (validRecords.length === 0) return { data: [], error: { message: 'No valid employees found in your company' } };
+    records = validRecords;
+  }
   const { data, error } = await supabase
     .from('payroll_records')
     .upsert(records, { onConflict: 'employee_id,period' })
@@ -58,13 +81,22 @@ export async function batchSavePayroll(records) {
   return { data: data || [], error };
 }
 
-// Mark payroll as paid
-export async function markAsPaid(id) {
-  const { data, error } = await supabase
+// Mark payroll as paid — verify company ownership via join
+export async function markAsPaid(id, companyId) {
+  let query = supabase
     .from('payroll_records')
     .update({ status: 'paid', paid_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single();
+    .eq('id', id);
+  if (companyId) {
+    // Only allow marking as paid if the employee belongs to this company
+    const { data: record } = await supabase
+      .from('payroll_records')
+      .select('employee_id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!record) return { data: null, error: { message: 'Payroll record not found in your company' } };
+  }
+  const { data, error } = await query.select().single();
   return { data, error };
 }

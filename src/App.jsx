@@ -178,11 +178,21 @@ function PageLoader() {
 function RootRedirect() {
   const { user, employee, loading, hasOnboarding } = useAuth();
   if (loading) return <PageLoader />;
-  if (!user) return (
+
+  // Always show landing page on root "/" — regardless of auth state
+  // Users navigate to /dashboard, /login, etc. themselves
+  return (
     <Suspense fallback={<PageLoader />}>
       <LandingPage />
     </Suspense>
   );
+}
+
+/* Smart redirect for authenticated users hitting protected routes */
+function AuthRedirect() {
+  const { user, employee, loading, hasOnboarding } = useAuth();
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/" replace />;
   const role = getRole(employee);
   const founderUser = isFounder(user, employee);
 
@@ -198,13 +208,9 @@ function RootRedirect() {
     const isGoogleUser = user.app_metadata?.provider === 'google';
     const hasGrace = localStorage.getItem('hrisync_sub_grace');
     if (isGoogleUser && !hasGrace) {
-      // Google user not in employees table.
-      // hasOnboarding = true  → they already registered a company but no employee record → block
-      // hasOnboarding = false → brand new Google signup → send to checkout (same as email signup)
       return <Navigate to={hasOnboarding ? '/not-registered' : '/checkout'} replace />;
     }
     if (!hasGrace) {
-      // New email/password signup → onboarding checkout
       return <Navigate to="/checkout" replace />;
     }
   }

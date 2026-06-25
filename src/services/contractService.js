@@ -21,23 +21,34 @@ export async function getTemplateById(id) {
   return await supabase.from('contract_templates').select('*').eq('id', id).single();
 }
 
+// Create template — MANDATORY company_id
 export async function createTemplate(template) {
+  if (!guardCompanyId(template.company_id, 'createTemplate')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   return await supabase.from('contract_templates').insert(template).select().single();
 }
 
+// Update template — MANDATORY company ownership
 export async function updateTemplate(id, updates, companyId) {
-  let query = supabase
+  if (!guardCompanyId(companyId, 'updateTemplate')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  return await supabase
     .from('contract_templates')
     .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  return query.select().single();
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select()
+    .single();
 }
 
+// Delete template — MANDATORY company ownership
 export async function deleteTemplate(id, companyId) {
-  let query = supabase.from('contract_templates').delete().eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  return query;
+  if (!guardCompanyId(companyId, 'deleteTemplate')) {
+    return { error: { message: 'company_id required' } };
+  }
+  return await supabase.from('contract_templates').delete().eq('id', id).eq('company_id', companyId);
 }
 
 // ─── Employee Contracts ───────────────────────────────────────────────────────
@@ -68,24 +79,63 @@ export async function getContractsByEmployee(employeeId) {
     .order('created_at', { ascending: false });
 }
 
-export async function createContract(contract) {
+// Create contract — verify employee belongs to the company
+export async function createContract(contract, companyId) {
+  if (companyId) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', contract.employee_id)
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (!emp) return { data: null, error: { message: 'Employee not found in your company' } };
+  }
   return await supabase.from('employee_contracts').insert(contract).select().single();
 }
 
-export async function updateContract(id, updates) {
-  return await supabase
+// Update contract — verify ownership via employee join
+export async function updateContract(id, updates, companyId) {
+  let query = supabase
     .from('employee_contracts')
     .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single();
+    .eq('id', id);
+  if (companyId) {
+    const { data: contract } = await supabase
+      .from('employee_contracts')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!contract) return { data: null, error: { message: 'Contract not found in your company' } };
+  }
+  return await query.select().single();
 }
 
-export async function deleteContract(id) {
+// Delete contract — verify ownership via employee join
+export async function deleteContract(id, companyId) {
+  if (companyId) {
+    const { data: contract } = await supabase
+      .from('employee_contracts')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!contract) return { error: { message: 'Contract not found in your company' } };
+  }
   return await supabase.from('employee_contracts').delete().eq('id', id);
 }
 
-export async function signContract(id, signatureData, signedBy = 'employee') {
+// Sign contract — verify ownership via employee join
+export async function signContract(id, signatureData, signedBy = 'employee', companyId) {
+  if (companyId) {
+    const { data: contract } = await supabase
+      .from('employee_contracts')
+      .select('id, employees!inner(company_id)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!contract) return { data: null, error: { message: 'Contract not found in your company' } };
+  }
   const updates = {
     status: 'signed',
     signed_at: new Date().toISOString(),

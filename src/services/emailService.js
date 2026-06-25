@@ -9,6 +9,17 @@ const IS_DEV = import.meta.env.DEV;
 const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY; // Used only in dev as fallback
 const FROM_EMAIL = import.meta.env.VITE_FROM_EMAIL || 'noreply@hrisloka.id';
 
+// Sanitize user input to prevent XSS in email HTML
+function escapeHtml(str) {
+  if (typeof str !== 'string') return String(str ?? '');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 /**
  * Core send — routes through /api/send-email in production, direct Resend in dev.
  */
@@ -44,6 +55,11 @@ async function sendDirectResend(type, to, payload) {
 
   if (type === 'leave_approval') {
     const { employeeName, status, leaveType, startDate, endDate, notes } = payload;
+    const safeName = escapeHtml(employeeName);
+    const safeLeave = escapeHtml(leaveType);
+    const safeStart = escapeHtml(startDate);
+    const safeEnd = escapeHtml(endDate);
+    const safeNotes = escapeHtml(notes);
     const statusLabel = status === 'approved' ? 'Disetujui ✅' : 'Ditolak ❌';
     const statusColor = status === 'approved' ? '#16A34A' : '#DC2626';
     subject = `[HRIS Loka] Pengajuan Cuti ${statusLabel}`;
@@ -52,34 +68,39 @@ async function sendDirectResend(type, to, payload) {
         <h1 style="color:#fff;margin:0;font-size:20px">HRIS Loka</h1>
       </div>
       <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
-        <p>Halo, <strong>${employeeName}</strong>,</p>
+        <p>Halo, <strong>${safeName}</strong>,</p>
         <p>Pengajuan cuti kamu telah diproses:</p>
         <div style="background:#F9FAFB;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid ${statusColor}">
           <div style="font-size:18px;font-weight:700;color:${statusColor};margin-bottom:12px">${statusLabel}</div>
           <table style="width:100%;font-size:13px;color:#374151">
-            <tr><td style="padding:4px 0;color:#6B7280">Jenis Cuti</td><td style="font-weight:600">${leaveType}</td></tr>
-            <tr><td style="padding:4px 0;color:#6B7280">Tanggal Mulai</td><td style="font-weight:600">${startDate}</td></tr>
-            <tr><td style="padding:4px 0;color:#6B7280">Tanggal Selesai</td><td style="font-weight:600">${endDate}</td></tr>
-            ${notes ? `<tr><td style="padding:4px 0;color:#6B7280">Catatan</td><td style="font-weight:600">${notes}</td></tr>` : ''}
+            <tr><td style="padding:4px 0;color:#6B7280">Jenis Cuti</td><td style="font-weight:600">${safeLeave}</td></tr>
+            <tr><td style="padding:4px 0;color:#6B7280">Tanggal Mulai</td><td style="font-weight:600">${safeStart}</td></tr>
+            <tr><td style="padding:4px 0;color:#6B7280">Tanggal Selesai</td><td style="font-weight:600">${safeEnd}</td></tr>
+            ${notes ? `<tr><td style="padding:4px 0;color:#6B7280">Catatan</td><td style="font-weight:600">${safeNotes}</td></tr>` : ''}
           </table>
         </div>
         <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email otomatis dari HRIS Loka.</p>
       </div>
     </div>`;
-    text = `Halo ${employeeName}, cuti kamu ${statusLabel}. ${leaveType}: ${startDate} — ${endDate}.`;
+    text = `Halo ${safeName}, cuti kamu ${statusLabel}. ${safeLeave}: ${safeStart} — ${safeEnd}.`;
   } else if (type === 'payslip') {
     const { employeeName, month, year, netSalary } = payload;
-    subject = `[HRIS Loka] Slip Gaji ${month} ${year} Tersedia`;
+    const safeName = escapeHtml(employeeName);
+    const safeMonth = escapeHtml(month);
+    const safeYear = escapeHtml(year);
+    subject = `[HRIS Loka] Slip Gaji ${safeMonth} ${safeYear} Tersedia`;
     html = `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-      <p>Halo, <strong>${employeeName}</strong>, slip gaji ${month} ${year} sudah tersedia. Total: <strong>Rp ${Number(netSalary).toLocaleString('id-ID')}</strong></p>
+      <p>Halo, <strong>${safeName}</strong>, slip gaji ${safeMonth} ${safeYear} sudah tersedia. Total: <strong>Rp ${Number(netSalary).toLocaleString('id-ID')}</strong></p>
     </div>`;
-    text = `Halo ${employeeName}, slip gaji ${month} ${year} sudah tersedia. Total: Rp ${Number(netSalary).toLocaleString('id-ID')}.`;
+    text = `Halo ${safeName}, slip gaji ${safeMonth} ${safeYear} sudah tersedia. Total: Rp ${Number(netSalary).toLocaleString('id-ID')}.`;
   } else if (type === 'reimbursement') {
     const { employeeName, status, amount, category } = payload;
+    const safeName = escapeHtml(employeeName);
+    const safeCategory = escapeHtml(category);
     const statusLabel = status === 'approved' ? 'Disetujui ✅' : status === 'paid' ? 'Dibayarkan ✅' : 'Ditolak ❌';
     subject = `[HRIS Loka] Reimbursement ${statusLabel}`;
-    html = `<p>Reimbursement ${category} Rp ${Number(amount).toLocaleString('id-ID')} kamu: ${statusLabel}</p>`;
-    text = `Reimbursement ${category} Rp ${Number(amount).toLocaleString('id-ID')} kamu: ${statusLabel}`;
+    html = `<p>Reimbursement ${safeCategory} Rp ${Number(amount).toLocaleString('id-ID')} kamu: ${statusLabel}</p>`;
+    text = `Reimbursement ${safeCategory} Rp ${Number(amount).toLocaleString('id-ID')} kamu: ${statusLabel}`;
   } else {
     return { success: false, error: `Unknown type: ${type}` };
   }

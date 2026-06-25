@@ -1,8 +1,12 @@
-const CACHE_NAME = 'HRIS Loka-v4';
+const CACHE_NAME = 'HRIS Loka-v5';
 // Separate cache for face AI models — these are large (7MB) and never change
 const FACE_MODEL_CACHE = 'face-models-v1';
 // Background sync queue name
 const SYNC_QUEUE = 'attendance-sync';
+// Max cached entries to prevent unbounded growth
+const MAX_CACHE_ENTRIES = 200;
+// Max retry attempts for background sync
+const MAX_SYNC_RETRIES = 5;
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -21,16 +25,21 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
-// Activate — clean old caches (but keep face model cache)
+// Activate — clean old caches AND evict stale entries within current cache
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(
-                keys
-                  .filter((key) => key !== CACHE_NAME && key !== FACE_MODEL_CACHE)
-                  .map((key) => caches.delete(key))
-            )
-        )
+        Promise.all([
+            // Delete old versioned caches
+            caches.keys().then((keys) =>
+                Promise.all(
+                    keys
+                      .filter((key) => key !== CACHE_NAME && key !== FACE_MODEL_CACHE)
+                      .map((key) => caches.delete(key))
+                )
+            ),
+            // Evict stale entries within the current cache to prevent unbounded growth
+            trimCache(CACHE_NAME, MAX_CACHE_ENTRIES),
+        ])
     );
     self.clients.claim();
 
@@ -137,6 +146,14 @@ async function replayAttendanceQueue() {
         const items = await getAllFromStore(store);
 
         for (const item of items) {
+            // Check retry count — remove items that exceed max retries
+            const retries = item.retries || 0;
+            if (retries >= MAX_SYNC_RETRIES) {
+                console.warn(`[SW] Background sync: max retries (${MAX_SYNC_RETRIES}) reached for item ${item.id}, removing`);
+                await deleteFromStore(db, item.id);
+                continue;
+            }
+
             try {
                 const res = await fetch(item.url, {
                     method: item.method,
@@ -145,17 +162,47 @@ async function replayAttendanceQueue() {
                 });
                 if (res.ok) {
                     // Remove from queue on success
-                    const delTx = db.transaction('sync_queue', 'readwrite');
-                    delTx.objectStore('sync_queue').delete(item.id);
+                    await deleteFromStore(db, item.id);
+                    console.log('[SW] Background sync: success for', item.id);
+                } else {
+                    // Increment retry count
+                    await updateRetryCount(db, item.id, retries + 1);
                 }
             } catch {
-                // Will be retried on next sync
-                console.log('[SW] Background sync: retry failed for', item.id);
+                // Increment retry count on failure
+                await updateRetryCount(db, item.id, retries + 1);
+                console.log(`[SW] Background sync: retry ${retries + 1}/${MAX_SYNC_RETRIES} failed for`, item.id);
             }
         }
     } catch (err) {
         console.error('[SW] Background sync error:', err);
     }
+}
+
+function deleteFromStore(db, id) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('sync_queue', 'readwrite');
+        tx.objectStore('sync_queue').delete(id);
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+    });
+}
+
+function updateRetryCount(db, id, retries) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('sync_queue', 'readwrite');
+        const store = tx.objectStore('sync_queue');
+        const getReq = store.get(id);
+        getReq.onsuccess = () => {
+            const item = getReq.result;
+            if (item) {
+                item.retries = retries;
+                store.put(item);
+            }
+        };
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+    });
 }
 
 function openSyncDB() {
@@ -205,6 +252,23 @@ self.addEventListener('push', (event) => {
         })
     );
 });
+
+// ── Cache Eviction — trim cache to maxEntries (LRU: evict oldest) ─────────
+async function trimCache(cacheName, maxEntries) {
+    try {
+        const cache = await caches.open(cacheName);
+        const keys = await cache.keys();
+        if (keys.length <= maxEntries) return;
+        // Delete oldest entries (first in cache = oldest)
+        const toDelete = keys.length - maxEntries;
+        for (let i = 0; i < toDelete; i++) {
+            await cache.delete(keys[i]);
+        }
+        console.log(`[SW] Cache trimmed: removed ${toDelete} stale entries from ${cacheName}`);
+    } catch (err) {
+        console.warn('[SW] Cache trim error:', err);
+    }
+}
 
 // Notification Click — open the relevant page
 self.addEventListener('notificationclick', (event) => {

@@ -38,9 +38,12 @@ export async function createDepartment(dept) {
   return { data, error };
 }
 
-// Update department — verify company ownership
+// Update department — MANDATORY company ownership
 export async function updateDepartment(id, dept, companyId) {
-  let query = supabase
+  if (!guardCompanyId(companyId, 'updateDepartment')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const { data, error } = await supabase
     .from('departments')
     .update({
       name: dept.name,
@@ -49,17 +52,23 @@ export async function updateDepartment(id, dept, companyId) {
       description: dept.description,
       is_active: dept.is_active,
     })
-    .eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.select().single();
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select()
+    .single();
   return { data, error };
 }
 
-// Delete department — verify company ownership
+// Delete department — MANDATORY company ownership
 export async function deleteDepartment(id, companyId) {
-  let query = supabase.from('departments').delete().eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { error } = await query;
+  if (!guardCompanyId(companyId, 'deleteDepartment')) {
+    return { error: { message: 'company_id required' } };
+  }
+  const { error } = await supabase
+    .from('departments')
+    .delete()
+    .eq('id', id)
+    .eq('company_id', companyId);
   return { error };
 }
 
