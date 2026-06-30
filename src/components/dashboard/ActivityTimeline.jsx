@@ -1,4 +1,4 @@
-export default function ActivityTimeline({ employees, todayAttendance, loading }) {
+export default function ActivityTimeline({ employees = [], todayAttendance = [], loading }) {
   if (loading) return <ActivityTimelineSkeleton />;
 
   // Group employees by division

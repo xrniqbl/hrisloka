@@ -1,22 +1,223 @@
 /* =============================================== */
-/* Dashboard Layout — Premium Container            */
+/* Dashboard Layout — Pixel-Perfect Redesign       */
+/* Font: Inter Tight, Width: 220px sidebar         */
 /* =============================================== */
 
 .layout-wrapper {
   display: flex;
   min-height: 100vh;
-  background: var(--bg);
+  background: #FAFAFB;
+  font-family: 'Inter Tight', sans-serif;
+}
+
+[data-theme="dark"] .layout-wrapper {
+  background: #0F1117;
 }
 
 .layout-content {
   flex: 1;
-  margin-left: var(--sidebar-width);
-  padding: 24px 28px;
+  margin-left: 220px;
+  padding: 0 24px 24px;
   min-height: 100vh;
-  transition: margin-left var(--transition-normal);
-  max-width: calc(100vw - var(--sidebar-width));
-  /* Prevent content from becoming too wide on ultra-wide screens */
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: calc(100vw - 220px);
   contain: layout;
+}
+
+/* ── Top Navbar ──────────────────────────────────────────────────── */
+.top-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  margin: 0 -24px 24px;
+  flex-shrink: 0;
+  gap: 24px;
+}
+
+[data-theme="dark"] .top-navbar {
+  background: #1A1D27;
+  border-bottom-color: #2A2D3A;
+}
+
+.top-navbar-left {
+  flex-shrink: 0;
+}
+
+.top-navbar-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  font-family: 'Inter Tight', sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 120%;
+}
+
+[data-theme="dark"] .top-navbar-title {
+  color: #E4E9F2;
+}
+
+.top-navbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 480px;
+}
+
+.top-navbar-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #F8F8F8;
+  border: 1px solid #E5E7EB;
+  border-radius: 999px;
+  padding: 12px 18px;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.top-navbar-search:focus-within {
+  border-color: #5654D4;
+  box-shadow: 0 0 0 3px rgba(86, 84, 212, 0.08);
+}
+
+[data-theme="dark"] .top-navbar-search {
+  background: #23262F;
+  border-color: #2A2D3A;
+}
+
+.top-navbar-search svg {
+  color: #6B7280;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.top-navbar-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 400;
+  color: #111827;
+  font-family: 'Inter Tight', sans-serif;
+}
+
+.top-navbar-search input::placeholder {
+  color: #6B7280;
+}
+
+[data-theme="dark"] .top-navbar-search input {
+  color: #E4E9F2;
+}
+
+.top-navbar-search kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9CA3AF;
+  font-family: 'Inter Tight', sans-serif;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .top-navbar-search kbd {
+  background: #1A1D27;
+  border-color: #333644;
+  color: #5E6A7E;
+}
+
+.top-navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Create New Button */
+.btn-create-new {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: #5654D4;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: 'Inter Tight', sans-serif;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(86, 84, 212, 0.2);
+}
+
+.btn-create-new:hover {
+  background: #3230C0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(86, 84, 212, 0.35);
+}
+
+/* User Avatar */
+.top-navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.top-navbar-user:hover {
+  background: #F3F4F6;
+}
+
+[data-theme="dark"] .top-navbar-user:hover {
+  background: #23262F;
+}
+
+.top-navbar-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #5654D4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #FFFFFF;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.top-navbar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.top-navbar-username {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .top-navbar-username {
+  color: #E4E9F2;
 }
 
 @keyframes spin {
@@ -24,33 +225,85 @@
   to   { transform: rotate(360deg); }
 }
 
-/* Tablet */
-@media (max-width: 1024px) {
-  .layout-content {
-    padding: 20px 20px;
+/* ── Dashboard Greeting ──────────────────────────────────────────── */
+.dashboard-greeting {
+  margin-bottom: 20px;
+}
+
+.dashboard-greeting-sub {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
+  line-height: 150%;
+  margin: 0 0 2px;
+}
+
+.dashboard-greeting-name {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.03em;
+  line-height: 120%;
+  margin: 0;
+}
+
+[data-theme="dark"] .dashboard-greeting-name {
+  color: #E4E9F2;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .top-navbar-search {
+    max-width: 380px;
   }
 }
 
-/* Mobile */
+@media (max-width: 1024px) {
+  .layout-content {
+    padding: 0 16px 16px;
+  }
+  .top-navbar {
+    margin: 0 -16px 20px;
+    padding: 0 16px;
+    height: 68px;
+  }
+  .top-navbar-title {
+    font-size: 20px;
+  }
+  .top-navbar-center {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   .layout-content {
     margin-left: 0;
-    padding: 16px;
-    padding-top: calc(var(--header-height) + 16px);
+    padding: 0 12px 12px;
     max-width: 100vw;
   }
-}
-
-/* Large desktop — cap padding so content doesn't stretch too thin */
-@media (min-width: 1440px) {
-  .layout-content {
-    padding: 28px 36px;
+  .top-navbar {
+    margin: 0 -12px 16px;
+    padding: 0 12px;
+    height: 60px;
+    gap: 12px;
+  }
+  .top-navbar-title {
+    font-size: 18px;
+  }
+  .btn-create-new span {
+    display: none;
+  }
+  .top-navbar-username {
+    display: none;
   }
 }
 
-/* Ultra-wide — add max-width constraint to inner content */
-@media (min-width: 1600px) {
+@media (min-width: 1440px) {
   .layout-content {
-    padding: 28px 40px;
+    padding: 0 32px 24px;
+  }
+  .top-navbar {
+    margin: 0 -32px 24px;
+    padding: 0 32px;
   }
 }

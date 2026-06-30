@@ -11,7 +11,7 @@ const chartFont = { family: 'Inter', weight: '500' };
 const tooltipConfig = { backgroundColor: 'rgba(15, 23, 42, 0.92)', cornerRadius: 10, padding: { x: 10, y: 14 }, titleFont: { ...chartFont, weight: '600' }, bodyFont: chartFont };
 const legendConfig = { position: 'top', align: 'end', labels: { boxWidth: 8, boxHeight: 8, borderRadius: 4, useBorderRadius: true, color: '#9CA3AF', font: { ...chartFont, size: 11 }, padding: 16 } };
 
-export default function ChartsSection({ trendData, employees, todayAttendance, demoTab, setDemoTab, widgets }) {
+export default function ChartsSection({ trendData = { labels: [], datasets: [] }, employees = [], todayAttendance = [], demoTab, setDemoTab, widgets = {} }) {
   // Demographics computation
   const demographics = useMemo(() => {
     const permanent = employees.filter(e => e.status === 'permanent').length;

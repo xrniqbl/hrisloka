@@ -1,294 +1,477 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { updateSEOTags } from '../lib/seo';
+import { t } from './LandingTranslations';
 import './LandingPage.css';
 
-/* ── Scroll reveal ── */
+/* ─── Language Context ─── */
+const LangCtx = createContext({ lang: 'en', setLang: () => {} });
+const useLang = () => {
+  const { lang } = useContext(LangCtx);
+  return t[lang];
+};
+
+/* ─── Reveal hook ─── */
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('.reveal');
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-    }, { threshold: 0.12 });
-    els.forEach((el) => io.observe(el));
+    const els = document.querySelectorAll('.rv');
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }),
+      { threshold: 0.08 }
+    );
+    els.forEach(el => io.observe(el));
     return () => io.disconnect();
   }, []);
 }
 
-/* ── Icons ── */
-const I = {
-  db: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>),
-  clock: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>),
-  chart: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>),
-  play: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>),
-  check: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M20 6 9 17l-5-5"/></svg>),
-  star: (<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01z"/></svg>),
-  arrow: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>),
-  chevron: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>),
-};
+/* ─── Navbar ─── */
+function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { lang, setLang } = useContext(LangCtx);
+  const T = t[lang].nav;
 
-function Logo({ light }) {
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', fn);
+    return () => window.removeEventListener('scroll', fn);
+  }, []);
+
   return (
-    <div className={'lp-logo' + (light ? ' light' : '')}>
-      <span className="lp-logo-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3 4 7v6c0 4.5 3.4 7.3 8 8 4.6-.7 8-3.5 8-8V7z"/><path d="m9 12 2 2 4-4"/></svg>
-      </span>
-      <span className="lp-logo-text">SolveHR</span>
-    </div>
+    <nav className={`nav${scrolled ? ' nav--scrolled' : ''}`}>
+      <div className="nav__inner">
+        <Link to="/landing" className="nav__logo">
+          <span className="nav__logo-mark">H</span>
+          <span className="nav__logo-text">HRIS<span>Loka</span></span>
+        </Link>
+        <div className={`nav__links${menuOpen ? ' nav__links--open' : ''}`}>
+          <a href="#features">{T.features}</a>
+          <a href="#pricing">{T.pricing}</a>
+          <a href="#about">{T.about}</a>
+          <a href="#faq">{T.contact}</a>
+        </div>
+        <div className="nav__right">
+          {/* Language Toggle */}
+          <button
+            className="lang-toggle"
+            onClick={() => setLang(lang === 'en' ? 'id' : 'en')}
+            aria-label="Toggle language"
+          >
+            <span className={lang === 'en' ? 'lang-toggle__active' : ''}>EN</span>
+            <span className="lang-toggle__sep">|</span>
+            <span className={lang === 'id' ? 'lang-toggle__active' : ''}>ID</span>
+          </button>
+          <Link to="/login" className="nav__login">{T.signin}</Link>
+          <Link to="/login" className="btn btn--pill btn--primary nav__cta">{T.cta}</Link>
+          <button className="nav__burger" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">
+            <span /><span /><span />
+          </button>
+        </div>
+      </div>
+    </nav>
   );
 }
 
-const FAQS = [
-  { q: 'How secure is SolveHR?', a: 'SolveHR uses bank-grade AES-256 encryption, role-based access control, and continuous security monitoring to keep your HR data fully protected at all times.' },
-  { q: 'Is SolveHR suitable for small businesses?', a: 'Absolutely. Our Basic plan is designed for growing teams and small businesses, giving you essential HR tools without the enterprise price tag.' },
-  { q: 'Can I upgrade my plan later?', a: 'Yes. You can upgrade or downgrade your plan anytime directly from your dashboard, and changes take effect immediately.' },
-  { q: 'What kind of support do you offer?', a: 'We provide email and chat support on all plans, with priority and dedicated support available on Pro and Enterprise plans.' },
-  { q: 'Can SolveHR integrate with other software we use?', a: 'SolveHR offers seamless integrations and an open API so you can connect payroll, accounting, and collaboration tools you already use.' },
+/* ─── Hero ─── */
+function Hero() {
+  const T = useLang();
+  const lines = T.hero.h1.split('\n');
+  return (
+    <section className="hero">
+      <div className="hero__bg-glow" />
+      <div className="wrap hero__inner">
+
+        <h1 className="hero__h1 rv">
+          {lines.map((l, i) => <span key={i}>{l}<br /></span>)}
+        </h1>
+        <p className="hero__sub rv">{T.hero.sub}</p>
+        <div className="hero__btns rv">
+          <Link to="/login" className="btn btn--pill btn--primary btn--lg">{T.hero.cta}</Link>
+          <button className="btn btn--pill btn--ghost btn--lg">
+            <span className="play">▶</span> {T.hero.watch}
+          </button>
+        </div>
+        <p className="hero__trust rv">{T.hero.trust}</p>
+        <div className="hero__mockup rv">
+          <img src="/landing/db.png" alt="HRIS Loka Dashboard" className="hero__db" />
+          <div className="hero__mockup-fade" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Logos ─── */
+function Logos() {
+  const T = useLang();
+  const brands = ['PT. Soltan Pilau', 'Ox The Slush & Base', 'PT. Nusantara Dinan', 'FedEx', 'Toyota'];
+  return (
+    <section className="logos">
+      <div className="wrap">
+        <p className="logos__label rv">{T.logos.label}</p>
+        <div className="logos__row rv">
+          {brands.map((b, i) => <span key={i} className="logos__item">{b}</span>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Features ─── */
+const featureIcons = [
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
 ];
 
+function Features() {
+  const T = useLang();
+  return (
+    <section className="features" id="features">
+      <div className="wrap">
+        <div className="section-head rv">
+          <span className="eyebrow">{T.features.eyebrow}</span>
+          <h2>{T.features.h2.split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}</h2>
+        </div>
+        <div className="features__grid">
+          {T.features.items.map((f, i) => (
+            <div key={i} className="feat-card rv" style={{ transitionDelay: `${i * 0.1}s` }}>
+              <div className="feat-card__icon">{featureIcons[i]}</div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── How It Works ─── */
+function HowItWorks() {
+  const T = useLang();
+  const steps = T.how.steps;
+  return (
+    <section className="how" id="about">
+      <div className="wrap">
+        <div className="section-head rv">
+          <span className="eyebrow">{T.how.eyebrow}</span>
+          <h2>{T.how.h2.split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}</h2>
+        </div>
+        <div className="how__grid">
+          <div className="how-card rv">
+            <div className="how-card__num">01</div>
+            <h3>{steps[0].title}</h3>
+            <div className="how-form" style={{ pointerEvents: 'none' }}>
+              <input className="how-input" type="text" placeholder="Company Name" readOnly tabIndex={-1} />
+              <input className="how-input" type="email" placeholder="Work Email" readOnly tabIndex={-1} />
+            </div>
+            {(steps[0].checks || []).map((c, i) => (
+              <div key={i} className="how-check">
+                <span className="how-check__icon">✓</span>{c}
+              </div>
+            ))}
+            <button className="btn btn--pill btn--primary" style={{ marginTop: 16, pointerEvents: 'none' }}>{steps[0].trialBtn}</button>
+          </div>
+          <div className="how-card rv" style={{ transitionDelay: '.1s' }}>
+            <div className="how-card__num">02</div>
+            <h3>{steps[1].title}</h3>
+            <div className="how-form" style={{ pointerEvents: 'none' }}>
+              <input className="how-input" type="text" placeholder="Department" readOnly tabIndex={-1} />
+              <select className="how-input" disabled tabIndex={-1}><option>Select Role</option></select>
+            </div>
+            <button className="btn btn--pill btn--primary" style={{ marginTop: 16, width: '100%', justifyContent: 'center', pointerEvents: 'none' }}>{steps[1].savebtn}</button>
+          </div>
+          <div className="how-card rv" style={{ transitionDelay: '.2s' }}>
+            <div className="how-card__num">03</div>
+            <h3>{steps[2].title}</h3>
+            {['Employee Management','Attendance Tracking','Payroll Processing'].map((c, i) => (
+              <div key={i} className="how-check">
+                <span className="how-check__icon">✓</span>{c}
+              </div>
+            ))}
+            <button className="btn btn--pill btn--primary" style={{ marginTop: 16, pointerEvents: 'none' }}>{steps[2].startBtn}</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Efficiency ─── */
+function Efficiency() {
+  const T = useLang();
+  return (
+    <section className="efficiency">
+      <div className="wrap efficiency__inner">
+        <div className="efficiency__img rv">
+          <img src="/landing/cewe.png" alt="HR Efficiency" />
+          <div className="efficiency__badge">{T.efficiency.badge}</div>
+        </div>
+        <div className="efficiency__text rv">
+          <span className="eyebrow">{T.efficiency.eyebrow}</span>
+          <h2>{T.efficiency.h2.split('\n').map((l, i) => <span key={i}>{l}{i < 2 && <br />}</span>)}</h2>
+          <p>{T.efficiency.desc}</p>
+          <ul className="eff-list">
+            {T.efficiency.list.map((item, i) => (
+              <li key={i}><span className="eff-check">✓</span>{item}</li>
+            ))}
+          </ul>
+          <Link to="/login" className="btn btn--pill btn--primary" style={{ marginTop: 28, display: 'inline-flex' }}>{T.efficiency.cta}</Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Mobile ─── */
+function Mobile() {
+  const T = useLang();
+  return (
+    <section className="mobile-sec">
+      <div className="wrap mobile-sec__inner">
+        <div className="mobile-sec__text rv">
+          <span className="eyebrow">{T.mobile.eyebrow}</span>
+          <h2>{T.mobile.h2.split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}</h2>
+          <p>{T.mobile.desc}</p>
+          <Link to="/login" className="btn btn--pill btn--primary" style={{ marginTop: 24, display: 'inline-flex' }}>{T.mobile.cta}</Link>
+        </div>
+        <div className="mobile-sec__phone rv">
+          <img src="/landing/hp.png" alt="HRIS Loka Mobile App" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── CTA Banner ─── */
+function CTABanner() {
+  const T = useLang();
+  return (
+    <section className="cta-banner">
+      <div className="wrap cta-banner__inner">
+        <div className="cta-banner__left rv">
+          <span className="eyebrow">{T.cta.h2.split('\n')[0]}</span>
+          <h2>{T.cta.h2.split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}</h2>
+          <p>{T.cta.desc}</p>
+        </div>
+        <div className="cta-banner__right rv">
+          <div className="cta-price">
+            <span className="cta-price__from">{T.cta.from}</span>
+            <div className="cta-price__row">
+              <span className="cta-price__num">{T.cta.price}</span>
+              <span className="cta-price__per">{T.cta.per}</span>
+            </div>
+          </div>
+          <a href="https://wa.me/6289512114437" target="_blank" rel="noopener noreferrer" className="btn btn--pill btn--primary btn--lg">{T.cta.btn}</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Pricing helpers ─── */
+const PricingCheck = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+    <path d="M3.5 8.5L6.5 11.5L12.5 5" stroke="#635BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const Arrow = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+  </svg>
+);
+
+/* ─── Pricing ─── */
+function Pricing() {
+  const T = useLang();
+  const P = T.pricing;
+  const waUrl = 'https://wa.me/6289512114437';
+
+  return (
+    <section className="pricing" id="pricing">
+      <div className="wrap">
+        <div className="pricing__head rv">
+          <div className="pricing__eyebrow-wrap">
+            <span className="pricing__line" />
+            <span className="pricing__eyebrow-txt">{P.eyebrowTxt}</span>
+            <span className="pricing__line" />
+          </div>
+          <h2 className="pricing__h2">{P.h2}</h2>
+          <p className="pricing__sub">{P.sub}</p>
+        </div>
+        <div className="pricing__grid">
+          {P.plans.map((p, i) => (
+            <div key={i} className="pc rv" style={{ transitionDelay: `${i * 0.1}s` }}>
+              <div className="pc__name">{p.name}</div>
+              <div className="pc__price">{p.price}</div>
+              <div className="pc__yearly">{p.yearly}</div>
+              <div className="pc__divider" />
+              <div className="pc__section-label">{p.essentialLabel}</div>
+              <ul className="pc__features">
+                {p.essential.map((f, j) => <li key={j}><PricingCheck /><span>{f}</span></li>)}
+              </ul>
+              <div className="pc__section-label" style={{ marginTop: 8 }}>{p.pfLabel}</div>
+              <ul className="pc__features">
+                <li><PricingCheck /><span>{p.pf}</span></li>
+              </ul>
+              <div className="pc__divider" />
+              {i === 2 ? (
+                <a href={waUrl} target="_blank" rel="noopener noreferrer" className="pc__cta-btn">
+                  {p.cta} <Arrow />
+                </a>
+              ) : (
+                <Link to="/login" className="pc__cta-btn">{p.cta} <Arrow /></Link>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Testimonials ─── */
+function Testimonials() {
+  const T = useLang();
+  return (
+    <section className="testi">
+      <div className="wrap testi__inner rv">
+        <div className="testi__stars">★★★★★</div>
+        <blockquote className="testi__quote">{T.testi.quote}</blockquote>
+        <div className="testi__author">
+          <div className="testi__av">L</div>
+          <div>
+            <div className="testi__name">{T.testi.name}</div>
+            <div className="testi__role">{T.testi.role}</div>
+          </div>
+        </div>
+        <div className="testi__logos">
+          {['PT. Soltan Pilau', 'Ox The Slush & Base', 'PT. Nusantara Dinan'].map((n, i) => (
+            <span key={i} className="testi__logo-item">{n}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FAQ ─── */
+function FAQ() {
+  const [open, setOpen] = useState(0);
+  const T = useLang();
+  const F = T.faq;
+  return (
+    <section className="faq" id="faq">
+      <div className="wrap">
+        <div className="section-head rv">
+          <span className="eyebrow">{F.eyebrow}</span>
+          <h2>{F.h2.split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}</h2>
+        </div>
+        <div className="faq__list">
+          {F.items.map((f, i) => (
+            <div key={i} className={`faq__item${open === i ? ' faq__item--open' : ''}`} onClick={() => setOpen(open === i ? null : i)}>
+              <div className="faq__q">
+                <span>{f.q}</span>
+                <span className="faq__icon">{open === i ? '−' : '+'}</span>
+              </div>
+              {open === i && <div className="faq__a">{f.a}</div>}
+            </div>
+          ))}
+        </div>
+        <div className="faq__cta rv">
+          <div className="faq__cta-card">
+            <p className="faq__cta-sub">{F.ctaSub}</p>
+            <h3>{F.ctaTitle}</h3>
+            <a href="https://wa.me/6289512114437" target="_blank" rel="noopener noreferrer" className="btn btn--pill btn--primary">{F.ctaBtn}</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Footer ─── */
+function Footer() {
+  const T = useLang();
+  const F = T.footer;
+  return (
+    <footer className="footer">
+      <div className="wrap footer__top">
+        <div className="footer__brand">
+          <div className="nav__logo">
+            <span className="nav__logo-mark">H</span>
+            <span className="nav__logo-text">HRIS<span>Loka</span></span>
+          </div>
+          <p>{F.brand}</p>
+          <div className="footer__social">
+            <a href="#" className="footer__social-icon" aria-label="Facebook">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" /></svg>
+            </a>
+            <a href="#" className="footer__social-icon" aria-label="Instagram">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
+            </a>
+            <a href="#" className="footer__social-icon" aria-label="Twitter/X">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            </a>
+            <a href="#" className="footer__social-icon" aria-label="LinkedIn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z" /><circle cx="4" cy="4" r="2" /></svg>
+            </a>
+          </div>
+        </div>
+        <div className="footer__links">
+          {F.cols.map(col => (
+            <div key={col.title} className="footer__col">
+              <h4>{col.title}</h4>
+              {col.links.map(([label, href]) =>
+                href.startsWith('/') ? <Link key={label} to={href}>{label}</Link> : <a key={label} href={href}>{label}</a>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="footer__bar">
+        <div className="wrap footer__bar-inner">
+          <span>© 2025 HRIS Loka. {F.copy}</span>
+          <div className="footer__bar-links">
+            <a href="/privacy">{F.policy}</a>
+            <a href="/terms">{F.terms}</a>
+            <a href="#">{F.cookies}</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ─── Main Export ─── */
 export default function LandingPage() {
+  const [lang, setLang] = useState('en');
   useReveal();
-  const [faqOpen, setFaqOpen] = useState(0);
-  const [tab, setTab] = useState(0);
 
   useEffect(() => {
-    updateSEOTags?.({
-      title: 'SolveHR — Revolutionizing Workforce Management',
-      description: 'Empower your HR Operators with seamless efficiency and insightful analytics.',
+    updateSEOTags({
+      title: 'HRIS Loka — Revolutionizing Workforce Management',
+      description: 'Modern HR software for Indonesian companies.',
     });
   }, []);
 
   return (
-    <div className="lp">
-      {/* NAVBAR */}
-      <header className="lp-nav-wrap">
-        <nav className="lp-nav">
-          <Logo />
-          <ul className="lp-nav-links">
-            <li><a href="#features">Features</a></li>
-            <li><a href="#pricing">Pricing</a></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-          <Link to="/login" className="lp-btn lp-btn-primary lp-nav-cta">Sign in</Link>
-        </nav>
-      </header>
-
-      {/* HERO */}
-      <section className="lp-hero" id="home">
-        <div className="lp-container">
-          <h1 className="lp-hero-title reveal">Revolutionizing<br/>Workforce<br/>Management</h1>
-          <p className="lp-hero-sub reveal">Empower your HR Operators with Seamless Efficiency<br/>and Insightful Analytics.</p>
-          <div className="lp-hero-actions reveal">
-            <Link to="/login" className="lp-btn lp-btn-primary">Get Started</Link>
-            <a href="#about" className="lp-btn lp-btn-ghost"><span className="lp-play">{I.play}</span> Watch Video</a>
-          </div>
-          <div className="lp-hero-shot reveal">
-            <div className="lp-browser">
-              <div className="lp-browser-bar"><span/><span/><span/><div className="lp-browser-url">app.solvehr.com/dashboard</div></div>
-              <img src="/landing/hero-dashboard.png" alt="SolveHR dashboard" loading="lazy" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* TRUSTED */}
-      <section className="lp-trusted">
-        <div className="lp-container">
-          <p className="lp-trusted-label">Trusted by the world's best companies</p>
-          <div className="lp-trusted-logos">
-            <span className="lp-tlogo nyt">The New York Times</span>
-            <span className="lp-tlogo">TELEMUNDO</span>
-            <span className="lp-tlogo">Nestle</span>
-            <span className="lp-tlogo lego">LEGO</span>
-            <span className="lp-tlogo fedex">FedEx</span>
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section className="lp-features" id="features">
-        <div className="lp-container lp-feat-grid">
-          {[
-            { ic: I.db, t: 'Employee Database Management', d: 'Centralized employee information for easy access.' },
-            { ic: I.clock, t: 'Attendance Tracking', d: 'Real-time attendance monitoring and reporting.' },
-            { ic: I.chart, t: 'Performance Analytics', d: 'In-depth analytics for strategic decision-making.' },
-          ].map((f, i) => (
-            <div className="lp-feat reveal" key={i} style={{ transitionDelay: i * 80 + 'ms' }}>
-              <div className="lp-feat-icon">{f.ic}</div>
-              <h3>{f.t}</h3>
-              <p>{f.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section className="lp-how">
-        <div className="lp-container">
-          <h2 className="lp-h2 reveal">How it <em>works</em> in<br/>simple way</h2>
-          <div className="lp-how-grid">
-            {[
-              { t: 'Sign Up for Free Trial', d: 'Create your account in minutes.' },
-              { t: 'Configure Your HR Settings', d: "Tailor the system to your company's unique needs." },
-              { t: 'Start Optimizing Your HR Processes', d: 'Streamline operations and insightful analytics.' },
-            ].map((s, i) => (
-              <div className="lp-how-card reveal" key={i} style={{ transitionDelay: i * 80 + 'ms' }}>
-                <h4>{s.t}</h4>
-                <div className="lp-how-mock">
-                  {i === 0 && (<><div className="lp-mock-field"><label>Full Name</label><span className="lp-mock-input"/></div><div className="lp-mock-field"><label>Email</label><span className="lp-mock-input"/></div><div className="lp-mock-btn">Get Started</div></>)}
-                  {i === 1 && (<><div className="lp-mock-row"><span className="lp-mock-dot"/><span className="lp-mock-line w70"/><span className="lp-mock-toggle on"/></div><div className="lp-mock-row"><span className="lp-mock-dot"/><span className="lp-mock-line w50"/><span className="lp-mock-toggle"/></div><div className="lp-mock-row"><span className="lp-mock-dot"/><span className="lp-mock-line w60"/><span className="lp-mock-toggle on"/></div></>)}
-                  {i === 2 && (<><div className="lp-mock-task"><span className="lp-mock-check">{I.check}</span><span className="lp-mock-line w60"/></div><div className="lp-mock-task"><span className="lp-mock-check">{I.check}</span><span className="lp-mock-line w40"/></div><div className="lp-mock-task"><span className="lp-mock-check">{I.check}</span><span className="lp-mock-line w70"/></div></>)}
-                </div>
-                <p>{s.d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* EFFICIENCY BOOST */}
-      <section className="lp-split lp-eff" id="about">
-        <div className="lp-container lp-split-grid">
-          <div className="lp-split-media reveal"><img src="/cewe.png" alt="HR professional" loading="lazy" /></div>
-          <div className="lp-split-text reveal">
-            <span className="lp-eyebrow">How it works</span>
-            <h2 className="lp-h2 left">Efficiency Boost:<br/>Transform Your HR<br/>Operations</h2>
-            <p>Our HR SaaS platform is designed to bring a substantial boost to the efficiency of your HR operations, streamlining processes and freeing up valuable time for strategic initiatives.</p>
-            <Link to="/login" className="lp-btn lp-btn-primary">Get Started</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* MOBILE ACCESSIBILITY */}
-      <section className="lp-split lp-mobile">
-        <div className="lp-container lp-split-grid reverse">
-          <div className="lp-split-text reveal">
-            <span className="lp-eyebrow">How it works</span>
-            <h2 className="lp-h2 left">Mobile Accessibility</h2>
-            <div className="lp-tabs">
-              {['Geofencing', 'Funding alternatives', 'Performance Analytics'].map((t, i) => (
-                <button key={i} className={'lp-tab' + (tab === i ? ' active' : '')} onClick={() => setTab(i)}>{t}</button>
-              ))}
-            </div>
-            <p>Enable your HR team to stay productive on the go. SolveHR's mobile accessibility ensures that key HR functions are accessible anytime, anywhere.</p>
-            <Link to="/login" className="lp-btn lp-btn-primary">Get Started</Link>
-          </div>
-          <div className="lp-split-media phone reveal"><img src="/hp.png" alt="SolveHR mobile app" loading="lazy" /></div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="lp-cta">
-        <div className="lp-container lp-cta-inner reveal">
-          <div className="lp-cta-left">
-            <h2>Ready to optimize<br/>your HR operations?</h2>
-            <p>Choose the plan that suits your business needs and root your journey toward more efficient and effective HR management. Have questions? Contact our team for personalized assistance.</p>
-          </div>
-          <div className="lp-cta-right">
-            <div className="lp-cta-price"><span className="lp-price-amt">$19.99</span><span className="lp-price-per">/month</span></div>
-            <Link to="/login" className="lp-btn lp-btn-primary">Start Your Free Trial Now</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* PRICING */}
-      <section className="lp-pricing" id="pricing">
-        <div className="lp-container">
-          <span className="lp-eyebrow center">Our Pricing</span>
-          <h2 className="lp-h2 reveal">Pricing plan</h2>
-          <p className="lp-h2-sub reveal">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-          <div className="lp-price-grid">
-            {[
-              { name: 'Basic Plan', price: '$19.99', per: '/month', featured: false,
-                feats: ['Centralized Employee Database Management', 'Real-Time Attendance Tracking', 'Automated HR Tasks'],
-                perfect: 'Small teams and startups looking to streamline basic HR processes.' },
-              { name: 'Pro Plan', price: '$39.99', per: '/month', featured: true,
-                feats: ['Performance Analytics for Informed Decision-Making', 'Seamless Collaboration Tools', 'Mobile Accessibility'],
-                perfect: 'Growing businesses that require advanced analytics and collaboration features.' },
-              { name: 'Enterprise Plan', price: 'Custom Pricing', per: '', featured: false,
-                feats: ['Scalable Solutions for growing teams', 'Dedicated Support', 'Customized HR Solutions'],
-                perfect: 'Small teams and startups looking to streamline basic HR processes.' },
-            ].map((p, i) => (
-              <div className={'lp-price-card reveal' + (p.featured ? ' featured' : '')} key={i} style={{ transitionDelay: i * 80 + 'ms' }}>
-                <span className="lp-price-name">{p.name}</span>
-                <div className="lp-price-val"><span className="lp-price-num">{p.price}</span><span className="lp-price-unit">{p.per}</span></div>
-                <p className="lp-price-feat-label">Essential Features:</p>
-                <ul className="lp-price-feats">
-                  {p.feats.map((f, j) => (<li key={j}><span className="lp-fcheck">{I.check}</span>{f}</li>))}
-                </ul>
-                <p className="lp-price-perfect"><strong>Perfect For:</strong><br/>{p.perfect}</p>
-                <Link to="/login" className={'lp-btn ' + (p.featured ? 'lp-btn-light' : 'lp-btn-primary')}>{p.name === 'Enterprise Plan' ? 'Start Free Trial' : 'Subscribe'}</Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIAL */}
-      <section className="lp-testi">
-        <div className="lp-container lp-testi-inner reveal">
-          <div className="lp-stars">{[0,1,2,3,4].map(i => <span key={i}>{I.star}</span>)}</div>
-          <blockquote>"SolveHR has transformed our HR processes. It's intuitive,<br/>powerful, and has saved us countless hours."</blockquote>
-          <div className="lp-testi-foot">
-            <div className="lp-testi-person">
-              <img src="/users-1.svg" alt="Lisan Al-Ghaib" className="lp-testi-avatar" />
-              <div><strong>Lisan Al-Ghaib</strong><span>Employee Relations Manager, The New York Times</span></div>
-            </div>
-            <span className="lp-tlogo nyt big">The New York Times</span>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="lp-faq">
-        <div className="lp-container">
-          <span className="lp-eyebrow center">FAQ</span>
-          <h2 className="lp-h2 reveal">Frequently asked questions</h2>
-          <p className="lp-h2-sub reveal">Frequently asked questions ordered by popularity. Remember that if the visitor has not<br/>committed to the call to action, they may still have questions (doubts) that can be answered.</p>
-          <div className="lp-faq-list">
-            {FAQS.map((f, i) => (
-              <div className={'lp-faq-item' + (faqOpen === i ? ' open' : '')} key={i}>
-                <button className="lp-faq-q" onClick={() => setFaqOpen(faqOpen === i ? -1 : i)}>
-                  <span>{f.q}</span><span className="lp-faq-ic">{I.chevron}</span>
-                </button>
-                <div className="lp-faq-a"><p>{f.a}</p></div>
-              </div>
-            ))}
-          </div>
-          <div className="lp-faq-talk" id="contact">
-            <span>Do you have any question?</span>
-            <div className="lp-faq-talk-row">
-              <h3>Lets talk with us</h3>
-              <Link to="/login" className="lp-btn lp-btn-primary">Contact Us</Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="lp-footer">
-        <div className="lp-container lp-footer-inner">
-          <Logo />
-          <ul className="lp-footer-links">
-            <li><a href="#home">Home</a></li>
-            <li><a href="#features">Products</a></li>
-            <li><a href="#pricing">Pricing</a></li>
-            <li><a href="#about">About</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-          <div className="lp-footer-social">
-            <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 22v-9h3l.5-4H13V6.5c0-1.1.3-1.9 1.9-1.9H17V1.1C16.6 1 15.6 1 14.4 1 11.9 1 10 2.6 10 5.6V9H7v4h3v9z"/></svg></a>
-            <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 5.9c-.7.3-1.5.5-2.3.6.8-.5 1.5-1.3 1.8-2.3-.8.5-1.7.8-2.6 1a4 4 0 0 0-6.8 3.6A11.3 11.3 0 0 1 3.7 4.6a4 4 0 0 0 1.2 5.3c-.6 0-1.2-.2-1.8-.5a4 4 0 0 0 3.2 4 4 4 0 0 1-1.8.1 4 4 0 0 0 3.7 2.8A8 8 0 0 1 2 18a11.3 11.3 0 0 0 6.1 1.8c7.3 0 11.4-6.1 11.4-11.4v-.5c.8-.6 1.5-1.3 2-2z"/></svg></a>
-            <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.9 8H3.6v12h3.3zM5.3 3.3a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8M20.4 20v-6.6c0-3.5-.7-6.2-4.8-6.2-2 0-3.3 1.1-3.8 2.1h-.1V8H8.5v12h3.3v-5.9c0-1.6.3-3 2.2-3s1.9 1.7 1.9 3.2V20z"/></svg></a>
-            <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg></a>
-          </div>
-        </div>
-        <div className="lp-footer-bottom lp-container">
-          <span>© 2024 SolveHR. All rights reserved.</span>
-          <div className="lp-footer-legal"><a href="#">Privacy Policy</a><a href="#">Terms of Service</a><a href="#">Cookies Settings</a></div>
-        </div>
-      </footer>
-    </div>
+    <LangCtx.Provider value={{ lang, setLang }}>
+      <div className="lp">
+        <Navbar />
+        <Hero />
+        <Logos />
+        <Features />
+        <HowItWorks />
+        <Efficiency />
+        <Mobile />
+        <CTABanner />
+        <Pricing />
+        <Testimonials />
+        <FAQ />
+        <Footer />
+      </div>
+    </LangCtx.Provider>
   );
 }

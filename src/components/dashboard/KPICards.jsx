@@ -2,7 +2,7 @@ import { FiUsers, FiCheckCircle, FiCalendar, FiDollarSign, FiBriefcase, FiAlertT
 
 const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
-export default function KPICards({ employees, todayAttendance, leaves, payrollTotal, openJobs, expiringContracts, loading }) {
+export default function KPICards({ employees = [], todayAttendance = [], leaves = [], payrollTotal, openJobs = 0, expiringContracts = 0, loading }) {
   const presentCount = todayAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
   const leaveCount = leaves.filter(l => l.status === 'approved' && l.type !== 'overtime').length;
 

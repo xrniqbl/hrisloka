@@ -10,7 +10,7 @@ function getInitials(name) {
   return (name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-export default function EmployeeDirectory({ employees, todayAttendance, onSelectEmployee, onViewAll, loading }) {
+export default function EmployeeDirectory({ employees = [], todayAttendance = [], onSelectEmployee, onViewAll, loading }) {
   if (loading) return <EmployeeDirectorySkeleton />;
 
   const presentIds = new Set(todayAttendance.map(a => a.employee_id));
