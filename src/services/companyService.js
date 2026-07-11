@@ -36,27 +36,53 @@ export async function getAllCompanies() {
   return { data: data || [], error };
 }
 
-/** Get or create company code for the current/first company */
+/**
+ * Get or create company_code for the *current user's company only*.
+ * Never falls back to "first company in DB" (that leaks multi-tenant boundaries).
+ */
 export async function getOrCreateCompanyCode() {
-  const { data: existing } = await supabase
-    .from('companies')
-    .select('*')
-    .order('id')
-    .limit(1)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: null, error: new Error('Not authenticated') };
+
+  // Resolve tenant from the logged-in employee row
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('company_id, companies:company_id(*)')
+    .eq('auth_user_id', user.id)
     .maybeSingle();
-  if (existing) return { data: existing, error: null };
 
-  // Generate a code: HRSLK-XXXXXX
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = 'HRSLK-';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  if (emp?.companies) {
+    const company = emp.companies;
+    if (company.company_code) return { data: company, error: null };
 
-  const { data, error } = await supabase
-    .from('companies')
-    .insert({ name: 'Perusahaan Saya', company_code: code })
-    .select()
-    .single();
-  return { data, error };
+    // Generate code for existing company that has none
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = 'HRSLK-';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
+    const { data, error } = await supabase
+      .from('companies')
+      .update({ company_code: code })
+      .eq('id', company.id)
+      .select()
+      .single();
+    return { data, error };
+  }
+
+  if (emp?.company_id) {
+    const { data: company, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', emp.company_id)
+      .maybeSingle();
+    if (error) return { data: null, error };
+    if (company?.company_code) return { data: company, error: null };
+  }
+
+  return {
+    data: null,
+    error: new Error('Akun Anda belum terhubung ke perusahaan. Selesaikan onboarding/checkout dulu.'),
+  };
 }
 
 // ── Employee Self-Registration ────────────────────────────────────────────────
@@ -139,7 +165,29 @@ export async function selfRegisterEmployee({
     .select()
     .single();
 
-  if (empError) return { data: null, error: empError };
+  if (empError) {
+    // The Supabase auth user has already been created at step 1 but the
+    // employee row failed (duplicate NIP, RLS, missing column, etc.). The
+    // client cannot delete the auth account (needs service_role), so we
+    // surface a clear, actionable error and log the orphaned user id for
+    // admin cleanup. Without this, the user can never log in yet the auth
+    // account lingers and consumes the auth-user quota.
+    console.error(
+      '[companyService] selfRegisterEmployee: auth user created but employee insert failed.',
+      'Orphaned auth_user_id =', authUserId,
+      'Error =', empError?.message,
+    );
+    return {
+      data: null,
+      error: {
+        ...empError,
+        message:
+          'Pendaftaran gagal: data karyawan tidak tersimpan, tetapi akun login sudah dibuat. ' +
+          'Tim HR akan memverifikasi. Hubungi admin dengan kode berikut: ' +
+          (authUserId?.slice(0, 8) || 'UNKNOWN'),
+      },
+    };
+  }
   return { data: emp, error: null };
 }
 
