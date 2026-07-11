@@ -102,8 +102,22 @@ export async function approveRequest(requestId, reviewerId, companyId) {
   return { data, error };
 }
 
-// Reject a profile update request (admin side)
-export async function rejectRequest(requestId, reviewerId, note) {
+// Reject a profile update request (admin side) — must belong to company
+export async function rejectRequest(requestId, reviewerId, note, companyId = null) {
+  if (companyId) {
+    if (!guardCompanyId(companyId, 'rejectRequest')) {
+      return { error: { message: 'company_id required' } };
+    }
+    // Ensure request's employee is in company
+    const { data: req } = await supabase
+      .from('profile_update_requests')
+      .select('id, employees!inner(company_id)')
+      .eq('id', requestId)
+      .eq('employees.company_id', companyId)
+      .maybeSingle();
+    if (!req) return { error: { message: 'tenant isolation: request not in company' } };
+  }
+
   const { data, error } = await supabase
     .from('profile_update_requests')
     .update({
