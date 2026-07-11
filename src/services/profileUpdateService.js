@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { guardCompanyId } from '../lib/tenantGuard';
+import { guardCompanyId, assertEmployeeInCompany, resolveMyEmployee } from '../lib/tenantGuard';
 
 // Get all profile update requests (admin) — MANDATORY company scope
 export async function getAllUpdateRequests(statusFilter, companyId) {
@@ -14,8 +14,13 @@ export async function getAllUpdateRequests(statusFilter, companyId) {
   return { data: data || [], error };
 }
 
-// Submit a profile update request (employee side)
+// Submit a profile update request (employee side) — only for self
 export async function submitUpdateRequest(employeeId, fieldName, fieldLabel, oldValue, newValue) {
+  const me = await resolveMyEmployee();
+  if (!me?.id || String(me.id) !== String(employeeId)) {
+    return { data: null, error: { message: 'tenant isolation: hanya boleh ajukan update profil sendiri' } };
+  }
+
   const { data, error } = await supabase
     .from('profile_update_requests')
     .insert({
@@ -32,6 +37,10 @@ export async function submitUpdateRequest(employeeId, fieldName, fieldLabel, old
 
 // Get my update requests (employee side)
 export async function getMyUpdateRequests(employeeId) {
+  const me = await resolveMyEmployee();
+  if (!me?.id || String(me.id) !== String(employeeId)) {
+    return { data: [], error: { message: 'tenant isolation' } };
+  }
   const { data, error } = await supabase
     .from('profile_update_requests')
     .select('*')
@@ -42,10 +51,15 @@ export async function getMyUpdateRequests(employeeId) {
 
 // Approve a profile update request (admin side) — MANDATORY company ownership
 export async function approveRequest(requestId, reviewerId, companyId) {
+  if (!guardCompanyId(companyId, 'approveRequest')) {
+    return { error: { message: 'company_id required' } };
+  }
+
   const { data: req, error: fetchErr } = await supabase
     .from('profile_update_requests')
-    .select('*')
+    .select('*, employees!inner(company_id)')
     .eq('id', requestId)
+    .eq('employees.company_id', companyId)
     .single();
   if (fetchErr) return { error: fetchErr };
 
@@ -67,12 +81,11 @@ export async function approveRequest(requestId, reviewerId, companyId) {
       updatePayload[fieldName] = newValue;
     }
 
-    let empQuery = supabase
+    const { error: updateErr } = await supabase
       .from('employees')
       .update(updatePayload)
-      .eq('id', req.employee_id);
-    if (companyId) empQuery = empQuery.eq('company_id', companyId);
-    const { error: updateErr } = await empQuery;
+      .eq('id', req.employee_id)
+      .eq('company_id', companyId);
     if (updateErr) return { error: updateErr };
   }
 
