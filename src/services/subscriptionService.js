@@ -11,40 +11,16 @@
  * ═══════════════════════════════════════════════════════════════════
  */
 import { supabase } from '../lib/supabase';
+import {
+  CANONICAL_PLANS,
+  YEARLY_DISCOUNT_PERCENT,
+  getPlanPrice as computePlanPrice,
+  formatPlanIDR,
+} from '../lib/plans';
 
-// ─── 15% yearly discount constant ─────────────────────────────────────────────
-export const YEARLY_DISCOUNT_PERCENT = 15;
-
-// ─── Plan Definitions (NO Free plan) ──────────────────────────────────────────
-export const MOCK_PLANS = [
-  {
-    id: 'starter', slug: 'starter', name: 'Starter', is_active: true, sort_order: 1,
-    price_monthly: 75000, price_yearly: Math.round(75000 * 12 * (1 - YEARLY_DISCOUNT_PERCENT / 100)), max_employees: 50,
-    description: 'Untuk bisnis yang mulai berkembang dengan kebutuhan HR lengkap.',
-    features: ['Hingga 50 karyawan', 'Absensi & Cuti digital', 'Payroll dasar', 'PWA Karyawan', 'Email support'],
-    badge: null, color: '#3B82F6',
-    duration_days_monthly: 30,
-    duration_days_yearly: 365,
-  },
-  {
-    id: 'pro', slug: 'pro', name: 'Pro', is_active: true, sort_order: 2,
-    price_monthly: 125000, price_yearly: Math.round(125000 * 12 * (1 - YEARLY_DISCOUNT_PERCENT / 100)), max_employees: 200,
-    description: 'Solusi lengkap untuk perusahaan dengan kebutuhan HR profesional.',
-    features: ['Hingga 200 karyawan', 'Semua fitur Starter', 'GPS Geofence Attendance', 'KPI & Penilaian Kinerja', 'Rekrutmen & Onboarding', 'AI Expense OCR', 'Laporan lanjutan', 'Priority support'],
-    badge: 'Paling Populer', color: '#7C3AED',
-    duration_days_monthly: 30,
-    duration_days_yearly: 365,
-  },
-  {
-    id: 'enterprise', slug: 'enterprise', name: 'Enterprise', is_active: true, sort_order: 3,
-    price_monthly: null, price_yearly: null, max_employees: 9999,
-    description: 'Solusi skala enterprise dengan kustomisasi penuh dan dedicated support.',
-    features: ['Karyawan tidak terbatas', 'Semua fitur Pro', 'Custom integrasi API', 'Dedicated account manager', 'SLA 99.9% uptime', 'Pelatihan khusus tim'],
-    badge: 'Hubungi Sales', color: '#D97706',
-    duration_days_monthly: 30,
-    duration_days_yearly: 365,
-  },
-];
+// Re-export shared plan constants (single source of truth: src/lib/plans.js)
+export { YEARLY_DISCOUNT_PERCENT };
+export const MOCK_PLANS = CANONICAL_PLANS;
 
 // ─── Duration Constants (in MILLISECONDS — no drift) ──────────────────────────
 export const DURATION_MS = {
@@ -57,7 +33,7 @@ export const DURATION_MS = {
 export const WARNING_DAYS = [7, 3, 1];
 
 // ─── Compute expires_at from start using exact milliseconds ───────────────────
-export function computeExpiresAt(startDate, billingCycle, planSlug) {
+export function computeExpiresAt(startDate, billingCycle, _planSlug) {
   const start = new Date(startDate);
   // Use UTC midnight to prevent timezone drift
   const startUTC = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
@@ -67,12 +43,7 @@ export function computeExpiresAt(startDate, billingCycle, planSlug) {
 
 // ─── Get price for a plan + billing cycle (with 15% yearly discount) ──────────
 export function getPlanPrice(plan, billingCycle) {
-  if (!plan || plan.price_monthly === null) return null;
-  if (billingCycle === 'yearly') {
-    // Yearly: x12 months minus 15% discount
-    return Math.round(plan.price_monthly * 12 * (1 - YEARLY_DISCOUNT_PERCENT / 100));
-  }
-  return plan.price_monthly;
+  return computePlanPrice(plan, billingCycle);
 }
 
 // ─── Days remaining (precise, integer) ───────────────────────────────────────
@@ -147,7 +118,7 @@ export async function getAvailablePlans() {
         error: null,
       };
     }
-  } catch { /* fall through */ }
+  } catch (e) { console.warn('[subscriptionService] plans table not available, using mock plans:', e?.message); }
   return { data: MOCK_PLANS, error: null };
 }
 
@@ -227,12 +198,16 @@ export async function validateVoucher(code, planSlug) {
     if (data.valid_until && new Date(data.valid_until) < new Date()) {
       return { data: null, error: new Error('Voucher sudah kadaluarsa') };
     }
-    if (data.applicable_plans && data.applicable_plans.length > 0) {
+    // Support both schemas: applicable_plans[] and single plan_slug
+    if (Array.isArray(data.applicable_plans) && data.applicable_plans.length > 0) {
       if (!data.applicable_plans.includes(planSlug)) {
         return { data: null, error: new Error(`Voucher tidak berlaku untuk paket ${planSlug}`) };
       }
+    } else if (data.plan_slug && data.plan_slug !== planSlug) {
+      return { data: null, error: new Error(`Voucher tidak berlaku untuk paket ${planSlug}`) };
     }
-    if (data.max_uses !== null && data.current_uses >= data.max_uses) {
+    const used = data.used_count ?? data.current_uses ?? 0;
+    if (data.max_uses !== null && data.max_uses !== undefined && used >= data.max_uses) {
       return { data: null, error: new Error('Voucher sudah mencapai batas penggunaan') };
     }
     return { data, error: null };
@@ -317,8 +292,24 @@ export async function activateSubscription({
 
   if (voucherCode) {
     try {
-      await supabase.rpc('increment_voucher_usage', { voucher_code: voucherCode });
-    } catch { /* ignore */ }
+      // Prefer RPC if present; else manual increment on used_count
+      const { error: rpcErr } = await supabase.rpc('increment_voucher_usage', { voucher_code: voucherCode });
+      if (rpcErr) {
+        const code = voucherCode.trim().toUpperCase();
+        const { data: v } = await supabase
+          .from('vouchers')
+          .select('id, used_count, current_uses')
+          .eq('code', code)
+          .maybeSingle();
+        if (v?.id) {
+          const next = (v.used_count ?? v.current_uses ?? 0) + 1;
+          const patch = v.used_count !== undefined && v.used_count !== null
+            ? { used_count: next }
+            : { current_uses: next };
+          await supabase.from('vouchers').update(patch).eq('id', v.id);
+        }
+      }
+    } catch (e) { console.warn('[subscriptionService] voucher usage increment failed:', e?.message); }
   }
 
   const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
@@ -343,11 +334,16 @@ export async function checkAndExpireSubscription() {
 
   const days = getDaysRemaining(sub.expires_at);
   if (days === 0 && sub.status !== 'expired') {
-    // Mark as expired in DB
-    await supabase
+    // Mark as expired in DB. Update by primary key (id) — the row may be
+    // company-scoped with a null/different user_id, so filtering by user_id
+    // would silently match zero rows. Surface any error instead of ignoring.
+    const { error } = await supabase
       .from('subscriptions')
       .update({ status: 'expired', updated_at: new Date().toISOString() })
-      .eq('user_id', sub.user_id);
+      .eq('id', sub.id);
+    if (error) {
+      console.error('[subscriptionService] failed to expire subscription:', error.message);
+    }
     return { ...sub, status: 'expired', computed_status: 'expired', days_remaining: 0, is_active: false };
   }
 
@@ -390,7 +386,5 @@ export async function renewSubscription(planSlug, billingCycle = 'monthly') {
 
 // ─── Format currency IDR ──────────────────────────────────────────────────────
 export function formatIDR(amount) {
-  if (amount === null || amount === undefined) return 'Custom';
-  if (amount === 0) return 'Gratis';
-  return `Rp ${amount.toLocaleString('id-ID')}`;
+  return formatPlanIDR(amount);
 }

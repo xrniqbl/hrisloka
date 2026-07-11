@@ -1,5 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
+import './astryx-theme.css';
+import { hrisNeutralTheme } from './themes/astryx-theme.ts/hris-neutral';
+import { Theme } from '@astryxdesign/core';
+import '@astryxdesign/core/astryx.css';
 import './index.css'
 import App from './App.jsx'
 import './lib/autoTranslate.js'
@@ -30,6 +36,8 @@ document.documentElement.setAttribute('data-lang', initLang);
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <Theme theme={hrisNeutralTheme}>
+      <App />
+    </Theme>
   </StrictMode>,
 )

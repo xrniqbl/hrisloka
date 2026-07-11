@@ -1,15 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════ */
-/* CheckoutPage.css — Premium Subscription Checkout               */
+/* CheckoutPage.css - Premium Subscription Checkout               */
 /* ═══════════════════════════════════════════════════════════════ */
 
 .co-root {
   min-height: 100vh;
-  background: linear-gradient(135deg, #060B18 0%, #0A1628 40%, #0D2040 70%, #0A1628 100%);
+  background: linear-gradient(145deg, #0B0A1A 0%, #14122B 35%, #1A1740 65%, #12102A 100%);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  font-family: 'Inter Tight', system-ui, sans-serif;
 }
 
 /* Decorative orbs */
@@ -20,7 +20,7 @@
   pointer-events: none;
   z-index: 0;
 }
-.co-orb-1 { width: 500px; height: 500px; background: rgba(0,71,171,0.18); top: -150px; right: -100px; }
+.co-orb-1 { width: 500px; height: 500px; background: rgba(99,91,255,0.18); top: -150px; right: -100px; }
 .co-orb-2 { width: 400px; height: 400px; background: rgba(124,58,237,0.12); bottom: -100px; left: -80px; }
 .co-orb-3 { width: 300px; height: 300px; background: rgba(16,185,129,0.08); top: 40%; left: 30%; }
 
@@ -83,10 +83,10 @@
   flex-shrink: 0;
 }
 .co-step-dot.active {
-  border-color: #3B82F6;
-  background: #3B82F6;
+  border-color: #635BFF;
+  background: #635BFF;
   color: #fff;
-  box-shadow: 0 0 20px rgba(59,130,246,0.4);
+  box-shadow: 0 0 20px rgba(99,91,255,0.4);
 }
 .co-step-dot.done {
   border-color: #10B981;
@@ -168,7 +168,7 @@
   border-radius: 20px;
   opacity: 0;
   transition: opacity 0.25s;
-  background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(124,58,237,0.04) 100%);
+  background: linear-gradient(135deg, rgba(99,91,255,0.06) 0%, rgba(124,58,237,0.04) 100%);
   pointer-events: none;
 }
 .co-plan-card:hover {
@@ -177,8 +177,8 @@
 }
 .co-plan-card:hover::before { opacity: 1; }
 .co-plan-card.selected {
-  border-color: var(--plan-color, #3B82F6);
-  box-shadow: 0 0 0 1px var(--plan-color, #3B82F6), 0 8px 32px rgba(59,130,246,0.2);
+  border-color: var(--plan-color, #635BFF);
+  box-shadow: 0 0 0 1px var(--plan-color, #635BFF), 0 8px 32px rgba(99,91,255,0.2);
   transform: translateY(-4px);
 }
 .co-plan-card.selected::before { opacity: 1; }
@@ -220,7 +220,7 @@
 .co-plan-price-amount {
   font-size: 28px;
   font-weight: 900;
-  color: var(--plan-color, #3B82F6);
+  color: var(--plan-color, #635BFF);
   letter-spacing: -1px;
   line-height: 1;
 }
@@ -281,10 +281,10 @@
   pointer-events: auto;
 }
 .co-plan-card.selected .co-plan-select-btn {
-  background: var(--plan-color, #3B82F6);
-  border-color: var(--plan-color, #3B82F6);
+  background: var(--plan-color, #635BFF);
+  border-color: var(--plan-color, #635BFF);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+  box-shadow: 0 4px 16px rgba(99,91,255,0.3);
 }
 
 /* Step 1 CTA */
@@ -325,9 +325,9 @@
   white-space: nowrap;
 }
 .co-billing-btn.active {
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  background: linear-gradient(180deg, #736BFF 0%, #635BFF 55%, #4F46E5 100%);
   color: #fff;
-  box-shadow: 0 2px 12px rgba(59,130,246,0.4);
+  box-shadow: 0 2px 12px rgba(99,91,255,0.4);
 }
 .co-billing-discount {
   font-size: 10px;
@@ -406,7 +406,7 @@
 .co-summary-total-amount {
   font-size: 22px;
   font-weight: 900;
-  color: #3B82F6;
+  color: #635BFF;
   letter-spacing: -0.5px;
 }
 .co-summary-total-amount.free { color: #10B981; }
@@ -432,7 +432,7 @@
   flex-shrink: 0;
   font-size: 14px;
 }
-.co-panel-card-icon.blue  { background: rgba(59,130,246,0.15);  color: #60A5FA; }
+.co-panel-card-icon.blue  { background: rgba(99,91,255,0.15);  color: #818CF8; }
 .co-panel-card-icon.green { background: rgba(16,185,129,0.15); color: #34D399; }
 .co-panel-card-icon.gray  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
 .co-panel-card-title { font-size: 13px; font-weight: 800; color: rgba(255,255,255,0.85); }
@@ -460,8 +460,8 @@
 .co-voucher-input::placeholder { color: rgba(255,255,255,0.2); font-weight: 500; letter-spacing: 0; text-transform: none; }
 .co-voucher-input:focus {
   outline: none;
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  border-color: #635BFF;
+  box-shadow: 0 0 0 3px rgba(99,91,255,0.15);
 }
 .co-voucher-input.success { border-color: #10B981; }
 .co-voucher-input.error   { border-color: #EF4444; }
@@ -469,7 +469,7 @@
   padding: 11px 20px;
   border-radius: 10px;
   border: none;
-  background: #3B82F6;
+  background: #635BFF;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -479,7 +479,7 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.co-voucher-apply-btn:hover { background: #2563EB; }
+.co-voucher-apply-btn:hover { background: #4F46E5; }
 .co-voucher-apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .co-voucher-msg {
   margin-top: 8px;
@@ -562,11 +562,11 @@
   margin-top: 20px;
 }
 .co-pay-btn.primary {
-  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  background: linear-gradient(180deg, #736BFF 0%, #635BFF 55%, #4F46E5 100%);
   color: #fff;
-  box-shadow: 0 4px 20px rgba(59,130,246,0.4);
+  box-shadow: 0 4px 20px rgba(99,91,255,0.4);
 }
-.co-pay-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(59,130,246,0.5); }
+.co-pay-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(99,91,255,0.5); }
 .co-pay-btn.success-green {
   background: linear-gradient(135deg, #10B981, #059669);
   color: #fff;
@@ -681,16 +681,20 @@
 @keyframes coSpin { to { transform: rotate(360deg); } }
 
 /* ── Responsive ── */
+@media (max-width: 1100px) {
+  .co-plans-grid { grid-template-columns: repeat(2, 1fr); max-width: 640px; }
+}
 @media (max-width: 900px) {
-  .co-plans-grid { grid-template-columns: repeat(2, 1fr); }
+  .co-plans-grid { grid-template-columns: repeat(2, 1fr); max-width: 560px; }
 }
 @media (max-width: 768px) {
-  .co-topbar { padding: 14px 20px; }
+  .co-topbar { padding: 14px 20px; flex-wrap: wrap; gap: 8px; }
+  .co-topbar-right { flex-wrap: wrap; }
   .co-progress { padding: 20px 16px 14px; overflow-x: auto; }
   .co-step-label { display: none; }
   .co-step-line { width: 30px; }
   .co-main { padding: 10px 16px 40px; }
-  .co-plans-grid { grid-template-columns: 1fr 1fr; }
+  .co-plans-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
   .co-step2-layout { grid-template-columns: 1fr; }
   .co-order-summary { position: static; }
   .co-section-title h1 { font-size: 22px; }

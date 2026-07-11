@@ -1,9 +1,12 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { trackEvent } from './services/founderService';
+import { requestPersistentStorage } from './lib/backgroundSync';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FeatureFlagProvider } from './context/FeatureFlagContext';
 import { I18nProvider } from './lib/i18n';
 import ErrorBoundary from './components/ErrorBoundary';
+import SkipLink from './components/SkipLink';
 import { getRole, isFounder } from './lib/rbac';
 import { ToastProvider } from './components/Toast';
 import { BranchProvider } from './context/BranchContext';
@@ -175,8 +178,13 @@ function PageLoader() {
 }
 
 /* Smart redirect based on auth state */
+// Request persistent storage on app load (prevents cache eviction)
+if (typeof window !== 'undefined') {
+  requestPersistentStorage().catch(() => {});
+}
+
 function RootRedirect() {
-  const { user, employee, loading, hasOnboarding } = useAuth();
+  const { loading } = useAuth();
   if (loading) return <PageLoader />;
 
   // Always show landing page on root "/" — regardless of auth state
@@ -345,10 +353,20 @@ function SubscriptionGuard({ children }) {
   const role = getRole(employee);
   if (role === 'employee') return children;
 
-  // ⚠️ SECURITY: subscription status validated from Supabase only — never from localStorage
-  const isActive = subscription?.status === 'active'
-    || subscription?.computed_status === 'active'
-    || subscription?.is_active === true;
+  // ⚠️ SECURITY: subscription status from Supabase only — never localStorage
+  // active | trial | is_active (enriched) | not past expires_at
+  const notExpired = !subscription?.expires_at
+    || new Date(subscription.expires_at).getTime() > Date.now();
+  const isActive = Boolean(
+    subscription
+    && notExpired
+    && (
+      subscription.status === 'active'
+      || subscription.status === 'trial'
+      || subscription.computed_status === 'active'
+      || subscription.is_active === true
+    )
+  );
 
   if (!isActive) {
     return <Navigate to="/checkout" replace />;
@@ -360,9 +378,11 @@ function SubscriptionGuard({ children }) {
 function App() {
   return (
     <AuthProvider>
+      <FeatureFlagProvider>
       <I18nProvider>
         <ToastProvider>
           <ErrorBoundary>
+            <SkipLink />
             <BrowserRouter>
               <PageViewTracker />
               <Suspense fallback={<PageLoader />}>
@@ -405,6 +425,7 @@ function App() {
                     <Route path="attendance"        element={<Attendance />} />
                     <Route path="shifts"            element={<ShiftManagement />} />
                     <Route path="leave"             element={<LeaveManagement />} />
+                    <Route path="leave-management"  element={<Navigate to="/leave" replace />} />
                     <Route path="overtime"          element={<Overtime />} />
                     <Route path="geo-attendance"    element={<GeofenceAttendance />} />
 
@@ -537,6 +558,7 @@ function App() {
           </ErrorBoundary>
         </ToastProvider>
       </I18nProvider>
+      </FeatureFlagProvider>
     </AuthProvider>
   );
 }

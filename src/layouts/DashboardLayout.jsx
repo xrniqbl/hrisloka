@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { isDemoMode } from '../lib/demoGuard';
 import Sidebar from '../components/Sidebar';
+import { AppShellAstryx, SideNavAstryx } from '../components/ui/astryx-layout';
 import NotificationCenter from '../components/NotificationCenter';
 import Breadcrumb from '../components/Breadcrumb';
 import { hasAccess, getRole, isFounder, ROLE_LABELS, ROLE_COLORS } from '../lib/rbac';
@@ -14,6 +16,7 @@ import './DashboardLayout.css';
 
 export default function DashboardLayout() {
  const { user, employee, loading, hasOnboarding, onboardingLoading } = useAuth();
+ const { isPathEnabled } = useFeatureFlags();
  const location = useLocation();
  const { t } = useTranslation();
  const [theme, setTheme] = useState(() => localStorage.getItem('hrisync_theme') || 'light');
@@ -41,19 +44,19 @@ export default function DashboardLayout() {
  );
  }
 
- // Demo mode — bypass all guards, no real session needed
+ // Demo mode - bypass all guards, no real session needed
  if (isDemoMode()) {
   return (
    <div className="layout-wrapper">
     <Sidebar />
-    <main className="layout-content">
+    <main id="main-content" role="main" className="layout-content" tabIndex={-1}>
      <div style={{
-      background: 'linear-gradient(90deg,#0047AB,#2563eb)',
+      background: 'linear-gradient(90deg,#635BFF,#4F46E5)',
       color: '#fff', padding: '6px 16px', fontSize: 12,
       fontWeight: 700, textAlign: 'center', borderRadius: 8, marginBottom: 14,
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
      }}>
-      🔒 Mode Demo — Akses Read-Only · Fitur edit/tambah/hapus dinonaktifkan
+      🔒 Mode Demo - Akses Read-Only  Fitur edit/tambah/hapus dinonaktifkan
      </div>
      <Outlet />
     </main>
@@ -71,7 +74,7 @@ export default function DashboardLayout() {
  // Guard: plain employees should not access the HR Dashboard.
  // Redirect them to the PWA instead. Founder always passes.
  if (!founderUser && role === 'employee') {
- // Employee accounts must use the PWA app — show informative block page
+ // Employee accounts must use the PWA app - show informative block page
  return <Navigate to="/employee-web-access" replace />;
  }
 
@@ -81,7 +84,8 @@ export default function DashboardLayout() {
  }
 
  // RBAC: check route access (founder always passes)
- if (!hasAccess(role, location.pathname, founderUser)) {
+ const featureAllowed = founderUser || isPathEnabled(location.pathname);
+ if (!hasAccess(role, location.pathname, founderUser) || !featureAllowed) {
  return (
  <div className="layout-wrapper">
  <Sidebar />
@@ -98,7 +102,9 @@ export default function DashboardLayout() {
  </div>
  <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{t('auth.access_denied')}</h2>
  <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6 }}>
- {t('auth.no_permission')}
+ {!featureAllowed
+   ? 'Fitur ini dinonaktifkan oleh administrator platform.'
+   : t('auth.no_permission')}
  {' '}{t('auth.your_role')}: <span style={{ fontWeight: 700, color: ROLE_COLORS[role], padding: '2px 8px', borderRadius: 20, background: `${ROLE_COLORS[role]}15`, fontSize: 12 }}>{ROLE_LABELS[role]}</span>
  </p>
  <button
@@ -114,7 +120,7 @@ export default function DashboardLayout() {
  );
  }
 
- // Display role — for founder, show the viewAs role from localStorage
+ // Display role - for founder, show the viewAs role from localStorage
  const displayRole = founderUser
  ? (localStorage.getItem('HRIS Loka_viewAs') || 'super_admin')
  : role;
@@ -163,13 +169,13 @@ export default function DashboardLayout() {
          fontSize: 11,
          padding: '3px 9px',
          borderRadius: 20,
-         background: founderUser ? 'rgba(0,71,171,0.10)' : `${ROLE_COLORS[displayRole]}15`,
+         background: founderUser ? 'rgba(99,91,255,0.10)' : `${ROLE_COLORS[displayRole]}15`,
          color: founderUser ? 'var(--primary)' : ROLE_COLORS[displayRole],
          fontWeight: 700,
          display: 'flex',
          alignItems: 'center',
          gap: 4,
-         border: `1px solid ${founderUser ? 'rgba(0,71,171,0.20)' : `${ROLE_COLORS[displayRole]}25`}`,
+         border: `1px solid ${founderUser ? 'rgba(99,91,255,0.20)' : `${ROLE_COLORS[displayRole]}25`}`,
        }}>
          {founderUser && <HiShieldCheck size={12} />}
          {founderUser ? 'Founder' : ROLE_LABELS[displayRole]}

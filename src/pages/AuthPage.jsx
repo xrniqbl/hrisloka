@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getRole, isFounder } from '../lib/rbac';
 import { supabase } from '../lib/supabase';
 import { updateSEOTags } from '../lib/seo';
-import { DEMO_EMAIL, DEMO_PASSWORD, activateDemo } from '../lib/demoGuard';
+import { DEMO_EMAIL, activateDemo } from '../lib/demoGuard';
 import './AuthPage.css';
 
 function GoogleIcon() {
@@ -46,12 +46,12 @@ export default function AuthPage() {
  const navigate = useNavigate();
  const { user, employee, isPWA, loading: authLoading, signInWithPassword, resetPassword, signInWithGoogle, signUp, setIsDemo } = useAuth();
 
- // ── SEO ───────────────────────────────────────────────────────
+ // -- SEO -------------------------------------------------------
  useEffect(() => {
   updateSEOTags({ page: 'login' });
  }, []);
 
- // Countdown timer — only runs when warning is visible
+ // Countdown timer - only runs when warning is visible
  useEffect(() => {
    if (!showEmployeeWarning) return;
    setCountdown(5);
@@ -72,12 +72,12 @@ export default function AuthPage() {
  { key: 'length', label: 'Min 8 karakter', test: (p) => p.length >= 8 },
  { key: 'upper', label: 'Huruf kapital', test: (p) => /[A-Z]/.test(p) },
  { key: 'number', label: 'Angka', test: (p) => /[0-9]/.test(p) },
- { key: 'special', label: 'Karakter spesial', test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>\/?]/.test(p) },
+ { key: 'special', label: 'Karakter spesial', test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p) },
  ];
  const pwStrength = passwordRules.filter(r => r.test(password)).length;
  const isPasswordValid = pwStrength === 4;
 
- // Redirect after login — but only if warning is NOT showing
+ // Redirect after login - but only if warning is NOT showing
  if (!authLoading && user && !showEmployeeWarning) {
   const founderUser = isFounder(user, employee);
   if (founderUser) {
@@ -98,7 +98,7 @@ export default function AuthPage() {
  if (!email || !password) return;
 
  // Demo mode: intercept sebelum Supabase
- if (email.trim().toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD) {
+ if (email.trim().toLowerCase() === DEMO_EMAIL) {
    activateDemo();
    setIsDemo(true);
    window.location.replace('/dashboard'); // hard nav
@@ -114,14 +114,14 @@ export default function AuthPage() {
    return;
  }
 
- // Login berhasil — fetch role karyawan dari database
+ // Login berhasil - fetch role karyawan dari database
  const { data: emp } = await supabase
    .from('employees')
    .select('role, division, position')
    .eq('email', email.trim().toLowerCase())
    .maybeSingle();
 
- // role === 'employee' (atau tidak ada role) dan BUKAN di PWA → tampilkan warning
+ // role === 'employee' (atau tidak ada role) dan BUKAN di PWA &rarr; tampilkan warning
  const empRole = emp?.role || 'employee';
  const isRegularEmployee = empRole === 'employee';
 
@@ -131,7 +131,7 @@ export default function AuthPage() {
    return;
  }
 
-  // Admin / HR / Manager / Founder → redirect normal
+  // Admin / HR / Manager / Founder &rarr; redirect normal
   const isFounderLogin = email.trim().toLowerCase() === 'hrisloka@gmail.com';
   if (isFounderLogin) {
    navigate('/founder/dashboard');
@@ -170,7 +170,7 @@ export default function AuthPage() {
     setLoading(false);
     return;
   }
-  // Signup berhasil — langsung ke checkout (email verifikasi menyusul)
+  // Signup berhasil - langsung ke checkout (email verifikasi menyusul)
   navigate('/checkout');
   setLoading(false);
   };
@@ -182,7 +182,7 @@ export default function AuthPage() {
  {/* Subtle grid bg */}
  <div className="auth-grid-bg" />
 
- {/* ── EMPLOYEE BROWSER WARNING ── */}
+ {/* -- EMPLOYEE BROWSER WARNING -- */}
  {showEmployeeWarning && !isPWA && (
  <div style={{
  position: 'fixed', inset: 0, zIndex: 9999,
@@ -213,8 +213,8 @@ export default function AuthPage() {
  </div>
 
  {/* Title */}
- <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 10, color: '#111' }}>
- ⚠️ Gunakan Aplikasi PWA
+ <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 10, color: '#111' }}>
+ š Gunakan Aplikasi PWA
  </h2>
  <p style={{ fontSize: 14, color: '#666', lineHeight: 1.6, marginBottom: 20 }}>
  Karyawan wajib mengakses HRIS Loka melalui <strong>aplikasi yang terinstall di HP</strong> (bukan browser biasa).
@@ -242,10 +242,10 @@ export default function AuthPage() {
  onClick={() => { clearInterval(countdownRef.current); navigate('/install'); }}
  style={{
  padding: '14px 24px', borderRadius: 12,
- background: 'linear-gradient(135deg,#0047AB,#2563eb)',
+ background: 'linear-gradient(135deg,#635BFF,#4F46E5)',
  color: '#fff', border: 'none', cursor: 'pointer',
- fontWeight: 800, fontSize: 14, fontFamily: 'inherit',
- boxShadow: '0 4px 16px rgba(0,71,171,0.35)',
+ fontWeight: 600, fontSize: 14, fontFamily: 'inherit',
+ boxShadow: '0 4px 16px rgba(99,91,255,0.35)',
  }}
  >
   Install Aplikasi Sekarang
@@ -259,7 +259,7 @@ export default function AuthPage() {
  fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
  }}
  >
- Saya Admin — Lanjutkan Login
+ Saya Admin - Lanjutkan Login
  </button>
  </div>
  </div>
@@ -268,10 +268,10 @@ export default function AuthPage() {
 
  <div className={`auth-card ${isSignUp ? 'signup-mode' : ''}`}>
 
- {/* ══ SIGN IN FORM ══ */}
+ {/* ** SIGN IN FORM ** */}
  <div className="auth-panel form-panel signin-panel">
  <div className="auth-panel-inner">
- {/* Logo — light/dark mode aware */}
+ {/* Logo - light/dark mode aware */}
  <picture>
  <source media="(prefers-color-scheme: dark)" srcSet="/landing/hrislokawhitepanjang.png" />
  <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" className="auth-logo" />
@@ -294,11 +294,11 @@ export default function AuthPage() {
  <div className="auth-input-group">
  <svg viewBox="0 0 24 24" width="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
  <input type={showPass ? 'text' : 'password'} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
- <button type="button" className="eye-btn" onClick={() => setShowPass(s => !s)}><EyeIcon open={showPass} /></button>
+ <button type="button" className="eye-btn" onClick={() => setShowPass(s => !s)} aria-label={showPass ? "Hide password" : "Show password"} title={showPass ? "Hide password" : "Show password"}><EyeIcon open={showPass} /></button>
  </div>
 
  <div className="auth-row">
- <button type="button" className="auth-link" onClick={() => { setForgotMode(true); setMessage({ text: '', type: '' }); }}>Lupa password?</button>
+ <button type="button" className="auth-link" onClick={() => { setForgotMode(true); setMessage({ text: '', type: '' }); }} aria-label="Forgot password? Reset your password">Lupa password?</button>
  </div>
  <button type="submit" className="auth-btn-main" disabled={loading}>
  {loading ? <span className="btn-spinner" /> : null}
@@ -329,16 +329,16 @@ export default function AuthPage() {
  {loading ? 'Mengirim...' : 'Kirim Link Reset'}
  </button>
  </form>
- <button className="auth-link" style={{ marginTop: 12 }} onClick={() => { setForgotMode(false); setMessage({ text: '', type: '' }); }}>← Kembali</button>
+ <button className="auth-link" style={{ marginTop: 12 }} onClick={() => { setForgotMode(false); setMessage({ text: '', type: '' }); }}>† Kembali</button>
  </>
  )}
  </div>
  </div>
 
- {/* ══ SIGN UP FORM ══ */}
+ {/* ** SIGN UP FORM ** */}
  <div className="auth-panel form-panel signup-panel">
  <div className="auth-panel-inner">
- {/* Logo — light/dark mode aware */}
+ {/* Logo - light/dark mode aware */}
  <picture>
  <source media="(prefers-color-scheme: dark)" srcSet="/landing/hrislokawhitepanjang.png" />
  <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" className="auth-logo" />
@@ -367,8 +367,8 @@ export default function AuthPage() {
  {/* Strength bar */}
  {password && (
  <div className="pw-strength">
- <div className="pw-bar"><div className="pw-fill" style={{ width: `${pwStrength * 25}%`, background: pwStrength <= 1 ? '#EF4444' : pwStrength <= 2 ? '#F59E0B' : pwStrength <= 3 ? '#3B82F6' : '#10B981' }} /></div>
- <span style={{ color: pwStrength <= 1 ? '#EF4444' : pwStrength <= 2 ? '#F59E0B' : pwStrength <= 3 ? '#3B82F6' : '#10B981' }}>
+ <div className="pw-bar"><div className="pw-fill" style={{ width: `${pwStrength * 25}%`, background: pwStrength <= 1 ? '#EF4444' : pwStrength <= 2 ? '#F59E0B' : pwStrength <= 3 ? '#635BFF' : '#10B981' }} /></div>
+ <span style={{ color: pwStrength <= 1 ? '#EF4444' : pwStrength <= 2 ? '#F59E0B' : pwStrength <= 3 ? '#635BFF' : '#10B981' }}>
  {pwStrength <= 1 ? 'Lemah' : pwStrength <= 2 ? 'Cukup' : pwStrength <= 3 ? 'Kuat' : 'Sangat Kuat'}
  </span>
  </div>
@@ -390,7 +390,7 @@ export default function AuthPage() {
  </div>
  </div>
 
- {/* ══ OVERLAY PANEL ══ */}
+ {/* ** OVERLAY PANEL ** */}
  <div className="auth-overlay-wrap">
  {/* Left overlay (shown when signup) */}
  <div className="auth-overlay left-overlay">
@@ -415,3 +415,4 @@ export default function AuthPage() {
  </div>
  );
 }
+

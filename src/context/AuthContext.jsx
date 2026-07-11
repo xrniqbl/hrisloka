@@ -54,8 +54,23 @@ export function AuthProvider({ children }) {
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
-      setSubscription(data ?? null);
-      return data ?? null;
+
+      if (!data) {
+        setSubscription(null);
+        return null;
+      }
+
+      // Enrich for guards: treat near-expiry as still active if status=active
+      const expiresAt = data.expires_at ? new Date(data.expires_at).getTime() : null;
+      const now = Date.now();
+      const stillValid = data.status === 'active' && (!expiresAt || expiresAt > now);
+      const enriched = {
+        ...data,
+        is_active: stillValid || data.status === 'trial',
+        computed_status: stillValid ? 'active' : (data.status === 'active' ? 'expired' : data.status),
+      };
+      setSubscription(enriched);
+      return enriched;
     } catch {
       // Table may not exist yet — treat as no subscription
       setSubscription(null);
@@ -155,7 +170,8 @@ export function AuthProvider({ children }) {
             const isPwa     = getIsPWA();
 
             // ── STEP 1: Platform founder shortcut ──────────────────────────
-            if (userEmail === 'hrisloka@gmail.com') {
+            const founderEmail = (import.meta.env.VITE_FOUNDER_EMAIL || '').toLowerCase();
+            if (founderEmail && userEmail === founderEmail) {
               window.location.replace('/founder/dashboard');
               return;
             }

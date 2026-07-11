@@ -1,9 +1,10 @@
-@import "tailwindcss";
-@import '@fontsource/plus-jakarta-sans/400.css';
-@import '@fontsource/plus-jakarta-sans/500.css';
-@import '@fontsource/plus-jakarta-sans/600.css';
-@import '@fontsource/plus-jakarta-sans/700.css';
-@import '@fontsource/plus-jakarta-sans/800.css';
+﻿@import "tailwindcss";
+@import '@fontsource/inter-tight/400.css';
+@import '@fontsource/inter-tight/500.css';
+@import '@fontsource/inter-tight/600.css';
+@import '@fontsource/inter-tight/700.css';
+@import '@fontsource/inter-tight/800.css';
+@import '@fontsource-variable/inter-tight/wght.css';
 @import './styles/admin.css';
 @import './styles/premium-forms.css';
 @import "tw-animate-css";
@@ -14,18 +15,20 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* ─── Brand Colors ─── */
-  --primary:  var(--color-neutral-800);  /* Cobalt Blue — authoritative */
-  --primary-dark:  #00337C;
-  --primary-light: #E8F0FE;
-  --primary-hover: #0052CC;
+  /* â”€â”€â”€ Brand Colors â”€â”€â”€ */
+  --primary:  #635BFF;  /* Cobalt Blue â€” authoritative */
+  --primary-dark:  #4F46E5;
+  --primary-light: rgba(99,91,255,0.10);
+  --primary-soft:  #F0EEFF;
+  --primary-mid:   #E8E6FF;
+  --primary-hover: #5449FF;
 
-  /* ─── Accent — Teal (differentiator from generic blue) ─── */
-  --accent:  --alpha(var(--color-black) / 4%);  /* Teal-700 — fresh, distinct */
+  /* â”€â”€â”€ Accent â€” Teal (differentiator from generic blue) â”€â”€â”€ */
+  --accent:  #0F766E;
   --accent-light:  #CCFBF1;
   --accent-dark:   #0F766E;
 
-  /* ─── Semantic Colors ─── */
+  /* â”€â”€â”€ Semantic Colors â”€â”€â”€ */
   --success:  var(--color-emerald-500);
   --success-light: #F0FDF4;
   --warning:  var(--color-amber-500);
@@ -35,25 +38,25 @@
   --info:  var(--color-blue-500);
   --info-light:    #F0F9FF;
 
-  /* ─── Neutral Palette ─── */
-  --muted:  --alpha(var(--color-black) / 4%);
+  /* â”€â”€â”€ Neutral Palette â”€â”€â”€ */
+  --muted:  #6B7280;
   --text:            #111827;  /* Near-black with warmth */
   --text-secondary:  #4B5563;
   --text-tertiary:   #9CA3AF;
 
-  /* ─── Surfaces — layered depth system ─── */
-  --bg:              #F4F6FB;  /* Warm canvas — not pure lavender, not pure grey */
-  --bg-elevated:     #EAEFF8;  /* Inset / pressed areas */
+  /* ─── Surfaces — match landing soft canvas ─── */
+  --bg:              #F7F7FB;
+  --bg-elevated:     #F0EEFF;
   --surface:         #FFFFFF;
-  --surface-raised:  #FAFBFD;  /* Cards floating above bg */
+  --surface-raised:  #FAFBFD;
   --card:  var(--color-white);
 
-  /* ─── Borders ─── */
+  /* â”€â”€â”€ Borders â”€â”€â”€ */
   --border:  --alpha(var(--color-black) / 8%);  /* Slightly warmer than pure grey */
   --border-light:    #EEF2F9;
   --border-strong:   #C8D3E6;
 
-  /* ─── Border Radius ─── */
+  /* â”€â”€â”€ Border Radius â”€â”€â”€ */
   --radius-xs:   4px;
   --radius-sm:   8px;
   --radius-md:   12px;
@@ -61,31 +64,31 @@
   --radius-xl:   24px;
   --radius-full: 9999px;
 
-  /* ─── Shadows — blue-tinted for premium depth ─── */
-  --shadow-xs:         0 1px 2px rgba(14, 42, 96, 0.04);
-  --shadow-sm:         0 1px 4px rgba(14, 42, 96, 0.05), 0 1px 2px rgba(0,0,0,0.02);
-  --shadow-md:         0 4px 16px rgba(14, 42, 96, 0.08), 0 1px 4px rgba(0,0,0,0.03);
-  --shadow-lg:         0 12px 40px rgba(14, 42, 96, 0.10), 0 4px 12px rgba(0,0,0,0.04);
-  --shadow-xl:         0 20px 60px rgba(14, 42, 96, 0.12), 0 8px 20px rgba(0,0,0,0.05);
-  --shadow-card:       0 1px 3px rgba(14, 42, 96, 0.04), 0 0 0 1px rgba(14, 42, 96, 0.04);
-  --shadow-card-hover: 0 6px 20px rgba(14, 42, 96, 0.09), 0 2px 6px rgba(0,0,0,0.03);
-  --shadow-primary:    0 4px 14px rgba(0, 71, 171, 0.28);
-  --shadow-modal:      0 24px 80px rgba(14, 42, 96, 0.18), 0 8px 24px rgba(0,0,0,0.06);
+  /* â”€â”€â”€ Shadows â€” blue-tinted for premium depth â”€â”€â”€ */
+  --shadow-xs:         0 1px 2px rgba(45, 40, 90, 0.04);
+  --shadow-sm:         0 1px 4px rgba(45, 40, 90, 0.05), 0 1px 2px rgba(0,0,0,0.02);
+  --shadow-md:         0 4px 16px rgba(45, 40, 90, 0.08), 0 1px 4px rgba(0,0,0,0.03);
+  --shadow-lg:         0 12px 40px rgba(45, 40, 90, 0.10), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-xl:         0 20px 60px rgba(45, 40, 90, 0.12), 0 8px 20px rgba(0,0,0,0.05);
+  --shadow-card:       0 1px 3px rgba(45, 40, 90, 0.04), 0 0 0 1px rgba(45, 40, 90, 0.04);
+  --shadow-card-hover: 0 6px 20px rgba(45, 40, 90, 0.09), 0 2px 6px rgba(0,0,0,0.03);
+  --shadow-primary:    0 4px 14px rgba(99, 91, 255, 0.32);
+  --shadow-modal:      0 24px 80px rgba(45, 40, 90, 0.18), 0 8px 24px rgba(0,0,0,0.06);
 
-  /* ─── Layout ─── */
+  /* â”€â”€â”€ Layout â”€â”€â”€ */
   --sidebar-width:     260px;
   --sidebar-collapsed: 70px;
   --header-height:     64px;
 
-  /* ─── Transitions ─── */
+  /* â”€â”€â”€ Transitions â”€â”€â”€ */
   --transition-fast:   0.15s ease;
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow:   0.4s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-spring: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* ─── Typography Scale ─── */
-  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
+  /* â”€â”€â”€ Typography Scale â”€â”€â”€ */
+  --font-display: 'Inter Tight', 'Inter Tight Variable', system-ui, sans-serif;
+  --font-body:    'Inter Tight', 'Inter Tight Variable', system-ui, sans-serif;
   --font-mono:    'Fira Code', 'Cascadia Code', monospace;
   --background:  var(--color-white);
   --foreground:  var(--color-neutral-800);
@@ -132,7 +135,7 @@
 }
 
 html {
-  font-size: 16px;
+  font-size: 14px;
   -webkit-text-size-adjust: 100%;
   /* Prevent browser zoom from causing layout issues */
   text-size-adjust: 100%;
@@ -152,7 +155,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Typography Hierarchy ─── */
+/* â”€â”€â”€ Z-index scale (use these tokens, not magic numbers) â”€â”€â”€ */
+:root {
+  --z-sidebar: 900;
+  --z-slideover: 1000;
+  --z-modal: 1050;
+  --z-drawer: 1100;
+  --z-toast: 9999;
+}
+
+/* â”€â”€â”€ Global keyboard focus ring (WCAG 2.4.7 Focus Visible) â”€â”€â”€ */
+:where(button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* â”€â”€â”€ Typography Hierarchy â”€â”€â”€ */
 h1,
 h2,
 h3,
@@ -201,7 +220,7 @@ img {
   display: block;
 }
 
-/* ─── Custom Scrollbar (subtle) ─── */
+/* â”€â”€â”€ Custom Scrollbar (subtle) â”€â”€â”€ */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -220,21 +239,21 @@ img {
   background: rgba(139, 149, 165, 0.5);
 }
 
-/* ─── Selection ─── */
+/* â”€â”€â”€ Selection â”€â”€â”€ */
 ::selection {
   background: var(--primary-light);
   color: var(--primary);
 }
 
-/* ─── Dark Mode ─── */
+/* â”€â”€â”€ Dark Mode â”€â”€â”€ */
 [data-theme="dark"] {
   /* Brand */
-  --primary:       #4A90D9;
-  --primary-dark:  #6AAFFF;
-  --primary-light: rgba(74, 144, 217, 0.15);
-  --primary-hover: #5A9FE8;
+  --primary:       #7C75FF;
+  --primary-dark:  #9F7AEA;
+  --primary-light: rgba(124,117,255,0.15);
+  --primary-hover: #9270F5;
 
-  /* Accent — teal in dark */
+  /* Accent â€” teal in dark */
   --accent:        #2DD4BF;
   --accent-light:  rgba(45, 212, 191, 0.12);
   --accent-dark:   #14B8A6;
@@ -255,7 +274,7 @@ img {
   --text-secondary:  #9BA3B4;
   --text-tertiary:   #5E6A7E;
 
-  /* Surfaces — rich navy depth */
+  /* Surfaces â€” rich navy depth */
   --bg:              #0C0F1A;
   --bg-elevated:     #141827;
   --surface:         #151B2E;
@@ -391,7 +410,7 @@ img {
 [data-theme="dark"] select[style]:focus,
 [data-theme="dark"] textarea[style]:focus {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(0, 71, 171, 0.2) !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,0.25) !important;
 }
 
 [data-theme="dark"] .form-input::placeholder,
@@ -436,7 +455,7 @@ img {
   border-color: #2A2D3A;
 }
 
-/* ─── Extended Dark Mode ─── */
+/* â”€â”€â”€ Extended Dark Mode â”€â”€â”€ */
 
 [data-theme="dark"] .stat-card {
   background: #1A1D27;
@@ -444,7 +463,7 @@ img {
 }
 
 [data-theme="dark"] .stat-card:hover {
-  border-color: rgba(59, 130, 246, 0.15);
+  border-color: rgba(99,91,255,0.15);
 }
 
 [data-theme="dark"] .dashboard-header h1 {
@@ -452,8 +471,8 @@ img {
 }
 
 [data-theme="dark"] .chart-card-badge {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60A5FA;
+  background: rgba(99,91,255,0.15);
+  color: #a78bfa;
 }
 
 [data-theme="dark"] .status-badge.closed,
@@ -494,14 +513,14 @@ img {
 }
 
 [data-theme="dark"] .auth-page {
-  background: linear-gradient(135deg, #050A14 0%, #0A1628 40%, #0D1F35 100%);
+  background: linear-gradient(135deg, #050A14 0%, #0B0A1A 40%, #0D1F35 100%);
 }
 
 [data-theme="dark"] .layout-content {
   background: #0F1117;
 }
 
-/* ══ Career Public Page — Force Light Mode (overrides dark theme) ══
+/* â•â• Career Public Page â€” Force Light Mode (overrides dark theme) â•â•
    These rules MUST appear after dark-mode rules to win the cascade.
    Higher specificity: 2 class selectors beat 1 attr + 1 tag selector.
 */
@@ -542,7 +561,7 @@ img {
   color: #0F172A !important;
   -webkit-text-fill-color: #0F172A !important;
 }
-/* Job header card — keep all text white on gradient */
+/* Job header card â€” keep all text white on gradient */
 .career-page .career-job-info-card,
 .career-page .career-job-info-card *,
 .career-page .career-job-info-card h2 {
@@ -556,8 +575,8 @@ img {
 }
 
 @theme inline {
-  --font-heading:  'Inter', sans-serif;
-  --font-sans:  'Inter', sans-serif;
+  --font-heading:  'Inter Tight', 'Inter Tight Variable', system-ui, sans-serif;
+  --font-sans:  'Inter Tight', 'Inter Tight Variable', system-ui, sans-serif;
   --color-sidebar-ring:  var(--sidebar-ring);
   --color-sidebar-border:  var(--sidebar-border);
   --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
@@ -697,8 +716,8 @@ img {
   --card-foreground:  var(--color-neutral-100);
   --popover:  color-mix(in srgb, var(--background) 98%, var(--color-white));
   --popover-foreground:  var(--color-neutral-100);
-  --primary:  var(--color-neutral-100);
-  --primary-foreground:  var(--color-neutral-800);
+  --primary:  #a78bfa;
+  --primary-foreground:  #1e1b4b;
   --secondary:  --alpha(var(--color-white) / 4%);
   --secondary-foreground:  var(--color-neutral-100);
   --muted:  --alpha(var(--color-white) / 4%);
@@ -708,7 +727,7 @@ img {
   --destructive:  color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
   --border:  --alpha(var(--color-white) / 6%);
   --input:  --alpha(var(--color-white) / 8%);
-  --ring:  var(--color-neutral-500);
+  --ring:  #7c3aed;
   --chart-1:  var(--color-blue-700);
   --chart-2:  var(--color-emerald-500);
   --chart-3:  var(--color-amber-500);
@@ -742,9 +761,10 @@ img {
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-mono;
+    @apply font-sans;
   }
   code, kbd, samp, pre {
     font-family:  var(--font-mono);
   }
 }
+

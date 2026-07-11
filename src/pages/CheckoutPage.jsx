@@ -1,5 +1,5 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -17,14 +17,14 @@ import {
 } from 'react-icons/fi';
 import './CheckoutPage.css';
 
-// ── Plan color map ─────────────────────────────────────────────────────────────
+// -- Plan color map -------------------------------------------------------------
 const PLAN_COLORS = {
-  starter:    '#3B82F6',
-  pro:        '#7C3AED',
-  enterprise: '#D97706',
+  starter:    '#635BFF',
+  pro:        '#4F46E5',
+  enterprise: '#1a1a2e',
 };
 
-// ── Load Midtrans Snap script ──────────────────────────────────────────────────
+// -- Load Midtrans Snap script --------------------------------------------------
 function loadSnapScript() {
   return new Promise((resolve, reject) => {
     if (window.snap) { resolve(); return; }
@@ -42,7 +42,7 @@ function loadSnapScript() {
   });
 }
 
-// ── Step progress bar ──────────────────────────────────────────────────────────
+// -- Step progress bar ----------------------------------------------------------
 function StepBar({ step }) {
   const steps = ['Pilih Paket', 'Pembayaran', 'Konfirmasi'];
   return (
@@ -73,7 +73,7 @@ function FeatCheck() {
   );
 }
 
-// ═══════════════════ BILLING CYCLE TOGGLE ═════════════════════════════════════
+// ------------------- BILLING CYCLE TOGGLE -------------------------------------
 function BillingToggle({ billingCycle, onChange }) {
   return (
     <div className="co-billing-toggle">
@@ -87,7 +87,7 @@ function BillingToggle({ billingCycle, onChange }) {
   );
 }
 
-// ═══════════════════ STEP 1 — PLAN SELECTION ══════════════════════════════════
+// ------------------- STEP 1 - PLAN SELECTION ----------------------------------
 function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingChange }) {
   return (
     <div className="co-fadein" style={{ width: '100%', maxWidth: 960 }}>
@@ -100,7 +100,7 @@ function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingC
 
       <div className="co-plans-grid">
         {plans.map(plan => {
-          const color = PLAN_COLORS[plan.slug] || '#3B82F6';
+          const color = PLAN_COLORS[plan.slug] || '#635BFF';
           const isEnterprise = plan.slug === 'enterprise';
           const isSel = selected?.slug === plan.slug;
 
@@ -155,7 +155,7 @@ function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingC
                       <div className="co-plan-price-period">
                         {billingCycle === 'yearly'
                           ? <>/ tahun &nbsp;<span style={{color:'#10B981',fontWeight:700}}>({formatIDR(perMo)}/bln)</span></>
-                          : '/bulan · ditagih per bulan'}
+                          : '/bulan  ditagih per bulan'}
                       </div>
                       {billingCycle === 'yearly' && (
                         <div style={{marginTop:5,fontSize:11,color:'#10B981',fontWeight:700,background:'rgba(16,185,129,0.12)',borderRadius:8,padding:'3px 10px',display:'inline-block'}}>
@@ -171,7 +171,7 @@ function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingC
                 {(plan.features || []).map((f, i) => <li key={i}><FeatCheck />{f}</li>)}
               </ul>
               <button className="co-plan-select-btn" onClick={() => onSelect(plan)}>
-                {isSel ? 'Dipilih ✓' : 'Pilih Paket Ini'}
+                {isSel ? 'Dipilih ?' : 'Pilih Paket Ini'}
               </button>
             </div>
           );
@@ -192,7 +192,7 @@ function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingC
   );
 }
 
-// ═══════════════════ STEP 2 — PAYMENT ════════════════════════════════════════
+// ------------------- STEP 2 - PAYMENT ----------------------------------------
 function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billingCycle }) {
   const [voucherInput, setVoucherInput] = useState('');
   const [voucher, setVoucher]           = useState(null);
@@ -223,7 +223,7 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
 
   return (
     <div className="co-fadein" style={{ width: '100%', maxWidth: 860 }}>
-      <button className="co-back-btn" onClick={onBack}>
+      <button className="co-back-btn" onClick={onBack} aria-label="chevron left">
         <FiChevronLeft size={15} /> Kembali ke pilihan paket
       </button>
       <div className="co-section-title" style={{ textAlign: 'left', marginBottom: 24 }}>
@@ -232,7 +232,7 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
       </div>
 
       <div className="co-step2-layout">
-        {/* Left — payment panels */}
+        {/* Left - payment panels */}
         <div className="co-payment-panel">
 
           {/* Voucher card */}
@@ -266,7 +266,7 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div className="co-voucher-msg success" style={{ margin: 0 }}>
                     <FiCheckCircle size={13} />
-                    <strong>{voucher.code}</strong> — Diskon {voucher.discount_type === 'percentage' ? `${voucher.discount_value}%` : formatIDR(voucher.discount_value)} diterapkan
+                    <strong>{voucher.code}</strong> - Diskon {voucher.discount_type === 'percentage' ? `${voucher.discount_value}%` : formatIDR(voucher.discount_value)} diterapkan
                   </div>
                   <button onClick={handleRemoveVoucher} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 12 }}>
                     Hapus
@@ -306,7 +306,7 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
           {/* Action button */}
           {isFree ? (
             <button className="co-pay-btn success-green" onClick={() => onActivate({ pricePaid: finalPrice, discountAmount: discount, voucherCode: voucher?.code || null, paymentMethod: plan.price_monthly === 0 ? 'free' : 'voucher_full' })} disabled={loading}>
-              {loading ? <><span className="co-spinner" /> Mengaktifkan...</> : <><FiZap size={16} /> Aktifkan Sekarang — {formatIDR(finalPrice)}</>}
+              {loading ? <><span className="co-spinner" /> Mengaktifkan...</> : <><FiZap size={16} /> Aktifkan Sekarang - {formatIDR(finalPrice)}</>}
             </button>
           ) : (
             <button className="co-pay-btn primary" onClick={() => onMidtransPay({ finalPrice, discountAmount: discount, voucherCode: voucher?.code || null, billingCycle })} disabled={loading}>
@@ -319,16 +319,16 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
           </div>
         </div>
 
-        {/* Right — order summary */}
+        {/* Right - order summary */}
         <div className="co-order-summary">
           <div className="co-summary-title">Ringkasan Pesanan</div>
           <div className="co-summary-row highlight">
             <span>Paket {plan?.name}</span>
-            <span style={{ color: PLAN_COLORS[plan?.slug] || '#3B82F6' }}>{plan?.badge === 'Paling Populer' ? '⭐ Terpopuler' : ''}</span>
+            <span style={{ color: PLAN_COLORS[plan?.slug] || '#635BFF' }}>{plan?.badge === 'Paling Populer' ? '? Terpopuler' : ''}</span>
           </div>
           <div className="co-summary-row">
             <span>Siklus tagihan</span>
-            <span>{billingCycle === 'yearly' ? '🗓 Tahunan' : '📅 Bulanan'}</span>
+            <span>{billingCycle === 'yearly' ? '?? Tahunan' : '?? Bulanan'}</span>
           </div>
           <div className="co-summary-row">
             <span>{billingCycle === 'yearly' ? 'Harga per tahun' : 'Harga per bulan'}</span>
@@ -344,7 +344,7 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
               <div className="co-summary-row"><span>Subtotal</span><span>{formatIDR(basePrice)}</span></div>
               <div className="co-summary-row discount">
                 <span>Diskon ({voucher?.code})</span>
-                <span>− {formatIDR(discount)}</span>
+                <span>- {formatIDR(discount)}</span>
               </div>
             </>
           )}
@@ -367,10 +367,50 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
   );
 }
 
-// ═══════════════════ STEP 3 — CONFIRMATION ════════════════════════════════════
-function StepConfirmation({ plan, pricePaid, status }) {
+// ------------------- STEP 3 - CONFIRMATION ------------------------------------
+function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
   const navigate = useNavigate();
-  const isActive = status === 'active';
+  const [paymentStatus, setPaymentStatus] = useState(status);
+  const [checking, setChecking] = useState(false);
+  const isActive = paymentStatus === 'active' || paymentStatus === 'paid';
+
+  // Poll payment_orders until webhook marks paid (then subscription is active)
+  useEffect(() => {
+    if (isActive || !orderId) return;
+
+    let cancelled = false;
+    const checkStatus = async () => {
+      setChecking(true);
+      try {
+        const { data, error } = await supabase
+          .from('payment_orders')
+          .select('status, midtrans_status, plan_slug, plan_name, amount')
+          .eq('order_id', orderId)
+          .maybeSingle();
+
+        if (cancelled || error || !data) return;
+
+        if (data.status === 'paid') {
+          setPaymentStatus('active');
+          // Refresh auth employee + subscription after webhook activated
+          await onPaid?.(data);
+        } else if (['cancelled', 'failed', 'expired'].includes(data.status)) {
+          setPaymentStatus(data.status);
+        }
+      } catch (err) {
+        console.error('[Payment Status Check] Error:', err);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isActive, orderId, onPaid]);
 
   useEffect(() => {
     if (isActive) {
@@ -390,7 +430,7 @@ function StepConfirmation({ plan, pricePaid, status }) {
       <p className="co-step3-sub">
         {isActive
           ? 'Selamat! Akun Anda sudah aktif. Diarahkan ke dashboard dalam 3 detik...'
-          : 'Pembayaran sedang diverifikasi oleh Midtrans. Akun akan aktif otomatis setelah pembayaran dikonfirmasi.'}
+          : checking ? 'Sedang memeriksa status pembayaran...' : 'Pembayaran sedang diverifikasi oleh Midtrans. Akun akan aktif otomatis setelah pembayaran dikonfirmasi.'}
       </p>
       <div className="co-step3-info">
         {[
@@ -406,13 +446,13 @@ function StepConfirmation({ plan, pricePaid, status }) {
         ))}
       </div>
       {isActive ? (
-        <button className="co-pay-btn success-green" onClick={() => navigate('/dashboard')}>
+        <button className="co-pay-btn success-green" onClick={() => navigate('/dashboard')} aria-label="Masuk ke dashboard">
           <FiArrowRight size={16} /> Masuk ke Dashboard
         </button>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <button className="co-pay-btn primary" onClick={() => navigate('/checkout')}>
-            Cek Status Pembayaran
+          <button className="co-pay-btn primary" onClick={() => window.location.reload()} disabled={checking}>
+            {checking ? 'Memeriksa...' : 'Perbarui Halaman'}
           </button>
           <button className="co-pay-btn" style={{ background: 'none', border: '1.5px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }} onClick={() => navigate('/login')}>
             Kembali ke Login
@@ -423,9 +463,10 @@ function StepConfirmation({ plan, pricePaid, status }) {
   );
 }
 
-// ═══════════════════ ROOT CHECKOUT PAGE ═══════════════════════════════════════
+// ------------------- ROOT CHECKOUT PAGE ---------------------------------------
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, refreshEmployee, fetchSubscription, refreshOnboarding, signOut } = useAuth();
 
   const [step, setStep]             = useState(1);
@@ -434,7 +475,7 @@ export default function CheckoutPage() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [activating, setActivating] = useState(false);
-  const [confirmData, setConfirmData] = useState({ status: null, pricePaid: 0 });
+  const [confirmData, setConfirmData] = useState({ status: null, pricePaid: 0, orderId: null });
 
   // Load Midtrans Snap on mount
   useEffect(() => { loadSnapScript().catch(console.warn); }, []);
@@ -445,14 +486,65 @@ export default function CheckoutPage() {
       setPlans(data || []);
       const pro = data?.find(p => p.slug === 'pro');
       if (pro) setSelectedPlan(pro);
+      else if (data?.[0]) setSelectedPlan(data[0]);
       setPlansLoading(false);
     });
   }, []);
+
+  // Resume verify flow when Midtrans redirects back: /checkout?status=success&order_id=...
+  useEffect(() => {
+    const status = searchParams.get('status');
+    const orderId = searchParams.get('order_id');
+    if (!status || !orderId) return;
+
+    setConfirmData({
+      status: status === 'error' ? 'failed' : 'pending',
+      pricePaid: 0,
+      orderId,
+    });
+    setStep(3);
+
+    // Hydrate price/plan from payment_orders
+    (async () => {
+      const { data } = await supabase
+        .from('payment_orders')
+        .select('amount, plan_slug, plan_name, status')
+        .eq('order_id', orderId)
+        .maybeSingle();
+      if (data) {
+        setConfirmData((prev) => ({
+          ...prev,
+          pricePaid: data.amount || 0,
+          status: data.status === 'paid' ? 'active' : (status === 'error' ? 'failed' : 'pending'),
+          orderId,
+        }));
+        if (data.plan_slug) {
+          setSelectedPlan((prev) => prev?.slug === data.plan_slug
+            ? prev
+            : {
+                slug: data.plan_slug,
+                name: data.plan_name || data.plan_slug,
+                price_monthly: data.amount,
+              });
+        }
+      }
+    })();
+  }, [searchParams]);
 
   // Auth guard
   const [authWait, setAuthWait] = useState(true);
   useEffect(() => { const t = setTimeout(() => setAuthWait(false), 1500); return () => clearTimeout(t); }, []);
   useEffect(() => { if (!authWait && !user) navigate('/login', { replace: true }); }, [authWait, user, navigate]);
+
+  const handlePaidRefresh = useCallback(async () => {
+    try {
+      await refreshEmployee?.();
+      if (user?.id && fetchSubscription) await fetchSubscription(user.id);
+      if (refreshOnboarding) await refreshOnboarding();
+    } catch (e) {
+      console.warn('[Checkout] post-pay refresh:', e?.message);
+    }
+  }, [user, refreshEmployee, fetchSubscription, refreshOnboarding]);
 
   const handleNextFromPlan = () => {
     if (!selectedPlan) return;
@@ -504,16 +596,26 @@ export default function CheckoutPage() {
 
       const { snap_token } = res.data;
 
+      const orderId = res.data?.order_id;
+
       window.snap.pay(snap_token, {
-        onSuccess: async () => {
-          await handleActivate({ pricePaid: finalPrice, discountAmount, voucherCode, paymentMethod: 'midtrans' });
-        },
-        onPending: () => {
-          setConfirmData({ status: 'pending', pricePaid: finalPrice });
+        onSuccess: () => {
+          // DO NOT activate client-side — webhook is source of truth
+          setConfirmData({ status: 'pending', pricePaid: finalPrice, orderId });
           setStep(3);
           setActivating(false);
         },
-        onError: () => setActivating(false),
+        onPending: () => {
+          // Must include orderId so polling can detect webhook settlement
+          setConfirmData({ status: 'pending', pricePaid: finalPrice, orderId });
+          setStep(3);
+          setActivating(false);
+        },
+        onError: () => {
+          setConfirmData({ status: 'failed', pricePaid: finalPrice, orderId });
+          setStep(3);
+          setActivating(false);
+        },
         onClose: () => setActivating(false),
       });
     } catch (err) {
@@ -537,7 +639,7 @@ export default function CheckoutPage() {
         <div className="co-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {user && (
             <button
-              onClick={async () => { await signOut(); navigate('/', { replace: true }); }}
+              onClick={async () => { try { await signOut(); navigate('/', { replace: true }); } catch(e) { console.error('[Checkout] signOut error:', e); } }}
               style={{
                 background: 'rgba(239,68,68,0.15)',
                 border: '1.5px solid rgba(239,68,68,0.4)',
@@ -553,11 +655,11 @@ export default function CheckoutPage() {
                 gap: 6,
               }}
             >
-              ← Keluar
+              &larr; Keluar
             </button>
           )}
           <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Sudah berlangganan?</span>
-          <Link to="/login" style={{ color: '#60A5FA', fontWeight: 700, fontSize: 13 }}>Masuk</Link>
+          <Link to="/login" style={{ color: '#818CF8', fontWeight: 700, fontSize: 13 }}>Masuk</Link>
         </div>
       </div>
 
@@ -596,6 +698,8 @@ export default function CheckoutPage() {
                 plan={selectedPlan}
                 pricePaid={confirmData.pricePaid}
                 status={confirmData.status}
+                orderId={confirmData.orderId}
+                onPaid={handlePaidRefresh}
               />
             )}
           </>
@@ -604,3 +708,5 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+
