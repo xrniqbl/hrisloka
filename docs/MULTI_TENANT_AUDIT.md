@@ -137,14 +137,22 @@ Demo bypasses real session; keep disabled in production (`VITE_DEMO_*` unset).
 ## Recommended next actions (priority)
 
 1. **Run** `fix_employees_rls_super_admin_leak.sql` on production Supabase.  
-2. **Run** `scripts/rls-audit.sql` and fix any table with `rowsecurity = false`.  
-3. **Deploy** payment functions (if not yet).  
-4. Smoke test two companies (A/B) in sandbox:
+2. **Run** `harden_notifications_company_settings_rls.sql` (notifications + company_settings + payroll_config).  
+3. **Run** `scripts/rls-audit.sql` and fix any table with `rowsecurity = false`.  
+4. **Deploy** payment functions (if not yet).  
+5. Smoke test two companies (A/B) in sandbox:
    - Create Co A + Co B  
    - Employee A / Employee B  
    - Confirm no cross-list in employees, attendance, leave  
-5. Audit `notificationService` + `companySettingsService` for `company_id`.  
 6. Ensure every new `super_admin` after payment has non-null `company_id`.
+
+### Code hardening done (app layer)
+
+- `src/lib/tenantGuard.js` — `resolveMyCompanyId`, `assertSameCompany`, `assertEmployeeInCompany`
+- `notificationService.js` — always verifies employee ∈ company before read/write
+- `companySettingsService.js` — company_code verified against caller company; HR-only writes
+- `billingService.js` — cannot read/write another user's billing
+- `NotificationCenter.jsx` — mark read scoped to `employee_id`; realtime filter per employee
 
 ---
 

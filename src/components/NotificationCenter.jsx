@@ -20,7 +20,7 @@ const typeIcons = {
  payroll: <HiCurrencyDollar />,
 };
 const typeColors = {
- leave: '#3B82F6', approval: '#16A34A', announcement: '#F59E0B',
+ leave: '#635BFF', approval: '#16A34A', announcement: '#F59E0B',
  birthday: '#EC4899', contract: '#DC2626', system: '#6D8196', payroll: '#8B5CF6',
 };
 
@@ -31,19 +31,38 @@ export default function NotificationCenter() {
  const [loading, setLoading] = useState(false);
  const ref = useRef(null);
 
- useEffect(() => {
- if (employee?.id) fetchNotifications();
+ const fetchNotifications = async () => {
+ if (!employee?.id) return;
+ setLoading(true);
+ // Always scope to own employee_id (RLS + app filter)
+ const { data } = await supabase.from('notifications').select('*')
+ .eq('employee_id', employee.id)
+ .order('created_at', { ascending: false })
+ .limit(30);
+ setNotifications(data || []);
+ setLoading(false);
+ };
 
- // Subscribe to realtime
- const channel = supabase.channel('notifications')
- .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
- if (payload.new.employee_id === employee?.id) {
+ useEffect(() => {
+ if (!employee?.id) return;
+ fetchNotifications();
+
+ // Realtime channel scoped per employee to reduce cross-tenant noise
+ const channel = supabase.channel(`notifications-emp-${employee.id}`)
+ .on('postgres_changes', {
+ event: 'INSERT',
+ schema: 'public',
+ table: 'notifications',
+ filter: `employee_id=eq.${employee.id}`,
+ }, (payload) => {
+ if (payload.new.employee_id === employee.id) {
  setNotifications(prev => [payload.new, ...prev]);
  }
  })
  .subscribe();
 
  return () => { supabase.removeChannel(channel); };
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [employee?.id]);
 
  // Close on outside click
@@ -53,32 +72,29 @@ export default function NotificationCenter() {
  return () => document.removeEventListener('mousedown', handler);
  }, []);
 
- const fetchNotifications = async () => {
- setLoading(true);
- const { data } = await supabase.from('notifications').select('*')
- .eq('employee_id', employee?.id)
- .order('created_at', { ascending: false })
- .limit(30);
- setNotifications(data || []);
- setLoading(false);
- };
-
  const unreadCount = notifications.filter(n => !n.read).length;
 
  const markRead = async (id) => {
- await supabase.from('notifications').update({ read: true }).eq('id', id);
+ if (!employee?.id) return;
+ await supabase.from('notifications').update({ read: true })
+ .eq('id', id)
+ .eq('employee_id', employee.id);
  setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
  };
 
  const markAllRead = async () => {
+ if (!employee?.id) return;
  const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
  if (unreadIds.length === 0) return;
- await supabase.from('notifications').update({ read: true }).in('id', unreadIds);
+ await supabase.from('notifications').update({ read: true })
+ .eq('employee_id', employee.id)
+ .eq('read', false);
  setNotifications(prev => prev.map(n => ({ ...n, read: true })));
  };
 
  const timeAgo = (date) => {
- const diff = Date.now() - new Date(date).getTime();
+ const now = Date.now();
+ const diff = now - new Date(date).getTime();
  const mins = Math.floor(diff / 60000);
  if (mins < 1) return 'Baru saja';
  if (mins < 60) return `${mins}m lalu`;

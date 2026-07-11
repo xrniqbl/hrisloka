@@ -1,19 +1,33 @@
 import { supabase } from '../lib/supabase';
+import { CANONICAL_PLANS } from '../lib/plans';
 
 /**
- * Fetches the billing info for a given user/company.
- * Falls back to a local mock if no DB record exists yet,
- * or if the billing_info table has not been created.
+ * Billing info is user-scoped (subscriber). Always force current auth user —
+ * never accept another userId from the client without check.
+ */
+async function requireCurrentUserId(userId) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.id) return { userId: null, error: { message: 'Not authenticated' } };
+  if (userId && userId !== user.id) {
+    return { userId: null, error: { message: 'tenant isolation: tidak boleh akses billing user lain' } };
+  }
+  return { userId: user.id, error: null };
+}
+
+/**
+ * Fetches billing info for the authenticated user only.
  */
 export async function getBillingInfo(userId) {
+  const { userId: uid, error: authErr } = await requireCurrentUserId(userId);
+  if (authErr || !uid) return { data: null, error: authErr };
+
   try {
     const { data, error } = await supabase
       .from('billing_info')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', uid)
       .maybeSingle();
 
-    // Table doesn't exist → PGRST205, just return null silently
     if (error && (error.code === 'PGRST205' || error.code === '42P01')) {
       return { data: null, error: null };
     }
@@ -25,13 +39,21 @@ export async function getBillingInfo(userId) {
 }
 
 /**
- * Upsert (insert or update) billing info for a user.
+ * Upsert billing info for the authenticated user only.
  */
 export async function upsertBillingInfo(userId, payload) {
+  const { userId: uid, error: authErr } = await requireCurrentUserId(userId);
+  if (authErr || !uid) return { data: null, error: authErr };
+
   try {
+    // Never allow client to spoof user_id
+    const { user_id: _drop, ...safe } = payload || {};
     const { data, error } = await supabase
       .from('billing_info')
-      .upsert({ user_id: userId, ...payload, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      .upsert(
+        { user_id: uid, ...safe, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' },
+      )
       .select()
       .single();
 
@@ -43,22 +65,25 @@ export async function upsertBillingInfo(userId, payload) {
 }
 
 /**
- * Default billing info to show when no record found.
+ * Default billing placeholder when no record exists (UI only).
  */
 export function getDefaultBillingInfo() {
+  const pro = CANONICAL_PLANS.find((p) => p.slug === 'pro');
   const renewal = new Date();
   renewal.setMonth(renewal.getMonth() + 1);
-  const formatted = renewal.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const formatted = renewal.toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
 
   return {
-    plan: 'Pro',
+    plan: pro?.name || 'Pro',
     billing_cycle: 'monthly',
-    price: 299000,
+    price: pro?.price_monthly ?? 299000,
     currency: 'IDR',
     cardholder_name: 'HRIS Loka',
-    account_number_masked: 'xxxx xxxx xxxx 4437',
-    expiry: '12/28',
-    payment_method: 'VISA Debit Card',
+    account_number_masked: 'xxxx xxxx xxxx ----',
+    expiry: '--/--',
+    payment_method: 'Midtrans',
     renewal_date: formatted,
     status: 'active',
   };
