@@ -2,13 +2,13 @@
  Public Career Page — Premium Standalone Styles
  ═══════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 :root {
- --career-primary: #0047AB;
- --career-primary-dark: #003080;
- --career-primary-light: #E8F0FE;
- --career-bg: #F0F4F8;
+ --career-primary: #635BFF;
+ --career-primary-dark: #4F46E5;
+ --career-primary-light: #F0EEFF;
+ --career-bg: #F7F7FB;
  --career-surface: #FFFFFF;
  --career-text: #0F172A;
  --career-text-secondary: #475569;
@@ -24,7 +24,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 .career-page {
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter Tight', system-ui, sans-serif;
   background: var(--career-bg);
   min-height: 100vh;
   color: var(--career-text);
@@ -35,7 +35,7 @@
 
 /* ─── Hero Section ─── */
 .career-hero {
- background: linear-gradient(160deg, #0a1628 0%, #0d2147 30%, var(--career-primary) 60%, #1565c0 100%);
+ background: linear-gradient(160deg, #12102A 0%, #1A1740 28%, #635BFF 62%, #736BFF 100%);
  color: #fff;
  padding: 72px 24px 96px;
  text-align: center;
@@ -47,7 +47,7 @@
  position: absolute;
  inset: 0;
  background:
- radial-gradient(ellipse 600px 400px at 20% 40%, rgba(59,130,246,0.15), transparent),
+ radial-gradient(ellipse 600px 400px at 20% 40%, rgba(99,91,255,0.15), transparent),
  radial-gradient(ellipse 500px 300px at 80% 60%, rgba(99,102,241,0.12), transparent),
  radial-gradient(ellipse 300px 200px at 50% 90%, rgba(255,255,255,0.05), transparent);
  pointer-events: none;
@@ -219,7 +219,7 @@
 .career-stat-value {
  font-size: 32px;
  font-weight: 800;
- background: linear-gradient(135deg, #fff, #93c5fd);
+ background: linear-gradient(135deg, #fff, #A5B4FC);
  -webkit-background-clip: text;
  -webkit-text-fill-color: transparent;
  background-clip: text;
@@ -275,7 +275,7 @@
  background: var(--career-primary);
  color: #fff;
  border-color: var(--career-primary);
- box-shadow: 0 2px 8px rgba(0,71,171,0.25);
+ box-shadow: 0 2px 8px rgba(99,91,255,0.25);
 }
 
 /* ─── Job Cards ─── */
@@ -311,7 +311,7 @@
 .career-job-card:hover {
  box-shadow: var(--career-shadow-lg);
  transform: translateY(-3px);
- border-color: rgba(0,71,171,0.2);
+ border-color: rgba(99,91,255,0.2);
 }
 .career-job-card:hover::before {
  opacity: 1;
@@ -410,7 +410,7 @@
 }
 .career-apply-btn:hover {
  transform: translateY(-1px) scale(1.02);
- box-shadow: 0 4px 16px rgba(0,71,171,0.3);
+ box-shadow: 0 4px 16px rgba(99,91,255,0.3);
 }
 
 /* ─── Job Detail Page ─── */
@@ -505,7 +505,7 @@
 
 /* Job info header card — gradient background, override the white !important */
 .career-form-card.career-job-info-card {
-  background: linear-gradient(135deg, #0047AB, #1a237e) !important;
+  background: linear-gradient(135deg, #635BFF, #1a237e) !important;
   border: none !important;
   padding: 20px 24px !important;
 }
@@ -541,7 +541,7 @@
   flex-shrink: 0;
 }
 
-.cf-section-icon.blue  { background: rgba(0,71,171,0.1);  color: #0047AB; }
+.cf-section-icon.blue  { background: rgba(99,91,255,0.1);  color: #635BFF; }
 .cf-section-icon.green { background: rgba(16,185,129,0.1); color: #059669; }
 .cf-section-icon.amber { background: rgba(245,158,11,0.1); color: #D97706; }
 .cf-section-icon.purple{ background: rgba(139,92,246,0.1); color: #7C3AED; }
@@ -611,8 +611,8 @@
 .career-form-input:focus,
 .career-form-select:focus,
 .career-form-textarea:focus {
-  border-color: #0047AB !important;
-  box-shadow: 0 0 0 3px rgba(0,71,171,0.1) !important;
+  border-color: #635BFF !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,0.1) !important;
   background: #FFFFFF !important;
 }
 .career-form-select {
@@ -641,7 +641,7 @@
 }
 .career-file-zone:hover,
 .career-file-zone.has-file {
-  border-color: #0047AB;
+  border-color: #635BFF;
   background: #EEF4FF !important;
 }
 .career-file-zone input[type="file"] {
@@ -656,8 +656,8 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #E8F0FE;
-  color: #0047AB;
+  background: #F0EEFF;
+  color: #635BFF;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -677,7 +677,7 @@
 .career-file-name {
   font-size: 13px;
   font-weight: 600;
-  color: #0047AB !important;
+  color: #635BFF !important;
   margin-top: 6px;
 }
 
@@ -686,7 +686,7 @@
   width: 100%;
   padding: 18px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #0047AB 0%, #1a237e 100%);
+  background: linear-gradient(135deg, #635BFF 0%, #1a237e 100%);
   color: #fff !important;
   font-size: 16px;
   font-weight: 700;
@@ -699,11 +699,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 16px rgba(0,71,171,0.25);
+  box-shadow: 0 4px 16px rgba(99,91,255,0.25);
 }
 .career-submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(0,71,171,0.35);
+  box-shadow: 0 8px 28px rgba(99,91,255,0.35);
 }
 .career-submit-btn:disabled {
   opacity: 0.45;
@@ -750,7 +750,7 @@
   border-radius: 10px;
   border: 2px dashed #CBD5E1;
   background: transparent !important;
-  color: #0047AB !important;
+  color: #635BFF !important;
   font-size: 13px;
   font-weight: 700;
   font-family: inherit;
@@ -760,7 +760,7 @@
   transition: all 0.2s;
 }
 .career-add-btn:hover {
-  border-color: #0047AB;
+  border-color: #635BFF;
   background: #EEF4FF !important;
 }
 
@@ -774,7 +774,7 @@
   box-shadow: 0 1px 2px rgba(0,0,0,0.04); min-height: 44px;
 }
 .cf-datepicker-input:hover, .cf-datepicker-input.open {
-  border-color: #0047AB !important; box-shadow: 0 0 0 3px rgba(0,71,171,0.1) !important;
+  border-color: #635BFF !important; box-shadow: 0 0 0 3px rgba(99,91,255,0.1) !important;
 }
 .cf-dp-icon { color: #94A3B8; flex-shrink: 0; }
 .cf-date-placeholder { color: #9CA3AF; font-size: 14px; flex: 1; }
@@ -798,7 +798,7 @@
 .cf-dp-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px 12px;
-  background: linear-gradient(135deg, #0047AB, #1a237e);
+  background: linear-gradient(135deg, #635BFF, #1a237e);
 }
 .cf-dp-title { font-weight: 700; font-size: 14px; color: #fff; }
 .cf-dp-nav {
@@ -826,20 +826,20 @@
   display: flex; align-items: center; justify-content: center;
   font-family: inherit; transition: all 0.12s; width: 100%; position: relative;
 }
-.cf-dp-cell:hover:not(.empty) { background: #EEF4FF; color: #0047AB; }
-.cf-dp-cell.today { color: #0047AB; font-weight: 800; }
-.cf-dp-cell.selected { background: #0047AB !important; color: #fff !important; font-weight: 700; border-radius: 8px; }
+.cf-dp-cell:hover:not(.empty) { background: #EEF4FF; color: #635BFF; }
+.cf-dp-cell.today { color: #635BFF; font-weight: 800; }
+.cf-dp-cell.selected { background: #635BFF !important; color: #fff !important; font-weight: 700; border-radius: 8px; }
 .cf-dp-cell.empty { cursor: default; pointer-events: none; }
 .cf-dp-footer {
   padding: 8px 12px 14px; border-top: 1px solid #F1F5F9;
   display: flex; justify-content: center; gap: 8px;
 }
 .cf-dp-today {
-  font-size: 12px; font-weight: 700; color: #0047AB;
-  background: none; border: 1.5px solid #0047AB; border-radius: 8px;
+  font-size: 12px; font-weight: 700; color: #635BFF;
+  background: none; border: 1.5px solid #635BFF; border-radius: 8px;
   padding: 5px 16px; cursor: pointer; font-family: inherit; transition: all 0.2s;
 }
-.cf-dp-today:hover { background: #0047AB; color: #fff; }
+.cf-dp-today:hover { background: #635BFF; color: #fff; }
 
 /* ─── Gender radio cards ─── */
 .cf-radio-group { display: flex; gap: 10px; }
@@ -850,10 +850,10 @@
   font-size: 14px; font-weight: 600; font-family: inherit;
   cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
-.cf-radio-btn:hover { border-color: #0047AB; color: #0047AB !important; background: #EEF4FF !important; }
+.cf-radio-btn:hover { border-color: #635BFF; color: #635BFF !important; background: #EEF4FF !important; }
 .cf-radio-btn.selected {
-  border-color: #0047AB; background: #0047AB !important;
-  color: #fff !important; box-shadow: 0 2px 10px rgba(0,71,171,0.22);
+  border-color: #635BFF; background: #635BFF !important;
+  color: #fff !important; box-shadow: 0 2px 10px rgba(99,91,255,0.22);
 }
 
 /* ─── Education pill buttons ─── */
@@ -864,10 +864,10 @@
   font-size: 13px; font-weight: 600; font-family: inherit;
   cursor: pointer; transition: all 0.18s;
 }
-.cf-pill:hover { border-color: #0047AB; color: #0047AB !important; background: #EEF4FF !important; }
+.cf-pill:hover { border-color: #635BFF; color: #635BFF !important; background: #EEF4FF !important; }
 .cf-pill.selected {
-  border-color: #0047AB; background: #0047AB !important;
-  color: #fff !important; box-shadow: 0 2px 8px rgba(0,71,171,0.2);
+  border-color: #635BFF; background: #635BFF !important;
+  color: #fff !important; box-shadow: 0 2px 8px rgba(99,91,255,0.2);
 }
 
 /* ─── Hide number spinners ─── */

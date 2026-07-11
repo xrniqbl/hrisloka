@@ -1,8 +1,11 @@
-import { useMemo } from 'react';
-import { FiCalendar, FiTrendingUp } from 'react-icons/fi';
+﻿import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiCalendar, FiTrendingUp, FiArrowRight } from 'react-icons/fi';
 import CardHeader from './CardHeader';
 
 export default function TimeOffCard({ leaves = [], loading }) {
+  const navigate = useNavigate();
+
   const stats = useMemo(() => {
     const approved = leaves.filter(l => l.status === 'approved');
     const pending = leaves.filter(l => l.status === 'pending');
@@ -28,9 +31,26 @@ export default function TimeOffCard({ leaves = [], loading }) {
   const sickPct = (stats.sick / total) * 100;
   const annualPct = (stats.annual / total) * 100;
 
+  const statusRows = [
+    { label: 'Pending', count: stats.pending, color: '#F59E0B', path: '/leave?status=pending' },
+    { label: 'Confirmed', count: stats.confirmed, color: '#22C55E', path: '/leave?status=approved' },
+    { label: 'Rejected', count: stats.rejected, color: '#EF4444', path: '/leave?status=rejected' },
+  ];
+
   return (
-    <div className="dash-card">
-      <CardHeader icon={<FiCalendar size={18} />} title="Time Off" badge="Confirmed" badgeColor="green" />
+    <div
+      className="dash-card dash-kpi-clickable"
+      onClick={() => navigate('/leave')}
+      style={{ cursor: 'pointer' }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && navigate('/leave')}
+      title="Buka manajemen cuti"
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <CardHeader icon={<FiCalendar size={18} />} title="Time Off" badge="Confirmed" badgeColor="green" />
+        <FiArrowRight size={14} style={{ color: 'var(--dash-text-muted)', flexShrink: 0 }} />
+      </div>
       <div className="dash-timeoff">
         <div className="dash-timeoff-stats">
           <div>
@@ -45,52 +65,41 @@ export default function TimeOffCard({ leaves = [], loading }) {
           <div className="dash-gauge-visual">
             <svg viewBox="0 0 120 60" width="120" height="60">
               <path d="M 10 55 A 50 50 0 0 1 110 55" fill="none" stroke="#E5E7EB" strokeWidth="10" strokeLinecap="round" />
-              <path d="M 10 55 A 50 50 0 0 1 110 55" fill="none" stroke="#5654D4" strokeWidth="10" strokeLinecap="round"
+              <path d="M 10 55 A 50 50 0 0 1 110 55" fill="none" stroke="#5654D4"
+                strokeWidth="10" strokeLinecap="round"
                 strokeDasharray={`${(sickPct / 100) * 157} 157`} />
-              <path d="M 10 55 A 50 50 0 0 1 110 55" fill="none" stroke="#9695E4" strokeWidth="10" strokeLinecap="round"
+              <path d="M 10 55 A 50 50 0 0 1 110 55" fill="none" stroke="#22C55E"
+                strokeWidth="10" strokeLinecap="round"
                 strokeDasharray={`${(annualPct / 100) * 157} 157`}
-                strokeDashoffset={`${-(sickPct / 100) * 157}`} />
-              <text x="60" y="48" textAnchor="middle" fontSize="16" fontWeight="800" fill="currentColor" style={{ fontFamily: 'Inter Tight' }}>{stats.total}</text>
+                strokeDashoffset={`-${(sickPct / 100) * 157}`} />
+              <text x="60" y="52" textAnchor="middle" fontSize="18" fontWeight="700" fill="var(--dash-text-primary)">{stats.total}</text>
             </svg>
           </div>
           <div className="dash-gauge-legend">
-            <div className="dash-gauge-legend-item">
-              <span className="dash-gauge-dot" style={{ background: '#5654D4' }} />
-              <span>Sick ({stats.sick})</span>
-            </div>
-            <div className="dash-gauge-legend-item">
-              <span className="dash-gauge-dot" style={{ background: '#9695E4' }} />
-              <span>Annual ({stats.annual})</span>
-            </div>
-            <div className="dash-gauge-legend-item">
-              <span className="dash-gauge-dot" style={{ background: '#D7D6F5' }} />
-              <span>Casual ({stats.casual})</span>
-            </div>
+            <span className="dash-gauge-legend-item"><span style={{ background: '#5654D4', width: 8, height: 8, borderRadius: '50%', display: 'inline-block', marginRight: 4 }} />Sick ({stats.sick})</span>
+            <span className="dash-gauge-legend-item"><span style={{ background: '#22C55E', width: 8, height: 8, borderRadius: '50%', display: 'inline-block', marginRight: 4 }} />Annual ({stats.annual})</span>
+            <span className="dash-gauge-legend-item"><span style={{ background: '#E5E7EB', width: 8, height: 8, borderRadius: '50%', display: 'inline-block', marginRight: 4 }} />Other ({stats.casual})</span>
           </div>
         </div>
 
         <div className="dash-timeoff-status">
-          <div className="dash-timeoff-status-row">
-            <span className="dash-timeoff-status-label">
-              <span className="dash-status-dot" style={{ background: '#F59E0B' }} />
-              Pending
-            </span>
-            <span className="dash-timeoff-status-count">{stats.pending}</span>
-          </div>
-          <div className="dash-timeoff-status-row">
-            <span className="dash-timeoff-status-label">
-              <span className="dash-status-dot" style={{ background: '#22C55E' }} />
-              Confirmed
-            </span>
-            <span className="dash-timeoff-status-count">{stats.confirmed}</span>
-          </div>
-          <div className="dash-timeoff-status-row">
-            <span className="dash-timeoff-status-label">
-              <span className="dash-status-dot" style={{ background: '#EF4444' }} />
-              Rejected
-            </span>
-            <span className="dash-timeoff-status-count">{stats.rejected}</span>
-          </div>
+          {statusRows.map(row => (
+            <div
+              key={row.label}
+              className="dash-timeoff-status-row dash-kpi-clickable"
+              onClick={e => { e.stopPropagation(); navigate(row.path); }}
+              style={{ cursor: 'pointer', borderRadius: 6, padding: '2px 4px', margin: '0 -4px' }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && (e.stopPropagation(), navigate(row.path))}
+            >
+              <span className="dash-timeoff-status-label">
+                <span className="dash-status-dot" style={{ background: row.color }} />
+                {row.label}
+              </span>
+              <span className="dash-timeoff-status-count">{row.count}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

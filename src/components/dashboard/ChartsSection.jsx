@@ -11,7 +11,7 @@ const chartFont = { family: 'Inter', weight: '500' };
 const tooltipConfig = { backgroundColor: 'rgba(15, 23, 42, 0.92)', cornerRadius: 10, padding: { x: 10, y: 14 }, titleFont: { ...chartFont, weight: '600' }, bodyFont: chartFont };
 const legendConfig = { position: 'top', align: 'end', labels: { boxWidth: 8, boxHeight: 8, borderRadius: 4, useBorderRadius: true, color: '#9CA3AF', font: { ...chartFont, size: 11 }, padding: 16 } };
 
-export default function ChartsSection({ trendData = { labels: [], datasets: [] }, employees = [], todayAttendance = [], demoTab, setDemoTab, widgets = {} }) {
+export default function ChartsSection({ trendData = { labels: [], datasets: [] }, employees = [], todayAttendance: _todayAttendance = [], demoTab, setDemoTab, widgets = {} }) {
   // Demographics computation
   const demographics = useMemo(() => {
     const permanent = employees.filter(e => e.status === 'permanent').length;
@@ -27,7 +27,7 @@ export default function ChartsSection({ trendData = { labels: [], datasets: [] }
     const counts = {};
     employees.forEach(e => { const d = e.division || 'Lainnya'; counts[d] = (counts[d] || 0) + 1; });
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const colors = ['#111111', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1', '#EF4444', '#0EA5E9'];
+    const colors = ['#111111', '#635BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1', '#EF4444', '#0EA5E9'];
     return { labels: sorted.map(s => s[0]), datasets: [{ data: sorted.map(s => s[1]), backgroundColor: colors.slice(0, sorted.length), borderRadius: 6, barPercentage: 0.6 }] };
   }, [employees]);
 
@@ -45,7 +45,7 @@ export default function ChartsSection({ trendData = { labels: [], datasets: [] }
 
   const demoDatasets = {
     status: { labels: ['Permanent', 'Contract'], datasets: [{ data: [demographics.permanent, demographics.contract], backgroundColor: ['#111111', '#9CA3AF'], cutout: '70%' }] },
-    gender: { labels: ['Male', 'Female', 'Unspecified'], datasets: [{ data: [demographics.male, demographics.female, demographics.unspecified], backgroundColor: ['#3B82F6', '#EC4899', '#D1D5DB'], cutout: '70%' }] },
+    gender: { labels: ['Male', 'Female', 'Unspecified'], datasets: [{ data: [demographics.male, demographics.female, demographics.unspecified], backgroundColor: ['#635BFF', '#EC4899', '#D1D5DB'], cutout: '70%' }] },
   };
 
   const trendOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: legendConfig, tooltip: tooltipConfig }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)', drawBorder: false }, ticks: { font: { size: 11, ...chartFont }, color: '#9CA3AF' }, border: { display: false } }, x: { grid: { display: false }, ticks: { font: { size: 11, ...chartFont }, color: '#9CA3AF', maxTicksLimit: 10 }, border: { display: false } } } };

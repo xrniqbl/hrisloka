@@ -39,6 +39,7 @@ import {
   HiXMark
 } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext';
+import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { useTranslation } from '../lib/i18n';
 import { isFounder, getRole } from '../lib/rbac';
 import { supabase } from '../lib/supabase';
@@ -49,7 +50,7 @@ import EmpProfileSetup from '../pages/employee/EmpProfileSetup';
 import './EmployeeLayout.css';
 import { isDemoMode } from '../lib/demoGuard';
 
-const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch (_e) { /* intentionally empty */ } };
+const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch { /* intentionally empty */ } };
 
 const navItems = [
   { labelId: 'Home', labelEn: 'Home', icon: <HiHome />, path: '/app/home' },
@@ -63,7 +64,7 @@ const getMenuCategories = () => [
   {
     labelId: 'Pekerjaan', labelEn: 'Work',
     items: [
-      { labelId: 'Dashboard', labelEn: 'Dashboard', icon: <HiHome size={24} />, path: '/app/home', color: '#0047AB' },
+      { labelId: 'Dashboard', labelEn: 'Dashboard', icon: <HiHome size={24} />, path: '/app/home', color: '#635BFF' },
       { labelId: 'Absensi', labelEn: 'Attendance', icon: <HiMapPin size={24} />, path: '/app/absen', color: '#10B981' },
       { labelId: 'Shift', labelEn: 'Shift', icon: <HiClock size={24} />, path: '/app/shift', color: '#F59E0B' },
       { labelId: 'Lembur', labelEn: 'Overtime', icon: <HiArrowsRightLeft size={24} />, path: '/app/overtime', color: '#EF4444' },
@@ -93,8 +94,8 @@ const getMenuCategories = () => [
     labelId: 'Lainnya', labelEn: 'More',
     items: [
       { labelId: 'Kontrak', labelEn: 'Contract', icon: <HiDocumentText size={24} />, path: '/app/contracts', color: '#0EA5E9' },
-      { labelId: 'Kalender', labelEn: 'Calendar', icon: <HiCalendarDays size={24} />, path: '/app/calendar', color: '#3B82F6' },
-      { labelId: 'Kontak', labelEn: 'Directory', icon: <HiUsers size={24} />, path: '/app/directory', color: '#2563EB' },
+      { labelId: 'Kalender', labelEn: 'Calendar', icon: <HiCalendarDays size={24} />, path: '/app/calendar', color: '#635BFF' },
+      { labelId: 'Kontak', labelEn: 'Directory', icon: <HiUsers size={24} />, path: '/app/directory', color: '#4F46E5' },
       { labelId: 'Aset Saya', labelEn: 'My Assets', icon: <HiArchiveBox size={24} />, path: '/app/assets', color: '#059669' },
       { labelId: 'Kebijakan', labelEn: 'Policies', icon: <HiBookOpen size={24} />, path: '/app/policy', color: '#0EA5E9' },
       { labelId: 'Pengumuman', labelEn: 'Announcements', icon: <HiBell size={24} />, path: '/app/announcements', color: '#EA580C' },
@@ -111,9 +112,9 @@ const getMenuCategories = () => [
   },
 ];
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   QR SCANNER MODAL â€” BarcodeDetector API
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ***************************************
+   QR SCANNER MODAL - BarcodeDetector API
+*************************************** */
 function QRScannerModal({ onClose, navigate }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -168,7 +169,7 @@ function QRScannerModal({ onClose, navigate }) {
         setStatus('scanning');
 
         if (!supported) {
-          // No BarcodeDetector â€” show manual input fallback
+          // No BarcodeDetector - show manual input fallback
           setStatus('error');
           setErrorMsg('BarcodeDetector tidak didukung browser ini. Coba Chrome terbaru.');
           return;
@@ -186,7 +187,7 @@ function QRScannerModal({ onClose, navigate }) {
               handleResult(barcodes[0].rawValue);
               return;
             }
-          } catch (_e) { /* intentionally empty */ }
+          } catch { /* intentionally empty */ }
           rafRef.current = requestAnimationFrame(scan);
         };
         rafRef.current = requestAnimationFrame(scan);
@@ -215,8 +216,8 @@ function QRScannerModal({ onClose, navigate }) {
         handleClose();
         return;
       }
-    } catch (_e) { /* intentionally empty */ }
-    // External URL â€” open in new tab
+    } catch { /* intentionally empty */ }
+    // External URL - open in new tab
     window.open(result, '_blank', 'noopener');
     handleClose();
   };
@@ -290,6 +291,7 @@ function QRScannerModal({ onClose, navigate }) {
 export default function EmployeeLayout() {
 
   const { user, employee, loading, isPWA, hasOnboarding } = useAuth();
+  const { isEmpPathEnabled } = useFeatureFlags();
   const location = useLocation();
   const { locale } = useTranslation();
   const navigate = useNavigate();
@@ -323,19 +325,26 @@ export default function EmployeeLayout() {
       .then(({ data }) => {
         if (data) {
           setEmpData(data);
-          // profile_setup_done may not exist yet (old rows) â€” treat null as not done
+          // profile_setup_done may not exist yet (old rows) - treat null as not done
           setSetupDone(data.profile_setup_done === true);
         }
       });
   }, [user]);
 
-  // Load unread notifications count (graceful â€” table may not exist)
+  // Load unread notifications count (graceful: table may not exist).
+  // RLS scopes notifications to the caller (employee_id matching
+  // auth_user_id = auth.uid()), so no manual user_id filter is needed.
+  // The previous .eq('user_id', ...) targeted a non-existent column and
+  // always returned 0.
   useEffect(() => {
     if (!user?.id) return;
     supabase.from('notifications').select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id).eq('read', false)
-      .then(({ count }) => setUnreadCount(count || 0))
-      .catch(() => setUnreadCount(0));
+      .eq('read', false)
+      .then(({ count, error }) => {
+        if (error) return; // table missing or RLS denied - don't fake 0
+        setUnreadCount(count || 0);
+      })
+      .catch(() => {});
   }, [user, location.pathname]);
 
   // Sync lang from localStorage
@@ -417,18 +426,21 @@ export default function EmployeeLayout() {
   const empRole = empData?.role || '';
   const isManagerOrAbove = ['manager','hr_admin','super_admin','founder'].includes(empRole);
 
-  // Filter managerOnly items and search
+  // Filter managerOnly items, feature flags, and search
+  const filterMenuItem = (item) =>
+    (!item.managerOnly || isManagerOrAbove) && isEmpPathEnabled(item.path);
+
   const filteredCategories = menuSearch.trim()
     ? menuCategories.map(cat => ({
         ...cat,
         items: cat.items.filter(item =>
-          (!item.managerOnly || isManagerOrAbove) &&
+          filterMenuItem(item) &&
           (locale === 'en' ? item.labelEn : item.labelId).toLowerCase().includes(menuSearch.toLowerCase())
         ),
       })).filter(cat => cat.items.length > 0)
     : menuCategories.map(cat => ({
         ...cat,
-        items: cat.items.filter(item => !item.managerOnly || isManagerOrAbove),
+        items: cat.items.filter(filterMenuItem),
       }));
 
   // Header user display
@@ -454,14 +466,14 @@ export default function EmployeeLayout() {
     );
   }
 
-  // Demo mode — bypass all employee guards
+  // Demo mode - bypass all employee guards
   if (isDemoMode()) return <Outlet />;
 
   if (!user) return <Navigate to="/app/login" replace />;
 
   // Guard: Google user with no employee record:
-  // hasOnboarding = true  â†’ registered a company but not in employees â†’ block
-  // hasOnboarding = false â†’ brand new Google signup â†’ send to checkout
+  // hasOnboarding = true  &rarr; registered a company but not in employees &rarr; block
+  // hasOnboarding = false &rarr; brand new Google signup &rarr; send to checkout
   if (!loading && !employee && user.app_metadata?.provider === 'google') {
     return <Navigate to={hasOnboarding ? '/not-registered' : '/checkout'} replace />;
   }
@@ -488,7 +500,12 @@ export default function EmployeeLayout() {
     if (status === 'rejected') return <Navigate to="/app/rejected" replace />;
   }
 
-  // â”€â”€ Profile Setup Gate â”€â”€
+  // Feature flag gate (platform-level disable)
+  if (!isEmpPathEnabled(location.pathname)) {
+    return <Navigate to="/app/home" replace />;
+  }
+
+  // -- Profile Setup Gate --
   // Show mandatory form for new employees who haven't filled in locked data
   if (!setupDone && empData && !isFounder(user, employee)) {
     return (
@@ -521,7 +538,7 @@ export default function EmployeeLayout() {
         </div>
       )}
 
-      {/* â”€â”€ Premium Header â”€â”€ */}
+      {/* -- Premium Header -- */}
       <header className="emp-header" style={isOffline ? { marginTop: 32 } : {}}>
         <div className="emp-header-left">
           <div className="emp-header-avatar" onClick={() => navigate('/app/profile')}>
@@ -534,7 +551,7 @@ export default function EmployeeLayout() {
             <div className="emp-header-name">{userName}</div>
             {(empData?.division || empData?.position) && (
               <div className="emp-header-dept">
-                {empData.division}{empData.position ? ` Â· ${empData.position}` : ''}
+                {empData.division}{empData.position ? `  ${empData.position}` : ''}
               </div>
             )}
           </div>
@@ -568,11 +585,11 @@ export default function EmployeeLayout() {
       )}
 
       {/* Page Content */}
-      <main className="emp-content" ref={contentRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+      <main id="main-content" role="main" tabIndex={-1}>
         <Outlet />
       </main>
 
-      {/* â”€â”€ Bottom Navigation â”€â”€ */}
+      {/* -- Bottom Navigation -- */}
       <nav className="emp-bottom-nav">
         {navItems.map(item => {
           const label = locale === 'en' ? item.labelEn : item.labelId;
@@ -617,7 +634,7 @@ export default function EmployeeLayout() {
         })}
       </nav>
 
-      {/* â”€â”€ Menu Drawer â”€â”€ */}
+      {/* -- Menu Drawer -- */}
       {menuOpen && (
         <>
           <div className="emp-menu-overlay" onClick={() => setMenuOpen(false)} />
@@ -650,7 +667,7 @@ export default function EmployeeLayout() {
                   {/* Category Header */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0 10px', borderBottom: '1px solid var(--border)', marginBottom: 14 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,71,171,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99,91,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
                         {cat.items[0]?.icon && <span style={{ fontSize: 16 }}>{cat.labelId === 'Pekerjaan' ? <HiHome size={18}/> : cat.labelId === 'Keuangan' ? <HiCreditCard size={18}/> : cat.labelId === 'Pengembangan' ? <HiAcademicCap size={18}/> : <HiSquares2X2 size={18}/>}</span>}
                       </div>
                       <div>

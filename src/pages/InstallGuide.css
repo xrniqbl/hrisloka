@@ -1,19 +1,19 @@
 /* ═══════════════════════════════════════════════════ */
-/* HRIS Loka – Install Guide Page Styles              */
+/* HRIS Loka - Install Guide Page Styles              */
 /* ═══════════════════════════════════════════════════ */
 
 /* ─── Shared Utilities (mirrors LandingPage) ─── */
 .lp-overline {
  display: inline-block;
  padding: 4px 16px;
- background: rgba(0,71,171,0.07);
- border: 1px solid rgba(0,71,171,0.13);
+ background: rgba(99,91,255,0.07);
+ border: 1px solid rgba(99,91,255,0.13);
  border-radius: 99px;
  font-size: 11.5px;
  font-weight: 700;
  letter-spacing: 0.7px;
  text-transform: uppercase;
- color: #0047AB;
+ color: #635BFF;
  margin-bottom: 14px;
 }
 
@@ -39,7 +39,7 @@
   position: relative;
   padding: 100px 0 60px;
   overflow: hidden;
-  background: linear-gradient(180deg, #f0f4ff 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #F0EEFF 0%, #ffffff 100%);
 }
 
 .ig-hero-bg {
@@ -57,7 +57,7 @@
 .ig-orb1 {
   width: 460px;
   height: 460px;
-  background: radial-gradient(circle, rgba(0,71,171,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(99,91,255,0.12) 0%, transparent 70%);
   top: -80px;
   left: -100px;
 }
@@ -85,12 +85,12 @@
   align-items: center;
   gap: 8px;
   padding: 6px 16px;
-  background: rgba(0,71,171,0.08);
-  border: 1px solid rgba(0,71,171,0.15);
+  background: rgba(99,91,255,0.08);
+  border: 1px solid rgba(99,91,255,0.15);
   border-radius: 99px;
   font-size: 12.5px;
   font-weight: 700;
-  color: #0047AB;
+  color: #635BFF;
   letter-spacing: 0.3px;
   margin-bottom: 24px;
 }
@@ -155,7 +155,7 @@
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #0047AB, #3B82F6);
+  background: linear-gradient(135deg, #635BFF, #635BFF);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -178,7 +178,7 @@
 }
 
 .ig-phone-card {
-  background: linear-gradient(135deg, #0047AB, #3B82F6);
+  background: linear-gradient(135deg, #635BFF, #635BFF);
   border-radius: 14px;
   padding: 14px;
   margin-bottom: 12px;
@@ -330,7 +330,7 @@
 
 .ig-tab.active {
   background: white;
-  color: #0047AB;
+  color: #635BFF;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
@@ -354,7 +354,7 @@
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #0047AB, #3B82F6);
+  background: linear-gradient(135deg, #635BFF, #635BFF);
   color: white;
   font-size: 13px;
   font-weight: 800;
@@ -362,7 +362,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0,71,171,0.3);
+  box-shadow: 0 4px 12px rgba(99,91,255,0.3);
 }
 
 .ig-step-connector {
@@ -391,8 +391,8 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: #EFF6FF;
-  color: #0047AB;
+  background: #F0EEFF;
+  color: #635BFF;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,11 +420,11 @@
   gap: 14px;
   margin-top: 32px;
   padding: 18px 20px;
-  background: #EFF6FF;
-  border: 1px solid #BFDBFE;
+  background: #F0EEFF;
+  border: 1px solid #C7D2FE;
   border-radius: 14px;
   font-size: 13.5px;
-  color: #1E40AF;
+  color: #4338CA;
   line-height: 1.6;
   max-width: 720px;
   margin-left: auto;
@@ -467,7 +467,7 @@
 }
 
 .ig-faq-q:hover {
-  color: #0047AB;
+  color: #635BFF;
 }
 
 .ig-faq-arrow {
@@ -478,7 +478,7 @@
 
 .ig-faq-arrow.open {
   transform: rotate(180deg);
-  color: #0047AB;
+  color: #635BFF;
 }
 
 .ig-faq-a {
@@ -498,7 +498,7 @@
 .ig-cta {
   position: relative;
   padding: 80px 0;
-  background: linear-gradient(135deg, #0047AB 0%, #1D6AE5 50%, #3B82F6 100%);
+  background: linear-gradient(135deg, #635BFF 0%, #5449FF 50%, #635BFF 100%);
   overflow: hidden;
 }
 
@@ -567,7 +567,7 @@
   gap: 8px;
   padding: 14px 28px;
   background: white;
-  color: #0047AB;
+  color: #635BFF;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 700;
@@ -682,8 +682,8 @@
   to   { transform: translateY(0); }
 }
 @keyframes pulseBtn {
-  0%, 100% { box-shadow: 0 8px 32px rgba(0,71,171,0.5), 0 0 0 0 rgba(0,71,171,0.25); }
-  50%       { box-shadow: 0 8px 32px rgba(0,71,171,0.5), 0 0 0 10px rgba(0,71,171,0); }
+  0%, 100% { box-shadow: 0 8px 32px rgba(99,91,255,0.5), 0 0 0 0 rgba(99,91,255,0.25); }
+  50%       { box-shadow: 0 8px 32px rgba(99,91,255,0.5), 0 0 0 10px rgba(99,91,255,0); }
 }
 @keyframes blink {
   0%, 100% { opacity: 1; }

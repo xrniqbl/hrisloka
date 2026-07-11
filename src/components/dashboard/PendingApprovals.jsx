@@ -1,7 +1,7 @@
 import { FiCheck, FiX } from 'react-icons/fi';
 
 const typeConfig = {
-  leave: { label: 'Leave', bg: 'rgba(59,130,246,0.08)', color: '#3B82F6' },
+  leave: { label: 'Leave', bg: 'rgba(99,91,255,0.08)', color: '#635BFF' },
   overtime: { label: 'Overtime', bg: 'rgba(139,92,246,0.08)', color: '#8B5CF6' },
   reimbursement: { label: 'Expense', bg: 'rgba(245,158,11,0.08)', color: '#F59E0B' },
 };
@@ -10,7 +10,7 @@ function getInitials(name) {
   return (name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-const avatarColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
+const avatarColors = ['#635BFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 function getAvatarColor(name) {
   let hash = 0;
   for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);

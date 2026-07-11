@@ -1,13 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════ */
-/* Onboarding Form — Premium Dark UI                              */
+/* Onboarding Form - Premium Dark UI                              */
 /* ═══════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 .ob-root {
   min-height: 100vh;
-  background: linear-gradient(135deg, #060B18 0%, #0D1B3E 50%, #060B18 100%);
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background: linear-gradient(145deg, #0B0A1A 0%, #14122B 45%, #1A1740 100%);
+  font-family: 'Inter Tight', system-ui, sans-serif;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -25,7 +25,7 @@
 .ob-bg-orb-1 {
   width: 600px; height: 600px;
   top: -200px; right: -150px;
-  background: radial-gradient(circle, rgba(0,71,171,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(99,91,255,0.12) 0%, transparent 70%);
 }
 .ob-bg-orb-2 {
   width: 400px; height: 400px;
@@ -53,9 +53,9 @@
 .ob-header-badge {
   font-size: 12px;
   font-weight: 700;
-  color: #60A5FA;
-  background: rgba(0,71,171,0.15);
-  border: 1px solid rgba(0,71,171,0.3);
+  color: #818CF8;
+  background: rgba(99,91,255,0.15);
+  border: 1px solid rgba(99,91,255,0.3);
   border-radius: 100px;
   padding: 4px 14px;
   letter-spacing: 0.3px;
@@ -88,12 +88,12 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(0,71,171,0.3), rgba(13,148,136,0.2));
-  border: 1px solid rgba(0,71,171,0.4);
+  background: linear-gradient(135deg, rgba(99,91,255,0.3), rgba(13,148,136,0.2));
+  border: 1px solid rgba(99,91,255,0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #60A5FA;
+  color: #818CF8;
   flex-shrink: 0;
 }
 
@@ -173,9 +173,9 @@
 }
 
 .ob-input-wrap:focus-within {
-  border-color: rgba(0,71,171,0.6);
-  box-shadow: 0 0 0 3px rgba(0,71,171,0.1);
-  color: #60A5FA;
+  border-color: rgba(99,91,255,0.6);
+  box-shadow: 0 0 0 3px rgba(99,91,255,0.1);
+  color: #818CF8;
 }
 
 .ob-input-wrap.error {
@@ -248,16 +248,16 @@
 .ob-radio-card input { display: none; }
 
 .ob-radio-card:hover {
-  border-color: rgba(0,71,171,0.4);
-  background: rgba(0,71,171,0.06);
+  border-color: rgba(99,91,255,0.4);
+  background: rgba(99,91,255,0.06);
   color: #CBD5E1;
 }
 
 .ob-radio-card.active {
-  border-color: rgba(0,71,171,0.6);
-  background: rgba(0,71,171,0.12);
-  color: #60A5FA;
-  box-shadow: 0 0 0 3px rgba(0,71,171,0.08);
+  border-color: rgba(99,91,255,0.6);
+  background: rgba(99,91,255,0.12);
+  color: #818CF8;
+  box-shadow: 0 0 0 3px rgba(99,91,255,0.08);
 }
 
 /* Employee count chips */
@@ -282,14 +282,14 @@
 }
 
 .ob-chip:hover {
-  border-color: rgba(0,71,171,0.4);
+  border-color: rgba(99,91,255,0.4);
   color: #CBD5E1;
 }
 
 .ob-chip.active {
-  border-color: #0047AB;
-  background: rgba(0,71,171,0.15);
-  color: #60A5FA;
+  border-color: #635BFF;
+  background: rgba(99,91,255,0.15);
+  color: #818CF8;
 }
 
 /* Submit button */
@@ -298,7 +298,7 @@
   padding: 15px 24px;
   border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, #0047AB 0%, #0052CC 100%);
+  background: linear-gradient(135deg, #635BFF 0%, #635BFF 100%);
   color: #fff;
   font-size: 15px;
   font-weight: 700;
@@ -309,13 +309,13 @@
   justify-content: center;
   gap: 10px;
   transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-  box-shadow: 0 4px 20px rgba(0,71,171,0.4);
+  box-shadow: 0 4px 20px rgba(99,91,255,0.4);
   margin-bottom: 14px;
 }
 
 .ob-submit-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 28px rgba(0,71,171,0.5);
+  box-shadow: 0 8px 28px rgba(99,91,255,0.5);
 }
 
 .ob-submit-btn:disabled {

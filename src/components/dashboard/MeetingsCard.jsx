@@ -1,31 +1,79 @@
 import { useState, useMemo } from 'react';
-import { FiVideo, FiChevronLeft, FiChevronRight, FiMonitor, FiPhone } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { FiVideo, FiChevronLeft, FiChevronRight, FiCalendar } from 'react-icons/fi';
 import CardHeader from './CardHeader';
 
-export default function MeetingsCard({ loading }) {
+/**
+ * Meetings / upcoming events card.
+ * Uses real trainings (and optional events) — no hard-coded demo rows.
+ */
+export default function MeetingsCard({ trainings = [], events = [], loading }) {
+  const navigate = useNavigate();
   const today = new Date();
-  const [currentDate, setCurrentDate] = useState(today.getDate());
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(today.getDate());
 
   const weekDays = useMemo(() => {
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7) + weekOffset * 7);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
       return {
         day: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3),
         date: d.getDate(),
+        full: d,
         isToday: d.toDateString() === today.toDateString(),
       };
     });
-  }, []);
+  }, [weekOffset]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const monthLabel = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = useMemo(() => {
+    const mid = weekDays[3]?.full || today;
+    return mid.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }, [weekDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const meetings = [
-    { title: 'Uploading New Items to Marketplace', date: '12 Mar', time: '09:30 PM' },
-    { title: 'Uploading New Items to Marketplace', date: '12 Mar', time: '09:30 PM' },
-  ];
+  const meetings = useMemo(() => {
+    const items = [];
+
+    trainings.forEach(t => {
+      const raw = t.start_date || t.date || t.scheduled_at || t.created_at;
+      if (!raw) return;
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) return;
+      // show upcoming + recent (within past 1 day)
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      if (d.getTime() < cutoff) return;
+      items.push({
+        id: t.id,
+        title: t.title || t.name || 'Training',
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        sort: d.getTime(),
+        path: '/training',
+        badge: 'Training',
+      });
+    });
+
+    events.forEach(e => {
+      const raw = e.date || e.start_date || e.scheduled_at;
+      if (!raw) return;
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) return;
+      items.push({
+        id: e.id,
+        title: e.title || e.name || 'Event',
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        sort: d.getTime(),
+        path: e.path || '/calendar',
+        badge: e.badge || 'Event',
+      });
+    });
+
+    return items.sort((a, b) => a.sort - b.sort).slice(0, 5);
+  }, [trainings, events]);
 
   if (loading) {
     return (
@@ -39,23 +87,29 @@ export default function MeetingsCard({ loading }) {
 
   return (
     <div className="dash-card">
-      <CardHeader icon={<FiVideo size={18} />} title="Meetings" />
+      <CardHeader icon={<FiVideo size={18} />} title="Upcoming" />
 
       <div className="dash-meetings">
         <div className="dash-mini-calendar">
           <div className="dash-mini-cal-header">
             <span className="dash-mini-cal-title">{monthLabel}</span>
             <div className="dash-mini-cal-nav">
-              <button className="dash-mini-cal-btn"><FiChevronLeft size={14} /></button>
-              <button className="dash-mini-cal-btn"><FiChevronRight size={14} /></button>
+              <button type="button" className="dash-mini-cal-btn" onClick={() => setWeekOffset(w => w - 1)} aria-label="Minggu sebelumnya">
+                <FiChevronLeft size={14} />
+              </button>
+              <button type="button" className="dash-mini-cal-btn" onClick={() => setWeekOffset(w => w + 1)} aria-label="Minggu berikutnya">
+                <FiChevronRight size={14} />
+              </button>
             </div>
           </div>
           <div className="dash-mini-cal-dates">
             {weekDays.map((d, i) => (
               <div
                 key={i}
-                className={`dash-mini-cal-date${d.date === currentDate ? ' active' : ''}${d.isToday && d.date !== currentDate ? ' today' : ''}`}
-                onClick={() => setCurrentDate(d.date)}
+                className={`dash-mini-cal-date${d.date === selectedDate ? ' active' : ''}${d.isToday && d.date !== selectedDate ? ' today' : ''}`}
+                onClick={() => setSelectedDate(d.date)}
+                role="button"
+                tabIndex={0}
               >
                 <span className="dash-mini-cal-date-label">{d.day}</span>
                 <span>{d.date}</span>
@@ -64,10 +118,30 @@ export default function MeetingsCard({ loading }) {
           </div>
         </div>
 
-        {meetings.map((m, i) => (
-          <div key={i} className="dash-meeting-item">
+        {meetings.length === 0 ? (
+          <div style={{ padding: '20px 8px', textAlign: 'center', color: 'var(--dash-text-muted, #9CA3AF)', fontSize: 13 }}>
+            <FiCalendar size={24} style={{ marginBottom: 8, opacity: 0.45 }} />
+            <div>Tidak ada agenda mendatang</div>
+            <button
+              type="button"
+              onClick={() => navigate('/calendar')}
+              style={{ marginTop: 8, background: 'none', border: 'none', color: '#635BFF', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Buka kalender
+            </button>
+          </div>
+        ) : meetings.map((m) => (
+          <div
+            key={m.id}
+            className="dash-meeting-item"
+            onClick={() => navigate(m.path)}
+            style={{ cursor: 'pointer' }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => e.key === 'Enter' && navigate(m.path)}
+          >
             <div className="dash-meeting-info">
-              <span className="dash-meeting-badge">Upcoming Meeting</span>
+              <span className="dash-meeting-badge">{m.badge}</span>
               <div className="dash-meeting-title">{m.title}</div>
               <div className="dash-meeting-datetime">
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="12" height="12" rx="2"/><path d="M5 1v4M11 1v4M2 8h12"/></svg>
@@ -75,9 +149,8 @@ export default function MeetingsCard({ loading }) {
                 <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 2"/></svg>
                 <span>{m.time}</span>
               </div>
-              <div className="dash-meeting-details-link">Meeting Details</div>
             </div>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#9CA3AF" strokeWidth="2"><rect x="2" y="3" width="12" height="12" rx="2"/><path d="M5 1v4M11 1v4M2 8h12"/></svg>
+            <FiChevronRight size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />
           </div>
         ))}
       </div>

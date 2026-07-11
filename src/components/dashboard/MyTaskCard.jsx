@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { FiCheckSquare, FiCalendar, FiClock, FiCheckCircle } from 'react-icons/fi';
 import CardHeader from './CardHeader';
 
-export default function MyTaskCard({ leaves = [], overtimeRecords = [], reimbursements = [], onApprove, onReject, loading }) {
+export default function MyTaskCard({ leaves = [], overtimeRecords = [], reimbursements = [], onApprove, onReject: _onReject, loading }) {
   const tasks = useMemo(() => {
     const items = [];
 
@@ -39,14 +39,6 @@ export default function MyTaskCard({ leaves = [], overtimeRecords = [], reimburs
       });
     });
 
-    if (items.length === 0) {
-      return [
-        { id: 'demo-1', type: 'leave', title: 'Interview with candidates', date: '12 Mar', time: '09:30 PM', badge: 'Todo' },
-        { id: 'demo-2', type: 'leave', title: 'Interview with candidates', date: '12 Mar', time: '09:30 PM', badge: 'Todo' },
-        { id: 'demo-3', type: 'leave', title: 'Interview with candidates', date: '12 Mar', time: '09:30 PM', badge: 'Todo' },
-      ];
-    }
-
     return items.slice(0, 5);
   }, [leaves, overtimeRecords, reimbursements]);
 
@@ -70,7 +62,13 @@ export default function MyTaskCard({ leaves = [], overtimeRecords = [], reimburs
       <CardHeader icon={<FiCheckSquare size={18} />} title="My Task" />
 
       <div className="dash-task">
-        {tasks.map((task, i) => (
+        {tasks.length === 0 ? (
+          <div style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--dash-text-muted, #9CA3AF)', fontSize: 13 }}>
+            <FiCheckCircle size={28} style={{ marginBottom: 8, opacity: 0.5 }} />
+            <div>Tidak ada tugas pending</div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>Semua pengajuan sudah diproses</div>
+          </div>
+        ) : tasks.map((task, i) => (
           <div key={task.id || i} className="dash-task-item">
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, flexShrink: 0, paddingTop: 2 }}>
               <span className="dash-badge dash-badge-gray" style={{ fontSize: 11 }}>{task.badge}</span>
@@ -78,27 +76,22 @@ export default function MyTaskCard({ leaves = [], overtimeRecords = [], reimburs
             <div className="dash-task-info">
               <div className="dash-task-title">{task.title}</div>
               <div className="dash-task-datetime">
-                <FiCalendar size={11} style={{ verticalAlign: 'middle', marginRight: 3 }} />
-                {task.date}
-                {task.time && (
-                  <>
-                    <FiClock size={11} style={{ verticalAlign: 'middle', marginLeft: 6, marginRight: 3 }} />
-                    {task.time}
-                  </>
-                )}
+                {task.type === 'leave' && <FiCalendar size={11} style={{ marginRight: 4 }} />}
+                {task.type === 'overtime' && <FiClock size={11} style={{ marginRight: 4 }} />}
+                {task.date}{task.time ? ` · ${task.time}` : ''}
               </div>
             </div>
-            <button
-              className="dash-task-action"
-              onClick={() => {
-                if (task.id && !String(task.id).startsWith('demo') && onApprove) {
-                  onApprove(task.type, task.id);
-                }
-              }}
-            >
-              <FiCheckCircle size={12} />
-              Mark as completed
-            </button>
+            {onApprove && (
+              <button
+                type="button"
+                className="dash-task-action"
+                onClick={(e) => { e.stopPropagation(); onApprove(task.type, task.id); }}
+                title="Setujui"
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#16A34A' }}
+              >
+                <FiCheckCircle size={16} />
+              </button>
+            )}
           </div>
         ))}
       </div>

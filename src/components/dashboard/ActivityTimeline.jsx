@@ -1,7 +1,10 @@
+﻿import { useNavigate } from 'react-router-dom';
+
 export default function ActivityTimeline({ employees = [], todayAttendance = [], loading }) {
+  const navigate = useNavigate();
+
   if (loading) return <ActivityTimelineSkeleton />;
 
-  // Group employees by division
   const divisions = {};
   employees.forEach(emp => {
     const div = emp.division || 'Lainnya';
@@ -36,11 +39,36 @@ export default function ActivityTimeline({ employees = [], todayAttendance = [],
 
   return (
     <div className="dash-section">
-      <div className="dash-card dash-timeline-card">
+      <div
+        className="dash-card dash-timeline-card dash-kpi-clickable"
+        onClick={() => navigate('/attendance')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && navigate('/attendance')}
+        title="Lihat detail absensi"
+        style={{ cursor: 'pointer' }}
+      >
         <div className="dash-chart-header">
           <span className="dash-chart-title">Activity Today</span>
-          <span className="dash-chart-badge">{employees.length} employees</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="dash-chart-badge">{employees.length} employees</span>
+            <span style={{ fontSize: 11, color: 'var(--dash-text-muted)', fontWeight: 500 }}>Lihat semua →</span>
+          </div>
         </div>
+
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+          {[
+            { label: 'Hadir', color: 'var(--dash-success)', count: todayAttendance.filter(a => a.status === 'present').length },
+            { label: 'Terlambat', color: '#F59E0B', count: todayAttendance.filter(a => a.status === 'late').length },
+            { label: 'Absen', color: 'var(--dash-danger)', count: employees.length - todayAttendance.length },
+          ].map(s => (
+            <div key={s.label} style={{ flex: 1, background: 'var(--dash-card-hover)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.count}</div>
+              <div style={{ fontSize: 11, color: 'var(--dash-text-muted)', marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
         {divEntries.map(([name, data]) => {
           const total = data.total || 1;
           const presentPct = (data.present / total) * 100;
@@ -61,7 +89,7 @@ export default function ActivityTimeline({ employees = [], todayAttendance = [],
                   {data.present}
                 </span>
                 <span className="dash-timeline-stat">
-                  <span className="dash-timeline-dot" style={{ background: 'var(--dash-warning)' }} />
+                  <span className="dash-timeline-dot" style={{ background: '#F59E0B' }} />
                   {data.late}
                 </span>
                 <span className="dash-timeline-stat">
