@@ -70,7 +70,14 @@ export default function Appraisal() {
  const [editingId, setEditingId] = useState(null);
  const [reviewerGroups, setReviewerGroups] = useState({ manager: [], hr: [], sameDivision: [], otherDivision: [] });
 
- useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
+ useEffect(() => {
+ if (!employee?.company_id) {
+ setLoading(false);
+ return;
+ }
+ fetchData();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [employee?.company_id]);
 
  const fetchData = async () => {
  setLoading(true);

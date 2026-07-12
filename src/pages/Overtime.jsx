@@ -39,7 +39,14 @@ export default function Overtime() {
  setLoading(false);
  };
 
- useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
+ useEffect(() => {
+ if (!employee?.company_id) {
+ setLoading(false);
+ return;
+ }
+ fetchData();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [employee?.company_id]);
 
  // Realtime: auto-refresh (table name must match Supabase)
  useRealtimeTable('overtime_requests', fetchData, { companyId: employee?.company_id, enabled: !!employee?.company_id });

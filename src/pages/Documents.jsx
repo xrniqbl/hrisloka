@@ -44,10 +44,17 @@ export default function Documents() {
  setLoading(false);
  };
 
- useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
+ useEffect(() => {
+ if (!employee?.company_id) {
+ setLoading(false);
+ return;
+ }
+ fetchData();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [employee?.company_id]);
 
  // Realtime: auto-refresh
- useRealtimeTable('documents', fetchData, { companyId: currentUser?.company_id });
+ useRealtimeTable('employee_documents', fetchData, { companyId: employee?.company_id, enabled: !!employee?.company_id });
 
  const filtered = documents.filter((doc) => {
  const empName = doc.employees?.name || '';
@@ -62,7 +69,12 @@ export default function Documents() {
  const handleUpload = async () => {
  if (!uploadForm.file || !uploadForm.employeeId || !uploadForm.type) return;
  setUploading(true);
- const { error } = await documentService.uploadDocument(uploadForm.file, Number(uploadForm.employeeId), uploadForm.type);
+ const { error } = await documentService.uploadDocument(
+   uploadForm.file,
+   uploadForm.employeeId,
+   uploadForm.type,
+   { companyId: employee?.company_id },
+ );
  setUploading(false);
  if (!error) {
  setShowUpload(false);
@@ -156,8 +168,8 @@ export default function Documents() {
  <TableCell>{formatDate(doc.created_at)}</TableCell>
  <TableCell>
  <div className="actions-cell">
- {doc.url && <DocLink docRef={doc.url} title="Lihat"><FiExternalLink /></DocLink>}
- {doc.url && <DocLink docRef={doc.url} title="Download" download><FiDownload /></DocLink>}
+ {(doc.url || doc.file_url) && <DocLink docRef={doc.url || doc.file_url} title="Lihat"><FiExternalLink /></DocLink>}
+ {(doc.url || doc.file_url) && <DocLink docRef={doc.url || doc.file_url} title="Download" download><FiDownload /></DocLink>}
  </div>
  </TableCell>
  </tr>

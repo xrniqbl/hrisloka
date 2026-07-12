@@ -41,7 +41,14 @@ export default function Offboarding() {
  setLoading(false);
  };
 
- useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
+ useEffect(() => {
+ if (!employee?.company_id) {
+ setLoading(false);
+ return;
+ }
+ fetchData();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [employee?.company_id]);
 
  // Realtime: auto-refresh
  useRealtimeTable('offboarding', fetchData, { companyId: currentUser?.company_id });

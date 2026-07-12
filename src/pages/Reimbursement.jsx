@@ -46,11 +46,16 @@ export default function Reimbursement() {
   };
 
   useEffect(() => {
-    if (employee?.company_id) fetchData();
+    if (!employee?.company_id) {
+      setLoading(false);
+      return;
+    }
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employee?.company_id]);
 
   // Realtime: auto-refresh
-  useRealtimeTable('reimbursements', fetchData, { companyId: currentUser?.company_id });
+  useRealtimeTable('reimbursements', fetchData, { companyId: employee?.company_id, enabled: !!employee?.company_id });
 
   const filtered = records.filter((r) => !filter || r.status === filter);
 

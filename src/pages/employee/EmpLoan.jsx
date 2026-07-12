@@ -130,7 +130,40 @@ export default function EmpLoan() {
     </div>
   );
 
-  if (!emp) return <div className="ep-empty-wrap"><div className="ep-empty-desc">Data tidak ditemukan.</div></div>;
+  if (!emp) {
+    return (
+      <div className="emp-page">
+        <div className="mb">
+          <h1 className="emp-page-title">{locale === 'en' ? 'Loans & Cash Advances' : 'Pinjaman / Kasbon'}</h1>
+          <p className="emp-page-subtitle">{locale === 'en' ? 'Manage loans and installment history' : 'Kelola pinjaman dan riwayat cicilan'}</p>
+        </div>
+        <div className="emp-card emp-empty" style={{ padding: '48px 24px' }}>
+          <div
+            className="emp-empty-icon"
+            style={{
+              opacity: 1,
+              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
+              color: 'var(--primary, #635BFF)',
+              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
+            }}
+          >
+            <HiCurrencyDollar size={24} />
+          </div>
+          <div className="emp-empty-title" style={{ color: 'var(--text)' }}>
+            {locale === 'en' ? 'Profile not found' : 'Profil tidak ditemukan'}
+          </div>
+          <div className="emp-empty-desc" style={{ marginBottom: 20, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            {locale === 'en'
+              ? 'Your account is not linked as an employee yet. Contact HR to complete setup.'
+              : 'Akun belum terhubung sebagai karyawan. Hubungi HR untuk menyelesaikan setup.'}
+          </div>
+          <button type="button" className="btn-primary" onClick={loadData}>
+            {locale === 'en' ? 'Refresh' : 'Muat Ulang'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const statusLabels = {
     pending: locale === 'en' ? 'Pending' : 'Menunggu',
@@ -176,9 +209,29 @@ export default function EmpLoan() {
         {locale === 'en' ? `Loan History (${loans.length})` : `Riwayat Pinjaman (${loans.length})`}
       </div>
       {loans.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiCurrencyDollar size={24} /></div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No loan history' : 'Belum ada pinjaman'}</div>
+        <div className="emp-card emp-empty" style={{ padding: '40px 24px' }}>
+          <div
+            className="emp-empty-icon"
+            style={{
+              opacity: 1,
+              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
+              color: 'var(--primary, #635BFF)',
+              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
+            }}
+          >
+            <HiCurrencyDollar size={24} />
+          </div>
+          <div className="emp-empty-title" style={{ color: 'var(--text)' }}>
+            {locale === 'en' ? 'No loan history' : 'Belum ada pinjaman'}
+          </div>
+          <div className="emp-empty-desc" style={{ marginBottom: 16 }}>
+            {locale === 'en'
+              ? 'You have not submitted any loan or cash advance yet.'
+              : 'Anda belum mengajukan pinjaman atau kasbon.'}
+          </div>
+          <button type="button" className="btn-primary" onClick={() => setSheetOpen(true)}>
+            <HiPaperAirplane size={16} /> {locale === 'en' ? 'Apply now' : 'Ajukan sekarang'}
+          </button>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>

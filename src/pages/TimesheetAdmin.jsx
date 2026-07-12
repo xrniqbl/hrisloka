@@ -52,7 +52,11 @@ export default function TimesheetAdmin() {
  };
 
  useEffect(() => {
-  if (companyId) fetchData();
+  if (!companyId) {
+   setLoading(false);
+   return;
+  }
+  fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [companyId]);
 

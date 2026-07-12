@@ -150,55 +150,87 @@ export default function EmpShift() {
         )}
       </div>
 
-      {/* Weekly Schedule */}
-      <div style={{ display: 'grid', gap: 8 }}>
-        {DAYS.map((day, idx) => {
-          const shift = shiftByDay[idx];
-          const isToday = idx === todayIdx;
-          return (
-            <div key={day} className={`emp-card emp-card-stagger`} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '14px 16px',
-              border: isToday ? '2px solid var(--primary)' : '1px solid var(--border)',
-              background: isToday ? 'rgba(79,70,229,0.04)' : 'var(--surface)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 'var(--radius-sm)',
-                  background: isToday ? 'var(--primary)' : 'var(--surface)',
-                  border: isToday ? 'none' : '1px solid var(--border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 600, fontSize: 12,
-                  color: isToday ? '#fff' : 'var(--muted)',
-                }}>
-                  {day.slice(0, 3)}
+      {/* Weekly Schedule or empty CTA when HR has not assigned any shifts */}
+      {shifts.length === 0 ? (
+        <div className="emp-card emp-empty" style={{ padding: '40px 24px' }}>
+          <div
+            className="emp-empty-icon"
+            style={{
+              opacity: 1,
+              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
+              color: 'var(--primary, #635BFF)',
+              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
+            }}
+          >
+            <HiCalendarDays size={24} />
+          </div>
+          <div className="emp-empty-title" style={{ color: 'var(--text)' }}>
+            {locale === 'en' ? 'No shift assigned' : 'Belum ada jadwal shift'}
+          </div>
+          <div className="emp-empty-desc" style={{ marginBottom: 16, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            {locale === 'en'
+              ? 'HR has not assigned a work schedule yet. You can still clock in from Attendance when needed.'
+              : 'HR belum menetapkan jadwal kerja. Anda tetap bisa absen dari menu Absensi bila diperlukan.'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 260, margin: '0 auto' }}>
+            <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={loadData}>
+              {locale === 'en' ? 'Refresh schedule' : 'Muat ulang jadwal'}
+            </button>
+            <a href="/app/absen" className="btn-secondary" style={{ textDecoration: 'none', width: '100%', textAlign: 'center' }}>
+              {locale === 'en' ? 'Go to Attendance' : 'Ke Absensi'}
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {DAYS.map((day, idx) => {
+            const shift = shiftByDay[idx];
+            const isToday = idx === todayIdx;
+            return (
+              <div key={day} className={`emp-card emp-card-stagger`} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '14px 16px',
+                border: isToday ? '2px solid var(--primary)' : '1px solid var(--border)',
+                background: isToday ? 'rgba(79,70,229,0.04)' : 'var(--surface)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 'var(--radius-sm)',
+                    background: isToday ? 'var(--primary)' : 'var(--surface)',
+                    border: isToday ? 'none' : '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 600, fontSize: 12,
+                    color: isToday ? '#fff' : 'var(--muted)',
+                  }}>
+                    {day.slice(0, 3)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: isToday ? 700 : 500 }}>{day}</div>
+                    {isToday && <div style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 700 }}>
+                      {locale === 'en' ? 'TODAY' : 'HARI INI'}
+                    </div>}
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: isToday ? 700 : 500 }}>{day}</div>
-                  {isToday && <div style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 700 }}>
-                    {locale === 'en' ? 'TODAY' : 'HARI INI'}
-                  </div>}
-                </div>
-              </div>
 
-              {shift ? (
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: shift.shifts?.color || 'var(--primary)' }}>
-                    {shift.shifts?.name}
+                {shift ? (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: shift.shifts?.color || 'var(--primary)' }}>
+                      {shift.shifts?.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                      {shift.shifts?.start_time?.slice(0, 5)}  {shift.shifts?.end_time?.slice(0, 5)}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {shift.shifts?.start_time?.slice(0, 5)}  {shift.shifts?.end_time?.slice(0, 5)}
-                  </div>
-                </div>
-              ) : (
-                <span style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>
-                  {locale === 'en' ? 'Day off' : 'Libur'}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                ) : (
+                  <span style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>
+                    {locale === 'en' ? 'Day off' : 'Libur'}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

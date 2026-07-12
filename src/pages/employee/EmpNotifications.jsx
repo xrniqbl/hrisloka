@@ -288,12 +288,29 @@ export default function EmpNotifications() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon">
+        <div className="emp-card emp-empty" style={{ padding: '48px 24px' }}>
+          <div
+            className="emp-empty-icon"
+            style={{
+              opacity: 1,
+              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
+              color: 'var(--primary, #635BFF)',
+              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
+            }}
+          >
             <HiBell size={24} />
           </div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No notifications' : 'Tidak ada notifikasi'}</div>
-          <div className="emp-empty-desc">{locale === 'en' ? 'All caught up!' : 'Semua sudah dibaca'}</div>
+          <div className="emp-empty-title" style={{ color: 'var(--text)' }}>
+            {locale === 'en' ? 'No notifications' : 'Tidak ada notifikasi'}
+          </div>
+          <div className="emp-empty-desc" style={{ marginBottom: 20, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            {locale === 'en'
+              ? 'You are all caught up. Approvals, payslips, and announcements will show up here.'
+              : 'Semua sudah dibaca. Persetujuan, slip gaji, dan pengumuman akan muncul di sini.'}
+          </div>
+          <button type="button" className="btn-primary" onClick={loadData}>
+            <HiCheckCircle size={16} /> {locale === 'en' ? 'Refresh' : 'Muat Ulang'}
+          </button>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>

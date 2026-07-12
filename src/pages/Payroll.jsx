@@ -60,7 +60,11 @@ export default function Payroll() {
   };
 
  useEffect(() => {
-  if (employee?.company_id) fetchData();
+  if (!employee?.company_id) {
+   setLoading(false);
+   return;
+  }
+  fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [employee?.company_id]);
 

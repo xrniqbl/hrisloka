@@ -30,7 +30,15 @@ export default function Announcements() {
     setLoading(false);
   };
 
-  useEffect(() => { if (companyId) fetchAnnouncements(); }, [companyId]);
+  useEffect(() => {
+    if (!companyId) {
+      setAnnouncements([]);
+      setLoading(false);
+      return;
+    }
+    fetchAnnouncements();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
 
   
 

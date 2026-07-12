@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   HiArrowDownTray, HiArrowPath, HiArrowTrendingDown, HiArrowTrendingUp,
   HiChevronLeft, HiChevronRight, HiCheckCircle, HiClock, HiExclamationTriangle,
+  HiCurrencyDollar,
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
@@ -132,9 +133,37 @@ export default function EmpPayslip() {
 
   if (!emp) {
     return (
-      <div className="ep-empty-wrap">
-        <div className="ep-empty-title">{locale === 'en' ? 'No payslip data' : 'Data tidak tersedia'}</div>
-        <div className="ep-empty-desc">{locale === 'en' ? 'Contact HR for assistance.' : 'Hubungi HRD untuk bantuan.'}</div>
+      <div className="emp-page">
+        <div className="emp-page-header">
+          <h1 className="emp-page-title">{locale === 'en' ? 'Payslip' : 'Slip Gaji'}</h1>
+          <p className="emp-page-subtitle">
+            {locale === 'en' ? 'Your monthly salary details' : 'Rincian gaji bulanan Anda'}
+          </p>
+        </div>
+        <div className="emp-card emp-empty" style={{ padding: '48px 24px' }}>
+          <div
+            className="emp-empty-icon"
+            style={{
+              opacity: 1,
+              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
+              color: 'var(--primary, #635BFF)',
+              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
+            }}
+          >
+            <HiCurrencyDollar size={24} />
+          </div>
+          <div className="emp-empty-title" style={{ color: 'var(--text)' }}>
+            {locale === 'en' ? 'Payslip not available' : 'Slip gaji belum tersedia'}
+          </div>
+          <div className="emp-empty-desc" style={{ marginBottom: 20, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            {locale === 'en'
+              ? 'Your profile is not linked yet, or HR has not published payroll. Contact HR if this looks wrong.'
+              : 'Profil belum terhubung, atau HR belum mempublikasikan payroll. Hubungi HR jika ini tidak seharusnya.'}
+          </div>
+          <a href="/app/home" className="btn-primary" style={{ textDecoration: 'none' }}>
+            {locale === 'en' ? 'Back to Home' : 'Kembali ke Beranda'}
+          </a>
+        </div>
       </div>
     );
   }

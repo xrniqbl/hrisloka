@@ -94,7 +94,14 @@ export default function ExpenseOCR() {
   const [ocrProgress, setOcrProgress] = useState(0);
   const fileInputRef = useRef(null);
 
-  useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
+  useEffect(() => {
+ if (!employee?.company_id) {
+ setLoading(false);
+ return;
+ }
+ fetchData();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [employee?.company_id]);
 
   const fetchData = async () => {
     setLoading(true);
