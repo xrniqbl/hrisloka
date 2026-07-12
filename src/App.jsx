@@ -201,9 +201,9 @@ function RootRedirect() {
 
 /* Smart redirect for authenticated users hitting protected routes */
 function AuthRedirect() {
-  const { user, employee, loading, hasOnboarding } = useAuth();
+  const { user, employee, loading, hasOnboarding, onboardingLoading } = useAuth();
 
-  if (loading) return <PageLoader />;
+  if (loading || onboardingLoading) return <PageLoader />;
   if (!user) return <Navigate to="/" replace />;
   const role = getRole(employee);
   const founderUser = isFounder(user, employee);
@@ -349,54 +349,61 @@ function MaintenanceGuard({ children }) {
  * SubscriptionGuard — blocks access without active subscription.
  */
 function SubscriptionGuard({ children }) {
-  const { user, employee, subscription, loading, hasOnboarding, isDemo } = useAuth();
+  const {
+    user,
+    employee,
+    subscription,
+    loading,
+    hasOnboarding,
+    onboardingLoading,
+    isDemo,
+  } = useAuth();
 
-  if (loading) return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: 'var(--bg)',
-    }}>
+  // Wait until session + employee + subscription + onboarding checks settle
+  if (loading || onboardingLoading) {
+    return (
       <div style={{
-        width: 36, height: 36, border: '3px solid var(--border)',
-        borderTopColor: 'var(--primary)', borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-    </div>
-  );
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: 'var(--bg)',
+      }}>
+        <div style={{
+          width: 36, height: 36, border: '3px solid var(--border)',
+          borderTopColor: 'var(--primary)', borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+      </div>
+    );
+  }
 
   // Demo mode — read-only access, no Supabase session needed
-  // Check both React state AND sessionStorage to handle race conditions
   if (isDemo || isDemoMode()) return children;
 
   if (!user) return <Navigate to="/login" replace />;
   if (isFounder(user, employee)) return children;
 
-  // No employee record at all — route based on provider & onboarding status
+  // No employee record — route only after onboarding check finished
   if (!employee) {
     if (user?.app_metadata?.provider === 'google') {
-      // Google user: hasOnboarding = true → already onboarded company but not in employees → block
-      // hasOnboarding = false → brand new Google sign-up → send to checkout
+      // hasOnboarding = true → company onboarded but not in employees → block
+      // hasOnboarding = false → brand new Google sign-up → checkout
       return <Navigate to={hasOnboarding ? '/not-registered' : '/checkout'} replace />;
     }
-    // Non-Google user (email/password) with no employee record → checkout
     return <Navigate to="/checkout" replace />;
   }
 
   const role = getRole(employee);
+  // Employees use PWA; no company subscription gate on desktop for pure employee role
   if (role === 'employee') return children;
 
-  // ⚠️ SECURITY: subscription status from Supabase only — never localStorage
-  // active | trial | is_active (enriched) | not past expires_at
-  const notExpired = !subscription?.expires_at
-    || new Date(subscription.expires_at).getTime() > Date.now();
+  // ⚠️ SECURITY: use AuthContext enrichment only (is_active / computed_status)
+  // Expiry is evaluated in fetchSubscription — do not trust raw status=active alone
+  // (expired rows can still have status 'active' in DB)
   const isActive = Boolean(
     subscription
-    && notExpired
     && (
-      subscription.status === 'active'
-      || subscription.status === 'trial'
+      subscription.is_active === true
       || subscription.computed_status === 'active'
-      || subscription.is_active === true
+      || subscription.status === 'trial'
     )
   );
 

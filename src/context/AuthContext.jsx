@@ -89,128 +89,199 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // ── Fetch employee record robustly ──────────────────────────────────────
-    const fetchEmployee = async (u) => {
-      if (!u?.email) {
-        setEmployee(null);
-        setSubscription(null);
+    let cancelled = false;
+    // Monotonic token so overlapping auth events never apply stale profile state
+    let resolveGen = 0;
+
+    /**
+     * Resolve employee + subscription + onboarding before any guard reads them.
+     * Never leave subscription/onboarding fire-and-forget — that caused checkout flash.
+     */
+    const loadProfile = async (u) => {
+      if (!u?.id && !u?.email) {
+        if (!cancelled) {
+          setEmployee(null);
+          setSubscription(null);
+          setHasOnboarding(false);
+          setOnboardingLoading(false);
+        }
         return null;
       }
       try {
-        // Primary: look up by email
-        const { data, error } = await getEmployeeByEmail(u.email);
+        let data = null;
+        let error = null;
 
-        // 406 = RLS blocked or no row → no employee record for this account
-        if (error && error.status !== 406) {
-          console.warn('[AuthContext] employee fetch warning:', error.message);
+        if (u.email) {
+          const res = await getEmployeeByEmail(u.email);
+          data = res.data;
+          error = res.error;
+          // 406 = RLS blocked or no row → no employee for this account
+          if (error && error.status !== 406) {
+            console.warn('[AuthContext] employee fetch warning:', error.message);
+          }
         }
 
-        if (data) {
-          setEmployee(data);
-          fetchSubscription(u.id);
-          checkOnboarding(u.id);
-          return data;
-        }
-
-        // Fallback: look up by auth_user_id (founder / admin accounts)
-        try {
+        // Fallback: auth_user_id (founder / admin linked by id)
+        if (!data && u.id) {
           const { data: byId } = await supabase
             .from('employees')
             .select('*')
             .eq('auth_user_id', u.id)
             .maybeSingle();
-          setEmployee(byId ?? null);
-          fetchSubscription(u.id);
-          checkOnboarding(u.id);
-          return byId ?? null;
-        } catch {
-          setEmployee(null);
-          return null;
+          data = byId ?? null;
         }
+
+        if (cancelled) return data;
+
+        setEmployee(data ?? null);
+        // Await both so SubscriptionGuard never sees employee without subscription/onboarding
+        await Promise.all([
+          fetchSubscription(u.id),
+          checkOnboarding(u.id),
+        ]);
+        return data ?? null;
       } catch (err) {
-        console.warn('[AuthContext] fetchEmployee exception:', err?.message);
-        setEmployee(null);
+        console.warn('[AuthContext] loadProfile exception:', err?.message);
+        if (!cancelled) {
+          setEmployee(null);
+          setSubscription(null);
+          setHasOnboarding(false);
+          setOnboardingLoading(false);
+        }
         return null;
       }
     };
 
+    const clearSessionState = () => {
+      setSession(null);
+      setUser(null);
+      setEmployee(null);
+      setSubscription(null);
+      setHasOnboarding(false);
+      setOnboardingLoading(false);
+    };
+
+    const applySession = async (s, { showLoading = false } = {}) => {
+      const gen = ++resolveGen;
+      if (showLoading && !cancelled) setLoading(true);
+
+      try {
+        if (isDemoMode()) {
+          applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading);
+          return;
+        }
+
+        // Desktop: 12-hour session expiry
+        if (s && !getIsPWA()) {
+          const loginTime = localStorage.getItem('hrisync_login_time');
+          if (loginTime && Date.now() - parseInt(loginTime, 10) > 12 * 60 * 60 * 1000) {
+            await supabase.auth.signOut();
+            localStorage.removeItem('hrisync_login_time');
+            localStorage.removeItem('hrisync_role');
+            if (!cancelled && gen === resolveGen) clearSessionState();
+            return;
+          }
+        }
+
+        if (cancelled || gen !== resolveGen) return;
+
+        setSession(s);
+        const newUser = s?.user ?? null;
+        setUser(newUser);
+
+        if (!newUser) {
+          setEmployee(null);
+          setSubscription(null);
+          setHasOnboarding(false);
+          setOnboardingLoading(false);
+          return;
+        }
+
+        await loadProfile(newUser);
+      } finally {
+        if (!cancelled && gen === resolveGen) setLoading(false);
+      }
+    };
+
     // ── Session init ────────────────────────────────────────────────────────
-    // Demo mode (design QA): inject fake session first; still attach auth listener
-    // so leaving demo + real login keeps working without a full remount.
     if (isDemoMode()) {
       applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading);
     }
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      // Keep demo session if active (no real Supabase user required)
-      if (isDemoMode()) {
-        applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading);
-        return;
-      }
-      // Desktop: check 12-hour session expiry
-      if (s && !getIsPWA()) {
-        const loginTime = localStorage.getItem('hrisync_login_time');
-        if (loginTime && Date.now() - parseInt(loginTime) > 12 * 60 * 60 * 1000) {
-          supabase.auth.signOut();
-          localStorage.removeItem('hrisync_login_time');
-          localStorage.removeItem('hrisync_role');
-          setLoading(false);
-          return;
-        }
-      }
-      setSession(s);
-      setUser(s?.user ?? null);
-      fetchEmployee(s?.user);
-      setLoading(false);
+      applySession(s, { showLoading: false });
     });
 
     // ── Auth state changes ──────────────────────────────────────────────────
-    // NOTE: renamed to authListener to avoid shadowing the 'subscription' state var
     const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((_event, s) => {
       // Never overwrite demo session with a null Supabase session
       if (isDemoMode()) {
         applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading);
         return;
       }
-      setSession(s);
-      const newUser = s?.user ?? null;
-      setUser(newUser);
-      fetchEmployee(newUser);
 
-      if (_event === 'SIGNED_IN') {
-        localStorage.setItem('hrisync_login_time', Date.now().toString());
-        trackEvent('login', {
-          path: window.location.pathname,
-          deviceType: window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop',
-          sessionId: s?.access_token?.slice(-8) || null,
-        });
+      // Token refresh: keep existing employee/subscription; only refresh session object
+      if (_event === 'TOKEN_REFRESHED') {
+        setSession(s);
+        return;
       }
-      if (_event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
-        // Google OAuth callback — CRITICAL: gate access based on registration status
-        const savedPath = localStorage.getItem('hrisync_last_path');
-        const safeSavedPath = (savedPath && !savedPath.startsWith('/login') && !savedPath.startsWith('/register') && !savedPath.startsWith('/not-registered') && !savedPath.startsWith('/checkout')) ? savedPath : null;
-        (async () => {
+
+      // INITIAL_SESSION is handled by getSession() bootstrap — avoid double-resolve race
+      if (_event === 'INITIAL_SESSION') {
+        return;
+      }
+
+      if (_event === 'SIGNED_OUT' || !s) {
+        clearSessionState();
+        setLoading(false);
+        return;
+      }
+
+      // SIGNED_IN / USER_UPDATED — block guards until profile is ready
+      (async () => {
+        await applySession(s, { showLoading: true });
+
+        if (_event === 'SIGNED_IN') {
+          localStorage.setItem('hrisync_login_time', Date.now().toString());
+          trackEvent('login', {
+            path: window.location.pathname,
+            deviceType: window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop',
+            sessionId: s?.access_token?.slice(-8) || null,
+          });
+        }
+
+        // Google OAuth callback — route only after profile is loaded
+        if (_event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
+          const savedPath = localStorage.getItem('hrisync_last_path');
+          const safeSavedPath = (
+            savedPath
+            && !savedPath.startsWith('/login')
+            && !savedPath.startsWith('/register')
+            && !savedPath.startsWith('/not-registered')
+            && !savedPath.startsWith('/checkout')
+          ) ? savedPath : null;
+
           try {
             const userEmail = s?.user?.email?.toLowerCase();
-            const userId    = s?.user?.id;
-            const isPwa     = getIsPWA();
+            const userId = s?.user?.id;
+            const isPwa = getIsPWA();
 
-            // ── STEP 1: Platform founder shortcut ──────────────────────────
             const founderEmail = (import.meta.env.VITE_FOUNDER_EMAIL || '').toLowerCase();
             if (founderEmail && userEmail === founderEmail) {
               window.location.replace('/founder/dashboard');
               return;
             }
 
-            // ── STEP 2: Look up employee record (by email then by user id) ─
+            // Re-read employee from state path: loadProfile already ran; re-query for routing fields
             let resolvedEmp = null;
-            const { data: empByEmail } = await supabase
-              .from('employees')
-              .select('role, auth_user_id, account_status, company_id')
-              .eq('email', userEmail)
-              .maybeSingle();
-            resolvedEmp = empByEmail;
-
+            if (userEmail) {
+              const { data: empByEmail } = await supabase
+                .from('employees')
+                .select('role, auth_user_id, account_status, company_id')
+                .eq('email', userEmail)
+                .maybeSingle();
+              resolvedEmp = empByEmail;
+            }
             if (!resolvedEmp && userId) {
               const { data: empById } = await supabase
                 .from('employees')
@@ -220,7 +291,6 @@ export function AuthProvider({ children }) {
               resolvedEmp = empById;
             }
 
-            // ── STEP 3: Registered employee/admin — route by role + status ─
             if (resolvedEmp) {
               const status = resolvedEmp.account_status;
               if (status === 'pending_verification' || (status && String(status).includes('pending'))) {
@@ -233,7 +303,6 @@ export function AuthProvider({ children }) {
               }
               const empRole = resolvedEmp.role || 'employee';
               if (empRole === 'employee' && !isPwa) {
-                // Employee must use PWA, not desktop browser
                 window.location.replace('/employee-web-access');
               } else {
                 const defaultDest = isPwa || empRole === 'employee' ? '/app/home' : '/dashboard';
@@ -242,12 +311,6 @@ export function AuthProvider({ children }) {
               return;
             }
 
-            // ── STEP 4: No employee record — check if already onboarded ────
-            // If they have an onboarding_profiles row, they already registered
-            // a company but their email isn't in the employees table.
-            // → Block with "not registered" screen.
-            // If they have NO onboarding profile, they are truly new (first
-            // Google sign-up) → send to /checkout just like email signup.
             const { data: onboarding } = await supabase
               .from('onboarding_profiles')
               .select('id')
@@ -255,34 +318,43 @@ export function AuthProvider({ children }) {
               .maybeSingle();
 
             if (onboarding) {
-              // Already completed onboarding but no employee record → blocked
               window.location.replace('/not-registered');
             } else {
-              // Truly new Google user — send to checkout/onboarding
               window.location.replace('/checkout');
             }
           } catch {
-            // On unexpected error, send to checkout (safer than blocking)
             window.location.replace('/checkout');
           }
-        })();
-      }
+        }
+      })();
     });
 
-    return () => authListener.unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      authListener.unsubscribe();
+    };
+  }, [fetchSubscription, checkOnboarding]);
 
   // ── Exposed: force-refresh employee data after profile edits ──────────────
   const refreshEmployee = async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
-    if (!u?.email) return null;
+    if (!u?.id && !u?.email) return null;
     try {
-      const { data } = await getEmployeeByEmail(u.email);
-      if (data) { setEmployee(data); return data; }
-      const { data: byId } = await supabase
-        .from('employees').select('*').eq('auth_user_id', u.id).maybeSingle();
-      setEmployee(byId ?? null);
-      return byId ?? null;
+      let data = null;
+      if (u.email) {
+        const res = await getEmployeeByEmail(u.email);
+        data = res.data;
+      }
+      if (!data && u.id) {
+        const { data: byId } = await supabase
+          .from('employees').select('*').eq('auth_user_id', u.id).maybeSingle();
+        data = byId ?? null;
+      }
+      setEmployee(data);
+      if (u.id) {
+        await Promise.all([fetchSubscription(u.id), checkOnboarding(u.id)]);
+      }
+      return data;
     } catch {
       return null;
     }
