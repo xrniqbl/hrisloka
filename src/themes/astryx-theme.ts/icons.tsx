@@ -43,8 +43,10 @@ import {
 const iconProps = {
   size: '1em',
   'aria-hidden': true as const,
+  strokeWidth: 1.75,
 };
 
+/** Lucide icons via Astryx theme registry (coss-compatible stroke style) */
 export const neutralIconRegistry: IconRegistry = {
   close: <X {...iconProps} />,
   chevronDown: <ChevronDown {...iconProps} />,

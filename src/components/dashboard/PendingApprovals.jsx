@@ -1,43 +1,63 @@
 import { FiCheck, FiX } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { Icon } from '@astryxdesign/core/Icon';
+import { Check, CheckCircle2 } from 'lucide-react';
 import DashEmpty from './DashEmpty';
+import { brandAvatarColor, BRAND } from '../../lib/brandPalette';
 
 const typeConfig = {
-  leave: { label: 'Leave', bg: 'rgba(99,91,255,0.08)', color: '#635BFF' },
-  overtime: { label: 'Overtime', bg: 'rgba(139,92,246,0.08)', color: '#8B5CF6' },
-  reimbursement: { label: 'Expense', bg: 'rgba(245,158,11,0.08)', color: '#F59E0B' },
+  leave: { label: 'Leave', bg: BRAND.soft[2], color: BRAND.primary },
+  overtime: { label: 'Overtime', bg: BRAND.soft[1], color: BRAND.primaryDark },
+  reimbursement: { label: 'Expense', bg: BRAND.soft[3], color: BRAND.scale[3] },
 };
 
 function getInitials(name) {
-  return (name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  return (name || '?')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
-const avatarColors = ['#635BFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
-function getAvatarColor(name) {
-  let hash = 0;
-  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return avatarColors[Math.abs(hash) % avatarColors.length];
-}
-
-export default function PendingApprovals({ leaves, overtimeRecords, reimbursements, onApprove, onReject, loading }) {
+export default function PendingApprovals({
+  leaves,
+  overtimeRecords,
+  reimbursements,
+  onApprove,
+  onReject,
+  loading,
+}) {
   const navigate = useNavigate();
   if (loading) return <PendingApprovalsSkeleton />;
 
-  const pendingLeaves = (leaves || []).filter(l => l.status === 'pending').map(l => ({
-    id: l.id, type: 'leave', name: l.employees?.name || 'Unknown',
-    desc: `${l.type === 'cuti' ? 'Cuti' : l.type === 'sakit' ? 'Sakit' : 'Izin'} — ${l.days} hari`,
-    date: l.start_date,
-  }));
-  const pendingOvertime = (overtimeRecords || []).filter(o => o.status === 'pending').map(o => ({
-    id: o.id, type: 'overtime', name: o.employees?.name || 'Unknown',
-    desc: `${o.hours} jam — ${o.reason || 'Lembur'}`,
-    date: o.date,
-  }));
-  const pendingReimb = (reimbursements || []).filter(r => r.status === 'pending').map(r => ({
-    id: r.id, type: 'reimbursement', name: r.employees?.name || 'Unknown',
-    desc: `Rp ${(r.amount || 0).toLocaleString('id-ID')} — ${r.category || r.type || 'Expense'}`,
-    date: r.created_at,
-  }));
+  const pendingLeaves = (leaves || [])
+    .filter((l) => l.status === 'pending')
+    .map((l) => ({
+      id: l.id,
+      type: 'leave',
+      name: l.employees?.name || 'Unknown',
+      desc: `${l.type === 'cuti' ? 'Cuti' : l.type === 'sakit' ? 'Sakit' : 'Izin'} — ${l.days} hari`,
+      date: l.start_date,
+    }));
+  const pendingOvertime = (overtimeRecords || [])
+    .filter((o) => o.status === 'pending')
+    .map((o) => ({
+      id: o.id,
+      type: 'overtime',
+      name: o.employees?.name || 'Unknown',
+      desc: `${o.hours} jam — ${o.reason || 'Lembur'}`,
+      date: o.date,
+    }));
+  const pendingReimb = (reimbursements || [])
+    .filter((r) => r.status === 'pending')
+    .map((r) => ({
+      id: r.id,
+      type: 'reimbursement',
+      name: r.employees?.name || 'Unknown',
+      desc: `Rp ${(r.amount || 0).toLocaleString('id-ID')} — ${r.category || r.type || 'Expense'}`,
+      date: r.created_at,
+    }));
 
   const allPending = [...pendingLeaves, ...pendingOvertime, ...pendingReimb].slice(0, 8);
 
@@ -45,11 +65,13 @@ export default function PendingApprovals({ leaves, overtimeRecords, reimbursemen
     <div className="dash-card dash-approval-card">
       <div className="dash-chart-header">
         <span className="dash-chart-title">Pending Approvals</span>
-        {allPending.length > 0 && <span className="dash-chart-badge">{allPending.length}</span>}
+        {allPending.length > 0 && (
+          <span className="dash-chart-badge">{allPending.length}</span>
+        )}
       </div>
       {allPending.length === 0 ? (
         <DashEmpty
-          icon={<FiCheck size={18} />}
+          icon={<Icon icon={CheckCircle2} size="md" color="inherit" />}
           title="Semua sudah diproses"
           description="Tidak ada pengajuan menunggu. Item baru dari PWA muncul di sini."
           ctaLabel="Pusat persetujuan"
@@ -57,29 +79,50 @@ export default function PendingApprovals({ leaves, overtimeRecords, reimbursemen
           secondaryLabel="Lihat cuti"
           secondaryTo="/leave"
         />
-      ) : allPending.map(item => {
-        const cfg = typeConfig[item.type] || typeConfig.leave;
-        return (
-          <div key={`${item.type}-${item.id}`} className="dash-approval-item">
-            <div className="dash-approval-avatar" style={{ background: `${getAvatarColor(item.name)}15`, color: getAvatarColor(item.name) }}>
-              {getInitials(item.name)}
+      ) : (
+        allPending.map((item) => {
+          const cfg = typeConfig[item.type] || typeConfig.leave;
+          const color = brandAvatarColor(item.name);
+          return (
+            <div key={`${item.type}-${item.id}`} className="dash-approval-item">
+              <div
+                className="dash-approval-avatar"
+                style={{ background: `${color}18`, color }}
+              >
+                {getInitials(item.name)}
+              </div>
+              <div className="dash-approval-info">
+                <div className="dash-approval-name">{item.name}</div>
+                <div className="dash-approval-desc">{item.desc}</div>
+              </div>
+              <span
+                className="dash-approval-type"
+                style={{ background: cfg.bg, color: cfg.color }}
+              >
+                {cfg.label}
+              </span>
+              <div className="dash-approval-actions">
+                <button
+                  type="button"
+                  className="dash-btn-approve"
+                  onClick={() => onApprove(item.type, item.id)}
+                  title="Approve"
+                >
+                  <Icon icon={Check} size="sm" color="inherit" />
+                </button>
+                <button
+                  type="button"
+                  className="dash-btn-reject"
+                  onClick={() => onReject(item.type, item.id)}
+                  title="Reject"
+                >
+                  <FiX size={14} />
+                </button>
+              </div>
             </div>
-            <div className="dash-approval-info">
-              <div className="dash-approval-name">{item.name}</div>
-              <div className="dash-approval-desc">{item.desc}</div>
-            </div>
-            <span className="dash-approval-type" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-            <div className="dash-approval-actions">
-              <button className="dash-btn-approve" onClick={() => onApprove(item.type, item.id)} title="Approve">
-                <FiCheck size={14} />
-              </button>
-              <button className="dash-btn-reject" onClick={() => onReject(item.type, item.id)} title="Reject">
-                <FiX size={14} />
-              </button>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })
+      )}
     </div>
   );
 }

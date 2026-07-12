@@ -14,7 +14,7 @@ import * as trainingService from '../services/trainingService';
 import * as projectService from '../services/projectService';
 import BranchFilter from '../components/BranchFilter';
 import {
-  DashHeader, KPICards, ActivityTimeline,
+  KPICards, ActivityTimeline,
   PendingApprovals, EmployeeDirectory, UpcomingEvents, EmployeeSlideOver,
   ChartsSection, BillingSection, RecentEmployeesTable, WidgetSettings, NotificationBoardV2,
 } from '../components/dashboard';
@@ -171,13 +171,9 @@ export default function Dashboard() {
     setSlideoverOpen(true);
   };
 
-  const userName = employee?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-  const firstName = (userName || 'User').split(' ')[0];
-
   if (loading) {
     return (
       <div className="dashboard-v2">
-        <DashHeader userName={firstName} />
         <KPICards loading={true} />
       </div>
     );
@@ -185,11 +181,11 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-v2">
-      {/* Header — Astryx Heading/Text, no emoji */}
-      <DashHeader userName={firstName}>
+      {/* Toolbar only — greeting removed for cleaner shell */}
+      <div className="dash-toolbar">
         <BranchFilter />
         <WidgetSettings widgets={widgets} toggleWidget={toggleWidget} />
-      </DashHeader>
+      </div>
 
       {/* KPI Cards */}
       <KPICards

@@ -32,9 +32,9 @@ export default function TimeOffCard({ leaves = [], loading }) {
   const annualPct = (stats.annual / total) * 100;
 
   const statusRows = [
-    { label: 'Pending', count: stats.pending, color: '#F59E0B', path: '/leave?status=pending' },
-    { label: 'Confirmed', count: stats.confirmed, color: '#22C55E', path: '/leave?status=approved' },
-    { label: 'Rejected', count: stats.rejected, color: '#EF4444', path: '/leave?status=rejected' },
+    { label: 'Pending', count: stats.pending, color: 'var(--primary)', path: '/leave?status=pending' },
+    { label: 'Confirmed', count: stats.confirmed, color: 'var(--primary-dark)', path: '/leave?status=approved' },
+    { label: 'Rejected', count: stats.rejected, color: 'var(--danger)', path: '/leave?status=rejected' },
   ];
 
   return (

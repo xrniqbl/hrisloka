@@ -103,11 +103,12 @@
   --destructive:  var(--color-red-500);
   --input:  --alpha(var(--color-black) / 10%);
   --ring:  var(--color-neutral-400);
-  --chart-1:  var(--color-orange-600);
-  --chart-2:  var(--color-teal-600);
-  --chart-3:  var(--color-cyan-900);
-  --chart-4:  var(--color-amber-400);
-  --chart-5:  var(--color-amber-500);
+  /* Chart palette — brand primary family (harmonious, not rainbow) */
+  --chart-1:  #635BFF;
+  --chart-2:  #4F46E5;
+  --chart-3:  #7C75FF;
+  --chart-4:  #3730A3;
+  --chart-5:  #A5A0FF;
   --radius:  0.625rem;
   --sidebar:  var(--color-neutral-50);
   --sidebar-foreground:  color-mix(in srgb, var(--color-neutral-800) 64%, var(--sidebar));
@@ -139,11 +140,14 @@ html {
   -webkit-text-size-adjust: 100%;
   /* Prevent browser zoom from causing layout issues */
   text-size-adjust: 100%;
+  /* Mobile: use dynamic viewport when available */
+  height: 100%;
 }
 
 /* Prevent horizontal scroll caused by wide content */
 body {
   overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -153,6 +157,16 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* iOS PWA: avoid address-bar jump cutting fixed nav */
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+/* PWA routes: lock document scroll so only .emp-content scrolls */
+body:has(.emp-layout) {
+  overflow: hidden;
+  height: 100%;
+  height: 100dvh;
 }
 
 /* â”€â”€â”€ Z-index scale (use these tokens, not magic numbers) â”€â”€â”€ */

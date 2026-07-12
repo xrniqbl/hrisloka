@@ -49,9 +49,9 @@ export default function RunningProjectCard({ projects = [], loading }) {
 
   const statusColor = (s) => {
     const v = (s || '').toLowerCase();
-    if (v === 'in_progress' || v === 'active' || v === 'ongoing') return '#8B5CF6';
-    if (v === 'completed' || v === 'done') return '#10B981';
-    return '#F59E0B';
+    if (v === 'in_progress' || v === 'active' || v === 'ongoing') return 'var(--primary)';
+    if (v === 'completed' || v === 'done') return 'var(--primary-dark)';
+    return 'var(--muted)';
   };
   const statusLabel = (s) => {
     const v = (s || '').toLowerCase();

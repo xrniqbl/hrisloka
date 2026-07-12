@@ -1,16 +1,16 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUsers } from 'react-icons/fi';
+import { Users } from 'lucide-react';
+import { Icon } from '@astryxdesign/core/Icon';
 import CardHeader from './CardHeader';
 import DashEmpty from './DashEmpty';
-
-const AVATAR_COLORS = ['#635BFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1'];
+import { brandAvatarColor, BRAND } from '../../lib/brandPalette';
 
 const TEAM_BADGE_MAP = {
-  internal: { bg: '#EDE9FE', color: '#7C3AED', label: 'Internal Team' },
-  outsource: { bg: '#FFF7E0', color: '#B45309', label: 'Outsource' },
-  management: { bg: '#E7E7F9', color: '#5654D4', label: 'Internal Team' },
-  default: { bg: '#F3F4F6', color: '#6B7280', label: 'Team' },
+  internal: { bg: BRAND.soft[2], color: BRAND.primary, label: 'Internal Team' },
+  outsource: { bg: BRAND.soft[3], color: BRAND.primaryDark, label: 'Outsource' },
+  management: { bg: BRAND.soft[1], color: BRAND.scale[0], label: 'Internal Team' },
+  default: { bg: BRAND.soft[7], color: BRAND.muted, label: 'Team' },
 };
 
 function getTeamBadge(name) {
@@ -19,12 +19,6 @@ function getTeamBadge(name) {
   if (n.includes('outsource')) return TEAM_BADGE_MAP.outsource;
   if (n.includes('management')) return TEAM_BADGE_MAP.management;
   return TEAM_BADGE_MAP.default;
-}
-
-function getAvatarColor(name) {
-  let hash = 0;
-  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 function getInitials(name) {
@@ -64,12 +58,12 @@ export default function EmployeeCard({ employees = [], todayAttendance: _todayAt
 
   return (
     <div className="dash-card">
-      <CardHeader icon={<FiUsers size={18} />} title="Employee" />
+      <CardHeader icon={<Icon icon={Users} size="md" color="inherit" />} title="Employee" />
 
       <div className="dash-emp-card">
         {teams.length === 0 ? (
           <DashEmpty
-            icon={<FiUsers size={18} />}
+            icon={<Icon icon={Users} size="md" color="inherit" />}
             title="Belum ada data karyawan"
             description="Tambah karyawan untuk melihat ringkasan per divisi."
             ctaLabel="Kelola karyawan"
@@ -100,7 +94,7 @@ export default function EmployeeCard({ employees = [], todayAttendance: _todayAt
                     <div
                       key={m.id || j}
                       className="dash-emp-avatar"
-                      style={{ background: getAvatarColor(m.name) }}
+                      style={{ background: brandAvatarColor(m.name) }}
                       title={m.name}
                       onClick={() => onSelectEmployee && onSelectEmployee(m)}
                       role="button"

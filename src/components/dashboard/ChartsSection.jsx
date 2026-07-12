@@ -4,6 +4,7 @@ import {
   PointElement, LineElement, Filler, Tooltip, Legend,
 } from 'chart.js';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { BRAND, brandChartColors } from '../../lib/brandPalette';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -13,16 +14,21 @@ const legendConfig = { position: 'top', align: 'end', labels: { boxWidth: 8, box
 
 function safeChartData(data, fallbackLabel = 'Data') {
   if (data?.labels?.length && Array.isArray(data.datasets) && data.datasets.length > 0) {
-    return data;
+    // Force brand-primary stroke on line charts when not set
+    const datasets = data.datasets.map((ds, i) => ({
+      ...ds,
+      borderColor: ds.borderColor || BRAND.scale[i % BRAND.scale.length],
+      backgroundColor: ds.backgroundColor || BRAND.soft[i % BRAND.soft.length],
+    }));
+    return { ...data, datasets };
   }
-  // Chart.js throws on empty datasets — always provide a valid structure
   return {
     labels: data?.labels?.length ? data.labels : ['—'],
     datasets: [{
       label: fallbackLabel,
       data: data?.labels?.length ? data.labels.map(() => 0) : [0],
-      borderColor: '#635BFF',
-      backgroundColor: 'rgba(99,91,255,0.08)',
+      borderColor: BRAND.primary,
+      backgroundColor: BRAND.soft[2],
       tension: 0.4,
       fill: true,
       pointRadius: 0,
@@ -47,8 +53,8 @@ export default function ChartsSection({ trendData = { labels: [], datasets: [] }
     const counts = {};
     employees.forEach(e => { const d = e.division || 'Lainnya'; counts[d] = (counts[d] || 0) + 1; });
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const colors = ['#111111', '#635BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1', '#EF4444', '#0EA5E9'];
-    return { labels: sorted.map(s => s[0]), datasets: [{ data: sorted.map(s => s[1]), backgroundColor: colors.slice(0, sorted.length), borderRadius: 6, barPercentage: 0.6 }] };
+    const colors = brandChartColors(sorted.length || 1);
+    return { labels: sorted.map(s => s[0]), datasets: [{ data: sorted.map(s => s[1]), backgroundColor: colors, borderRadius: 6, barPercentage: 0.6 }] };
   }, [employees]);
 
   // Headcount trend
@@ -60,12 +66,12 @@ export default function ChartsSection({ trendData = { labels: [], datasets: [] }
       months.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: d.toLocaleString('id-ID', { month: 'short' }) });
     }
     const counts = months.map(m => employees.filter(e => (e.join_date || e.joinDate || '').startsWith(m.key)).length);
-    return { labels: months.map(m => m.label), datasets: [{ label: 'New Employees', data: counts, borderColor: '#111111', backgroundColor: 'rgba(17,17,17,0.05)', tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2 }] };
+    return { labels: months.map(m => m.label), datasets: [{ label: 'New Employees', data: counts, borderColor: BRAND.primary, backgroundColor: BRAND.soft[2], tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2 }] };
   }, [employees]);
 
   const demoDatasets = {
-    status: { labels: ['Permanent', 'Contract'], datasets: [{ data: [demographics.permanent, demographics.contract], backgroundColor: ['#111111', '#9CA3AF'], cutout: '70%' }] },
-    gender: { labels: ['Male', 'Female', 'Unspecified'], datasets: [{ data: [demographics.male, demographics.female, demographics.unspecified], backgroundColor: ['#635BFF', '#EC4899', '#D1D5DB'], cutout: '70%' }] },
+    status: { labels: ['Permanent', 'Contract'], datasets: [{ data: [demographics.permanent, demographics.contract], backgroundColor: [BRAND.primary, BRAND.scale[4]], cutout: '70%' }] },
+    gender: { labels: ['Male', 'Female', 'Unspecified'], datasets: [{ data: [demographics.male, demographics.female, demographics.unspecified], backgroundColor: [BRAND.primaryDark, BRAND.scale[3], '#D1D5DB'], cutout: '70%' }] },
   };
 
   const trendOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: legendConfig, tooltip: tooltipConfig }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)', drawBorder: false }, ticks: { font: { size: 11, ...chartFont }, color: '#9CA3AF' }, border: { display: false } }, x: { grid: { display: false }, ticks: { font: { size: 11, ...chartFont }, color: '#9CA3AF', maxTicksLimit: 10 }, border: { display: false } } } };

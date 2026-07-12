@@ -1,12 +1,8 @@
-import { FiChevronRight, FiUsers } from 'react-icons/fi';
+import { ChevronRight, Users } from 'lucide-react';
+import { Icon } from '@astryxdesign/core/Icon';
 import DashEmpty from './DashEmpty';
+import { brandAvatarColor } from '../../lib/brandPalette';
 
-const avatarColors = ['#635BFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1'];
-function getAvatarColor(name) {
-  let hash = 0;
-  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return avatarColors[Math.abs(hash) % avatarColors.length];
-}
 function getInitials(name) {
   return (name || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -21,13 +17,13 @@ export default function EmployeeDirectory({ employees = [], todayAttendance = []
     <div className="dash-card dash-directory-card">
       <div className="dash-chart-header">
         <span className="dash-chart-title">Team Members</span>
-        <button onClick={onViewAll} style={{ fontSize: 12, fontWeight: 600, color: 'var(--dash-text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'var(--dash-font)' }}>
-          View All <FiChevronRight size={14} />
+        <button type="button" onClick={onViewAll} style={{ fontSize: 12, fontWeight: 600, color: 'var(--dash-text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, fontFamily: 'var(--dash-font)' }}>
+          View All <Icon icon={ChevronRight} size="sm" color="inherit" />
         </button>
       </div>
       {shown.length === 0 ? (
         <DashEmpty
-          icon={<FiUsers size={18} />}
+          icon={<Icon icon={Users} size="md" color="inherit" />}
           title="Belum ada anggota tim"
           description="Karyawan aktif akan muncul di daftar ini."
           ctaLabel="Kelola karyawan"
@@ -36,7 +32,7 @@ export default function EmployeeDirectory({ employees = [], todayAttendance = []
       ) : (
         <div className="dash-directory-grid">
           {shown.map(emp => {
-            const color = getAvatarColor(emp.name);
+            const color = brandAvatarColor(emp.name);
             const isOnline = presentIds.has(emp.id);
             return (
               <div key={emp.id} className="dash-directory-item" onClick={() => onSelectEmployee(emp)}>

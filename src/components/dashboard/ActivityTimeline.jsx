@@ -1,5 +1,6 @@
 ﻿import { useNavigate } from 'react-router-dom';
-import { FiUsers } from 'react-icons/fi';
+import { Users } from 'lucide-react';
+import { Icon } from '@astryxdesign/core/Icon';
 import DashEmpty from './DashEmpty';
 
 export default function ActivityTimeline({ employees = [], todayAttendance = [], loading }) {
@@ -32,7 +33,7 @@ export default function ActivityTimeline({ employees = [], todayAttendance = [],
             <span className="dash-chart-title">Activity Today</span>
           </div>
           <DashEmpty
-            icon={<FiUsers size={18} />}
+            icon={<Icon icon={Users} size="md" color="inherit" />}
             title="Belum ada data karyawan"
             description="Tambah karyawan aktif agar aktivitas absensi tampil di sini."
             ctaLabel="Kelola karyawan"
@@ -66,9 +67,9 @@ export default function ActivityTimeline({ employees = [], todayAttendance = [],
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
           {[
-            { label: 'Hadir', color: 'var(--dash-success)', count: todayAttendance.filter(a => a.status === 'present').length },
-            { label: 'Terlambat', color: '#F59E0B', count: todayAttendance.filter(a => a.status === 'late').length },
-            { label: 'Absen', color: 'var(--dash-danger)', count: employees.length - todayAttendance.length },
+            { label: 'Hadir', color: 'var(--primary)', count: todayAttendance.filter(a => a.status === 'present').length },
+            { label: 'Terlambat', color: 'var(--primary-dark)', count: todayAttendance.filter(a => a.status === 'late').length },
+            { label: 'Absen', color: 'var(--muted)', count: Math.max(0, employees.length - todayAttendance.length) },
           ].map(s => (
             <div key={s.label} style={{ flex: 1, background: 'var(--dash-card-hover)', borderRadius: 8, padding: '8px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.count}</div>
@@ -93,15 +94,15 @@ export default function ActivityTimeline({ employees = [], todayAttendance = [],
               </div>
               <div className="dash-timeline-stats">
                 <span className="dash-timeline-stat">
-                  <span className="dash-timeline-dot" style={{ background: 'var(--dash-success)' }} />
+                  <span className="dash-timeline-dot" style={{ background: 'var(--primary)' }} />
                   {data.present}
                 </span>
                 <span className="dash-timeline-stat">
-                  <span className="dash-timeline-dot" style={{ background: '#F59E0B' }} />
+                  <span className="dash-timeline-dot" style={{ background: 'var(--primary-dark)' }} />
                   {data.late}
                 </span>
                 <span className="dash-timeline-stat">
-                  <span className="dash-timeline-dot" style={{ background: 'var(--dash-danger)' }} />
+                  <span className="dash-timeline-dot" style={{ background: 'var(--muted)' }} />
                   {data.absent}
                 </span>
               </div>
