@@ -20,6 +20,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -270,11 +271,12 @@ export default function KPITracking() {
  {loading ? (
  <div className="ep-loading-wrap"><div className="ep-loading-inner"><div className="ep-spinner" /><div className="ep-loading-text">Loading...</div></div></div>
  ) : kpiData.length === 0 ? (
- <div className="ep-empty-wrap">
- <div className="ep-empty-title">Belum ada data KPI</div>
- <div className="ep-empty-desc">Klik "Buat KPI" untuk membuat record KPI pertama.</div>
- <button className="btn-primary" onClick={openCreateKPI} aria-label="Buat KPI"><FiPlus /> Buat KPI</button>
- </div>
+ <EmptyState
+  title="Belum ada data KPI"
+  description="Buat record KPI pertama untuk memantau kinerja karyawan."
+  ctaLabel="Buat KPI"
+  onCta={openCreateKPI}
+ />
  ) : (
  <>
  {/* Radar Overview */}

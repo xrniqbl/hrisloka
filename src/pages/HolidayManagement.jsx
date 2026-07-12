@@ -11,6 +11,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPanel, DialogFooter } from '@/components/ui/dialog';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import EmptyState from '../components/EmptyState';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -96,7 +97,14 @@ export default function HolidayManagement() {
  <div className="stats-grid">
  {loading ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="info-card skeleton" style={{ height: 120 }} />) :
  holidays.length === 0 ? (
- <div className="info-card empty-state-cell">Belum ada hari libur untuk tahun {year}.</div>
+ <div style={{ gridColumn: '1/-1' }}>
+  <EmptyState
+    title={`Belum ada hari libur ${year}`}
+    description="Tambah hari libur nasional atau cuti bersama agar muncul di kalender PWA."
+    ctaLabel="Tambah hari libur"
+    onCta={openCreate}
+  />
+ </div>
  ) : Object.keys(byMonth).sort((a, b) => a - b).map(m => (
  <div key={m} className="data-table-card">
  <div className="data-table-header" style={{ background: 'linear-gradient(135deg, #DC262615, #DC262608)', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 14, color: '#DC2626' }}>

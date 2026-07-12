@@ -136,7 +136,12 @@ export default function ProfileRequests() {
  {/* Table */}
  {loading ? <TableSkeleton /> : requests.length === 0 ? (
  <EmptyState
- message={filter === 'pending' ? 'Tidak ada permintaan yang menunggu persetujuan.' : 'Tidak ada data untuk filter ini.'}
+  title={filter === 'pending' ? 'Tidak ada permintaan menunggu' : 'Tidak ada data'}
+  description={filter === 'pending' ? 'Permintaan update profil karyawan akan muncul di sini.' : 'Coba filter status lain atau muat ulang.'}
+  ctaLabel="Muat ulang"
+  onCta={fetchRequests}
+  secondaryLabel="Semua status"
+  onSecondary={() => setFilter('')}
  />
  ) : (
  <div className="data-table-card">

@@ -12,6 +12,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 // Fix Leaflet default marker icon (webpack/vite bundler issue)
 delete L.Icon.Default.prototype._getIconUrl;
@@ -219,7 +220,17 @@ export default function GeofenceAttendance() {
  </tr>
  ))}
  {logs.length === 0 && (
- <tr><td colSpan={7} className="empty-state">Tidak ada data untuk tanggal ini.</td></tr>
+ <tr><td colSpan={7} style={{ padding: 0, border: 'none' }}>
+  <EmptyState
+    title="Tidak ada data untuk tanggal ini"
+    description="Clock-in dalam radius geofence akan muncul di sini."
+    ctaLabel="Muat ulang"
+    onCta={fetchData}
+    secondaryLabel="Atur lokasi kantor"
+    onSecondary={openSettings}
+    size="sm"
+  />
+ </td></tr>
  )}
  </tbody>
  </table>

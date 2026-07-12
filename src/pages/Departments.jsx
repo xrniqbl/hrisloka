@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import EmptyState from '../components/EmptyState';
 
 
 export default function Departments() {
@@ -219,14 +220,14 @@ export default function Departments() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="empty-state">
-                    <FiBriefcase size={28} style={{ opacity: 0.2, marginBottom: 8 }} />
-                    <div>{search ? `Tidak ada hasil untuk "${search}"` : 'Belum ada departemen'}</div>
-                    {!search && (
-                      <Button onClick={openAdd}>
-                        <FiPlus size={13} /> Tambah Departemen
-                      </Button>
-                    )}
+                  <TableCell colSpan={5} style={{ padding: 0, border: 'none' }}>
+                    <EmptyState
+                      title={search ? `Tidak ada hasil untuk “${search}”` : 'Belum ada departemen'}
+                      description={search ? 'Coba kata kunci lain.' : 'Tambah departemen untuk mengelompokkan karyawan.'}
+                      ctaLabel={search ? 'Hapus pencarian' : 'Tambah departemen'}
+                      onCta={search ? () => setSearch('') : openAdd}
+                      size="sm"
+                    />
                   </TableCell>
                 </TableRow>
               )}

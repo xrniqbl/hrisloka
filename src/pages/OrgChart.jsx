@@ -9,6 +9,7 @@ import { TableSkeleton } from '../components/SkeletonLoader';
 import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import EmptyState from '../components/EmptyState';
 
 export default function OrgChart() {
   const { user, employee } = useAuth();
@@ -279,11 +280,12 @@ export default function OrgChart() {
  )}
 
  {employees.length === 0 && (
- <div className="ep-empty-wrap">
- <div className="ep-empty-icon"><FiUsers /></div>
- <div className="ep-empty-title">Belum ada data karyawan</div>
- <div className="ep-empty-desc">Tambahkan karyawan di menu <strong>Karyawan &rarr; Data Karyawan</strong>.</div>
- </div>
+ <EmptyState
+  title="Belum ada data karyawan"
+  description="Tambahkan karyawan agar struktur organisasi bisa ditampilkan."
+  ctaLabel="Kelola karyawan"
+  onCta={() => { window.location.href = '/employees'; }}
+ />
  )}
 
  {/* -- Edit Employee Position/Division Modal (SuperAdmin only) -- */}

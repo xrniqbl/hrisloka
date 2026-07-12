@@ -15,6 +15,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPanel, DialogFooter } from '@/components/ui/dialog';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const statusColors = { 'in-use': '#635BFF', available: '#16A34A', maintenance: '#F59E0B' };
 const statusLabels = { 'in-use': 'In Use', available: 'Available', maintenance: 'Maintenance' };
@@ -163,7 +164,17 @@ export default function AssetManagement() {
  </TableRow>
  ))}
  {filtered.length === 0 && (
- <TableRow><TableCell colSpan={7} className="empty-state">Belum ada aset.</TableCell></TableRow>
+ <TableRow>
+ <TableCell colSpan={7} style={{ padding: 0, border: 'none' }}>
+  <EmptyState
+    title="Belum ada aset"
+    description="Tambahkan aset perusahaan lalu assign ke karyawan."
+    ctaLabel="Tambah aset"
+    onCta={openAdd}
+    size="sm"
+  />
+ </TableCell>
+</TableRow>
  )}
   </TableBody>
  </Table>

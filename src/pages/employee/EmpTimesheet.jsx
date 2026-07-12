@@ -125,7 +125,13 @@ export default function EmpTimesheet() {
 
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}><HiCalendarDays size={16} style={{ color: 'var(--primary)' }} />{locale === 'en' ? 'Recent Entries' : 'Log Terbaru'}</div>
       {entries.length === 0 ? (
-        <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}><div style={{ fontSize: 13, color: 'var(--muted)' }}>{locale === 'en' ? 'No entries yet' : 'Belum ada catatan'}</div></div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No entries yet' : 'Belum ada catatan'}
+          subtitle={locale === 'en' ? 'Log your work hours with the button above.' : 'Catat jam kerja lewat tombol di atas.'}
+          cta={locale === 'en' ? 'Log work' : 'Catat kerja'}
+          ctaAction={() => setShowForm(true)}
+        />
       ) : entries.slice(0, 15).map(e => (
         <div key={e.id} className="emp-card" style={{ padding: '12px 16px', marginBottom: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

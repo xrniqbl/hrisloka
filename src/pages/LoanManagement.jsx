@@ -9,6 +9,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const fmt = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 const statusColors = { pending: '#F59E0B', active: '#635BFF', paid: '#16A34A', rejected: '#DC2626' };
@@ -117,7 +118,17 @@ export default function LoanManagement() {
  {loading ? (
  <tr><td colSpan={7} className="empty-state">Memuat...</td></tr>
  ) : loans.length === 0 ? (
- <tr><td colSpan={7} className="empty-state">Belum ada data pinjaman.</td></tr>
+ <tr><td colSpan={7} style={{ padding: 0, border: 'none' }}>
+  <EmptyState
+    title="Belum ada data pinjaman"
+    description="Pengajuan pinjaman dari PWA atau buat manual di sini."
+    ctaLabel="Ajukan pinjaman"
+    onCta={openCreate}
+    secondaryLabel="Muat ulang"
+    onSecondary={fetchData}
+    size="sm"
+  />
+ </td></tr>
  ) : loans.map(l => (
  <tr key={l.id}>
  <td className="td-semibold">{l.employees?.name || '-'}</td>

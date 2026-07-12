@@ -194,9 +194,10 @@ export default function Appraisal() {
  </div>
  ) : appraisals.length === 0 ? (
  <EmptyState
- icon="star"
  title="Belum ada data appraisal"
- description="Buat appraisal pertama dengan klik tombol 'Buat Appraisal' di atas."
+ description="Buat appraisal pertama untuk menilai kinerja karyawan."
+ ctaLabel="Buat appraisal"
+ onCta={openCreate}
  />
  ) : (
  <div className="data-table-card">

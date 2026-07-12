@@ -14,6 +14,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
@@ -117,9 +118,12 @@ export default function ShiftManagement() {
    </div>
 
    {shifts.length === 0 && (
-    <div className="info-card" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
-     Belum ada shift. Buat shift terlebih dahulu sebelum mengatur jadwal karyawan.
-    </div>
+    <EmptyState
+      title="Belum ada shift"
+      description="Buat shift terlebih dahulu sebelum mengatur jadwal karyawan."
+      ctaLabel="Buat shift"
+      onCta={() => setShowForm(true)}
+    />
    )}
 
    {shifts.length > 0 && (
@@ -191,7 +195,19 @@ export default function ShiftManagement() {
          })}
         </TableRow>
        ))}
-       {employees.length === 0 && <TableRow><TableCell colSpan={8} className="empty-state">Belum ada data karyawan.</TableCell></TableRow>}
+       {employees.length === 0 && (
+        <TableRow>
+          <TableCell colSpan={8} style={{ padding: 0, border: 'none' }}>
+            <EmptyState
+              title="Belum ada data karyawan"
+              description="Tambah karyawan aktif dulu sebelum mengatur jadwal shift."
+              ctaLabel="Kelola karyawan"
+              onCta={() => { window.location.href = '/employees'; }}
+              size="sm"
+            />
+          </TableCell>
+        </TableRow>
+       )}
       </TableBody>
      </Table>
     </div>

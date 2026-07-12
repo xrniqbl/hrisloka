@@ -14,7 +14,7 @@ import * as trainingService from '../services/trainingService';
 import * as projectService from '../services/projectService';
 import BranchFilter from '../components/BranchFilter';
 import {
-  DashHeader, QuickActions, QuickActionsSkeleton, KPICards, ActivityTimeline,
+  DashHeader, KPICards, ActivityTimeline,
   PendingApprovals, EmployeeDirectory, UpcomingEvents, EmployeeSlideOver,
   ChartsSection, BillingSection, RecentEmployeesTable, WidgetSettings, NotificationBoardV2,
 } from '../components/dashboard';
@@ -179,7 +179,6 @@ export default function Dashboard() {
     return (
       <div className="dashboard-v2">
         <DashHeader userName={userName.split(' ')[0]} date={formattedDate} />
-        <QuickActionsSkeleton />
         <KPICards loading={true} />
       </div>
     );
@@ -192,9 +191,6 @@ export default function Dashboard() {
         <BranchFilter />
         <WidgetSettings widgets={widgets} toggleWidget={toggleWidget} />
       </DashHeader>
-
-      {/* Quick Actions */}
-      <QuickActions onNavigate={navigate} />
 
       {/* KPI Cards */}
       <KPICards

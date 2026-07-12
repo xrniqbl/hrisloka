@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const priorityColors = { low: '#6D8196', medium: '#F59E0B', high: '#DC2626', critical: '#7C2D12' };
 const statusColors = { open: '#635BFF', 'in-progress': '#F59E0B', resolved: '#16A34A' };
@@ -172,17 +173,31 @@ export default function Helpdesk() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(t => {
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ padding: 0, border: 'none' }}>
+                  <EmptyState
+                    title="Tidak ada tiket"
+                    description="Tiket helpdesk dari karyawan akan muncul di sini."
+                    ctaLabel="Submit tiket"
+                    onCta={openSubmit}
+                    secondaryLabel="Muat ulang"
+                    onSecondary={fetchData}
+                    size="sm"
+                  />
+                </td>
+              </tr>
+            ) : filtered.map(t => {
               const emp = allEmployees.find(e => e.id === t.employee_id);
               const sla = getSlaStatus(t);
               return (
                 <tr key={t.id}>
                   <td className="td-mono-bold">TKT-{String(t.id).padStart(3, '0')}</td>
                   <td className="td-truncate" style={{ maxWidth: 220 }}>{t.subject}</td>
-                  <td>{emp?.name || ''}</td>
+                  <td>{emp?.name || '-'}</td>
                   <td><span className="status-badge" style={{ background: t.category === 'IT' ? '#F0EEFF' : t.category === 'HR' ? '#F5F3FF' : '#FFF7ED', color: t.category === 'IT' ? '#635BFF' : t.category === 'HR' ? '#7C3AED' : '#EA580C' }}>{t.category}</span></td>
                   <td><span className="status-badge" style={{ background: priorityColors[t.priority] || priorityColors.medium, color: '#fff' }}>{t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1) : 'Medium'}</span></td>
-                  <td><span className="status-badge" style={{ background: statusColors[t.status] || statusColors.open, color: '#fff' }}>{statusLabels[t.status] || t.status}</span></td>
+                  <td><span className="status-badge" style={{ background: statusColors[t.status] || statusColors['in-progress'] || statusColors.open, color: '#fff' }}>{statusLabels[t.status] || statusLabels[t.status === 'in_progress' ? 'in-progress' : t.status] || t.status}</span></td>
                   <td><span className="status-badge" style={{ background: sla.color, color: '#fff' }}>{sla.label}</span></td>
                   <td>
                     <button className="action-btn" title="Lihat" onClick={() => openView(t)} aria-label="Lihat tiket"><FiEye /></button>

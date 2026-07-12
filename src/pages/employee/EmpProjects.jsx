@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import * as projectService from '../../services/projectService';
 import { useTranslation } from '../../lib/i18n';
 import '../../styles/shared.css';
+import EmpEmptyState from '../../components/EmpEmptyState';
 
 const fmtH = (h) => h ? `${Math.floor(h)}j ${Math.round((h % 1) * 60)}m` : '0j 0m';
 const fmtTimer = (sec) => {
@@ -228,9 +229,13 @@ export default function EmpProjects() {
           <HiFolder size={14} /> {locale === 'en' ? `Projects (${myProjects.length})` : `Proyek (${myProjects.length})`}
         </div>
         {myProjects.length === 0 ? (
-          <div className="emp-card emp-empty">
-            <div className="emp-empty-title">{locale === 'en' ? 'No projects assigned yet' : 'Belum ada proyek yang di-assign'}</div>
-          </div>
+          <EmpEmptyState
+            type="nodata"
+            title={locale === 'en' ? 'No projects assigned' : 'Belum ada proyek'}
+            subtitle={locale === 'en' ? 'Projects assigned by HR will appear here.' : 'Proyek yang di-assign HR akan muncul di sini.'}
+            cta={locale === 'en' ? 'Home' : 'Beranda'}
+            ctaHref="/app/home"
+          />
         ) : (
           myProjects.map(a => {
             const p = a.projects;

@@ -7,6 +7,7 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const stages = ['applied', 'screening', 'interview', 'offered', 'hired', 'rejected'];
 const stageLabels = {
@@ -86,11 +87,14 @@ export default function CandidatePipeline() {
           <TableSkeleton rows={6} cols={5} />
         </>
       ) : candidatesList.length === 0 ? (
-        <div className="info-card ep-empty-wrap">
-          <div className="ep-empty-icon"></div>
-          <div className="ep-empty-title">Belum ada kandidat</div>
-          <div className="ep-empty-desc">Kandidat akan muncul saat ada lamaran masuk.</div>
-        </div>
+        <EmptyState
+          title="Belum ada kandidat"
+          description="Kandidat muncul saat ada lamaran masuk dari lowongan publik."
+          ctaLabel="Kelola lowongan"
+          onCta={() => { window.location.href = '/jobs'; }}
+          secondaryLabel="Muat ulang"
+          onSecondary={fetchData}
+        />
       ) : (
         <>
           {/* Kanban Board */}

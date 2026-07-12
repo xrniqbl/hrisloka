@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import * as policyService from '../services/policyService';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import EmptyState from '../components/EmptyState';
 
 const CATEGORIES = [
   { id: 'sop', label: 'SOP', color: '#635BFF' },
@@ -136,9 +137,13 @@ export default function CompanyPolicyCenter() {
  {/* Policy Cards */}
  <div className="stats-grid">
  {filtered.length === 0 ? (
- <div className="info-card ep-empty-wrap" style={{ gridColumn: '1/-1' }}>
- <FiBookOpen className="ep-empty-icon" style={{ opacity: 0.4 }} />
- <div className="ep-empty-title">Tidak ada kebijakan ditemukan.</div>
+ <div style={{ gridColumn: '1/-1' }}>
+ <EmptyState
+  title="Tidak ada kebijakan"
+  description={search ? `Tidak ada hasil untuk “${search}”.` : 'Buat kebijakan perusahaan untuk dibaca karyawan di PWA.'}
+  ctaLabel={search ? 'Hapus pencarian' : 'Tambah kebijakan'}
+  onCta={search ? () => setSearch('') : openCreate}
+ />
  </div>
  ) : filtered.map(p => {
  const cat = getCatInfo(p.category);

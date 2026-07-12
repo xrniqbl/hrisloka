@@ -9,6 +9,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 const statusColors = { pending: '#F59E0B', approved: '#635BFF', paid: '#16A34A', rejected: '#DC2626' };
@@ -289,7 +290,17 @@ export default function ExpenseOCR() {
               );
             })}
             {expenses.length === 0 && (
-              <tr><td colSpan={7} className="empty-state">Belum ada data expense.</td></tr>
+              <tr><td colSpan={7} style={{ padding: 0, border: 'none' }}>
+                <EmptyState
+                  title="Belum ada data expense"
+                  description="Scan struk atau input klaim reimburse untuk memulai."
+                  ctaLabel="Tambah expense"
+                  onCta={() => setModal('submit')}
+                  secondaryLabel="Muat ulang"
+                  onSecondary={fetchData}
+                  size="sm"
+                />
+              </td></tr>
             )}
           </tbody>
         </table>

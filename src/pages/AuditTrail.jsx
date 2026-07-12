@@ -8,6 +8,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const actionColors = {
  CREATE: '#16A34A', INSERT: '#16A34A', ADD: '#16A34A',
@@ -100,8 +101,14 @@ export default function AuditTrail() {
  {loading ? (
  <tr><td colSpan={6} className="empty-state">Memuat data...</td></tr>
  ) : filtered.length === 0 ? (
- <tr><td colSpan={6} className="empty-state">
- Belum ada log audit.
+ <tr><td colSpan={6} style={{ padding: 0, border: 'none' }}>
+  <EmptyState
+    title="Belum ada log audit"
+    description="Aktivitas penting HR akan tercatat di sini."
+    ctaLabel="Muat ulang"
+    onCta={fetchData}
+    size="sm"
+  />
  </td></tr>
  ) : filtered.slice(0, 200).map(log => (
  <tr key={log.id}>

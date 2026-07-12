@@ -16,6 +16,7 @@ import { useTranslation } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import BottomSheet from '../../components/BottomSheet';
 import '../../styles/shared.css';
+import EmpEmptyState from '../../components/EmpEmptyState';
 
 const CATEGORIES = ['Transport', 'Makan', 'Akomodasi', 'Perlengkapan', 'Lainnya'];
 const STATUS_COLORS = {
@@ -167,11 +168,13 @@ export default function EmpReimbursement() {
           {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 80, borderRadius: 14 }} />)}
         </div>
       ) : items.length === 0 ? (
-        <div className="emp-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <HiCurrencyDollar size={36} style={{ color: 'var(--border)', marginBottom: 12 }} />
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>{locale === 'en' ? 'No reimbursements yet' : 'Belum ada pengajuan reimburse'}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{locale === 'en' ? 'Submit your first reimbursement above.' : 'Ajukan reimburse pertama Anda di atas.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No reimbursements yet' : 'Belum ada pengajuan reimburse'}
+          subtitle={locale === 'en' ? 'Submit your first claim with the form above.' : 'Ajukan klaim pertama lewat form di atas.'}
+          cta={locale === 'en' ? 'All submissions' : 'Semua pengajuan'}
+          ctaHref="/app/submissions"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {items.map(item => {

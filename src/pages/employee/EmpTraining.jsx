@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import '../../styles/shared.css';
+import EmpEmptyState from '../../components/EmpEmptyState';
 
 
 
@@ -146,11 +147,15 @@ export default function EmpTraining() {
       {tab === 'my' && (
         <div style={{ display: 'grid', gap: 10 }}>
           {myTrainings.length === 0 ? (
-            <div className="emp-card emp-empty">
-              <div className="emp-empty-icon"><HiBookOpen size={24} /></div>
-              <div className="emp-empty-title">{locale === 'en' ? 'No trainings yet' : 'Belum ada training'}</div>
-              <div className="emp-empty-desc">{locale === 'en' ? "You haven't enrolled in any training yet." : 'Anda belum terdaftar di training manapun.'}</div>
-            </div>
+            <EmpEmptyState
+              type="nodata"
+              title={locale === 'en' ? 'No trainings yet' : 'Belum ada training'}
+              subtitle={locale === 'en' ? "You haven't enrolled in any training yet. Check the catalog tab." : 'Anda belum terdaftar di training. Cek tab katalog.'}
+              cta={locale === 'en' ? 'Browse catalog' : 'Lihat katalog'}
+              ctaAction={() => setTab('all')}
+              secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+              secondaryHref="/app/home"
+            />
           ) : myTrainings.map(t => (
             <div
               key={t.id}

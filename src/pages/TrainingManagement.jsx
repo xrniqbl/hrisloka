@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPanel, DialogFo
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const catColors = { technical: '#635BFF', soft_skill: '#10B981', compliance: '#F59E0B', leadership: '#8B5CF6', certification: '#EC4899' };
 const catLabels = { technical: 'Technical', soft_skill: 'Soft Skill', compliance: 'Compliance', leadership: 'Leadership', certification: 'Certification' };
@@ -192,8 +193,13 @@ export default function TrainingManagement() {
  <div className="stats-grid">
  {loading ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="info-card skeleton" style={{ height: 180 }} />) :
  trainings.length === 0 ? (
- <div className="info-card ep-empty-wrap">
- Belum ada data pelatihan.
+ <div style={{ gridColumn: '1/-1' }}>
+  <EmptyState
+    title="Belum ada data pelatihan"
+    description="Buat pelatihan pertama lalu assign peserta karyawan."
+    ctaLabel="Buat pelatihan"
+    onCta={openCreate}
+  />
  </div>
  ) : trainings.map(t => (
  <div key={t.id} className="info-card" style={{ cursor: 'pointer', transition: 'all 0.2s', borderTop: `3px solid ${catColors[t.category] || '#6D8196'}` }} onClick={() => openDetail(t)}>

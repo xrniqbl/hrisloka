@@ -11,6 +11,7 @@ import { exportToExcel } from '../lib/excelExport';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const REPORT_TYPES = [
  { id: 'headcount', label: 'Headcount Summary', icon: <FiUsers />, color: '#635BFF' },
@@ -254,7 +255,13 @@ export default function AnalyticsReportBuilder() {
  <div className="info-card">
  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Kontrak Segera Habis (&le;90 hari)</div>
  {contractExpiring.length === 0 ? (
- <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Tidak ada kontrak yang segera habis.</div>
+ <EmptyState
+  title="Tidak ada kontrak segera habis"
+  description="Kontrak yang mendekati akhir masa berlaku akan muncul di sini."
+  ctaLabel="Kelola kontrak"
+  onCta={() => { window.location.href = '/contracts'; }}
+  size="sm"
+ />
  ) : (
  <div className="table-responsive">
  <table className="data-table">

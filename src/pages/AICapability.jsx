@@ -7,6 +7,7 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const levelColors = { beginner: '#6D8196', intermediate: '#F59E0B', advanced: '#635BFF', expert: '#16A34A' };
 const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced', expert: 'Expert' };
@@ -191,8 +192,13 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  );
  })}
  {divisions.length === 0 && (
- <div className="empty-state" style={{ gridColumn: '1/-1' }}>
- Belum ada data AI capability. Klik "Tambah Skill" untuk mulai menambahkan.
+ <div style={{ gridColumn: '1/-1' }}>
+  <EmptyState
+    title="Belum ada data AI capability"
+    description="Tambah skill AI per karyawan untuk memetakan kesiapan divisi."
+    ctaLabel="Tambah skill"
+    onCta={openAddModal}
+  />
  </div>
  )}
  </div>
@@ -222,7 +228,15 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  </thead>
  <tbody>
  {filtered.length === 0 ? (
- <tr><td colSpan="7" className="empty-state">Belum ada data AI capability.</td></tr>
+ <tr><td colSpan="7" style={{ padding: 0, border: 'none' }}>
+  <EmptyState
+    title="Belum ada data AI capability"
+    description="Mulai dengan menambahkan skill AI karyawan."
+    ctaLabel="Tambah skill"
+    onCta={openAddModal}
+    size="sm"
+  />
+ </td></tr>
  ) : filtered.map(m => {
  const topSkill = m.skills.reduce((a, b) => a.score > b.score ? a : b);
  return (

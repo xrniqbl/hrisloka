@@ -23,6 +23,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import './ContractManagement.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const CONTRACT_TYPES = {
   pkwt: { label: 'PKWT', color: '#4F46E5', bg: '#F0EEFF' },
@@ -294,11 +295,14 @@ export default function ContractManagement() {
                   <TableRow><TableCell colSpan={6} className="td-center-muted">Memuat data...</TableCell></TableRow>
                 ) : filteredContracts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="td-empty">
-                      <div className="ep-empty-wrap">
-                        <FiFileText size={32} className="ep-empty-icon" />
-                        Belum ada kontrak. Klik <strong>Buat Kontrak</strong> untuk memulai.
-                      </div>
+                    <td colSpan={6} style={{ padding: 0, border: 'none' }}>
+                      <EmptyState
+                        title="Belum ada kontrak"
+                        description="Buat kontrak kerja karyawan dari template yang tersedia."
+                        ctaLabel="Buat kontrak"
+                        onCta={() => setShowWizard(true)}
+                        size="sm"
+                      />
                     </td>
                   </tr>
                 ) : filteredContracts.map(c => {

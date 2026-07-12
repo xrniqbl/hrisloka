@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const statusColors = { initiated: '#F59E0B', 'in-progress': '#635BFF', completed: '#16A34A' };
 const statusLabels = { initiated: 'Initiated', 'in-progress': 'In Progress', completed: 'Completed' };
@@ -169,7 +170,17 @@ export default function Offboarding() {
  );
  })}
  {records.length === 0 && (
- <TableRow><TableCell colSpan={8} className="empty-state">Belum ada data offboarding.</TableCell></TableRow>
+ <TableRow>
+ <TableCell colSpan={8} style={{ padding: 0, border: 'none' }}>
+  <EmptyState
+    title="Belum ada data offboarding"
+    description="Proses offboarding karyawan akan muncul di sini."
+    ctaLabel="Muat ulang"
+    onCta={fetchData}
+    size="sm"
+  />
+ </TableCell>
+</TableRow>
  )}
  </TableBody>
  </Table>

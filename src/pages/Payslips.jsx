@@ -177,9 +177,12 @@ export default function Payslips() {
  ) : payslips.length === 0 ? (
  <div className="data-table-card">
  <EmptyState
- icon="payroll"
  title="Belum ada data karyawan"
- description="Data payslip akan muncul setelah karyawan terdaftar di sistem."
+ description="Data payslip muncul setelah karyawan terdaftar. Publikasi payroll dari menu Payroll."
+ ctaLabel="Kelola karyawan"
+ onCta={() => { window.location.href = '/employees'; }}
+ secondaryLabel="Buka payroll"
+ onSecondary={() => { window.location.href = '/payroll'; }}
  />
  </div>
  ) : (

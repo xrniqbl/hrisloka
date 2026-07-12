@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 export default function JobPosting() {
   const { employee } = useAuth();
@@ -63,11 +64,12 @@ export default function JobPosting() {
  {loading ? (
  <div className="ep-loading-wrap"><div className="ep-loading-inner"><div className="ep-spinner" /><div className="ep-loading-text">Loading...</div></div></div>
  ) : jobs.length === 0 ? (
- <div className="ep-empty-wrap">
- <div className="ep-empty-icon"></div>
- <div className="ep-empty-title">Belum ada lowongan</div>
- <div className="ep-empty-desc">Klik "Buat Lowongan" untuk membuat lowongan pertama.</div>
- </div>
+ <EmptyState
+  title="Belum ada lowongan"
+  description="Buat lowongan pertama agar kandidat bisa melamar."
+  ctaLabel="Buat lowongan"
+  onCta={() => setShowForm(true)}
+ />
  ) : (
  <div className="cards-grid">
  {jobs.map((job) => (

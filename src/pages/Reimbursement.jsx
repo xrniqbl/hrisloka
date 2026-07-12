@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from '@/components/ui/textarea';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 export default function Reimbursement() {
   const { t } = useTranslation();
@@ -158,9 +159,21 @@ export default function Reimbursement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-            
-            
-              {filtered.map((r) => {
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} style={{ padding: 0, border: 'none' }}>
+                    <EmptyState
+                      title="Belum ada klaim reimburse"
+                      description="Klaim dari PWA akan muncul di sini untuk disetujui."
+                      ctaLabel="Muat ulang"
+                      onCta={fetchData}
+                      secondaryLabel="Tambah klaim"
+                      onSecondary={() => setShowForm(true)}
+                      size="sm"
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : filtered.map((r) => {
                 const emp = allEmployees.find((e) => e.id === r.employee_id);
                 return (
                   <TableRow key={r.id}>
@@ -185,13 +198,12 @@ export default function Reimbursement() {
                           <Button variant="ghost" size="icon" className="action-btn success" onClick={() => handleApprove(r.id)}><FiCheck /></Button>
                           <Button variant="ghost" size="icon" className="action-btn danger" onClick={() => handleReject(r.id)}><FiX /></Button>
                         </div>
-                      ) : <span class="td-muted-sm">-</span>}
+                      ) : <span className="td-muted-sm">-</span>}
                     </TableCell>
                   </TableRow>
                 );
               })}
-            
-          </TableBody>
+            </TableBody>
           </Table>
         </div>
       </div>

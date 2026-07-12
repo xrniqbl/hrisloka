@@ -8,6 +8,7 @@ import * as leaveService from '../services/leaveService';
 
 import '../styles/shared.css';
 import '../styles/admin.css';
+import EmptyState from '../components/EmptyState';
 
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
@@ -120,7 +121,7 @@ export default function CalendarView() {
        {selectedDate ? selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Pilih tanggal'}
       </div>
       {selectedEvents.length === 0 ? (
-       <div className="td-muted-sm">Tidak ada event.</div>
+       <EmptyState title="Tidak ada event" description="Pilih tanggal lain atau tambah hari libur." ctaLabel="Kelola libur" onCta={() => { window.location.href = '/holidays'; }} size="sm" />
       ) : selectedEvents.map((ev, i) => (
        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < selectedEvents.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: ev.color, flexShrink: 0 }} />
@@ -139,7 +140,15 @@ export default function CalendarView() {
         <span className="td-muted-sm">{new Date(h.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
        </div>
       ))}
-      {upcomingHolidays.length === 0 && <div className="td-muted-sm">Tidak ada hari libur mendatang.</div>}
+      {upcomingHolidays.length === 0 && (
+        <EmptyState
+          title="Tidak ada libur mendatang"
+          description="Tambah hari libur di menu Holidays."
+          ctaLabel="Kelola libur"
+          onCta={() => { window.location.href = '/holidays'; }}
+          size="sm"
+        />
+      )}
      </div>
 
      <div className="chart-card">

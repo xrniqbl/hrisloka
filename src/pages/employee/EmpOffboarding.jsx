@@ -43,11 +43,13 @@ export default function EmpOffboarding() {
       <p className="emp-page-subtitle mb">{locale === 'en' ? 'Exit checklist & handover' : 'Checklist keluar & serah terima'}</p>
 
       {checklist.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiClipboardDocumentList size={40} /></div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No Offboarding Tasks' : 'Tidak Ada Task Offboarding'}</div>
-          <div className="emp-empty-desc">{locale === 'en' ? 'You have no active offboarding checklist.' : 'Anda tidak memiliki checklist offboarding aktif.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No offboarding tasks' : 'Tidak ada task offboarding'}
+          subtitle={locale === 'en' ? 'You have no active offboarding checklist.' : 'Anda tidak memiliki checklist offboarding aktif.'}
+          cta={locale === 'en' ? 'Home' : 'Beranda'}
+          ctaHref="/app/home"
+        />
       ) : (
         <>
           <div className="emp-card" style={{ padding: 16, marginBottom: 12, borderLeft: `4px solid ${progress === 100 ? '#16A34A' : 'var(--primary)'}` }}>

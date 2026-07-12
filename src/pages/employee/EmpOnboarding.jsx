@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
+import EmpEmptyState from '../../components/EmpEmptyState';
 
 export default function EmpOnboarding() {
   const { user, employee: authEmployee } = useAuth();
@@ -88,7 +89,15 @@ export default function EmpOnboarding() {
     </div>
   );
 
-  if (!emp) return <div className="ep-empty-wrap"><div className="ep-empty-desc">Data tidak ditemukan.</div></div>;
+  if (!emp) return (
+    <EmpEmptyState
+      type="noemp"
+      title={locale === 'en' ? 'Profile not found' : 'Profil tidak ditemukan'}
+      subtitle={locale === 'en' ? 'Your account is not linked as an employee yet.' : 'Akun belum terhubung sebagai karyawan.'}
+      cta={locale === 'en' ? 'Home' : 'Beranda'}
+      ctaHref="/app/home"
+    />
+  );
 
   const doneCount = checklist.filter(t => t.status === 'done').length;
   const total = checklist.length;
@@ -119,11 +128,13 @@ export default function EmpOnboarding() {
 
       {/* Checklist */}
       {checklist.length === 0 ? (
-        <div className="ep-empty-wrap">
-          <div className="ep-empty-icon"><HiClipboardDocumentList size={24} /></div>
-          <div className="ep-empty-title">{locale === 'en' ? 'No onboarding checklist' : 'Tidak ada checklist onboarding'}</div>
-          <div className="ep-empty-desc">{locale === 'en' ? 'Admin has not created onboarding tasks for you yet.' : 'Admin belum membuat tugas onboarding untuk Anda.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No onboarding checklist' : 'Tidak ada checklist onboarding'}
+          subtitle={locale === 'en' ? 'Admin has not created onboarding tasks for you yet.' : 'Admin belum membuat tugas onboarding untuk Anda.'}
+          cta={locale === 'en' ? 'Home' : 'Beranda'}
+          ctaHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 8 }}>
           {checklist.map((task) => {

@@ -14,6 +14,7 @@ import { supabase } from '../../lib/supabase';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { useTranslation } from '../../lib/i18n';
 import '../../styles/shared.css';
+import EmpEmptyState from '../../components/EmpEmptyState';
 
 const MANAGER_KEYWORDS = ['director', 'manager', 'head', 'lead', 'chief', 'vp', 'direktur', 'kepala', 'supervisor'];
 const isManager = (emp) => MANAGER_KEYWORDS.some(k => (emp.position || '').toLowerCase().includes(k));
@@ -172,15 +173,15 @@ export default function EmpOrgChart() {
 
       {/* Division Cards */}
       {filteredDivs.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiUsers size={22} /></div>
-          <div className="emp-empty-title">
-            {locale === 'en' ? 'No results found' : 'Tidak ada hasil ditemukan'}
-          </div>
-          <div className="emp-empty-desc">
-            {locale === 'en' ? 'Try a different search term' : 'Coba kata kunci yang berbeda'}
-          </div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No results found' : 'Tidak ada hasil'}
+          subtitle={locale === 'en' ? 'Try a different search term.' : 'Coba kata kunci yang berbeda.'}
+          cta={locale === 'en' ? 'Clear search' : 'Hapus pencarian'}
+          ctaAction={() => setSearch('')}
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {filteredDivs.map((divName, idx) => {

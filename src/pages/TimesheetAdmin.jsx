@@ -12,6 +12,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const fmt = (v) => `Rp ${Number(v || 0).toLocaleString('id-ID')}`;
 const fmtH = (h) => `${Math.floor(h)}j ${Math.round((h % 1) * 60)}m`;
@@ -169,7 +170,17 @@ export default function TimesheetAdmin() {
  </TableRow></TableHeader>
  <TableBody>
  {timesheets.length === 0 ? (
- <TableRow><TableCell colSpan={10} className="td-muted-sm" style={{ textAlign: 'center', padding: 30 }}>Belum ada data timesheet</TableCell></TableRow>
+ <TableRow>
+  <TableCell colSpan={10} style={{ padding: 0, border: 'none' }}>
+   <EmptyState
+     title="Belum ada data timesheet"
+     description="Catatan jam kerja karyawan dari PWA akan muncul di sini."
+     ctaLabel="Muat ulang"
+     onCta={fetchData}
+     size="sm"
+   />
+  </TableCell>
+ </TableRow>
  ) : timesheets.map(t => (
  <TableRow key={t.id}>
  <TableCell className="td-truncate">{t.date}</TableCell>

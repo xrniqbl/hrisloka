@@ -16,6 +16,7 @@ import { submitOvertime, getMyOvertime } from '../../services/overtimeService';
 import BottomSheet from '../../components/BottomSheet';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
+import EmpEmptyState from '../../components/EmpEmptyState';
 
 const STATUS_COLORS = {
   pending: { bg: 'rgba(245,158,11,0.1)', color: '#D97706', label: 'Menunggu' },
@@ -161,11 +162,13 @@ export default function EmpOvertime() {
           {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: 14 }} />)}
         </div>
       ) : overtimes.length === 0 ? (
-        <div className="ep-empty-wrap">
-          <div className="ep-empty-icon"><HiClock size={36} /></div>
-          <div className="ep-empty-title">{locale === 'en' ? 'No overtime records yet' : 'Belum ada riwayat lembur'}</div>
-          <div className="ep-empty-desc">{locale === 'en' ? 'Submit an overtime request above.' : 'Ajukan permintaan lembur di atas.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No overtime yet' : 'Belum ada riwayat lembur'}
+          subtitle={locale === 'en' ? 'Submit an overtime request with the form above.' : 'Ajukan lembur lewat form di atas.'}
+          cta={locale === 'en' ? 'All submissions' : 'Semua pengajuan'}
+          ctaHref="/app/submissions"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {overtimes.map(o => {

@@ -14,6 +14,7 @@ import { useTranslation } from '../../lib/i18n';
 import { useAuth } from '../../context/AuthContext';
 import { isDemoMode } from '../../lib/demoGuard';
 import '../../styles/shared.css';
+import EmpEmptyState from '../../components/EmpEmptyState';
 
 const CATEGORY_ICONS = {
  sop: <HiClipboardDocumentList size={16} />,
@@ -133,10 +134,15 @@ export default function EmpPolicy() {
 
       {/* Policy list */}
       {filtered.length === 0 ? (
-        <div className="ep-empty-wrap">
-          <div className="ep-empty-icon"><HiBookOpen size={24} /></div>
-          <div className="ep-empty-title">{locale === 'en' ? 'No policies found' : 'Tidak ada kebijakan ditemukan'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No policies found' : 'Tidak ada kebijakan'}
+          subtitle={locale === 'en' ? 'HR has not published policies yet, or your search has no match.' : 'HR belum mempublikasi kebijakan, atau pencarian tidak cocok.'}
+          cta={locale === 'en' ? 'Clear filters' : 'Reset filter'}
+          ctaAction={() => { setSearch(''); setActiveCategory('all'); }}
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {filtered.map(p => {

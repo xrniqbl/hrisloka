@@ -10,6 +10,7 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 
 const PRIORITY_COLORS = { low: '#6B7280', medium: '#635BFF', high: '#F59E0B', critical: '#EF4444' };
@@ -204,10 +205,13 @@ export default function ProjectManagement() {
  </div>
  ))}
  {projects.length === 0 && (
- <div className="info-card" style={{ textAlign: 'center', padding: 40, gridColumn: '1/-1' }}>
- <div className="empty-state-icon" style={{ fontSize: 22 }}></div>
- <div style={{ fontWeight: 600 }}>Belum ada proyek</div>
- <div style={{ fontSize: 13, color: 'var(--muted)' }}>Klik "Proyek Baru" untuk memulai.</div>
+ <div style={{ gridColumn: '1/-1' }}>
+  <EmptyState
+    title="Belum ada proyek"
+    description="Buat proyek baru untuk assign karyawan dan lacak timeline."
+    ctaLabel="Proyek baru"
+    onCta={openCreate}
+  />
  </div>
  )}
  </div>
@@ -218,7 +222,13 @@ export default function ProjectManagement() {
  <div className="info-card" style={{ overflow: 'auto' }}>
  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Timeline Proyek</div>
  {ganttData.projects.length === 0 ? (
- <div style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>Tidak ada proyek dengan tanggal.</div>
+ <EmptyState
+  title="Tidak ada proyek bertanggal"
+  description="Isi start/end date pada proyek agar timeline Gantt tampil."
+  ctaLabel="Proyek baru"
+  onCta={openCreate}
+  size="sm"
+ />
  ) : (
  <div style={{ minWidth: 600 }}>
  {/* Timeline header */}
@@ -266,7 +276,13 @@ export default function ProjectManagement() {
  <div style={{ fontSize: 12, color: 'var(--muted)' }}>Karyawan dengan alokasi &gt;100% berisiko burnout</div>
  </div>
  {resourceData.length === 0 ? (
- <div className="info-card" style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>Belum ada penugasan.</div>
+ <EmptyState
+  title="Belum ada penugasan"
+  description="Assign karyawan ke proyek aktif untuk melihat beban kerja."
+  ctaLabel="Lihat daftar proyek"
+  onCta={() => setTab('list')}
+  size="sm"
+ />
  ) : (
  <div className="table-container">
  <table className="data-table">

@@ -15,6 +15,7 @@ import EmployeeModal from '../components/EmployeeModal';
 import { useAuth } from '../context/AuthContext';
 import { getRole, ROLE_LABELS, ROLE_COLORS, isFounder } from '../lib/rbac';
 import './EmployeeProfile.css';
+import EmptyState from '../components/EmptyState';
 
 // -- Helpers ----------------------------------------------------------------
 function InfoRow({ label, value, type = 'normal' }) {
@@ -105,13 +106,12 @@ export default function EmployeeProfile() {
 
   if (!emp) {
     return (
-      <div className="ep-empty-wrap">
-        <div className="ep-empty-icon">
-          <FiUser size={24} />
-        </div>
-        <h3 className="ep-empty-title">Karyawan tidak ditemukan</h3>
-        <p className="ep-empty-desc">Data karyawan dengan ID ini tidak tersedia.</p>
-      </div>
+      <EmptyState
+        title="Karyawan tidak ditemukan"
+        description="Data karyawan dengan ID ini tidak tersedia."
+        ctaLabel="Kembali ke karyawan"
+        onCta={() => navigate('/employees')}
+      />
     );
   }
 

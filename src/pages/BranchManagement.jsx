@@ -11,6 +11,7 @@ import { getAllEmployees } from '../services/employeeService';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 
 const LOCATION_TYPES = [
@@ -233,11 +234,12 @@ export default function BranchManagement() {
             </div>
 
             {branches.length === 0 && (
-                <div className="ep-empty-wrap">
-                    <div className="ep-empty-icon"><FiMapPin size={48} /></div>
-                    <div className="ep-empty-title">Belum ada cabang</div>
-                    <div className="ep-empty-desc">Klik <b>Tambah Cabang</b> untuk memulai.</div>
-                </div>
+                <EmptyState
+                    title="Belum ada cabang"
+                    description="Tambah cabang untuk multi-lokasi geofence dan filter karyawan."
+                    ctaLabel="Tambah cabang"
+                    onCta={() => { setEditBranch(null); setShowModal(true); }}
+                />
             )}
 
             {/*  MODAL WITH 3 ACCORDION SECTIONS  */}
