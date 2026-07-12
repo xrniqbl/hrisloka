@@ -172,13 +172,12 @@ export default function Dashboard() {
   };
 
   const userName = employee?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-  const today = new Date();
-  const formattedDate = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const firstName = (userName || 'User').split(' ')[0];
 
   if (loading) {
     return (
       <div className="dashboard-v2">
-        <DashHeader userName={userName.split(' ')[0]} date={formattedDate} />
+        <DashHeader userName={firstName} />
         <KPICards loading={true} />
       </div>
     );
@@ -186,8 +185,8 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-v2">
-      {/* Header */}
-      <DashHeader userName={userName.split(' ')[0]} date={formattedDate}>
+      {/* Header — Astryx Heading/Text, no emoji */}
+      <DashHeader userName={firstName}>
         <BranchFilter />
         <WidgetSettings widgets={widgets} toggleWidget={toggleWidget} />
       </DashHeader>
