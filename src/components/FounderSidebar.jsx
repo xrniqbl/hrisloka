@@ -1,32 +1,54 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Icon } from '@astryxdesign/core/Icon';
 import {
-  FiGrid, FiUsers, FiCreditCard, FiTag, FiGlobe, FiBarChart2,
-  FiBell, FiMessageCircle, FiSettings, FiMenu, FiX, FiChevronRight,
-  FiLogOut, FiExternalLink, FiShield, FiDatabase,
-} from 'react-icons/fi';
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  Tag,
+  Globe,
+  BarChart2,
+  Bell,
+  MessageCircle,
+  Settings,
+  Menu,
+  X,
+  LogOut,
+  ExternalLink,
+  Shield,
+  Database,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './FounderSidebar.css';
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', icon: <FiGrid />, path: '/founder/dashboard' },
-  { label: 'Subscribers', icon: <FiUsers />, path: '/founder/subscribers' },
-  { label: 'Manage Subscriptions', icon: <FiCreditCard />, path: '/founder/subscriptions' },
-  { label: 'Voucher Management', icon: <FiTag />, path: '/founder/vouchers' },
-  { label: 'Company Management', icon: <FiGlobe />, path: '/founder/companies' },
+  { label: 'Dashboard', icon: LayoutDashboard, path: '/founder/dashboard' },
+  { label: 'Subscribers', icon: Users, path: '/founder/subscribers' },
+  { label: 'Manage Subscriptions', icon: CreditCard, path: '/founder/subscriptions' },
+  { label: 'Voucher Management', icon: Tag, path: '/founder/vouchers' },
+  { label: 'Company Management', icon: Globe, path: '/founder/companies' },
 ];
 
 const SYSTEM_ITEMS = [
-  { label: 'Website Analytics', icon: <FiBarChart2 />, path: '/founder/analytics' },
-  { label: 'Broadcast Notifications', icon: <FiBell />, path: '/founder/broadcast' },
-  { label: 'Client Support', icon: <FiMessageCircle />, path: '/founder/support', badge: true },
-  { label: 'Backup & Security', icon: <FiDatabase />, path: '/founder/backup' },
-  { label: 'Platform Settings', icon: <FiSettings />, path: '/founder/platform-settings' },
+  { label: 'Website Analytics', icon: BarChart2, path: '/founder/analytics' },
+  { label: 'Broadcast Notifications', icon: Bell, path: '/founder/broadcast' },
+  { label: 'Client Support', icon: MessageCircle, path: '/founder/support', badge: true },
+  { label: 'Backup & Security', icon: Database, path: '/founder/backup' },
+  { label: 'Platform Settings', icon: Settings, path: '/founder/platform-settings' },
 ];
+
+function NavIcon({ icon: IconComp }) {
+  if (!IconComp) return null;
+  return (
+    <span className="founder-nav-icon" aria-hidden>
+      <Icon icon={IconComp} size="sm" color="inherit" />
+    </span>
+  );
+}
 
 export default function FounderSidebar({ openComplaints = 0 }) {
   const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem('founder_sidebar_collapsed') === 'true'
+    () => localStorage.getItem('founder_sidebar_collapsed') === 'true',
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
@@ -41,10 +63,17 @@ export default function FounderSidebar({ openComplaints = 0 }) {
 
   const userName =
     employee?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Founder';
-  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'F';
+  const userInitials =
+    userName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'F';
   const avatarUrl = employee?.photo_url || user?.user_metadata?.avatar_url || null;
 
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   const handleNav = (path) => {
     navigate(path);
@@ -58,50 +87,58 @@ export default function FounderSidebar({ openComplaints = 0 }) {
 
   return (
     <>
-      {/* Mobile Header */}
       <div className="founder-mobile-header">
-        <button className="founder-mobile-hamburger" onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <FiX /> : <FiMenu />}
+        <button
+          type="button"
+          className="founder-mobile-hamburger"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? 'Tutup menu' : 'Buka menu'}
+          aria-expanded={mobileOpen}
+        >
+          <Icon icon={mobileOpen ? X : Menu} size="md" color="inherit" />
         </button>
         <span className="founder-mobile-brand">HRIS Loka</span>
       </div>
 
-      {/* Overlay */}
       <div
         className={`founder-sidebar-overlay ${mobileOpen ? 'active' : ''}`}
         onClick={() => setMobileOpen(false)}
+        aria-hidden={!mobileOpen}
       />
 
-      {/* Sidebar */}
-      <aside className={`founder-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
-
-        {/* Brand */}
+      <aside
+        className={`founder-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}
+        aria-label="Founder navigation"
+      >
         <div className="founder-sidebar-brand">
-          <img src="/landing/hrislokalogo.jpeg" alt="HRIS Loka" className="founder-sidebar-logo" />
+          <img
+            src="/landing/hrislokalogo.jpeg"
+            alt="HRIS Loka"
+            className="founder-sidebar-logo"
+          />
           {!collapsed && (
-            <>
-              <div>
-                <div className="founder-sidebar-brand-text">HRIS Loka</div>
-                <div className="founder-sidebar-badge">
-                  <FiShield size={8} />
-                  Founder Portal
-                </div>
+            <div>
+              <div className="founder-sidebar-brand-text">HRIS Loka</div>
+              <div className="founder-sidebar-badge">
+                <Icon icon={Shield} size="xsm" color="inherit" />
+                Founder Portal
               </div>
-            </>
+            </div>
           )}
           <button
+            type="button"
             className="founder-sidebar-collapse-btn"
-            onClick={() => setCollapsed(c => !c)}
+            onClick={() => setCollapsed((c) => !c)}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <FiMenu size={14} />
+            <Icon icon={Menu} size="sm" color="inherit" />
           </button>
         </div>
 
-        {/* User Card */}
         <div className={`founder-user-card ${collapsed ? 'collapsed' : ''}`}>
           <div className="founder-user-avatar">
-            {avatarUrl ? <img src={avatarUrl} alt="Avatar" /> : userInitials}
+            {avatarUrl ? <img src={avatarUrl} alt="" /> : userInitials}
           </div>
           {!collapsed && (
             <div className="founder-user-info">
@@ -111,18 +148,18 @@ export default function FounderSidebar({ openComplaints = 0 }) {
           )}
         </div>
 
-        {/* Nav */}
         <nav className="founder-nav">
           {!collapsed && <div className="founder-nav-section">Main</div>}
 
-          {NAV_ITEMS.map(item => (
+          {NAV_ITEMS.map((item) => (
             <button
+              type="button"
               key={item.path}
               className={`founder-nav-item ${isActive(item.path) ? 'active' : ''}`}
               onClick={() => handleNav(item.path)}
               title={collapsed ? item.label : ''}
             >
-              <span className="founder-nav-icon">{item.icon}</span>
+              <NavIcon icon={item.icon} />
               {!collapsed && <span className="founder-nav-label">{item.label}</span>}
             </button>
           ))}
@@ -130,19 +167,17 @@ export default function FounderSidebar({ openComplaints = 0 }) {
           {!collapsed && <div className="founder-nav-section">System</div>}
           {collapsed && <div className="founder-nav-divider" />}
 
-          {SYSTEM_ITEMS.map(item => (
+          {SYSTEM_ITEMS.map((item) => (
             <button
+              type="button"
               key={item.path}
               className={`founder-nav-item ${isActive(item.path) ? 'active' : ''}`}
               onClick={() => handleNav(item.path)}
               title={collapsed ? item.label : ''}
             >
-              <span className="founder-nav-icon">{item.icon}</span>
+              <NavIcon icon={item.icon} />
               {!collapsed && <span className="founder-nav-label">{item.label}</span>}
-              {!collapsed && item.badge && openComplaints > 0 && (
-                <span className="founder-nav-badge">{openComplaints}</span>
-              )}
-              {collapsed && item.badge && openComplaints > 0 && (
+              {item.badge && openComplaints > 0 && (
                 <span className="founder-nav-badge">{openComplaints}</span>
               )}
             </button>
@@ -150,26 +185,27 @@ export default function FounderSidebar({ openComplaints = 0 }) {
 
           <div className="founder-nav-divider" />
 
-          {/* Switch to Admin View */}
           <button
+            type="button"
             className="founder-switch-btn"
             onClick={() => handleNav('/dashboard')}
             title={collapsed ? 'Switch to Admin View' : ''}
           >
-            <span className="founder-nav-icon"><FiExternalLink /></span>
-            {!collapsed && <span className="founder-nav-label">Switch to Admin View</span>}
+            <NavIcon icon={ExternalLink} />
+            {!collapsed && (
+              <span className="founder-nav-label">Switch to Admin View</span>
+            )}
           </button>
         </nav>
 
-        {/* Footer */}
         <div className="founder-sidebar-footer">
           <button
-            className="founder-nav-item"
-            style={{ color: 'rgba(255,255,255,0.35)', width: '100%' }}
+            type="button"
+            className="founder-nav-item founder-signout"
             onClick={handleSignOut}
             title={collapsed ? 'Sign Out' : ''}
           >
-            <span className="founder-nav-icon"><FiLogOut /></span>
+            <NavIcon icon={LogOut} />
             {!collapsed && <span className="founder-nav-label">Sign Out</span>}
           </button>
         </div>

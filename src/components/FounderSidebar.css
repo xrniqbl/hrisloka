@@ -1,5 +1,5 @@
 /* ============================================================
-   FounderSidebar.css — Premium dark sidebar for founder portal
+   FounderSidebar.css - Premium dark sidebar for founder portal
    ============================================================ */
 
 .founder-sidebar {
@@ -8,13 +8,14 @@
   left: 0;
   height: 100vh;
   width: var(--founder-sidebar-width, 260px);
-  background: #0A0F1E;
+  /* Brand-mono deep primary — aligned with HR sidebar */
+  background: linear-gradient(180deg, #1a1744 0%, #14122f 45%, #0e0c24 100%);
   display: flex;
   flex-direction: column;
   z-index: 200;
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(99, 91, 255, 0.14);
 }
 
 .founder-sidebar.collapsed {
@@ -56,9 +57,9 @@
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;
-  color: #F59E0B;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #E0DEFF;
+  background: rgba(99, 91, 255, 0.18);
+  border: 1px solid rgba(99, 91, 255, 0.32);
   padding: 2px 7px;
   border-radius: 20px;
   white-space: nowrap;
@@ -92,14 +93,14 @@
   padding: 12px 14px;
   margin: 10px 10px 6px;
   border-radius: 10px;
-  background: rgba(245, 158, 11, 0.07);
-  border: 1px solid rgba(245, 158, 11, 0.15);
-  cursor: pointer;
+  background: rgba(99, 91, 255, 0.10);
+  border: 1px solid rgba(99, 91, 255, 0.22);
+  cursor: default;
   transition: all 0.15s;
   flex-shrink: 0;
 }
 .founder-user-card:hover {
-  background: rgba(245, 158, 11, 0.12);
+  background: rgba(99, 91, 255, 0.14);
 }
 .founder-user-card.collapsed {
   margin: 10px 7px 6px;
@@ -111,15 +112,15 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #F59E0B, #D97706);
+  background: linear-gradient(135deg, var(--primary, #635BFF), var(--primary-dark, #4F46E5));
   color: #fff;
   font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .founder-user-avatar img {
@@ -144,7 +145,7 @@
 
 .founder-user-role {
   font-size: 11px;
-  color: #F59E0B;
+  color: #C4C0FF;
   font-weight: 600;
   letter-spacing: 0.3px;
 }
@@ -197,8 +198,8 @@
 }
 
 .founder-nav-item.active {
-  background: rgba(245, 158, 11, 0.12);
-  color: #F59E0B;
+  background: rgba(99, 91, 255, 0.16);
+  color: #E0DEFF;
   font-weight: 600;
 }
 
@@ -209,8 +210,13 @@
   top: 6px;
   bottom: 6px;
   width: 3px;
-  background: #F59E0B;
+  background: var(--primary, #635BFF);
   border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px rgba(99, 91, 255, 0.4);
+}
+
+.founder-nav-item.active .founder-nav-icon {
+  color: var(--primary, #A5A0FF);
 }
 
 .founder-nav-icon {
@@ -221,6 +227,7 @@
   height: 18px;
   flex-shrink: 0;
   font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .founder-nav-label {
@@ -232,13 +239,22 @@
 .founder-nav-badge {
   font-size: 10px;
   font-weight: 700;
-  background: #EF4444;
+  background: var(--primary, #635BFF);
   color: #fff;
   padding: 1px 6px;
   border-radius: 20px;
   min-width: 18px;
   text-align: center;
   flex-shrink: 0;
+}
+
+.founder-signout {
+  color: rgba(255, 255, 255, 0.35) !important;
+  width: 100%;
+}
+.founder-signout:hover {
+  color: rgba(255, 255, 255, 0.75) !important;
+  background: rgba(99, 91, 255, 0.08) !important;
 }
 
 .founder-nav-divider {
@@ -327,7 +343,7 @@
   color: #fff;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .founder-mobile-header {
     display: flex;
   }
