@@ -17,6 +17,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
@@ -166,7 +167,19 @@ export default function Overtime() {
  );
  })}
  {filtered.length === 0 && (
- <TableRow><TableCell colSpan={8} className="empty-state">Belum ada data lembur.</TableCell></TableRow>
+ <TableRow>
+  <TableCell colSpan={8} style={{ padding: 0, border: 'none' }}>
+   <EmptyState
+     title="Belum ada data lembur"
+     description="Pengajuan lembur karyawan akan muncul di sini setelah diajukan dari PWA."
+     ctaLabel="Muat ulang"
+     onCta={fetchData}
+     secondaryLabel="Pusat persetujuan"
+     onSecondary={() => { window.location.href = '/approvals'; }}
+     size="sm"
+   />
+  </TableCell>
+ </TableRow>
  )}
  </TableBody>
  </Table>

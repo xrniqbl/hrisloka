@@ -10,6 +10,7 @@ import { getEmployeeByEmail } from '../../services/employeeService';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 const CATEGORY_ICONS = {
@@ -98,11 +99,15 @@ export default function EmpAssets() {
 
       {/* Asset List */}
       {assets.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiArchiveBox size={24} /></div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No assets assigned' : 'Tidak ada aset'}</div>
-          <div className="emp-empty-desc">{locale === 'en' ? 'No assets have been assigned to you yet.' : 'Belum ada aset yang di-assign ke Anda.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No assets assigned' : 'Tidak ada aset'}
+          subtitle={locale === 'en' ? 'HR has not assigned any company assets to you yet.' : 'HR belum menetapkan aset perusahaan ke Anda.'}
+          cta={locale === 'en' ? 'Open helpdesk' : 'Buka helpdesk'}
+          ctaHref="/app/helpdesk"
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {assets.map(a => {

@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { getEmployeeKPI } from '../../services/kpiService';
 import { useTranslation } from '../../lib/i18n';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 function calcScore(actual, target) {
@@ -140,11 +141,13 @@ export default function EmpKPI() {
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{getFeedback(latestScore)}</div>
         </div>
       ) : (
-        <div className="emp-card emp-empty" style={{ marginBottom: 14 }}>
-          <div className="emp-empty-icon"><HiArrowTrendingUp size={24} /></div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No KPI data yet' : 'Belum ada KPI'}</div>
-          <div className="emp-empty-desc">{locale === 'en' ? 'Admin has not set KPI targets for you yet.' : 'Admin belum menetapkan KPI untuk Anda.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No KPI data yet' : 'Belum ada KPI'}
+          subtitle={locale === 'en' ? 'Admin has not set KPI targets for you yet.' : 'Admin belum menetapkan KPI untuk Anda.'}
+          cta={locale === 'en' ? 'Back to Home' : 'Kembali ke Beranda'}
+          ctaHref="/app/home"
+        />
       )}
 
       {/* KPI List */}

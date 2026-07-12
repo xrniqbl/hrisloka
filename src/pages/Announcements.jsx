@@ -159,9 +159,14 @@ export default function Announcements() {
           </div>
         ) : announcements.length === 0 ? (
           <EmptyState
-            icon="notification"
             title="Belum ada pengumuman"
             description="Buat pengumuman pertama untuk dikirim ke semua karyawan."
+            ctaLabel="Tulis pengumuman"
+            onCta={() => {
+              const el = document.querySelector('.form-input');
+              el?.focus();
+              el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
           />
         ) : (
           <div>

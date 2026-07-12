@@ -11,10 +11,12 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
-import { supabase } from '../../lib/supabase';
+import { uploadDocument, getEmployeeDocuments } from '../../services/documentService';
+import DocLink from '../../components/DocLink';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 
@@ -50,11 +52,7 @@ export default function EmpDocuments() {
     }
     if (empData) {
       setEmp(empData);
-      const { data: docs } = await supabase
-        .from('employee_documents')
-        .select('*')
-        .eq('employee_id', empData.id)
-        .order('created_at', { ascending: false });
+      const { data: docs } = await getEmployeeDocuments(empData.id);
       setDocuments(docs || []);
     }
     setLoading(false);
@@ -75,6 +73,12 @@ export default function EmpDocuments() {
       e.target.value = '';
       return;
     }
+    const okType = /pdf|jpe?g|png|webp/i.test(file.type || '') || /\.(pdf|jpe?g|png|webp)$/i.test(file.name || '');
+    if (!okType) {
+      toast.error(locale === 'en' ? 'Only PDF / JPG / PNG allowed.' : 'Hanya PDF / JPG / PNG yang diizinkan.');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       if (isDemoMode()) {
@@ -92,30 +96,20 @@ export default function EmpDocuments() {
         return;
       }
 
-      const fileName = `${emp.id}/${uploadType}_${Date.now()}.${file.name.split('.').pop()}`;
-      const { data: _uploadData, error: uploadError } = await supabase.storage
-        .from('employee-documents')
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('employee-documents')
-        .getPublicUrl(fileName);
-
-      const { error: insertErr } = await supabase.from('employee_documents').insert({
-        employee_id: emp.id,
-        document_type: uploadType,
-        file_url: publicUrl,
-        file_name: file.name,
-        status: 'pending',
+      // Secure path: private storage + path in DB (signed URL on open)
+      const { data, error } = await uploadDocument(file, emp.id, uploadType, {
+        companyId: emp.company_id,
       });
-      if (insertErr) throw insertErr;
+      if (error) throw error;
 
       await loadData();
-      toast.success(locale === 'en' ? 'Document uploaded successfully!' : 'Dokumen berhasil diunggah!');
-    } catch (_err) {
-      toast.error(locale === 'en' ? 'Failed to upload document. Please try again.' : 'Gagal mengunggah dokumen. Coba lagi.');
+      toast.success(locale === 'en' ? 'Document uploaded securely!' : 'Dokumen tersimpan dengan aman!');
+      if (data) {
+        // no-op — list refreshed
+      }
+    } catch (err) {
+      const msg = err?.message || (locale === 'en' ? 'Failed to upload document.' : 'Gagal mengunggah dokumen.');
+      toast.error(msg);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -229,11 +223,15 @@ export default function EmpDocuments() {
         {locale === 'en' ? `Uploaded Documents (${documents.length})` : `Dokumen Terunggah (${documents.length})`}
       </div>
       {documents.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiDocumentText size={24} /></div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No documents yet' : 'Belum ada dokumen'}</div>
-          <div className="emp-empty-desc">{locale === 'en' ? 'Upload your administrative documents above' : 'Unggah dokumen administratif di atas'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No documents yet' : 'Belum ada dokumen'}
+          subtitle={locale === 'en' ? 'Upload admin documents (KTP, NPWP, etc.) so HR can verify them.' : 'Unggah dokumen admin (KTP, NPWP, dll.) agar HR dapat memverifikasi.'}
+          cta={locale === 'en' ? 'Choose file' : 'Pilih file'}
+          ctaAction={() => fileRef.current?.click()}
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {documents.map(doc => {
@@ -253,11 +251,15 @@ export default function EmpDocuments() {
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, color: statusConf.color, background: `${statusConf.color}12` }}>
                     {statusConf.icon} {statusConf.label}
                   </span>
-                  {doc.file_url && (
-                    <a href={doc.file_url} target="_blank" rel="noreferrer"
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
+                  {(doc.file_url || doc.url) && doc.file_url !== '#' && (
+                    <DocLink
+                      docRef={doc.file_url || doc.url}
+                      title={locale === 'en' ? 'Download' : 'Unduh'}
+                      download
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}
+                    >
                       <HiArrowDownTray size={12} /> {locale === 'en' ? 'Download' : 'Unduh'}
-                    </a>
+                    </DocLink>
                   )}
                 </div>
               </div>

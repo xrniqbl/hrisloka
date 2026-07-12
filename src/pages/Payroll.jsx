@@ -23,6 +23,7 @@ import { createNotification } from '../services/notificationService';
 import { calculateSalary } from '../lib/payrollEngine';
 import { exportToExcel } from '../lib/excelExport';
 import { generatePayslipPDF } from '../lib/pdfGenerator';
+import EmptyState from '../components/EmptyState';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
@@ -357,7 +358,17 @@ export default function Payroll() {
           </TableRow>
  ))}
  {payrollData.length === 0 && (
- <TableRow><TableCell colSpan={8} className="empty-state">Belum ada data karyawan.</TableCell></TableRow>
+ <TableRow>
+  <TableCell colSpan={8} style={{ padding: 0, border: 'none' }}>
+   <EmptyState
+     title="Belum ada data karyawan"
+     description="Tambahkan karyawan aktif dulu, lalu hitung dan publikasikan payroll ke PWA."
+     ctaLabel="Kelola karyawan"
+     onCta={() => { window.location.href = '/employees'; }}
+     size="sm"
+   />
+  </TableCell>
+ </TableRow>
  )}
         </TableBody>
       </Table>

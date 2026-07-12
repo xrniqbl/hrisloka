@@ -12,6 +12,7 @@ import '../styles/admin.css';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import EmptyState from '../components/EmptyState';
 
 export default function Attendance() {
   const { t } = useTranslation();
@@ -180,7 +181,17 @@ export default function Attendance() {
                 );
               })}
               {todayLogs.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="empty-state">Belum ada data kehadiran hari ini.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={5} style={{ padding: 0, border: 'none' }}>
+                    <EmptyState
+                      title="Belum ada kehadiran hari ini"
+                      description="Clock-in karyawan dari PWA akan muncul di sini secara realtime."
+                      ctaLabel="Muat ulang"
+                      onCta={fetchData}
+                      size="sm"
+                    />
+                  </TableCell>
+                </TableRow>
               )}
                         </TableBody>
           </Table>

@@ -14,6 +14,7 @@ import { getMyShiftAssignments } from '../../services/shiftService';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import '../../styles/shared.css';
@@ -294,10 +295,15 @@ export default function EmpCalendar() {
             <Button variant="secondary" size="sm" onClick={nextMonth}>›</Button>
           </div>
           {agendaEvents.length === 0 ? (
-            <div className="emp-card emp-empty">
-              <div className="emp-empty-icon"><HiCalendarDays size={24} /></div>
-              <div className="emp-empty-title">{locale === 'en' ? 'No events this month' : 'Tidak ada event bulan ini'}</div>
-            </div>
+            <EmpEmptyState
+              type="nodata"
+              title={locale === 'en' ? 'No events this month' : 'Tidak ada event bulan ini'}
+              subtitle={locale === 'en' ? 'Holidays, leave, and shifts will show here when scheduled.' : 'Libur, cuti, dan shift akan tampil di sini bila sudah dijadwalkan.'}
+              cta={locale === 'en' ? 'View shifts' : 'Lihat shift'}
+              ctaHref="/app/shift"
+              secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+              secondaryHref="/app/home"
+            />
           ) : agendaEvents.map(({ day, date, events: evts }) => (
             <div key={date} className="emp-card emp-card-stagger" style={{ marginBottom: 8, padding: 0, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: evts.length ? '1px solid var(--border)' : 'none', background: isToday(day) ? 'var(--primary)' : 'transparent' }}>

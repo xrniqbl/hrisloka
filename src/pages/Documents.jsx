@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import DocLink from '../components/DocLink';
+import EmptyState from '../components/EmptyState';
 
 const docTypes = ['KTP', 'Ijazah', 'Kontrak Kerja', 'Sertifikat', 'NPWP', 'Lainnya'];
 
@@ -149,7 +150,17 @@ export default function Documents() {
  {loading ? (
  <TableRow><TableCell colSpan="6" className="empty-state">Memuat data...</TableCell></TableRow>
  ) : filtered.length === 0 ? (
- <TableRow><TableCell colSpan="6" className="empty-state">Tidak ada dokumen ditemukan.</TableCell></TableRow>
+ <TableRow>
+  <TableCell colSpan="6" style={{ padding: 0, border: 'none' }}>
+   <EmptyState
+     title="Tidak ada dokumen"
+     description="Dokumen karyawan yang diunggah dari PWA akan muncul di sini untuk verifikasi."
+     ctaLabel="Muat ulang"
+     onCta={fetchData}
+     size="sm"
+   />
+  </TableCell>
+ </TableRow>
  ) : filtered.map((doc) => (
  <tr key={doc.id}>
  <TableCell>

@@ -11,6 +11,7 @@ import BottomSheet from '../../components/BottomSheet';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 export default function EmpHelpdesk() {
@@ -173,11 +174,15 @@ export default function EmpHelpdesk() {
         {locale === 'en' ? `Ticket History (${tickets.length})` : `Riwayat Tiket (${tickets.length})`}
       </div>
       {tickets.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiQuestionMarkCircle size={24} /></div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No tickets yet' : 'Belum ada tiket'}</div>
-          <div className="emp-empty-desc">{locale === 'en' ? 'Create a new ticket if you need assistance' : 'Buat tiket baru jika membutuhkan bantuan'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No tickets yet' : 'Belum ada tiket'}
+          subtitle={locale === 'en' ? 'Create a ticket if you need help from HR or IT.' : 'Buat tiket jika butuh bantuan HR atau IT.'}
+          cta={locale === 'en' ? 'Create ticket' : 'Buat tiket'}
+          ctaAction={() => setSheetOpen(true)}
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {tickets.map(t => (

@@ -9,6 +9,7 @@ import {
 import { getAllEmployees } from '../../services/employeeService';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../lib/i18n';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 export default function CompanyDirectory() {
@@ -142,29 +143,37 @@ export default function CompanyDirectory() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-title">{locale === 'en' ? 'No employees found.' : 'Tidak ada karyawan yang ditemukan.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No employees found' : 'Tidak ada karyawan'}
+          subtitle={locale === 'en' ? 'Try another search keyword or clear the search box.' : 'Coba kata kunci lain atau kosongkan pencarian.'}
+          cta={locale === 'en' ? 'Clear search' : 'Hapus pencarian'}
+          ctaAction={() => setSearch('')}
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       )}
 
-      {groupByDept ? (
-        <div className="dir-dept-grid">
-          {sortedDepts.map(dept => (
-            <div key={dept}>
-              <div className="dir-dept-label">
-                <div className="dir-dept-dot" />
-                {dept} <span className="dir-dept-count">({grouped[dept].length})</span>
+      {filtered.length > 0 && (
+        groupByDept ? (
+          <div className="dir-dept-grid">
+            {sortedDepts.map((dept) => (
+              <div key={dept}>
+                <div className="dir-dept-label">
+                  <div className="dir-dept-dot" />
+                  {dept} <span className="dir-dept-count">({grouped[dept].length})</span>
+                </div>
+                <div className="dir-card-grid">
+                  {grouped[dept].map((emp) => <EmployeeCard key={emp.id} emp={emp} />)}
+                </div>
               </div>
-              <div className="dir-card-grid">
-                {grouped[dept].map(emp => <EmployeeCard key={emp.id} emp={emp} />)}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="dir-card-grid">
-          {filtered.map(emp => <EmployeeCard key={emp.id} emp={emp} />)}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="dir-card-grid">
+            {filtered.map((emp) => <EmployeeCard key={emp.id} emp={emp} />)}
+          </div>
+        )
       )}
     </div>
   );

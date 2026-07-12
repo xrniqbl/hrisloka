@@ -21,6 +21,7 @@ import { useRealtimeMultiple } from '../../hooks/useRealtime';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 const STATUS_MAP = {
@@ -423,11 +424,18 @@ export default function EmpSubmissions() {
 
       {/* List */}
       {filteredList.length === 0 ? (
-        <div className="emp-card" style={{ textAlign: 'center', padding: '20px 14px' }}>
-          <HiBellAlert size={30} style={{ color: 'var(--border)', marginBottom: 10 }} />
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{locale === 'en' ? 'No submissions found' : 'Belum ada pengajuan'}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{locale === 'en' ? 'Use the button above to submit.' : 'Gunakan tombol di atas untuk mengajukan.'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No submissions found' : 'Belum ada pengajuan'}
+          subtitle={locale === 'en' ? 'Submit leave, overtime, or reimbursement with the button above.' : 'Ajukan cuti, lembur, atau reimburse lewat tombol di atas.'}
+          cta={locale === 'en' ? 'New request' : 'Ajukan baru'}
+          ctaAction={() => {
+            setSheetType(activeTab === 'cuti' ? 'cuti' : activeTab === 'lembur' ? 'lembur' : 'reimburse');
+            setSheetOpen(true);
+          }}
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {filteredList.map(item => {

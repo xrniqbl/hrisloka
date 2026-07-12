@@ -1,131 +1,134 @@
 import { useNavigate } from 'react-router-dom';
 
 /**
- * EmpEmptyState — reusable empty/error state for Employee PWA pages.
- * Shows an SVG illustration, title, subtitle, and optional CTA button.
+ * Clean empty / error CTA for Employee PWA.
+ * Uses theme tokens (--primary, --surface, --border) — no raw hex layouts.
+ *
+ * @param {'nodata'|'noemp'|'error'|'success'} type
+ * @param {string} [title]
+ * @param {string} [subtitle]
+ * @param {string|React.ReactNode} [cta] Primary label
+ * @param {string} [ctaHref] Navigate path
+ * @param {() => void} [ctaAction] Prefer over href when set
+ * @param {string|React.ReactNode} [secondaryCta]
+ * @param {string} [secondaryHref]
+ * @param {() => void} [secondaryAction]
+ * @param {React.ReactNode} [icon] Optional custom icon (replaces illustration)
  */
 export default function EmpEmptyState({
-  type = 'nodata',        // 'nodata' | 'noemp' | 'error' | 'loading'
+  type = 'nodata',
   title,
   subtitle,
   cta,
   ctaHref,
   ctaAction,
+  secondaryCta,
+  secondaryHref,
+  secondaryAction,
   icon,
 }) {
   const navigate = useNavigate();
 
   const defaults = {
     noemp: {
-      title: 'Data karyawan tidak ditemukan',
-      subtitle: 'Akun Anda belum terhubung sebagai karyawan. Hubungi tim HR untuk verifikasi.',
-      cta: 'Hubungi HR',
-      ctaHref: '/app/announcements',
+      title: 'Profil belum terhubung',
+      subtitle: 'Akun Anda belum terhubung sebagai karyawan. Hubungi HR untuk verifikasi.',
+      cta: 'Kembali ke Beranda',
+      ctaHref: '/app/home',
     },
     nodata: {
       title: 'Belum ada data',
-      subtitle: 'Data belum tersedia sementara ini.',
+      subtitle: 'Data belum tersedia. Coba muat ulang atau kembali nanti.',
       cta: null,
     },
     error: {
       title: 'Gagal memuat data',
-      subtitle: 'Terjadi kesalahan. Coba lagi atau periksa koneksi internet Anda.',
+      subtitle: 'Terjadi kesalahan. Periksa koneksi lalu coba lagi.',
       cta: 'Coba Lagi',
+    },
+    success: {
+      title: 'Semua selesai',
+      subtitle: 'Tidak ada item yang menunggu saat ini.',
+      cta: 'Muat Ulang',
     },
   };
 
   const cfg = defaults[type] || defaults.nodata;
   const finalTitle = title || cfg.title;
   const finalSubtitle = subtitle || cfg.subtitle;
-  const finalCta = cta || cfg.cta;
+  const finalCta = cta !== undefined ? cta : cfg.cta;
+  const finalCtaHref = ctaHref || cfg.ctaHref;
 
   const illustrations = {
     noemp: (
-      <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="60" cy="60" r="56" fill="#EFF6FF" />
-        <circle cx="60" cy="46" r="18" fill="#BFDBFE" />
-        <path d="M28 96c0-17.673 14.327-32 32-32s32 14.327 32 32" stroke="#93C5FD" strokeWidth="3" strokeLinecap="round" fill="none"/>
-        <circle cx="88" cy="36" r="12" fill="#FEE2E2" />
-        <path d="M83 36h10M88 31v10" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" />
+      <svg width="72" height="72" viewBox="0 0 120 120" fill="none" aria-hidden>
+        <circle cx="60" cy="60" r="56" fill="color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)" />
+        <circle cx="60" cy="46" r="18" fill="color-mix(in srgb, var(--primary, #635BFF) 22%, transparent)" />
+        <path d="M28 96c0-17.673 14.327-32 32-32s32 14.327 32 32" stroke="var(--primary, #635BFF)" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.45" />
       </svg>
     ),
     nodata: (
-      <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="60" cy="60" r="56" fill="#F0FDF4" />
-        <rect x="30" y="35" width="60" height="50" rx="6" fill="#BBF7D0" />
-        <rect x="38" y="48" width="22" height="3" rx="1.5" fill="#4ADE80" />
-        <rect x="38" y="56" width="44" height="3" rx="1.5" fill="#4ADE80" />
-        <rect x="38" y="64" width="36" height="3" rx="1.5" fill="#4ADE80" />
-        <rect x="38" y="72" width="28" height="3" rx="1.5" fill="#D1FAE5" />
-        <circle cx="80" cy="36" r="12" fill="#FEF9C3" stroke="#FDE047" strokeWidth="1.5"/>
-        <path d="M80 30v8" stroke="#EAB308" strokeWidth="2.5" strokeLinecap="round"/>
-        <circle cx="80" cy="41" r="1.5" fill="#EAB308"/>
+      <svg width="72" height="72" viewBox="0 0 120 120" fill="none" aria-hidden>
+        <circle cx="60" cy="60" r="56" fill="color-mix(in srgb, var(--primary, #635BFF) 8%, transparent)" />
+        <rect x="32" y="38" width="56" height="44" rx="8" fill="color-mix(in srgb, var(--primary, #635BFF) 14%, transparent)" />
+        <rect x="40" y="50" width="24" height="3" rx="1.5" fill="var(--primary, #635BFF)" opacity="0.45" />
+        <rect x="40" y="58" width="40" height="3" rx="1.5" fill="var(--primary, #635BFF)" opacity="0.3" />
+        <rect x="40" y="66" width="32" height="3" rx="1.5" fill="var(--primary, #635BFF)" opacity="0.2" />
       </svg>
     ),
     error: (
-      <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="60" cy="60" r="56" fill="#FFF7ED" />
-        <circle cx="60" cy="60" r="30" fill="#FED7AA" />
-        <path d="M60 44v20" stroke="#EA580C" strokeWidth="3" strokeLinecap="round"/>
-        <circle cx="60" cy="71" r="2.5" fill="#EA580C"/>
+      <svg width="72" height="72" viewBox="0 0 120 120" fill="none" aria-hidden>
+        <circle cx="60" cy="60" r="56" fill="rgba(220,38,38,0.06)" />
+        <circle cx="60" cy="60" r="28" fill="rgba(220,38,38,0.1)" />
+        <path d="M60 44v20" stroke="#DC2626" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="60" cy="74" r="2.5" fill="#DC2626" />
+      </svg>
+    ),
+    success: (
+      <svg width="72" height="72" viewBox="0 0 120 120" fill="none" aria-hidden>
+        <circle cx="60" cy="60" r="56" fill="rgba(22,163,74,0.08)" />
+        <circle cx="60" cy="60" r="28" fill="rgba(22,163,74,0.12)" />
+        <path d="M44 60l12 12 20-22" stroke="#16A34A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
     ),
   };
 
   const illustration = icon || illustrations[type] || illustrations.nodata;
 
+  const runPrimary = () => {
+    if (ctaAction) {
+      ctaAction();
+      return;
+    }
+    if (finalCtaHref) navigate(finalCtaHref);
+  };
+
+  const runSecondary = () => {
+    if (secondaryAction) {
+      secondaryAction();
+      return;
+    }
+    if (secondaryHref) navigate(secondaryHref);
+  };
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '48px 24px',
-      textAlign: 'center',
-      animation: 'fadeInUp 0.35s ease',
-    }}>
-      <div style={{ marginBottom: 20 }}>{illustration}</div>
-      <div style={{
-        fontSize: 17,
-        fontWeight: 700,
-        color: 'var(--text)',
-        marginBottom: 8,
-        lineHeight: 1.4,
-        maxWidth: 280,
-      }}>
-        {finalTitle}
-      </div>
-      <div style={{
-        fontSize: 13,
-        color: 'var(--muted)',
-        lineHeight: 1.6,
-        maxWidth: 260,
-        marginBottom: finalCta ? 24 : 0,
-      }}>
-        {finalSubtitle}
-      </div>
-      {finalCta && (
-        <button
-          onClick={() => {
-            if (ctaAction) { ctaAction(); return; }
-            if (ctaHref || cfg.ctaHref) navigate(ctaHref || cfg.ctaHref);
-          }}
-          style={{
-            padding: '12px 28px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--primary)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 700,
-            fontSize: 14,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            boxShadow: '0 4px 14px rgba(0,71,171,0.25)',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {finalCta}
-        </button>
+    <div className="emp-card emp-empty emp-empty--cta" role="status">
+      <div className="emp-empty-icon emp-empty-icon--solid">{illustration}</div>
+      <div className="emp-empty-title">{finalTitle}</div>
+      {finalSubtitle && <div className="emp-empty-desc">{finalSubtitle}</div>}
+      {(finalCta || secondaryCta) && (
+        <div className="emp-empty-actions">
+          {finalCta && (
+            <button type="button" className="btn-primary" onClick={runPrimary}>
+              {finalCta}
+            </button>
+          )}
+          {secondaryCta && (
+            <button type="button" className="btn-secondary" onClick={runSecondary}>
+              {secondaryCta}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

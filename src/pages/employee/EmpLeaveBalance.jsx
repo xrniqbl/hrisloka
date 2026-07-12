@@ -11,6 +11,7 @@ import { getEmployeeByEmail } from '../../services/employeeService';
 import { getMyLeaves } from '../../services/leaveService';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -218,12 +219,15 @@ export default function EmpLeaveBalance() {
         {locale === 'en' ? `Leave History ${selectedYear} (${leaves.length})` : `Riwayat Pengajuan ${selectedYear} (${leaves.length})`}
       </div>
       {leaves.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiCalendarDays size={24} /></div>
-          <div className="emp-empty-title">
-            {locale === 'en' ? `No leave requests in ${selectedYear}` : `Tidak ada pengajuan cuti di tahun ${selectedYear}`}
-          </div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? `No leave in ${selectedYear}` : `Tidak ada cuti di ${selectedYear}`}
+          subtitle={locale === 'en' ? 'Submit a leave request from Submissions when you need time off.' : 'Ajukan cuti dari menu Pengajuan saat membutuhkan libur.'}
+          cta={locale === 'en' ? 'Request leave' : 'Ajukan cuti'}
+          ctaHref="/app/submissions"
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {leaves.map(l => {

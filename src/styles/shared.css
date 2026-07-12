@@ -727,11 +727,15 @@
   padding-left: 2px;
 }
 
-/* â”€â”€â”€ Empty State â”€â”€â”€ */
+/* ─── Empty State (PWA) ─── */
 .emp-empty {
   text-align: center;
   padding: 40px 20px;
   color: var(--muted);
+}
+
+.emp-empty--cta {
+  padding: 48px 24px;
 }
 
 .emp-empty-icon {
@@ -747,17 +751,46 @@
   opacity: 0.5;
 }
 
+.emp-empty-icon--solid {
+  width: auto;
+  height: auto;
+  min-width: 72px;
+  min-height: 72px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  opacity: 1;
+  color: var(--primary);
+}
+
 .emp-empty-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: var(--text);
   margin-bottom: 6px;
+  letter-spacing: -0.2px;
 }
 
 .emp-empty-desc {
   font-size: 13px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.55;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.emp-empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 280px;
+  margin: 18px auto 0;
+  width: 100%;
+}
+
+.emp-empty-actions .btn-primary,
+.emp-empty-actions .btn-secondary {
+  width: 100%;
 }
 
 /* â”€â”€â”€ Stat Numbers (counter animation) â”€â”€â”€ */

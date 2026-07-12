@@ -128,7 +128,14 @@ export default function LeaveManagement() {
 
       {filtered.length === 0 ? (
         <div className="data-table-card">
-          <EmptyState icon="leave" title="Belum ada pengajuan cuti" description="Semua terkendali! Belum ada karyawan yang mengajukan cuti saat ini." />
+          <EmptyState
+            title="Belum ada pengajuan cuti"
+            description="Semua terkendali. Pengajuan cuti karyawan akan muncul di sini."
+            ctaLabel="Muat ulang"
+            onCta={fetchData}
+            secondaryLabel="Buka persetujuan"
+            onSecondary={() => { window.location.href = '/approvals'; }}
+          />
         </div>
       ) : (
         <div className="data-table-card">

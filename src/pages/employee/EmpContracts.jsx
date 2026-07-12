@@ -12,6 +12,7 @@ import { getEmployeeByEmail } from '../../services/employeeService';
 import { getContractsByEmployee, signContract } from '../../services/contractService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 import '../../styles/admin.css';
 
@@ -234,13 +235,15 @@ export default function EmpContracts() {
           {[1,2].map(i => <div key={i} className="skeleton" style={{ height: 90, borderRadius: 16 }} />)}
         </div>
       ) : contracts.length === 0 ? (
-        <div className="ep-empty-wrap">
-          <HiDocumentText size={40} className="ep-empty-icon" />
-          <div className="ep-empty-title">{locale === 'en' ? 'No contracts yet' : 'Belum ada kontrak'}</div>
-          <div className="ep-empty-desc">
-            {locale === 'en' ? 'Your employment contracts will appear here.' : 'Kontrak kerja Anda akan muncul di sini.'}
-          </div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No contracts yet' : 'Belum ada kontrak'}
+          subtitle={locale === 'en' ? 'Your employment contracts will appear here once HR publishes them.' : 'Kontrak kerja akan muncul di sini setelah HR menerbitkan.'}
+          cta={locale === 'en' ? 'Contact helpdesk' : 'Hubungi helpdesk'}
+          ctaHref="/app/helpdesk"
+          secondaryCta={locale === 'en' ? 'Home' : 'Beranda'}
+          secondaryHref="/app/home"
+        />
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
           {contracts.map(contract => {

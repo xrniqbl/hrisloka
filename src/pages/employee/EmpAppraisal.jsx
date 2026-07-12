@@ -94,9 +94,13 @@ export default function EmpAppraisal() {
       </div>
 
       {appraisals.length === 0 ? (
-        <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
-          <div className="td-muted-sm">{locale === 'en' ? 'No appraisal results yet' : 'Belum ada hasil penilaian'}</div>
-        </div>
+        <EmpEmptyState
+          type="nodata"
+          title={locale === 'en' ? 'No appraisal results yet' : 'Belum ada hasil penilaian'}
+          subtitle={locale === 'en' ? 'Performance reviews will show up here after your manager submits them.' : 'Hasil penilaian muncul di sini setelah manajer mengirim review.'}
+          cta={locale === 'en' ? 'Back to Home' : 'Kembali ke Beranda'}
+          ctaHref="/app/home"
+        />
       ) : appraisals.map(a => (
         <div key={a.id} className="emp-card mb-sm">
           <div className="appr-result-row">

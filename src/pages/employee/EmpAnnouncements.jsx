@@ -12,6 +12,7 @@ import { subscribeToAnnouncements } from '../../services/broadcastService';
 import { useTranslation } from '../../lib/i18n';
 import { useAuth } from '../../context/AuthContext';
 import { isDemoMode, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
 
 const PRIORITY_CONFIG = {
@@ -169,14 +170,23 @@ export default function EmpAnnouncements() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiBell size={24} /></div>
-          <div className="emp-empty-title">
-            {activeFilter === 'unread'
+        <EmpEmptyState
+          type={activeFilter === 'unread' ? 'success' : 'nodata'}
+          title={
+            activeFilter === 'unread'
               ? (locale === 'en' ? 'All caught up!' : 'Semua sudah dibaca!')
-              : (locale === 'en' ? 'No announcements yet' : 'Belum ada pengumuman')}
-          </div>
-        </div>
+              : (locale === 'en' ? 'No announcements yet' : 'Belum ada pengumuman')
+          }
+          subtitle={
+            activeFilter === 'unread'
+              ? (locale === 'en' ? 'You have read every announcement.' : 'Semua pengumuman sudah dibaca.')
+              : (locale === 'en' ? 'HR has not published any company news yet.' : 'HR belum mempublikasikan pengumuman perusahaan.')
+          }
+          cta={locale === 'en' ? 'Back to Home' : 'Kembali ke Beranda'}
+          ctaHref="/app/home"
+          secondaryCta={locale === 'en' ? 'Refresh' : 'Muat Ulang'}
+          secondaryAction={loadData}
+        />
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           {filtered.map((a, i) => {

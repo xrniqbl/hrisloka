@@ -243,14 +243,14 @@ export default function Employees() {
           ) : filtered.length === 0 ? (
             <div className="data-table-card">
               <EmptyState
-                icon="employee"
                 title="Belum ada data karyawan"
                 description="Mulai dengan menambahkan karyawan pertama ke dalam sistem."
-              >
-                <Button onClick={() => { setEditEmp(null); setModalOpen(true); }}>
-                  <FiPlus /> Tambah Karyawan
-                </Button>
-              </EmptyState>
+                action={
+                  <Button onClick={() => { setEditEmp(null); setModalOpen(true); }}>
+                    <FiPlus /> Tambah Karyawan
+                  </Button>
+                }
+              />
             </div>
           ) : (
             <div className="data-table-card">
