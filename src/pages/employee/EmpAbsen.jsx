@@ -179,9 +179,9 @@ export default function EmpAbsen() {
         setRegisteredFaces(descriptors || []);
       }
 
-      // Branch-specific geofence first
-      if (empData.branch_id) {
-        const { data: branchData } = await getBranchById(empData.branch_id);
+      // Branch-specific geofence first (company_id required by tenant guard)
+      if (empData.branch_id && empData.company_id) {
+        const { data: branchData } = await getBranchById(empData.branch_id, empData.company_id);
         if (branchData?.latitude != null && branchData?.longitude != null) {
           setOffice({
             id: branchData.id,

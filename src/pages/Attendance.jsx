@@ -54,7 +54,7 @@ export default function Attendance() {
   }, [employee, selectedBranchId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useRealtimeTable('attendance', fetchData, { companyId: currentUser?.company_id });
+  useRealtimeTable('attendance', fetchData, { companyId: employee?.company_id, enabled: !!employee?.company_id });
 
   const handleClockToggle = async () => {
     if (!employee) return;

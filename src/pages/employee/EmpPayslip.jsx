@@ -172,37 +172,37 @@ export default function EmpPayslip() {
   now.setMonth(now.getMonth() + monthOffset);
   const monthLabel = now.toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { month: 'long', year: 'numeric' });
 
-  // Map both production schema (base_salary/period/take_home_pay) and legacy aliases
-  const base = payrollRecord?.base_salary
-    ?? payrollRecord?.basic_salary
-    ?? emp.base_salary
-    ?? 0;
-  const allow = payrollRecord?.allowance
-    ?? payrollRecord?.allowances
-    ?? emp.allowance
-    ?? 0;
+  // ONLY show official published payroll_records — never fabricate from emp.base_salary
+  const isProcessed = !!payrollRecord;
+  const isPaid = payrollRecord?.status === 'paid';
+  const base = payrollRecord?.base_salary ?? payrollRecord?.basic_salary ?? 0;
+  const allow = payrollRecord?.allowance ?? payrollRecord?.allowances ?? 0;
   const otPay = payrollRecord?.overtime_pay ?? 0;
   const gross = payrollRecord?.gross_income ?? (base + allow + otPay);
-  const bpjsFallback = Math.round(base * (parseFloat(emp.bpjs_rate) || 0.04));
-  const taxFallback = Math.round(gross * (parseFloat(emp.tax_rate) || 0.05));
   const totalDeductions = payrollRecord?.total_deductions
     ?? payrollRecord?.deductions
-    ?? (bpjsFallback + taxFallback);
+    ?? 0;
   const net = payrollRecord?.take_home_pay
     ?? payrollRecord?.net_salary
     ?? (gross - totalDeductions);
   const takeHomePercent = gross > 0 ? Math.round((net / gross) * 100) : 0;
-  const isPaid = payrollRecord?.status === 'paid';
-  const isProcessed = !!payrollRecord;
+  const bpjsAmt = payrollRecord?.bpjs_kesehatan
+    ?? payrollRecord?.bpjs
+    ?? Math.round(totalDeductions * 0.5);
+  const taxAmt = payrollRecord?.pph21
+    ?? payrollRecord?.tax
+    ?? Math.round(totalDeductions * 0.5);
 
   const handleDownload = async () => {
+    if (!payrollRecord) return;
     setDownloading(true);
     await generatePayslipPDF(emp, {
       month: now.toLocaleDateString('id-ID', { month: 'long' }),
       year: now.getFullYear(),
-      baseSalary: base, allowance: allow,
-      bpjs: Math.round(totalDeductions * 0.5),
-      tax: Math.round(totalDeductions * 0.5),
+      baseSalary: base,
+      allowance: allow,
+      bpjs: bpjsAmt,
+      tax: taxAmt,
       total: net,
     });
     setDownloading(false);
@@ -211,11 +211,11 @@ export default function EmpPayslip() {
   const rows = [
     { label: locale === 'en' ? 'Base Salary' : 'Gaji Pokok', val: base, type: 'income' },
     { label: locale === 'en' ? 'Allowance' : 'Tunjangan', val: allow, type: 'income' },
-    { label: 'BPJS Kesehatan', val: Math.round(totalDeductions * 0.5), type: 'deduct' },
-    { label: 'PPh 21', val: Math.round(totalDeductions * 0.5), type: 'deduct' },
+    ...(otPay > 0 ? [{ label: locale === 'en' ? 'Overtime' : 'Lembur', val: otPay, type: 'income' }] : []),
+    { label: 'BPJS Kesehatan', val: bpjsAmt, type: 'deduct' },
+    { label: 'PPh 21', val: taxAmt, type: 'deduct' },
   ];
 
-  // KEEP: runtime dynamic - changes based on payroll status
   const cardGradient = isPaid
     ? 'linear-gradient(135deg, #059669 0%, #10B981 55%, #34D399 100%)'
     : 'linear-gradient(135deg, #635BFF 0%, #5449FF 55%, #635BFF 100%)';
@@ -240,11 +240,10 @@ export default function EmpPayslip() {
                 ? <><HiCheckCircle size={12} color="var(--success)" /><span style={{ fontSize:11, color:'var(--success)', fontWeight:600 }}>{locale==='en'?'Paid':'Sudah Dibayar'}</span></>
                 : <><HiClock size={12} color="var(--warning)" /><span style={{ fontSize:11, color:'var(--warning)', fontWeight:600 }}>{locale==='en'?'Processed':'Diproses'}</span></>
             ) : (
-              <><HiExclamationTriangle size={12} color="var(--muted)" /><span style={{ fontSize:11, color:'var(--muted)', fontWeight:600 }}>{locale==='en'?'Not yet processed':'Belum diproses'}</span></>
+              <><HiExclamationTriangle size={12} color="var(--muted)" /><span style={{ fontSize:11, color:'var(--muted)', fontWeight:600 }}>{locale==='en'?'Not yet published':'Belum dipublikasi'}</span></>
             )}
           </div>
         </div>
-        {/* KEEP: runtime - color depends on disabled state (monthOffset) */}
         <button
           className="emp-month-btn"
           onClick={() => setMonthOffset(m => Math.min(m+1, 0))}
@@ -255,7 +254,31 @@ export default function EmpPayslip() {
         </button>
       </div>
 
-      {/* Hero Card - KEEP all styles: runtime cardGradient/cardShadow + custom decorative layout */}
+      {!isProcessed ? (
+        <div className="emp-card emp-empty" style={{ padding: '48px 24px', marginBottom: 12 }}>
+          <div
+            className="emp-empty-icon"
+            style={{
+              opacity: 1,
+              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
+              color: 'var(--primary, #635BFF)',
+              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
+            }}
+          >
+            <HiCurrencyDollar size={24} />
+          </div>
+          <div className="emp-empty-title" style={{ color: 'var(--text)' }}>
+            {locale === 'en' ? 'Payslip not published yet' : 'Slip gaji belum dipublikasi'}
+          </div>
+          <div className="emp-empty-desc" style={{ maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            {locale === 'en'
+              ? `No official payroll for ${monthLabel}. HR must click “Publikasi ke PWA” first.`
+              : `Belum ada payroll resmi untuk ${monthLabel}. HR perlu menekan “Publikasi ke PWA” dulu.`}
+          </div>
+        </div>
+      ) : (
+        <>
+      {/* Hero Card */}
       <div style={{ borderRadius: 14, overflow:'hidden', marginBottom: 12, background:cardGradient, boxShadow:cardShadow, position:'relative' }}>
         <div className="emp-hero-orb" />
         <div className="emp-hero-body">
@@ -269,7 +292,6 @@ export default function EmpPayslip() {
               {downloading ? <HiArrowPath size={14} style={{ animation:'spin 0.8s linear infinite' }} /> : <HiArrowDownTray size={14} />} PDF
             </button>
           </div>
-          {/* KEEP: runtime width from takeHomePercent */}
           <div className="emp-hero-progress-track">
             <div style={{ width:`${takeHomePercent}%`, height:'100%', background:'#fff', borderRadius:4, transition:'width 0.8s ease' }} />
           </div>
@@ -282,7 +304,6 @@ export default function EmpPayslip() {
           ].map((item, i) => (
             <div key={i} className="emp-hero-footer-item">
               <div className="emp-hero-footer-label">{item.label}</div>
-              {/* KEEP: runtime item.color per column */}
               <div style={{ fontSize:14, fontWeight:600, color:item.color }}>{item.prefix || ''}{formatCurrency(item.val)}</div>
             </div>
           ))}
@@ -294,33 +315,42 @@ export default function EmpPayslip() {
         <div className="section-label mb-sm">{locale==='en'?'Salary Breakdown':'Rincian Gaji'}</div>
         <div className="emp-breakdown-row">
           <div className="emp-chart-wrap">
-            <Doughnut data={{ datasets:[{ data:[base, allow, totalDeductions], backgroundColor:['#635BFF','#635BFF','#F87171'], borderWidth:0, cutout:'72%' }] }} options={{ plugins:{ legend:{ display:false }, tooltip:{ enabled:false } }, maintainAspectRatio:false }} />
+            <Doughnut data={{ datasets:[{ data:[Math.max(base,1), Math.max(allow,0), Math.max(totalDeductions,0)], backgroundColor:['#635BFF','#818CF8','#F87171'], borderWidth:0, cutout:'72%' }] }} options={{ plugins:{ legend:{ display:false }, tooltip:{ enabled:false } }, maintainAspectRatio:false }} />
           </div>
           <div className="emp-breakdown-list">
             {rows.map(r => (
               <div key={r.label} className="emp-breakdown-item">
                 <div className="emp-breakdown-left">
-                  {/* KEEP: runtime - dot color depends on row type */}
                   <div style={{ width:8, height:8, borderRadius:'50%', background:r.type==='income'?'var(--primary)':'#F87171', flexShrink:0 }} />
                   <span className="td-muted-sm">{r.label}</span>
                 </div>
-                {/* KEEP: runtime - text color depends on row type */}
                 <span style={{ fontSize:12, fontWeight:700, color:r.type==='deduct'?'var(--danger)':'var(--text)' }}>{r.type==='deduct'?'-':''}{formatCurrency(r.val)}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* History */}
       {payrollHistory.length > 0 && (
         <div className="emp-card">
           <div className="section-label mb-sm">{locale==='en'?'Salary History':'Riwayat Gaji'}</div>
           {payrollHistory.slice(0, 6).map((pr, idx) => {
-            const d = new Date(pr.month);
-            const label = d.toLocaleDateString(locale==='en'?'en-US':'id-ID', { month:'short', year:'numeric' });
-            const netAmt = pr.net_salary ?? 0;
-            const prevNet = payrollHistory[idx+1]?.net_salary ?? netAmt;
+            const periodKey = pr.period || pr.month || '';
+            let label = periodKey;
+            if (periodKey && /^\d{4}-\d{2}/.test(String(periodKey))) {
+              const [y, m] = String(periodKey).split('-');
+              label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(
+                locale === 'en' ? 'en-US' : 'id-ID',
+                { month: 'short', year: 'numeric' },
+              );
+            }
+            const netAmt = pr.take_home_pay ?? pr.net_salary ?? 0;
+            const prevNet = payrollHistory[idx+1]?.take_home_pay
+              ?? payrollHistory[idx+1]?.net_salary
+              ?? netAmt;
             const diff = netAmt - prevNet;
             return (
               <div key={pr.id ?? idx} className="emp-history-row">

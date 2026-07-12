@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiEye, FiX, FiMapPin, FiSettings, FiCheck, FiAlertTriangle, FiShield, FiAlertCircle, FiNavigation } from 'react-icons/fi';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -54,16 +54,26 @@ export default function GeofenceAttendance() {
  const { selectedBranchId } = useBranch();
   const { employee } = useAuth();
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
- const { data: attData } = await attendanceService.getAttendanceByDate(filterDate, selectedBranchId);
- const { data: locData } = await attendanceService.getOfficeLocations(employee?.company_id);
+ if (!employee?.company_id) {
+  setLogs([]);
+  setLocations([]);
+  setLoading(false);
+  return;
+ }
+ const { data: attData } = await attendanceService.getAttendanceByDate(
+  filterDate,
+  selectedBranchId,
+  employee.company_id,
+ );
+ const { data: locData } = await attendanceService.getOfficeLocations(employee.company_id);
  setLogs(attData || []);
  setLocations(locData || []);
  setLoading(false);
- };
+ }, [filterDate, selectedBranchId, employee]);
 
- useEffect(() => { fetchData(); }, [filterDate, selectedBranchId, employee?.company_id, fetchData]);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  const inRadius = logs.filter(l => l.in_radius).length;
  const outRadius = logs.filter(l => !l.in_radius).length;
@@ -192,7 +202,7 @@ export default function GeofenceAttendance() {
  <td className="td-semibold">{l.employees?.name || '-'}</td>
  <td>{l.clock_in || '-'}</td>
  <td className="td-mono-bold" style={{ fontSize: 12 }}>
- {l.latitude ? `${Number(l.latitude).toFixed(4)}, ${Number(l.longitude).toFixed(4)}` : '—'}
+ {l.latitude ? `${Number(l.latitude).toFixed(4)}, ${Number(l.longitude).toFixed(4)}` : 'ï¿½'}
  </td>
  <td>
  <span className={`status-badge ${l.in_radius ? 'active' : 'inactive'}`}>
@@ -228,7 +238,7 @@ export default function GeofenceAttendance() {
  <div className="form-grid">
  <div className="form-group">
  <label className="form-label">Karyawan</label>
- <div className="td-semibold">{selected.employees?.name || '—'}</div>
+ <div className="td-semibold">{selected.employees?.name || 'ï¿½'}</div>
  </div>
  <div className="form-group">
  <label className="form-label">Clock-In</label>

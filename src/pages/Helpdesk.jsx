@@ -70,12 +70,13 @@ export default function Helpdesk() {
   const stats = [
     { label: 'Total Tiket', value: ticketList.length, color: '#635BFF', icon: <FiMessageSquare /> },
     { label: 'Open', value: ticketList.filter(t => t.status === 'open').length, color: '#635BFF', icon: <FiAlertCircle /> },
-    { label: 'In Progress', value: ticketList.filter(t => t.status === 'in-progress').length, color: '#F59E0B', icon: <FiClock /> },
+    { label: 'In Progress', value: ticketList.filter(t => t.status === 'in-progress' || t.status === 'in_progress').length, color: '#F59E0B', icon: <FiClock /> },
     { label: 'Resolved', value: ticketList.filter(t => t.status === 'resolved').length, color: '#16A34A', icon: <FiCheckCircle /> },
   ];
 
   const filtered = ticketList.filter(t => {
-    const matchTab = activeTab === 'all' || t.status === activeTab;
+    const norm = (s) => (s === 'in_progress' ? 'in-progress' : s);
+    const matchTab = activeTab === 'all' || norm(t.status) === activeTab;
     const matchSearch = (t.subject || '').toLowerCase().includes(search.toLowerCase()) || String(t.id).toLowerCase().includes(search.toLowerCase());
     const matchCat = filterCat === 'All' || t.category === filterCat;
     return matchTab && matchSearch && matchCat;
@@ -236,7 +237,7 @@ export default function Helpdesk() {
                 <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
                   <label className="form-label" style={{ alignSelf: 'center', marginRight: 8 }}>Update Status:</label>
                   {selected.status === 'open' && <button className="btn-primary btn-sm" onClick={() => handleStatusChange(selected.id, 'in-progress')}>&rarr; In Progress</button>}
-                  {(selected.status === 'open' || selected.status === 'in-progress') && <button className="btn-primary btn-sm" style={{ background: 'var(--success)' }} onClick={() => handleStatusChange(selected.id, 'resolved')}> Resolved</button>}
+                  {(selected.status === 'open' || selected.status === 'in-progress' || selected.status === 'in_progress') && <button className="btn-primary btn-sm" style={{ background: 'var(--success)' }} onClick={() => handleStatusChange(selected.id, 'resolved')}> Resolved</button>}
                 </div>
               )}
               {selected.status === 'resolved' && selected.resolvedDate && (

@@ -96,17 +96,18 @@ export default function EmpNotifications() {
       empData = res.data;
     }
 
-    // Company-scoped announcements (avoid cross-tenant leak)
-    let annQuery = supabase
-      .from('announcements')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20);
+    // Company-scoped announcements only — never unscoped (cross-tenant risk)
     if (empData?.company_id) {
-      annQuery = annQuery.eq('company_id', empData.company_id);
+      const { data: annData } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('company_id', empData.company_id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setAnnouncements((annData || []).map((a) => ({ ...a, type: 'announcement' })));
+    } else {
+      setAnnouncements([]);
     }
-    const { data: annData } = await annQuery;
-    setAnnouncements((annData || []).map(a => ({ ...a, type: 'announcement' })));
 
     if (empData) {
       const empId = empData.id;

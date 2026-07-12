@@ -47,10 +47,16 @@ export default function Employees() {
 
   useEffect(() => { fetchEmployees(); }, [selectedBranchId, currentUser?.company_id]);
 
-  // Load pending count for badge
+  // Load pending count for badge (must pass company_id — guard blocks otherwise)
   useEffect(() => {
-    getPendingRegistrations().then(({ data }) => setPendingCount((data || []).length));
-  }, []);
+    if (!currentUser?.company_id) {
+      setPendingCount(0);
+      return;
+    }
+    getPendingRegistrations(currentUser.company_id).then(({ data }) =>
+      setPendingCount((data || []).length),
+    );
+  }, [currentUser?.company_id]);
 
   
 
@@ -98,20 +104,32 @@ export default function Employees() {
       edu_year: formData.eduYear ? parseInt(formData.eduYear) : null,
     };
 
+    const companyId = currentUser?.company_id;
+    if (!companyId) {
+      alert('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
+      return;
+    }
+
     if (editEmp) {
-      await employeeService.updateEmployee(editEmp.id, payload);
+      await employeeService.updateEmployee(editEmp.id, payload, companyId);
     } else {
-      await employeeService.createEmployee(payload);
+      await employeeService.createEmployee({ ...payload, company_id: companyId });
     }
     setEditEmp(null);
     fetchEmployees();
+    // Refresh pending badge after create/update
+    getPendingRegistrations(companyId).then(({ data }) => setPendingCount((data || []).length));
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Yakin ingin menghapus karyawan ini?')) {
-      await employeeService.deleteEmployee(id);
-      fetchEmployees();
+    if (!confirm('Yakin ingin menghapus karyawan ini?')) return;
+    const companyId = currentUser?.company_id;
+    if (!companyId) {
+      alert('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
+      return;
     }
+    await employeeService.deleteEmployee(id, companyId);
+    fetchEmployees();
   };
 
   const handleExportExcel = () => {

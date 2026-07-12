@@ -269,7 +269,12 @@ export default function EmpProfile() {
       return;
     }
     setSubmitting(true);
-    await submitTicket(emp.id, helpdeskForm);
+    // ticketService expects `message` (not `description`)
+    await submitTicket(emp.id, {
+      category: helpdeskForm.category,
+      subject: helpdeskForm.subject,
+      message: helpdeskForm.description || helpdeskForm.subject,
+    });
     const { data: tk } = await getMyTickets(emp.id);
     setTickets(tk || []);
     setSubmitting(false);

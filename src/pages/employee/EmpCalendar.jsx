@@ -80,13 +80,32 @@ export default function EmpCalendar() {
       ? holidayService.getAllHolidays(year, empData.company_id)
       : holidayService.getAllHolidays(year);
 
+    let trainingQuery = supabase
+      .from('trainings')
+      .select('*, training_participants(employee_id)')
+      .order('start_date', { ascending: true });
+    // Prefer company scope when column exists; never load all tenants unfiltered
+    if (empData?.company_id) {
+      trainingQuery = trainingQuery.eq('company_id', empData.company_id);
+    }
+
     const [hRes, lRes, tRes] = await Promise.all([
       holidayPromise,
       empData ? getMyLeaves(empData.id) : Promise.resolve({ data: [] }),
-      supabase.from('trainings')
-        .select('*, training_participants(employee_id)')
-        .order('start_date', { ascending: true }),
+      empData?.company_id
+        ? trainingQuery
+        : Promise.resolve({ data: [], error: null }),
     ]);
+
+    // If company_id column missing on trainings, fall back to participant-only filter
+    let trainingRows = tRes.data || [];
+    if (tRes.error && /company_id|column/i.test(tRes.error.message || '') && empData?.company_id) {
+      const fallback = await supabase
+        .from('trainings')
+        .select('*, training_participants(employee_id)')
+        .order('start_date', { ascending: true });
+      trainingRows = fallback.data || [];
+    }
 
     setHolidays(hRes?.data || []);
     setLeaves((lRes.data || []).filter((l) => l.status === 'approved'));
@@ -94,7 +113,7 @@ export default function EmpCalendar() {
     if (empData?.id && empData?.company_id) {
       const { data: myShifts } = await getMyShiftAssignments(empData.id, empData.company_id);
       setShifts(myShifts || []);
-      const myTrainings = (tRes.data || []).filter((t) =>
+      const myTrainings = trainingRows.filter((t) =>
         (t.training_participants || []).some((p) => p.employee_id === empData.id) &&
         (t.status === 'upcoming' || t.status === 'ongoing'),
       );
