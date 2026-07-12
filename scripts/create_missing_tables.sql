@@ -7,7 +7,7 @@
 -- ── 1. TRAININGS ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS trainings (
   id            BIGSERIAL PRIMARY KEY,
-  company_id    UUID, -- link ke companies, tanpa FK constraint (schema-safe)
+  company_id    INTEGER, -- matches companies.id SERIAL
   title         TEXT NOT NULL,
   description   TEXT,
   category      TEXT DEFAULT 'technical' CHECK (category IN ('technical','soft_skill','compliance','leadership','certification')),
@@ -26,7 +26,7 @@ DO $$ BEGIN
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='trainings' AND column_name='company_id'
   ) THEN
-    ALTER TABLE trainings ADD COLUMN company_id UUID;
+    ALTER TABLE trainings ADD COLUMN company_id INTEGER;
   END IF;
 END $$;
 
@@ -141,7 +141,7 @@ DO $$ BEGIN
     SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='onboarding_checklist' AND column_name='company_id'
   ) THEN
-    ALTER TABLE onboarding_checklist ADD COLUMN company_id UUID;
+    ALTER TABLE onboarding_checklist ADD COLUMN company_id INTEGER;
   END IF;
 END $$;
 
@@ -339,7 +339,7 @@ DO $$ BEGIN
        SELECT 1 FROM information_schema.columns
        WHERE table_name='office_locations' AND column_name='company_id'
      ) THEN
-    ALTER TABLE office_locations ADD COLUMN company_id UUID;
+    ALTER TABLE office_locations ADD COLUMN company_id INTEGER;
   END IF;
 END $$;
 
