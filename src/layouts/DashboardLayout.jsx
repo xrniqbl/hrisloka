@@ -130,61 +130,37 @@ export default function DashboardLayout() {
  return (
  <div className="layout-wrapper">
  <Sidebar />
- <main className="layout-content">
-   {/* Top bar */}
-   <div style={{
-     display: 'flex',
-     justifyContent: 'space-between',
-     alignItems: 'center',
-     padding: '0 0 14px 0',
-     gap: 12,
-     borderBottom: '1px solid var(--border)',
-     marginBottom: 20,
-   }}>
-     {/* Global Search */}
-     <GlobalSearch />
-
-     {/* Right Controls */}
-     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+ <main id="main-content" role="main" className="layout-content" tabIndex={-1}>
+   {/* Top bar — spaced from viewport edge (not flush to top) */}
+   <header className="layout-topbar">
+     <div className="layout-topbar-search">
+       <GlobalSearch />
+     </div>
+     <div className="layout-topbar-actions">
        <LanguageToggle />
        <button
-         onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+         type="button"
+         className="layout-topbar-icon-btn"
+         onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
          title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-         style={{
-           width: 32,
-           height: 32,
-           borderRadius: 'var(--radius-sm)',
-           display: 'flex',
-           alignItems: 'center',
-           justifyContent: 'center',
-           background: 'var(--bg)',
-           border: '1px solid var(--border)',
-           color: 'var(--text-secondary)',
-           cursor: 'pointer',
-           fontSize: 15,
-           transition: 'background-color 0.2s, border-color 0.2s, color 0.2s',
-         }}
+         aria-label={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
        >
          {theme === 'dark' ? <FiSun /> : <FiMoon />}
        </button>
-       <div style={{
-         fontSize: 11,
-         padding: '3px 9px',
-         borderRadius: 20,
-         background: founderUser ? 'rgba(99,91,255,0.10)' : `${ROLE_COLORS[displayRole]}15`,
-         color: founderUser ? 'var(--primary)' : (ROLE_COLORS[displayRole] || 'var(--primary)'),
-         fontWeight: 700,
-         display: 'flex',
-         alignItems: 'center',
-         gap: 4,
-         border: `1px solid ${founderUser ? 'rgba(99,91,255,0.20)' : `${ROLE_COLORS[displayRole] || '#635BFF'}25`}`,
-       }}>
+       <div
+         className="layout-topbar-role"
+         style={{
+           background: founderUser ? 'rgba(99,91,255,0.10)' : `${ROLE_COLORS[displayRole]}15`,
+           color: founderUser ? 'var(--primary)' : (ROLE_COLORS[displayRole] || 'var(--primary)'),
+           borderColor: founderUser ? 'rgba(99,91,255,0.20)' : `${ROLE_COLORS[displayRole] || '#635BFF'}25`,
+         }}
+       >
          {founderUser && <HiShieldCheck size={12} />}
          {founderUser ? 'Founder' : (ROLE_LABELS[displayRole] || displayRole || 'User')}
        </div>
        <NotificationCenter />
      </div>
-   </div>
+   </header>
    <Breadcrumb />
    <Outlet />
  </main>

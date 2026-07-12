@@ -18,11 +18,103 @@
 .layout-content {
   flex: 1;
   margin-left: var(--sidebar-width, 260px);
-  padding: 0 24px 24px;
+  /* Top padding so search / lang / role never sit flush under browser chrome */
+  padding: 16px 24px 28px;
   min-height: 100vh;
   transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   max-width: calc(100% - var(--sidebar-width, 260px));
   contain: layout;
+  box-sizing: border-box;
+}
+
+/* ── Sticky top bar (search + lang + role) ───────────────────────── */
+.layout-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 10px 4px 16px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--border, #E5E7EB);
+  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  /* Soft backdrop so content scrolling under feels clean */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg, #F7F7FB) 88%, transparent);
+}
+
+[data-theme="dark"] .layout-topbar {
+  border-bottom-color: #2A2D3A;
+  background: color-mix(in srgb, #0F1117 90%, transparent);
+}
+
+.layout-topbar-search {
+  flex: 1;
+  min-width: 0;
+  max-width: 420px;
+}
+
+.layout-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.layout-topbar-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface, #fff);
+  border: 1.5px solid var(--border, #E5E7EB);
+  color: var(--text-secondary, #6B7280);
+  cursor: pointer;
+  font-size: 15px;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.layout-topbar-icon-btn:hover {
+  border-color: var(--primary, #635BFF);
+  color: var(--primary, #635BFF);
+}
+
+.layout-topbar-role {
+  font-size: 11px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .layout-content {
+    margin-left: 0;
+    max-width: 100%;
+    padding: 12px 16px 24px;
+  }
+
+  .layout-topbar {
+    padding: 8px 0 12px;
+    gap: 10px;
+    min-height: 52px;
+  }
+
+  .layout-topbar-search {
+    max-width: none;
+  }
 }
 
 /* ── Top Navbar ──────────────────────────────────────────────────── */

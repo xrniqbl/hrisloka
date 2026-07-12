@@ -56,7 +56,6 @@ export default function GlobalSearch() {
  useEffect(() => {
  if (open) {
  setTimeout(() => inputRef.current?.focus(), 50);
- setQuery('');
  }
  }, [open]);
 
@@ -71,7 +70,7 @@ export default function GlobalSearch() {
  return () => document.removeEventListener('mousedown', handler);
  }, [open]);
 
- // Search employees — scoped to this company only (multi-tenant safety)
+ // Search employees - scoped to this company only (multi-tenant safety)
  const searchEmployees = useCallback(async (q) => {
   if (!q || q.length < 2) { setEmployees([]); return; }
   // Skip search if no company context
@@ -113,21 +112,14 @@ export default function GlobalSearch() {
  {/* Trigger button */}
  <button
  id="global-search-btn"
+ type="button"
+ className="gs-trigger"
  onClick={() => setOpen(true)}
- style={{
- display: 'flex', alignItems: 'center', gap: 8,
- padding: '7px 14px', borderRadius: 10,
- border: '1.5px solid var(--border)',
- background: 'var(--bg)', color: 'var(--text-secondary)',
- cursor: 'pointer', fontSize: 13, fontWeight: 500,
- fontFamily: 'inherit', transition: 'all 0.2s',
- minWidth: 200,
- }}
- onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
- onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+ aria-label="Cari karyawan, fitur"
  >
- <FiSearch size={14} />
- <span style={{ flex: 1, textAlign: 'left' }}>Cari karyawan, fitur...</span>
+ <FiSearch size={15} />
+ <span className="gs-trigger-label">Cari karyawan, fitur...</span>
+ <kbd className="gs-trigger-kbd">⌘K</kbd>
  </button>
 
  {/* Modal overlay */}
@@ -145,7 +137,7 @@ export default function GlobalSearch() {
  onChange={e => setQuery(e.target.value)}
  />
  {query && (
- <button className="gs-clear" onClick={() => setQuery('')}><FiX size={14} /></button>
+ <button className="gs-clear" onClick={() => setQuery('')} aria-label="Hapus pencarian"><FiX size={14} /></button>
  )}
  {loading && <div className="gs-spinner" />}
  </div>
@@ -163,7 +155,7 @@ export default function GlobalSearch() {
  </div>
  <div className="gs-item-body">
  <div className="gs-item-label">{emp.name}</div>
- <div className="gs-item-sub">{emp.position} — {emp.division}</div>
+ <div className="gs-item-sub">{emp.position} - {emp.division}</div>
  </div>
  <div className="gs-item-tag">Karyawan</div>
  </button>
@@ -195,7 +187,7 @@ export default function GlobalSearch() {
 
  {!query && (
  <div className="gs-hint">
- Ketik nama karyawan atau fitur • <kbd>Esc</kbd> untuk tutup
+ Ketik nama karyawan atau fitur * <kbd>Esc</kbd> untuk tutup
  </div>
  )}
  </div>
