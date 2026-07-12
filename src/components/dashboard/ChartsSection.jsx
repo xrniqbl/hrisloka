@@ -11,6 +11,26 @@ const chartFont = { family: 'Inter', weight: '500' };
 const tooltipConfig = { backgroundColor: 'rgba(15, 23, 42, 0.92)', cornerRadius: 10, padding: { x: 10, y: 14 }, titleFont: { ...chartFont, weight: '600' }, bodyFont: chartFont };
 const legendConfig = { position: 'top', align: 'end', labels: { boxWidth: 8, boxHeight: 8, borderRadius: 4, useBorderRadius: true, color: '#9CA3AF', font: { ...chartFont, size: 11 }, padding: 16 } };
 
+function safeChartData(data, fallbackLabel = 'Data') {
+  if (data?.labels?.length && Array.isArray(data.datasets) && data.datasets.length > 0) {
+    return data;
+  }
+  // Chart.js throws on empty datasets — always provide a valid structure
+  return {
+    labels: data?.labels?.length ? data.labels : ['—'],
+    datasets: [{
+      label: fallbackLabel,
+      data: data?.labels?.length ? data.labels.map(() => 0) : [0],
+      borderColor: '#635BFF',
+      backgroundColor: 'rgba(99,91,255,0.08)',
+      tension: 0.4,
+      fill: true,
+      pointRadius: 0,
+      borderWidth: 2,
+    }],
+  };
+}
+
 export default function ChartsSection({ trendData = { labels: [], datasets: [] }, employees = [], todayAttendance: _todayAttendance = [], demoTab, setDemoTab, widgets = {} }) {
   // Demographics computation
   const demographics = useMemo(() => {
@@ -61,7 +81,7 @@ export default function ChartsSection({ trendData = { labels: [], datasets: [] }
               <span className="dash-chart-title">Attendance Trend (30 Days)</span>
             </div>
             <div className="dash-chart-container">
-              <Line data={trendData} options={trendOptions} />
+              <Line data={safeChartData(trendData, 'Attendance')} options={trendOptions} />
             </div>
           </div>
         )}

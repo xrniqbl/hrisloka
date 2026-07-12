@@ -11,6 +11,7 @@ import { getRole, isFounder } from './lib/rbac';
 import { ToastProvider } from './components/Toast';
 import { BranchProvider } from './context/BranchContext';
 import { isDemoMode } from './lib/demoGuard';
+import { sanitizeAppPath, stripUrlHash } from './lib/safePath';
 
 
 // ─── Page View Tracker (fires on every route change) ─────────────────────
@@ -201,16 +202,31 @@ function RootRedirect() {
 /* Smart redirect for authenticated users hitting protected routes */
 function AuthRedirect() {
   const { user, employee, loading, hasOnboarding } = useAuth();
+
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/" replace />;
   const role = getRole(employee);
   const founderUser = isFounder(user, employee);
 
+  const rawSaved = (() => {
+    try { return localStorage.getItem('hrisync_last_path'); } catch { return null; }
+  })();
+
   // Founder: always go to founder portal
-  const savedPath = localStorage.getItem('hrisync_last_path');
   if (founderUser) {
-    const founderSavedPath = savedPath?.startsWith('/founder') ? savedPath : null;
+    const founderSavedPath = rawSaved?.startsWith('/founder')
+      ? sanitizeAppPath(rawSaved, '/founder/dashboard')
+      : null;
     return <Navigate to={founderSavedPath || '/founder/dashboard'} replace />;
+  }
+
+  // Pending / rejected employee accounts
+  const status = employee?.account_status;
+  if (status === 'pending_verification' || (status && String(status).includes('pending'))) {
+    return <Navigate to="/app/pending" replace />;
+  }
+  if (status === 'rejected') {
+    return <Navigate to="/app/rejected" replace />;
   }
 
   // No employee record: differentiate new Google signups vs unregistered employees
@@ -231,13 +247,27 @@ function AuthRedirect() {
     if (!localStorage.getItem('hrisync_sub_grace')) {
       localStorage.setItem('hrisync_sub_grace', 'true');
     }
-    const restorable = savedPath && !savedPath.startsWith('/app') && !savedPath.startsWith('/founder');
+    const savedPath = sanitizeAppPath(rawSaved, '/dashboard');
+    const restorable = savedPath
+      && !savedPath.startsWith('/app')
+      && !savedPath.startsWith('/founder')
+      && savedPath !== '/login';
     return <Navigate to={restorable ? savedPath : '/dashboard'} replace />;
   }
 
   // Employee → PWA always
-  const empSavedPath = savedPath?.startsWith('/app') ? savedPath : '/app/home';
+  const empSaved = sanitizeAppPath(rawSaved, '/app/home');
+  const empSavedPath = empSaved.startsWith('/app') ? empSaved : '/app/home';
   return <Navigate to={empSavedPath} replace />;
+}
+
+/** Strip stray # from address bar on every navigation */
+function HashCleaner() {
+  const location = useLocation();
+  useEffect(() => {
+    stripUrlHash();
+  }, [location.pathname, location.search]);
+  return null;
 }
 
 /**
@@ -387,6 +417,7 @@ function App() {
             <SkipLink />
             <BrowserRouter>
               <PageViewTracker />
+              <HashCleaner />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<RootRedirect />} />
@@ -449,7 +480,9 @@ function App() {
                     <Route path="candidates"        element={<CandidatePipeline />} />
 
                     {/* IT & Support */}
-                    <Route path="assets"            element={<AssetManagement />} />
+                    {/* /it-assets — avoid collision with Vite static /assets/* bundles */}
+                    <Route path="it-assets"         element={<AssetManagement />} />
+                    <Route path="assets"            element={<Navigate to="/it-assets" replace />} />
                     <Route path="helpdesk"          element={<Helpdesk />} />
 
                     {/* AI & Dev */}

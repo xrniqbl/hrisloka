@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
  FiGrid, FiUsers, FiCheckSquare, FiClock, FiDollarSign, FiSettings,
@@ -11,7 +11,8 @@ import {
  FiEye, FiChevronDown, FiCheck,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
-import { hasAccess, hasSidebarAccess, getRole, isFounder, ROLE_LABELS, ROLE_COLORS } from '../lib/rbac';
+import { useFeatureFlags } from '../context/FeatureFlagContext';
+import { hasSidebarAccess, getRole, isFounder, ROLE_LABELS, ROLE_COLORS } from '../lib/rbac';
 import { useTranslation } from '../lib/i18n';
 import ProfileDrawer from './ProfileDrawer';
 import { isDemoMode } from '../lib/demoGuard';
@@ -50,6 +51,7 @@ const getNavItems = (t) => [
  { label: t('nav.salary_list'), path: '/payroll', icon: <FiList /> },
  { label: t('nav.payslips'), path: '/payslips', icon: <FiCreditCard /> },
  { label: t('nav.reimbursement'), path: '/reimbursement', icon: <FiRefreshCw /> },
+ { label: t('nav.expense_ocr'), path: '/expense-ocr', icon: <FiFileText /> },
  { label: t('nav.loans'), path: '/loans', icon: <FiDollarSign /> },
  ],
  },
@@ -77,7 +79,7 @@ const getNavItems = (t) => [
  {
  label: t('nav.it_support'), icon: <FiHardDrive />,
  children: [
- { label: t('nav.assets'), path: '/assets', icon: <FiHardDrive /> },
+ { label: t('nav.assets'), path: '/it-assets', icon: <FiHardDrive /> },
  { label: t('nav.helpdesk'), path: '/helpdesk', icon: <FiMessageSquare /> },
  ],
  },
@@ -107,6 +109,7 @@ export default function Sidebar() {
  const location = useLocation();
  const navigate = useNavigate();
  const { user, employee } = useAuth();
+ const { isPathEnabled } = useFeatureFlags();
  const { t } = useTranslation();
 
  const actualRole = getRole(employee);
@@ -116,7 +119,7 @@ export default function Sidebar() {
  const [viewAsRole, setViewAsRole] = useState(() => {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('HRIS Loka_viewAs');
-    // manager and employee removed from View As � reset to super_admin
+    // manager and employee removed from View As  reset to super_admin
     if (!saved || !['super_admin', 'hr_admin'].includes(saved)) {
       localStorage.setItem('HRIS Loka_viewAs', 'super_admin');
       return 'super_admin';
@@ -128,11 +131,17 @@ export default function Sidebar() {
 
  const activeRole = founderUser ? viewAsRole : actualRole;
 
- // Sync collapsed width to CSS variable for layout adjustment
+ // Sync --sidebar-width CSS variable; reset to 0 on mobile so layout-content fills the screen
  useEffect(() => {
- const width = collapsed ? '64px' : '260px';
- document.documentElement.style.setProperty('--sidebar-width', width);
+ const update = () => {
+   const isMobile = window.innerWidth <= 768;
+   const width = isMobile ? '0px' : (collapsed ? '64px' : '260px');
+   document.documentElement.style.setProperty('--sidebar-width', width);
+ };
+ update();
  localStorage.setItem('hris_sidebar_collapsed', collapsed);
+ window.addEventListener('resize', update);
+ return () => window.removeEventListener('resize', update);
  }, [collapsed]);
 
  const handleViewAs = (role) => {
@@ -146,10 +155,12 @@ export default function Sidebar() {
  const filterByRole = (items) => {
  return items.reduce((acc, item) => {
  if (item.children) {
- const filtered = item.children.filter(child => hasSidebarAccess(activeRole, child.path));
+ const filtered = item.children.filter(child =>
+   hasSidebarAccess(activeRole, child.path) && isPathEnabled(child.path)
+ );
  if (filtered.length > 0) acc.push({ ...item, children: filtered });
  } else {
- if (hasSidebarAccess(activeRole, item.path)) acc.push(item);
+ if (hasSidebarAccess(activeRole, item.path) && isPathEnabled(item.path)) acc.push(item);
  }
  return acc;
  }, []);
@@ -173,7 +184,7 @@ export default function Sidebar() {
 
  const isChildActive = (children) => children?.some(c => location.pathname.startsWith(c.path));
 
- // userName must be declared first � userInitials references it (avoid TDZ crash)
+ // userName must be declared first  userInitials references it (avoid TDZ crash)
  const isDemo = isDemoMode();
  const userName = isDemo ? 'Demo' : (employee?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User');
  const userInitials = isDemo ? 'DM' : (userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U');
@@ -183,7 +194,7 @@ export default function Sidebar() {
  <>
  {/* Mobile Header */}
  <div className="mobile-header">
- <button className="mobile-hamburger" onClick={() => setMobileOpen(!mobileOpen)}>
+ <button className="mobile-hamburger" onClick={() => setMobileOpen(!mobileOpen)} aria-label={mobileOpen ? 'Tutup menu' : 'Buka menu'} aria-expanded={mobileOpen}>
  {mobileOpen ? <FiX /> : <FiMenu />}
  </button>
  <span className="mobile-brand">HRIS Loka</span>
@@ -198,7 +209,7 @@ export default function Sidebar() {
  {/* Sidebar */}
  <aside className={`sidebar ${mobileOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
 
- {/* ── Brand row ── */}
+ {/* -- Brand row -- */}
  <div className="sidebar-brand">
  <img src="/landing/hrislokalogo.jpeg" alt="HRIS Loka" className="sidebar-brand-logo" />
  {!collapsed && <span className="sidebar-brand-text">HRIS Loka</span>}
@@ -211,7 +222,7 @@ export default function Sidebar() {
  </button>
  </div>
 
- {/* ── Profile / Company card ── */}
+ {/* -- Profile / Company card -- */}
  <div
  className={`sidebar-company-card ${collapsed ? 'collapsed-card' : ''}`}
  onClick={() => setProfileOpen(true)}
@@ -225,7 +236,7 @@ export default function Sidebar() {
  )}
  <span
  className="sidebar-company-role-dot"
- style={{ background: founderUser ? 'var(--primary, #0047AB)' : (ROLE_COLORS[actualRole] || '#3B82F6') }}
+ style={{ background: founderUser ? 'var(--primary, #635BFF)' : (ROLE_COLORS[actualRole] || '#635BFF') }}
  />
  </div>
  {!collapsed && (
@@ -233,7 +244,7 @@ export default function Sidebar() {
  <div className="sidebar-company-info">
  <div className="sidebar-company-name">{userName}</div>
  <div className="sidebar-company-plan">
- <span className="sidebar-plan-badge" style={isDemo ? { background: '#0f766e', color: '#fff' } : founderUser ? { background: 'var(--primary,#0047AB)', color: '#fff' } : {}}>
+ <span className="sidebar-plan-badge" style={isDemo ? { background: '#0f766e', color: '#fff' } : founderUser ? { background: 'var(--primary,#635BFF)', color: '#fff' } : {}}>
  {isDemo ? 'DEMO' : (founderUser ? 'Founder' : (ROLE_LABELS_ID[actualRole] || 'User'))}
  </span>
  </div>
@@ -243,7 +254,7 @@ export default function Sidebar() {
  )}
  </div>
 
- {/* ── Nav ── */}
+ {/* -- Nav -- */}
  <nav className="sidebar-nav">
  {!collapsed && <div className="nav-section-label">{t('nav.main_menu')}</div>}
 
@@ -292,7 +303,7 @@ export default function Sidebar() {
  ))}
  </nav>
 
- {/* ── Footer �� Founder role switcher only ── */}
+ {/* -- Footer  Founder role switcher only -- */}
  <div className="sidebar-footer">
  {founderUser && !collapsed && (
  <div className="role-switcher">
@@ -326,3 +337,4 @@ export default function Sidebar() {
  </>
  );
 }
+

@@ -1,77 +1,272 @@
-import { Component } from 'react';
+﻿import { Component } from 'react';
+// Optional: Import Sentry for error tracking
+// import * as Sentry from '@sentry/react';
+import { FiAlertTriangle, FiRefreshCw, FiHome } from 'react-icons/fi';
 
-export default class ErrorBoundary extends Component {
+class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, info) {
-    console.error('ErrorBoundary caught:', error, info);
+  componentDidCatch(error, errorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+    this.setState({ errorInfo });
+    
+    // Send to Sentry if configured
+    // Sentry integration (install @sentry/react to enable)
+    if (typeof window !== "undefined" && window.Sentry && window.Sentry.captureException) {
+      window.Sentry.captureException(error, { contexts: { react: errorInfo } });
+    }
+    // Or use window.Sentry for CDN-loaded Sentry
+    if (window.Sentry && window.Sentry.captureException) {
+      window.Sentry.captureException(error, { contexts: { react: errorInfo } });
+    }
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
+  handleReload = () => {
+    window.location.reload();
+  };
+
+  handleGoHome = () => {
+    try {
+      localStorage.removeItem('hrisync_last_path');
+    } catch { /* ignore */ }
+    window.location.href = '/login';
+  };
+
+  handleClearAndReload = () => {
+    try {
+      localStorage.removeItem('hrisync_last_path');
+      // Clear broken hash navigation
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    } catch { /* ignore */ }
+    window.location.reload();
   };
 
   render() {
     if (this.state.hasError) {
+      const { error, errorInfo } = this.state;
+      const isDevelopment = import.meta.env.DEV;
+      const errorText = error?.message || error?.toString?.() || 'Unknown error';
+
       return (
         <div style={{
-          minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 24, fontFamily: "'Plus Jakarta Sans', sans-serif",
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          padding: '20px',
+          fontFamily: "'Inter Tight', sans-serif",
         }}>
-          <div style={{ textAlign: 'center', maxWidth: 400 }}>
+          <div style={{
+            background: 'rgba(30, 41, 59, 0.8)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '24px',
+            padding: '48px 40px',
+            maxWidth: '560px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+          }}>
             <div style={{
-              width: 72, height: 72, borderRadius: 20, margin: '0 auto 20px',
-              background: 'rgba(220, 38, 38, 0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '80px',
+              height: '80px',
+              margin: '0 auto 24px',
+              background: 'rgba(239, 68, 68, 0.15)',
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="15" y1="9" x2="9" y2="15" />
-                <line x1="9" y1="9" x2="15" y2="15" />
-              </svg>
+              <FiAlertTriangle size={40} style={{ color: '#ef4444' }} />
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text, #1A1D21)', marginBottom: 8 }}>
-              Terjadi Kesalahan
-            </h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary, #6B7280)', lineHeight: 1.6, marginBottom: 24 }}>
-              Halaman ini mengalami error. Coba muat ulang atau kembali ke halaman sebelumnya.
+
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: '800',
+              color: '#f1f5f9',
+              margin: '0 0 12px 0',
+              letterSpacing: '-0.02em',
+            }}>
+              Oops! Terjadi Kesalahan
+            </h1>
+
+            <p style={{
+              fontSize: '15px',
+              color: '#94a3b8',
+              margin: '0 0 16px 0',
+              lineHeight: '1.6',
+            }}>
+              Aplikasi mengalami masalah yang tidak terduga. Tenang, data Anda aman. Silakan muat ulang halaman atau kembali ke login.
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+
+            {/* Always show short error so login crashes are diagnosable */}
+            {errorText && (
+              <div style={{
+                textAlign: 'left',
+                background: 'rgba(15, 23, 42, 0.9)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 20,
+                fontSize: 12,
+                color: '#fca5a5',
+                fontFamily: 'ui-monospace, monospace',
+                wordBreak: 'break-word',
+                maxHeight: 120,
+                overflow: 'auto',
+              }}>
+                {errorText}
+              </div>
+            )}
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              marginBottom: isDevelopment && error ? '24px' : '0',
+            }}>
               <button
-                onClick={this.handleReset}
+                onClick={this.handleClearAndReload}
                 style={{
-                  padding: '10px 22px', borderRadius: 10,
-                  background: 'linear-gradient(135deg, #0047AB, #0052CC)',
-                  color: '#fff', fontSize: 13, fontWeight: 700, border: 'none',
-                  cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,71,171,0.25)',
-                }}
-              >
-                Coba Lagi
-              </button>
-              <button
-                onClick={() => window.location.href = '/dashboard'}
-                style={{
-                  padding: '10px 22px', borderRadius: 10,
-                  background: 'var(--surface, #fff)', color: 'var(--text, #1A1D21)',
-                  fontSize: 13, fontWeight: 600,
-                  border: '1.5px solid var(--border, #EAECF0)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '14px 28px',
+                  background: 'linear-gradient(135deg, #635BFF 0%, #4F46E5 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: '600',
                   cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 4px 12px rgba(99, 91, 255, 0.4)',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 20px rgba(99, 91, 255, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(99, 91, 255, 0.4)';
                 }}
               >
-                Ke Dashboard
+                <FiRefreshCw size={16} />
+                Muat Ulang
               </button>
+
+              <button
+                onClick={this.handleGoHome}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '14px 28px',
+                  background: 'rgba(71, 85, 105, 0.5)',
+                  color: '#e2e8f0',
+                  border: '1px solid rgba(148, 163, 184, 0.3)',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(71, 85, 105, 0.7)';
+                  e.target.style.borderColor = 'rgba(148, 163, 184, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(71, 85, 105, 0.5)';
+                  e.target.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+                }}
+              >
+                <FiHome size={16} />
+                Beranda
+              </button>
+            </div>
+
+            {isDevelopment && error && (
+              <details style={{
+                textAlign: 'left',
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '12px',
+                padding: '16px',
+                marginTop: '24px',
+              }}>
+                <summary style={{
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#f87171',
+                  marginBottom: '12px',
+                  userSelect: 'none',
+                }}>
+                  Detail Error (Development Only)
+                </summary>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#cbd5e1',
+                  fontFamily: 'monospace',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  lineHeight: '1.5',
+                }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong style={{ color: '#f87171' }}>Error:</strong>
+                    <div style={{ marginTop: '4px', color: '#fca5a5' }}>
+                      {error.toString()}
+                    </div>
+                  </div>
+                  {errorInfo?.componentStack && (
+                    <div>
+                      <strong style={{ color: '#f87171' }}>Component Stack:</strong>
+                      <div style={{ marginTop: '4px', color: '#94a3b8' }}>
+                        {errorInfo.componentStack}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+
+            <div style={{
+              marginTop: '32px',
+              paddingTop: '24px',
+              borderTop: '1px solid rgba(148, 163, 184, 0.2)',
+              fontSize: '12px',
+              color: '#64748b',
+            }}>
+              Jika masalah berlanjut, hubungi support: 
+              <a 
+                href="mailto:support@hrisloka.id" 
+                style={{ 
+                  color: '#818CF8', 
+                  textDecoration: 'none',
+                  marginLeft: '4px',
+                }}
+              >
+                support@hrisloka.id
+              </a>
             </div>
           </div>
         </div>
       );
     }
+
     return this.props.children;
   }
 }
+
+export default ErrorBoundary;

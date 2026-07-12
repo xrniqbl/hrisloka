@@ -34,10 +34,24 @@ const initLang = localStorage.getItem('hrisync_locale') || 'id';
 document.documentElement.setAttribute('lang', initLang);
 document.documentElement.setAttribute('data-lang', initLang);
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <Theme theme={hrisNeutralTheme}>
-      <App />
-    </Theme>
-  </StrictMode>,
-)
+// Strip stray # from first paint (e.g. /assets# leftover)
+try {
+  if (window.location.hash && !window.location.hash.startsWith('#access_token')) {
+    // Keep OAuth/supabase hash tokens; remove empty or junk hashes
+    const h = window.location.hash;
+    if (h === '#' || h === '#/' || !h.includes('access_token') && !h.includes('type=')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }
+} catch { /* ignore */ }
+
+const rootEl = document.getElementById('root');
+if (rootEl) {
+  createRoot(rootEl).render(
+    <StrictMode>
+      <Theme theme={hrisNeutralTheme || undefined}>
+        <App />
+      </Theme>
+    </StrictMode>,
+  );
+}

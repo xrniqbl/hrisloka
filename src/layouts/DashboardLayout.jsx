@@ -12,6 +12,7 @@ import { useTranslation, LanguageToggle } from '../lib/i18n';
 import { FiSun, FiMoon, FiLock } from 'react-icons/fi';
 import { HiShieldCheck } from 'react-icons/hi2';
 import GlobalSearch from '../components/GlobalSearch';
+import { rememberAppPath, stripUrlHash } from '../lib/safePath';
 import './DashboardLayout.css';
 
 export default function DashboardLayout() {
@@ -26,11 +27,12 @@ export default function DashboardLayout() {
  localStorage.setItem('hrisync_theme', theme);
  }, [theme]);
 
- // Track current path for "return to last page" after re-login
+ // Track current path for "return to last page" after re-login (never store # hashes)
  useEffect(() => {
  if (user && location.pathname !== '/') {
- localStorage.setItem('hrisync_last_path', location.pathname);
+ rememberAppPath(location.pathname);
  }
+ stripUrlHash();
  }, [location.pathname, user]);
 
  if (loading) {
@@ -170,15 +172,15 @@ export default function DashboardLayout() {
          padding: '3px 9px',
          borderRadius: 20,
          background: founderUser ? 'rgba(99,91,255,0.10)' : `${ROLE_COLORS[displayRole]}15`,
-         color: founderUser ? 'var(--primary)' : ROLE_COLORS[displayRole],
+         color: founderUser ? 'var(--primary)' : (ROLE_COLORS[displayRole] || 'var(--primary)'),
          fontWeight: 700,
          display: 'flex',
          alignItems: 'center',
          gap: 4,
-         border: `1px solid ${founderUser ? 'rgba(99,91,255,0.20)' : `${ROLE_COLORS[displayRole]}25`}`,
+         border: `1px solid ${founderUser ? 'rgba(99,91,255,0.20)' : `${ROLE_COLORS[displayRole] || '#635BFF'}25`}`,
        }}>
          {founderUser && <HiShieldCheck size={12} />}
-         {founderUser ? 'Founder' : ROLE_LABELS[displayRole]}
+         {founderUser ? 'Founder' : (ROLE_LABELS[displayRole] || displayRole || 'User')}
        </div>
        <NotificationCenter />
      </div>

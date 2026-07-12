@@ -5,6 +5,7 @@ import { getRole, isFounder } from '../lib/rbac';
 import { supabase } from '../lib/supabase';
 import { updateSEOTags } from '../lib/seo';
 import { DEMO_EMAIL, activateDemo } from '../lib/demoGuard';
+import { getRememberedPath, sanitizeAppPath, stripUrlHash } from '../lib/safePath';
 import './AuthPage.css';
 
 function GoogleIcon() {
@@ -46,9 +47,10 @@ export default function AuthPage() {
  const navigate = useNavigate();
  const { user, employee, isPWA, loading: authLoading, signInWithPassword, resetPassword, signInWithGoogle, signUp, setIsDemo } = useAuth();
 
- // -- SEO -------------------------------------------------------
+ // -- SEO + clean bad hashes from URL bar -----------------------
  useEffect(() => {
   updateSEOTags({ page: 'login' });
+  stripUrlHash();
  }, []);
 
  // Countdown timer - only runs when warning is visible
@@ -81,16 +83,29 @@ export default function AuthPage() {
  if (!authLoading && user && !showEmployeeWarning) {
   const founderUser = isFounder(user, employee);
   if (founderUser) {
-   // Founder always goes to founder portal
-   const savedPath = localStorage.getItem('hrisync_last_path');
-   const founderDest = savedPath?.startsWith('/founder') ? savedPath : '/founder/dashboard';
+   const savedPath = getRememberedPath('/founder/dashboard');
+   const founderDest = savedPath.startsWith('/founder') ? savedPath : '/founder/dashboard';
    return <Navigate to={founderDest} replace />;
   }
   const role = getRole(employee);
+  // Account still pending HR verification
+  if (employee?.account_status === 'pending_verification' || String(employee?.account_status || '').includes('pending')) {
+   return <Navigate to="/app/pending" replace />;
+  }
+  if (employee?.account_status === 'rejected') {
+   return <Navigate to="/app/rejected" replace />;
+  }
   const defaultDest = (role === 'employee') || isPWA ? '/app/home' : '/dashboard';
-  const savedPath = localStorage.getItem('hrisync_last_path');
-  const dest = savedPath || defaultDest;
-  return <Navigate to={dest} replace />;
+  const dest = getRememberedPath(defaultDest);
+  // Employees must not land on HR desktop routes
+  if (role === 'employee' && !dest.startsWith('/app')) {
+   return <Navigate to="/app/home" replace />;
+  }
+  // HR/admin must not land on PWA by stale path
+  if (role !== 'employee' && dest.startsWith('/app') && !isPWA) {
+   return <Navigate to="/dashboard" replace />;
+  }
+  return <Navigate to={sanitizeAppPath(dest, defaultDest)} replace />;
  }
 
  const handlePasswordLogin = async (e) => {
@@ -131,13 +146,13 @@ export default function AuthPage() {
    return;
  }
 
-  // Admin / HR / Manager / Founder &rarr; redirect normal
-  const isFounderLogin = email.trim().toLowerCase() === 'hrisloka@gmail.com';
+  // Admin / HR / Manager / Founder → redirect normal
+  const founderEmail = (import.meta.env.VITE_FOUNDER_EMAIL || '').toLowerCase();
+  const isFounderLogin = founderEmail && email.trim().toLowerCase() === founderEmail;
   if (isFounderLogin) {
-   navigate('/founder/dashboard');
+   navigate('/founder/dashboard', { replace: true });
   } else {
-   const savedPath = localStorage.getItem('hrisync_last_path');
-   navigate(savedPath || '/dashboard');
+   navigate(getRememberedPath('/dashboard'), { replace: true });
   }
   setLoading(false);
  };

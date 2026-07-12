@@ -38,7 +38,7 @@ export const ROLE_LABELS = {
 export const ROLE_COLORS = {
  founder: '#F59E0B',
  super_admin: '#DC2626',
- hr_admin: '#0047AB',
+ hr_admin: '#635BFF',
  manager: '#8B5CF6',
  employee: '#6D8196',
 };
@@ -71,7 +71,8 @@ export const ROUTE_PERMISSIONS = {
   '/shifts':          ['super_admin', 'hr_admin'],
   '/jobs':            ['super_admin', 'hr_admin'],
   '/candidates':      ['super_admin', 'hr_admin'],
-  '/assets':          ['super_admin', 'hr_admin'],
+  '/assets':          ['super_admin', 'hr_admin'], // legacy alias
+  '/it-assets':       ['super_admin', 'hr_admin'],
   '/offboarding':     ['super_admin', 'hr_admin'],
   '/onboarding':      ['super_admin', 'hr_admin'],
   '/training':        ['super_admin', 'hr_admin'],
