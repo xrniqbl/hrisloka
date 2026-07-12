@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiSave, FiCheck, FiGlobe, FiShield, FiSettings, FiAlertTriangle } from 'react-icons/fi';
 import { useToast } from '../../components/Toast';
+import { useFeatureFlags } from '../../context/FeatureFlagContext';
 import { supabase } from '../../lib/supabase';
 import './founder.css';
 
@@ -15,7 +16,7 @@ const DEFAULT_PLATFORM = {
   tagline: 'Platform HRIS Modern untuk Indonesia',
   support_email: 'support@hrisloka.id',
   website: 'https://hrisloka.id',
-  primary_color: '#0047AB',
+  primary_color: '#635BFF',
 };
 
 const DEFAULT_MAINTENANCE = {
@@ -31,10 +32,10 @@ const DEFAULT_FEATURES = [
   { key: 'geofence', label: 'Geofence Attendance', desc: 'GPS-based attendance validation for mobile employees', enabled: true },
   { key: 'public_careers', label: 'Public Career Pages', desc: 'Allow tenants to publish public job listing pages', enabled: true },
   { key: 'multi_branch', label: 'Multi-Branch', desc: 'Enable branch management for enterprise tenants', enabled: true },
-  { key: 'integrations', label: 'Integration Hub', desc: 'Third-party integration section (Slack, Notion, etc.)', enabled: false },
+  { key: 'integrations', label: 'Integration Hub', desc: 'Third-party integration section (email, WhatsApp, etc.)', enabled: true },
 ];
 
-// ── Helper: load settings from Supabase platform_settings table ──────────────
+// -- Helper: load settings from Supabase platform_settings table --------------
 async function loadPlatformSettings() {
   const { data, error } = await supabase.from('platform_settings').select('key, value');
   if (error || !data) return null;
@@ -43,30 +44,31 @@ async function loadPlatformSettings() {
   return map;
 }
 
-// ── Helper: save multiple rows to platform_settings ────────────────────────
+// -- Helper: save multiple rows to platform_settings ------------------------
 async function savePlatformRows(rows) {
   return supabase.from('platform_settings').upsert(rows, { onConflict: 'key' });
 }
 
-// ── Toggle component (updated to blue) ────────────────────────────────────────
+// -- Toggle component (updated to blue) ----------------------------------------
 function Toggle({ checked, onChange }) {
   return (
     <label style={{ position: 'relative', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
       <input type="checkbox" checked={checked} onChange={onChange} style={{ display: 'none' }} />
-      <div style={{ width: 44, height: 24, borderRadius: 12, background: checked ? 'var(--primary, #0047AB)' : '#D1D5DB', transition: 'background 0.2s' }}>
+      <div style={{ width: 44, height: 24, borderRadius: 12, background: checked ? 'var(--primary, #635BFF)' : '#D1D5DB', transition: 'background 0.2s' }}>
         <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: checked ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
     </label>
   );
 }
 
-// ── Skeleton row ──────────────────────────────────────────────────────────────
+// -- Skeleton row --------------------------------------------------------------
 function SkeletonField({ w = '100%', h = 38 }) {
   return <div style={{ height: h, background: 'var(--border)', borderRadius: 8, width: w, animation: 'fp-pulse 1.5s ease-in-out infinite' }} />;
 }
 
 export default function FounderSettings() {
   const { toast } = useToast();
+  const { refresh: refreshFeatureFlags } = useFeatureFlags();
   const [activeTab, setActiveTab] = useState('platform');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -76,7 +78,7 @@ export default function FounderSettings() {
   const [maintenance, setMaintenance] = useState(DEFAULT_MAINTENANCE);
   const [features, setFeatures] = useState(DEFAULT_FEATURES);
 
-  // ── Load ALL settings from Supabase on mount ─────────────────────────────
+  // -- Load ALL settings from Supabase on mount -----------------------------
   useEffect(() => {
     const load = async () => {
       try {
@@ -160,6 +162,8 @@ export default function FounderSettings() {
           { key: 'feature_flags', value: JSON.stringify(flagMap) },
         ]);
         localStorage.setItem('founder_feature_flags', JSON.stringify(flagMap));
+        // Push live flags to the rest of the app immediately
+        await refreshFeatureFlags();
       }
 
       setSaved(true);
@@ -177,13 +181,7 @@ export default function FounderSettings() {
     setFeatures(prev => prev.map(f => f.key === key ? { ...f, enabled: !f.enabled } : f));
   };
 
-  const cardStyle = {
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
-    borderRadius: 14,
-    padding: 24,
-    marginBottom: 20,
-  };
+  const cardStyle = 'fp-card fp-settings-card';
 
   return (
     <div>
@@ -211,7 +209,7 @@ export default function FounderSettings() {
               display: 'flex', alignItems: 'center', gap: 7, padding: '8px 18px',
               borderRadius: 7, border: 'none', cursor: 'pointer',
               fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
-              background: activeTab === tab.key ? 'var(--primary, #0047AB)' : 'none',
+              background: activeTab === tab.key ? 'var(--primary, #635BFF)' : 'none',
               color: activeTab === tab.key ? '#fff' : 'var(--text-secondary)',
               transition: 'all 0.15s',
             }}
@@ -223,7 +221,7 @@ export default function FounderSettings() {
 
       {/* Platform Branding */}
       {activeTab === 'platform' && (
-        <div style={cardStyle}>
+        <div className={cardStyle}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, color: 'var(--text)' }}>Platform Identity</h3>
           {loading ? (
             <div className="fp-form-grid">
@@ -266,7 +264,7 @@ export default function FounderSettings() {
 
       {/* Maintenance */}
       {activeTab === 'maintenance' && (
-        <div style={cardStyle}>
+        <div className={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', fontSize: 20 }}>
               <FiAlertTriangle />
@@ -283,7 +281,7 @@ export default function FounderSettings() {
 
           {maintenance.is_maintenance && (
             <div style={{ padding: 14, borderRadius: 10, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 20, fontSize: 13, color: '#DC2626', fontWeight: 600 }}>
-              ⚠️ Maintenance mode is currently ACTIVE. Users cannot access the platform.
+              š Maintenance mode is currently ACTIVE. Users cannot access the platform.
             </div>
           )}
 
@@ -311,7 +309,7 @@ export default function FounderSettings() {
 
       {/* Feature Flags */}
       {activeTab === 'features' && (
-        <div style={cardStyle}>
+        <div className={cardStyle}>
           <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: 'var(--text)' }}>Feature Flags</h3>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
             Control which features are available across the entire platform. Changes are saved globally to Supabase.
@@ -348,3 +346,4 @@ export default function FounderSettings() {
     </div>
   );
 }
+

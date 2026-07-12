@@ -39,12 +39,10 @@ export default function OnboardingChecklist() {
  const [checklist, setChecklist] = useState([]);
  const [newEmpId, setNewEmpId] = useState('');
 
- useEffect(() => { fetchData(); }, []);
-
  const fetchData = async () => {
  setLoading(true);
  const [obRes, empRes] = await Promise.all([
- supabase.from('onboarding').select('*, employees(name, division, position), onboarding_checklist(*)').order('created_at', { ascending: false }),
+ supabase.from('onboarding').select('*, employees(name, division, position), onboarding_checklist(*)').eq('company_id', employee?.company_id).order('created_at', { ascending: false }),
  employeeService.getAllEmployees(undefined, employee?.company_id),
  ]);
  setOnboardings(obRes.data || []);
@@ -52,15 +50,18 @@ export default function OnboardingChecklist() {
  setLoading(false);
  };
 
+ useEffect(() => { fetchData(); }, []);
+
  // Realtime: auto-refresh
- useRealtimeTable('onboarding_checklists', fetchData);
+ useRealtimeTable('onboarding_checklists', fetchData, { companyId: employee?.company_id });
 
  const openCreate = () => { setNewEmpId(''); setModal('create'); };
 
  const handleCreate = async () => {
  if (!newEmpId) return;
  const { data: ob } = await supabase.from('onboarding').insert({
- employee_id: Number(newEmpId),
+    company_id: employee?.company_id,
+    employee_id: Number(newEmpId),
  status: 'in-progress',
  target_completion: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
  }).select().single();
@@ -100,20 +101,20 @@ export default function OnboardingChecklist() {
  };
 
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
- <h1><FiUserPlus style={{ marginRight: 10 }} /> Onboarding Checklist</h1>
+ <h1><FiUserPlus className="icon-mr" /> Onboarding Checklist</h1>
  <div className="page-header-actions">
- <button className="btn-primary" onClick={openCreate}><FiPlusCircle /> Mulai Onboarding</button>
+ <button className="btn-primary" onClick={openCreate} aria-label="Mulai onboarding"><FiPlusCircle /> Mulai Onboarding</button>
  </div>
  </div>
 
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+ <div className="stats-grid">
  {loading ? Array.from({ length: 3 }).map((_, i) => (
  <div key={i} className="info-card skeleton" style={{ height: 160 }} />
  )) : onboardings.length === 0 ? (
  <div className="info-card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
- <FiClipboard style={{ fontSize: 36, marginBottom: 8, opacity: 0.4 }} />
+ <FiClipboard style={{ fontSize: 20, marginBottom: 8, opacity: 0.4 }} />
  <div>Belum ada proses onboarding.</div>
  </div>
  ) : onboardings.map(ob => {
@@ -167,7 +168,7 @@ export default function OnboardingChecklist() {
  </div>
  <div className="modal-footer">
  <button className="btn-secondary" onClick={() => setModal(null)}>Batal</button>
- <button className="btn-primary" onClick={handleCreate} disabled={!newEmpId}><FiCheck /> Mulai</button>
+ <button className="btn-primary" onClick={handleCreate} disabled={!newEmpId} aria-label="Mulai"><FiCheck /> Mulai</button>
  </div>
  </div>
  </div>
@@ -246,3 +247,5 @@ export default function OnboardingChecklist() {
  </div>
  );
 }
+
+

@@ -1,0 +1,313 @@
+/* ═══════════════════════════════════════════════════════════
+   Splash (clean) + Welcome (glass sheet — design reference)
+   ═══════════════════════════════════════════════════════════ */
+
+.emp-onboard {
+  min-height: 100dvh;
+  min-height: 100vh;
+  box-sizing: border-box;
+  font-family: Inter, 'Inter Tight', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #191c1e;
+  background: #f7f9fb;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Design tokens from mock */
+.emp-onboard {
+  --wc-bg: #f7f9fb;
+  --wc-surface: #ffffff;
+  --wc-primary: #493ee5;
+  --wc-primary-container: #635bff;
+  --wc-primary-fixed: #e2dfff;
+  --wc-on-primary-fixed: #0f0069;
+  --wc-on-primary-fixed-variant: #321ed2;
+  --wc-on-primary-container: #fefaff;
+  --wc-on-surface: #191c1e;
+  --wc-on-surface-variant: #464555;
+  --wc-outline-variant: #c7c4d8;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SPLASH
+   ══════════════════════════════════════════════════════════ */
+.emp-splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.emp-splash__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: splashIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.emp-splash__icon-wrap {
+  width: 108px;
+  height: 108px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 20px 40px rgba(0, 0, 0, 0.06);
+}
+
+.emp-splash__icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.emp-splash__name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1c1c1e;
+}
+
+@keyframes splashIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   WELCOME — centered glass card + ambient glow
+   ══════════════════════════════════════════════════════════ */
+.emp-welcome {
+  display: flex;
+  flex-direction: column;
+  background: var(--wc-bg);
+  overflow: hidden;
+  min-height: 100dvh;
+  min-height: 100vh;
+}
+
+.emp-welcome__ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(99, 91, 255, 0.14) 0%,
+    rgba(247, 249, 251, 0) 70%
+  );
+}
+
+.emp-welcome__canvas {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 428px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  min-height: 100vh;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px
+    calc(28px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+
+/* Glass sheet */
+.emp-welcome__sheet {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: 32px 28px;
+  border-radius: 1.5rem; /* ~xl soft */
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--wc-outline-variant) 20%, transparent);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+  animation: welcomeSheetIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@supports not (background: color-mix(in srgb, white, black)) {
+  .emp-welcome__sheet {
+    border-color: rgba(199, 196, 216, 0.25);
+  }
+}
+
+.emp-welcome__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 24px;
+}
+
+/* Pill badge */
+.emp-welcome__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--wc-primary-fixed);
+  color: var(--wc-on-primary-fixed-variant);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+.emp-welcome__badge-icon {
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.emp-welcome__titles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.emp-welcome__headline {
+  margin: 0;
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--wc-on-surface);
+}
+
+.emp-welcome__headline-accent {
+  color: var(--wc-primary);
+}
+
+.emp-welcome__rule {
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wc-primary) 20%, transparent);
+  margin: 0 auto;
+}
+
+@supports not (background: color-mix(in srgb, white, black)) {
+  .emp-welcome__rule {
+    background: rgba(73, 62, 229, 0.2);
+  }
+}
+
+.emp-welcome__lead {
+  margin: 0;
+  padding: 0 8px;
+  max-width: 320px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  color: var(--wc-on-surface-variant);
+}
+
+/* Buttons */
+.emp-welcome__ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.emp-welcome__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 16px 20px;
+  border-radius: 1rem;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 20px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+.emp-welcome__btn:active {
+  transform: scale(0.98);
+}
+
+.emp-welcome__btn--primary {
+  background: var(--wc-primary-container);
+  color: var(--wc-on-primary-container);
+  box-shadow: 0 8px 20px rgba(99, 91, 255, 0.25);
+}
+
+.emp-welcome__btn--primary:hover {
+  background: #4c42e9; /* surface-tint-ish */
+}
+
+.emp-welcome__btn--secondary {
+  background: var(--wc-primary-fixed);
+  color: var(--wc-on-primary-fixed-variant);
+}
+
+.emp-welcome__btn--secondary:hover {
+  background: #c3c0ff; /* primary-fixed-dim */
+}
+
+.emp-welcome__demo-link {
+  margin: -16px 0 0;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: var(--wc-primary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.emp-welcome__demo-link:active {
+  opacity: 0.6;
+}
+
+@keyframes welcomeSheetIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 360px) {
+  .emp-welcome__sheet {
+    padding: 28px 20px;
+    gap: 32px;
+  }
+  .emp-welcome__headline {
+    font-size: 24px;
+    line-height: 32px;
+  }
+  .emp-welcome__lead {
+    font-size: 14px;
+    line-height: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emp-splash__content,
+  .emp-welcome__sheet {
+    animation: none !important;
+  }
+}

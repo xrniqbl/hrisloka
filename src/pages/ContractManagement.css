@@ -1,4 +1,4 @@
-/* ─── Contract Management — Professional Redesign ─── */
+/* ─── Contract Management - Professional Redesign ─── */
 
 /* ─── Filter Bar ─── */
 .cm-filter-bar {
@@ -121,7 +121,7 @@
 .cm-tab.active {
   background: var(--surface);
   color: var(--primary);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,71,171,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(99,91,255,0.08);
 }
 
 .cm-tab:hover:not(.active) {
@@ -157,13 +157,13 @@
   left: 0;
   right: 0;
   height: 0;
-  background: linear-gradient(to top, rgba(0,71,171,0.04), transparent);
+  background: linear-gradient(to top, rgba(99,91,255,0.04), transparent);
   transition: height 0.2s ease;
 }
 
 .cm-template-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 8px 28px rgba(0,71,171,0.12);
+  box-shadow: 0 8px 28px rgba(99,91,255,0.12);
   transform: translateY(-3px);
 }
 
@@ -235,8 +235,8 @@
 .cm-add-template-card:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(0,71,171,0.03);
-  box-shadow: 0 4px 12px rgba(0,71,171,0.08);
+  background: rgba(99,91,255,0.03);
+  box-shadow: 0 4px 12px rgba(99,91,255,0.08);
 }
 
 /* ─── Contract Editor Layout ─── */
@@ -297,7 +297,7 @@
   background: var(--primary);
   color: #fff;
   border-color: var(--primary);
-  box-shadow: 0 1px 4px rgba(0,71,171,0.3);
+  box-shadow: 0 1px 4px rgba(99,91,255,0.3);
 }
 
 .ce-toolbar-divider {
@@ -456,7 +456,7 @@
 
 .ce-var-item:hover {
   border-color: var(--primary);
-  background: rgba(0,71,171,0.04);
+  background: rgba(99,91,255,0.04);
 }
 
 .ce-var-code {

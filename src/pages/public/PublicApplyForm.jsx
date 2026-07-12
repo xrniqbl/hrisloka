@@ -1,82 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
  FiArrowLeft, FiUser, FiMail, FiPhone, FiMapPin, FiCalendar,
- FiBook, FiBriefcase, FiPlus, FiX, FiCheck, FiFileText, FiLink, FiSend, FiDollarSign,
- FiChevronLeft, FiChevronRight
+ FiBook, FiBriefcase, FiPlus, FiX, FiCheck, FiFileText, FiLink, FiSend, FiDollarSign
 } from 'react-icons/fi';
 import { supabase } from '../../lib/supabase';
+import { useFeatureFlags } from '../../context/FeatureFlagContext';
+import { DatePicker } from '@/components/ui/date-picker';
 import './PublicCareers.css';
 
 const educationLevels = ['SMA/SMK', 'D3', 'S1', 'S2', 'S3'];
 const genderOptions = [{ value: 'Laki-laki', label: '♂ Laki-laki' }, { value: 'Perempuan', label: '♀ Perempuan' }];
-const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-const DAYS_ID = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-
-function DatePicker({ value, onChange, placeholder = 'Pilih Tanggal' }) {
- const [open, setOpen] = useState(false);
- const [view, setView] = useState(() => value ? new Date(value) : new Date());
- const [popupPos, setPopupPos] = useState({ top: 0, left: 0, width: 300 });
- const ref = useRef();
- const inputRef = useRef();
- useEffect(() => {
-  const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-  document.addEventListener('mousedown', h);
-  return () => document.removeEventListener('mousedown', h);
- }, []);
- const openPicker = () => {
-  if (inputRef.current) {
-   const r = inputRef.current.getBoundingClientRect();
-   // position:fixed = viewport coords, do NOT add scrollY
-   setPopupPos({ top: r.bottom + 8, left: r.left, width: Math.max(r.width, 300) });
-  }
-  setOpen(o => !o);
- };
- const yr = view.getFullYear(), mo = view.getMonth();
- const firstDay = new Date(yr, mo, 1).getDay();
- const daysInMo = new Date(yr, mo + 1, 0).getDate();
- const sel = value ? new Date(value) : null;
- const today = new Date();
- const fmt = d => new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
- const pick = day => {
-  onChange(new Date(yr, mo, day).toISOString().split('T')[0]);
-  setOpen(false);
- };
- return (
-  <div className="cf-datepicker" ref={ref}>
-   <div className={`cf-datepicker-input${open ? ' open' : ''}`} ref={inputRef} onClick={openPicker}>
-    <FiCalendar size={15} className="cf-dp-icon" />
-    <span className={value ? 'cf-date-value' : 'cf-date-placeholder'}>{value ? fmt(value) : placeholder}</span>
-    {value && <button type="button" className="cf-date-clear" onClick={e => { e.stopPropagation(); onChange(''); }}><FiX size={13} /></button>}
-   </div>
-   {open && (
-    <div className="cf-datepicker-popup" style={{ position: 'fixed', top: popupPos.top, left: popupPos.left, width: 300, zIndex: 9999 }}>
-     <div className="cf-dp-header">
-      <button type="button" className="cf-dp-nav" onClick={() => setView(new Date(yr, mo - 1, 1))}><FiChevronLeft size={16} /></button>
-      <span className="cf-dp-title">{MONTHS_ID[mo]} {yr}</span>
-      <button type="button" className="cf-dp-nav" onClick={() => setView(new Date(yr, mo + 1, 1))}><FiChevronRight size={16} /></button>
-     </div>
-     <div className="cf-dp-days-header">{DAYS_ID.map(d => <div key={d} className="cf-dp-day-name">{d}</div>)}</div>
-     <div className="cf-dp-grid">
-      {Array.from({ length: firstDay }).map((_, i) => <div key={i} className="cf-dp-cell empty" />)}
-      {Array.from({ length: daysInMo }, (_, i) => i + 1).map(day => {
-       const isSel = sel && sel.getFullYear()===yr && sel.getMonth()===mo && sel.getDate()===day;
-       const isTdy = today.getFullYear()===yr && today.getMonth()===mo && today.getDate()===day;
-       return <button type="button" key={day} className={`cf-dp-cell${isSel?' selected':''}${isTdy&&!isSel?' today':''}`} onClick={() => pick(day)}>{day}</button>;
-      })}
-     </div>
-     <div className="cf-dp-footer">
-      <button type="button" className="cf-dp-today" onClick={() => { const t=new Date(); setView(t); onChange(t.toISOString().split('T')[0]); setOpen(false); }}>Hari Ini</button>
-     </div>
-    </div>
-   )}
-  </div>
- );
-}
-
 export default function PublicApplyForm() {
  const { slug, jobId } = useParams();
  const navigate = useNavigate();
+ const { isEnabled, loading: flagsLoading } = useFeatureFlags();
  const [job, setJob] = useState(null);
  const [loading, setLoading] = useState(true);
  const [submitting, setSubmitting] = useState(false);
@@ -108,10 +46,6 @@ export default function PublicApplyForm() {
  expectedSalary: '',
  });
 
- useEffect(() => {
- fetchJob();
- }, [jobId]);
-
  const fetchJob = async () => {
  setLoading(true);
  const { data } = await supabase
@@ -122,6 +56,19 @@ export default function PublicApplyForm() {
  setJob(data);
  setLoading(false);
  };
+
+ useEffect(() => {
+ fetchJob();
+ }, [jobId]);
+
+ if (!flagsLoading && !isEnabled('public_careers')) {
+   return (
+     <div className="career-page" style={{ textAlign: 'center', padding: '80px 24px' }}>
+       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Karir tidak tersedia</h2>
+       <p style={{ color: '#94A3B8', fontSize: 14 }}>Halaman lowongan publik dinonaktifkan.</p>
+     </div>
+   );
+ }
 
  const handleChange = (field, value) => {
  setForm(prev => ({ ...prev, [field]: value }));
@@ -186,7 +133,7 @@ export default function PublicApplyForm() {
  if (error) {
  console.error('Submit error:', error);
  const msg = error.code === '23505' ? 'Email ini sudah pernah melamar posisi ini.' : `Gagal mengirim: ${error.message}`;
- alert(msg);
+ console.warn('[PublicApplyForm]', msg);
  setSubmitting(false);
  return;
  }
@@ -212,7 +159,7 @@ export default function PublicApplyForm() {
  setSuccess(true);
  } catch (err) {
  console.error(err);
- alert('Terjadi kesalahan. Silakan coba lagi.');
+ console.error('[PublicApplyForm] Submission error');
  }
  setSubmitting(false);
  };
@@ -286,7 +233,7 @@ export default function PublicApplyForm() {
  </button>
 
  {/* Job Info */}
- <div className="career-form-card career-job-info-card" style={{ background: 'linear-gradient(135deg, #0047AB, #1a237e)', color: '#fff', border: 'none', padding: '20px 24px' }}>
+ <div className="career-form-card career-job-info-card" style={{ background: 'linear-gradient(135deg, #635BFF, #1a237e)', color: '#fff', border: 'none', padding: '20px 24px' }}>
  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
  <FiBriefcase size={20} style={{ color: '#fff' }} />
  <div>
@@ -415,7 +362,7 @@ export default function PublicApplyForm() {
  {form.skills && (
  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
  {form.skills.split(',').map((s, i) => s.trim() && (
- <span key={i} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: '#E8F0FE', color: '#0047AB' }}>
+ <span key={i} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: '#F0EEFF', color: '#635BFF' }}>
  {s.trim()}
  </span>
  ))}
@@ -484,3 +431,5 @@ export default function PublicApplyForm() {
  </div>
  );
 }
+
+

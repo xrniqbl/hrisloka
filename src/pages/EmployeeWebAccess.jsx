@@ -1,7 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+﻿import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
 
 // Smartphone icon SVG
 function PhoneIcon() {
@@ -48,6 +47,12 @@ export default function EmployeeWebAccess() {
     return () => { clearTimeout(t); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
+  const handleLogout = async () => {
+    clearInterval(intervalRef.current);
+    await signOut();
+    navigate('/', { replace: true });
+  };
+
   useEffect(() => {
     // Countdown to auto-logout
     intervalRef.current = setInterval(() => {
@@ -63,12 +68,6 @@ export default function EmployeeWebAccess() {
     return () => clearInterval(intervalRef.current);
   }, []);
 
-  const handleLogout = async () => {
-    clearInterval(intervalRef.current);
-    await signOut();
-    navigate('/', { replace: true });
-  };
-
   const handleInstall = () => {
     clearInterval(intervalRef.current);
     window.location.href = '/install';
@@ -77,14 +76,14 @@ export default function EmployeeWebAccess() {
   const installUrl = window.location.origin;
 
   return (
-    <div style={{
+    <div className="ewa-root" style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0C0F1A 0%, #111827 50%, #0D1B3E 100%)',
+      background: 'linear-gradient(135deg, #0C0F1A 0%, #111827 50%, #14122B 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px 16px',
-      fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+      fontFamily: "'Inter Tight', system-ui, sans-serif",
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -93,7 +92,7 @@ export default function EmployeeWebAccess() {
         position: 'absolute', top: '-20%', right: '-10%',
         width: 500, height: 500,
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(0,71,171,0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(99,91,255,0.15) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
       <div style={{
@@ -124,12 +123,12 @@ export default function EmployeeWebAccess() {
         <div style={{
           width: 88, height: 88,
           borderRadius: 28,
-          background: 'linear-gradient(135deg, rgba(0,71,171,0.3) 0%, rgba(13,148,136,0.3) 100%)',
-          border: '1.5px solid rgba(0,71,171,0.4)',
+          background: 'linear-gradient(135deg, rgba(99,91,255,0.3) 0%, rgba(13,148,136,0.3) 100%)',
+          border: '1.5px solid rgba(99,91,255,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 28px',
-          color: '#60A5FA',
-          boxShadow: '0 0 40px rgba(0,71,171,0.3)',
+          color: '#818CF8',
+          boxShadow: '0 0 40px rgba(99,91,255,0.3)',
           opacity: step >= 1 ? 1 : 0,
           transform: step >= 1 ? 'scale(1)' : 'scale(0.8)',
           transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s',
@@ -140,7 +139,7 @@ export default function EmployeeWebAccess() {
         {/* Greeting */}
         {employee?.name && (
           <p style={{
-            fontSize: 13, color: '#60A5FA', fontWeight: 600,
+            fontSize: 13, color: '#818CF8', fontWeight: 600,
             marginBottom: 8, letterSpacing: 0.5, textTransform: 'uppercase',
             opacity: step >= 2 ? 1 : 0,
             transition: 'opacity 0.4s ease 0.2s',
@@ -150,7 +149,7 @@ export default function EmployeeWebAccess() {
         )}
 
         <h1 style={{
-          fontSize: 26, fontWeight: 800,
+          fontSize: 26, fontWeight: 600,
           color: '#F1F5F9',
           marginBottom: 14,
           letterSpacing: '-0.5px',
@@ -194,9 +193,9 @@ export default function EmployeeWebAccess() {
             }}>
               <div style={{
                 width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                background: 'linear-gradient(135deg, #0047AB, #0D9488)',
+                background: 'linear-gradient(135deg, #635BFF, #0D9488)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 800, color: '#fff', marginTop: 1,
+                fontSize: 11, fontWeight: 600, color: '#fff', marginTop: 1,
               }}>{s.num}</div>
               <span style={{ fontSize: 13, color: '#CBD5E1', lineHeight: 1.5 }}>{s.text}</span>
             </div>
@@ -219,7 +218,7 @@ export default function EmployeeWebAccess() {
           <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 99,
-              background: 'linear-gradient(90deg, #0047AB, #0D9488)',
+              background: 'linear-gradient(90deg, #635BFF, #0D9488)',
               width: `${(countdown / 30) * 100}%`,
               transition: 'width 1s linear',
             }} />
@@ -236,16 +235,16 @@ export default function EmployeeWebAccess() {
             onClick={handleInstall}
             style={{
               padding: '14px 24px', borderRadius: 14,
-              background: 'linear-gradient(135deg, #0047AB, #0052CC)',
+              background: 'linear-gradient(135deg, #635BFF, #635BFF)',
               color: '#fff', border: 'none', cursor: 'pointer',
               fontWeight: 700, fontSize: 14,
               fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: '0 4px 20px rgba(0,71,171,0.4)',
+              boxShadow: '0 4px 20px rgba(99,91,255,0.4)',
               transition: 'transform 0.15s, box-shadow 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,71,171,0.5)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,71,171,0.4)'; }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(99,91,255,0.5)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(99,91,255,0.4)'; }}
           >
             <DownloadIcon />
             Panduan Install Aplikasi
@@ -284,3 +283,4 @@ export default function EmployeeWebAccess() {
     </div>
   );
 }
+

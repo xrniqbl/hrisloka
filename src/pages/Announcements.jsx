@@ -35,35 +35,55 @@ export default function Announcements() {
   
 
   // Realtime: auto-refresh on new announcements
-  useRealtimeTable('announcements', fetchAnnouncements);
+  useRealtimeTable('announcements', fetchAnnouncements, { companyId: companyId });
 
   const handleSend = async (e) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
+    if (!companyId) {
+      alert('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
+      return;
+    }
     setSending(true);
-    const payload = { title: title.trim(), message: message.trim() };
-    if (companyId) payload.company_id = companyId;
-    const { error } = await supabase.from('announcements').insert(payload);
+    // Always scope to company — PWA only reads same company_id
+    const payload = {
+      title: title.trim(),
+      message: message.trim(),
+      company_id: companyId,
+      created_by: employee?.id || null,
+      priority: 'normal',
+    };
+    let { error } = await supabase.from('announcements').insert(payload);
+
+    // Retry without optional columns on older schemas
+    if (error && /column|priority|created_by|company_id/i.test(error.message || '')) {
+      const slim = { title: payload.title, message: payload.message };
+      if (!/company_id/i.test(error.message || '')) slim.company_id = companyId;
+      const retry = await supabase.from('announcements').insert(slim);
+      error = retry.error;
+    }
 
     if (!error) {
-      // Broadcast to company-scoped realtime channel
-      const channelName = companyId ? `announcements-${companyId}` : 'announcements';
+      const channelName = `announcements-${companyId}`;
       supabase.channel(channelName).send({
         type: 'broadcast',
         event: 'new_announcement',
-        payload: { title: title.trim(), message: message.trim() },
-      });
-      sendAnnouncementPush(title.trim(), message.trim()).catch(() => {});
+        payload: { title: title.trim(), message: message.trim(), company_id: companyId },
+      }).catch(() => {});
+      sendAnnouncementPush(title.trim(), message.trim()).catch((e) => console.warn('[Action failed]', e?.message || e));
       setTitle('');
       setMessage('');
       fetchAnnouncements();
+    } else {
+      alert('Gagal mengirim: ' + (error.message || 'error'));
     }
     setSending(false);
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Hapus pengumuman ini?')) return;
-    await supabase.from('announcements').delete().eq('id', id);
+    if (!companyId) return;
+    await supabase.from('announcements').delete().eq('id', id).eq('company_id', companyId);
     fetchAnnouncements();
   };
 
@@ -75,21 +95,18 @@ export default function Announcements() {
   };
 
   return (
-    <div className="animate-in">
+    <div className="admin-page">
       <div className="page-header">
-        <h1><FiBell style={{ marginRight: 10 }} />Pengumuman</h1>
+        <h1><FiBell className="icon-mr" />Pengumuman</h1>
       </div>
 
       {/* Send Announcement Form */}
-      <div style={{
-        background: 'var(--surface)', borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-card)', padding: 28, marginBottom: 24,
-      }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: 'var(--text)' }}>
+      <div className="data-table-card" style={{ padding: 28, marginBottom: 24 }}>
+        <h3 className="section-label" style={{ marginBottom: 16 }}>
           Kirim Pengumuman Baru
         </h3>
         <form onSubmit={handleSend}>
-          <div style={{ marginBottom: 14 }}>
+          <div className="mb-sm">
             <label className="form-label">Judul Pengumuman *</label>
             <input
               className="form-input"
@@ -99,7 +116,7 @@ export default function Announcements() {
               required
             />
           </div>
-          <div style={{ marginBottom: 18 }}>
+          <div className="mb">
             <label className="form-label">Isi Pengumuman *</label>
             <textarea
               className="form-textarea"
@@ -122,19 +139,10 @@ export default function Announcements() {
       </div>
 
       {/* Announcements List */}
-      <div style={{
-        background: 'var(--surface)', borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-card)', overflow: 'hidden',
-      }}>
-        <div style={{
-          padding: '18px 24px', borderBottom: '1px solid rgba(0,0,0,0.04)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Riwayat Pengumuman</h3>
-          <span style={{
-            background: 'var(--primary)', color: '#fff', fontSize: 11,
-            fontWeight: 700, padding: '2px 10px', borderRadius: 99,
-          }}>{announcements.length}</span>
+      <div className="data-table-card">
+        <div className="data-table-header">
+          <h3 className="section-label">Riwayat Pengumuman</h3>
+          <span className="status-badge active">{announcements.length}</span>
         </div>
 
         {loading ? (
@@ -150,23 +158,19 @@ export default function Announcements() {
         ) : (
           <div>
             {announcements.map(ann => (
-              <div key={ann.id} style={{
+              <div key={ann.id} className="announcement-row" style={{
                 padding: '18px 24px',
                 borderBottom: '1px solid rgba(0,0,0,0.03)',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16,
-                transition: 'background 0.15s',
               }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 4 }}>
+                  <div className="td-semibold" style={{ marginBottom: 4 }}>
                     {ann.title}
                   </div>
-                  <div style={{
-                    fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5,
-                    marginBottom: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  }}>
+                  <div className="td-muted-sm" style={{ lineHeight: 1.5, marginBottom: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                     {ann.message}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)' }}>
+                  <div className="btn-icon-row td-muted-sm">
                     <FiClock size={12} />
                     {formatDate(ann.created_at)}
                   </div>
@@ -175,9 +179,7 @@ export default function Announcements() {
                   className="action-btn danger"
                   title="Hapus"
                   onClick={() => handleDelete(ann.id)}
-                  style={{ flexShrink: 0 }}
-                >
-                  <FiTrash2 />
+                ><FiTrash2 />
                 </button>
               </div>
             ))}
@@ -187,3 +189,4 @@ export default function Announcements() {
     </div>
   );
 }
+

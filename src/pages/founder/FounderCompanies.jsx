@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiPlus, FiSearch, FiX, FiEdit2, FiToggleLeft, FiToggleRight, FiCopy, FiUsers, FiGlobe } from 'react-icons/fi';
 import * as founderService from '../../services/founderService';
 import { useToast } from '../../components/Toast';
 import './founder.css';
 
-// ── Skeleton helpers ──────────────────────────────────────────────────────────
+// -- Skeleton helpers ----------------------------------------------------------
 function SkeletonBox({ w = '100%', h = 28, style = {} }) {
   return (
     <div style={{
@@ -31,10 +31,11 @@ function SkeletonPage({ cols = 5, rows = 6 }) {
           <SkeletonBox w={120} h={38} style={{ borderRadius: 10 }} />
         </div>
       </div>
-      <div className="fp-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 24 }}>
+      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {[1,2,3].map(i => <div key={i} className="fp-stat"><SkeletonBox w="55%" h={28} style={{ marginBottom: 8 }} /><SkeletonBox w="70%" h={12} /></div>)}
       </div>
       <div className="fp-card">
+
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 12 }}>
           <SkeletonBox w={260} h={36} style={{ borderRadius: 8 }} />
         </div>
@@ -49,7 +50,7 @@ function SkeletonPage({ cols = 5, rows = 6 }) {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 function getInitials(name) {
   return (name || '').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';
 }
@@ -59,7 +60,7 @@ const EMPTY_FORM = {
   employee_count_limit: 100, plan_id: '', is_active: true,
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 export default function FounderCompanies() {
   const { toast } = useToast();
   const [companies, setCompanies] = useState([]);
@@ -155,7 +156,7 @@ export default function FounderCompanies() {
       const { supabase } = await import('../../lib/supabase');
       const { data } = await supabase.from('companies').update({ is_active: !company.is_active }).eq('id', company.id).select().single();
       if (data) setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, is_active: !company.is_active } : c));
-    } catch (err) {
+    } catch {
       toast.error('Gagal mengubah status');
     }
   };
@@ -182,8 +183,8 @@ export default function FounderCompanies() {
         </div>
       </div>
 
-      {/* Quick stats — data real dari Supabase */}
-      <div className="fp-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 24 }}>
+      {/* Quick stats - data real dari Supabase */}
+      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="fp-stat">
           <div className="fp-stat-value">{companies.length}</div>
           <div className="fp-stat-label">Total Companies</div>
@@ -250,7 +251,7 @@ export default function FounderCompanies() {
                       </button>
                     </div>
                   </td>
-                  <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{c.industry || '—'}</td>
+                  <td className="td-muted-sm">{c.industry || '-'}</td>
                   <td>
                     {c.subscription
                       ? <span className={`fp-badge ${c.subscription.subscription_plans?.slug || 'free'}`}>{c.subscription.subscription_plans?.name || 'Free'}</span>
@@ -302,7 +303,7 @@ export default function FounderCompanies() {
                   <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>Company Created!</div>
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Bagikan kode unik ini agar karyawan bisa mendaftar:</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
-                    <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 800, letterSpacing: '2px', color: 'var(--text)', padding: '12px 24px', border: '2px dashed var(--border)', borderRadius: 12 }}>
+                    <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 600, letterSpacing: '2px', color: 'var(--text)', padding: '12px 24px', border: '2px dashed var(--border)', borderRadius: 12 }}>
                       {newCompanyCode}
                     </div>
                     <button className="fp-btn fp-btn-secondary fp-btn-sm" onClick={() => { navigator.clipboard.writeText(newCompanyCode); toast.success('Copied!'); }}>
@@ -338,7 +339,7 @@ export default function FounderCompanies() {
                         <label className="fp-label">Initial Plan</label>
                         <select className="fp-select" value={form.plan_id} onChange={e => setForm(f => ({ ...f, plan_id: e.target.value }))}>
                           <option value="">No plan (Free)</option>
-                          {plans.map(p => <option key={p.id} value={p.id}>{p.name} — {p.price_monthly ? `Rp ${p.price_monthly.toLocaleString('id-ID')}/bln` : 'Free'}</option>)}
+                          {plans.map(p => <option key={p.id} value={p.id}>{p.name} - {p.price_monthly ? `Rp ${p.price_monthly.toLocaleString('id-ID')}/bln` : 'Free'}</option>)}
                         </select>
                       </div>
                     )}
@@ -368,3 +369,4 @@ export default function FounderCompanies() {
     </div>
   );
 }
+

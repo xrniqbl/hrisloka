@@ -3,27 +3,63 @@ import { guardCompanyId } from '../lib/tenantGuard';
 
 // Clock in — with face & trust score support
 export async function clockIn(employeeId, data) {
+  if (!employeeId) return { data: null, error: { message: 'employeeId required' } };
+
+  // Avoid duplicate clock-in for the same day
+  const today = new Date().toISOString().split('T')[0];
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('id, clock_in, clock_out')
+    .eq('employee_id', employeeId)
+    .eq('date', today)
+    .maybeSingle();
+
+  if (existing?.clock_in && !existing?.clock_out) {
+    return { data: existing, error: { message: 'Sudah clock-in hari ini. Lakukan clock-out.' } };
+  }
+  if (existing?.clock_in && existing?.clock_out) {
+    return { data: existing, error: { message: 'Absensi hari ini sudah selesai.' } };
+  }
+
+  const clockInTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const row = {
+    employee_id: employeeId,
+    date: today,
+    clock_in: clockInTime,
+    status: 'present',
+    latitude: data.latitude,
+    longitude: data.longitude,
+    in_radius: data.inRadius ?? false,
+    selfie_url: data.selfieUrl || null,
+    selfie_verified: data.selfieVerified || false,
+    // location_id may be UUID or int depending on schema — only send if real
+    ...(data.locationId && data.locationId !== 1 && data.locationId !== 'demo-office'
+      ? { location_id: data.locationId }
+      : {}),
+    location: data.inRadius ? 'Office' : 'Remote',
+    face_verified: data.faceVerified || false,
+    face_distance: data.faceDistance ?? null,
+    face_confidence: data.faceConfidence ?? null,
+    trust_score: data.trustScore ?? 100,
+    trust_level: data.trustLevel || 'trusted',
+    anti_spoof_flags: data.antiSpoofFlags || [],
+  };
+
+  // Existing shell row without clock_in → update instead of insert
+  if (existing?.id && !existing.clock_in) {
+    const { data: result, error } = await supabase
+      .from('attendance')
+      .update(row)
+      .eq('id', existing.id)
+      .eq('employee_id', employeeId)
+      .select()
+      .single();
+    return { data: result, error };
+  }
+
   const { data: result, error } = await supabase
     .from('attendance')
-    .insert({
-      employee_id: employeeId,
-      date: new Date().toISOString().split('T')[0],
-      clock_in: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      status: 'present',
-      latitude: data.latitude,
-      longitude: data.longitude,
-      in_radius: data.inRadius,
-      selfie_url: data.selfieUrl || null,
-      selfie_verified: data.selfieVerified || false,
-      location_id: data.locationId || 1,
-      location: data.inRadius ? 'Office' : 'Remote',
-      face_verified: data.faceVerified || false,
-      face_distance: data.faceDistance || null,
-      face_confidence: data.faceConfidence || null,
-      trust_score: data.trustScore ?? 100,
-      trust_level: data.trustLevel || 'trusted',
-      anti_spoof_flags: data.antiSpoofFlags || [],
-    })
+    .insert(row)
     .select()
     .single();
   return { data: result, error };
@@ -31,22 +67,45 @@ export async function clockIn(employeeId, data) {
 
 // Get registered face descriptors for an employee
 export async function getEmployeeFaceDescriptors(employeeId) {
-  const { data, error } = await supabase
+  if (!employeeId) return { data: [], error: null };
+  let { data, error } = await supabase
     .from('employee_faces')
     .select('descriptor, label, quality_score')
     .eq('employee_id', employeeId)
     .eq('is_active', true);
+  // Fallback if is_active filter fails or returns empty on legacy rows
+  if (error || !data?.length) {
+    const fallback = await supabase
+      .from('employee_faces')
+      .select('descriptor, label, quality_score')
+      .eq('employee_id', employeeId);
+    if (!fallback.error && fallback.data?.length) {
+      data = fallback.data;
+      error = null;
+    }
+  }
   return { data: data || [], error };
 }
 
 // Check if employee has registered face
 export async function hasRegisteredFace(employeeId) {
-  const { data, error } = await supabase
+  if (!employeeId) return { hasface: false, error: null };
+  // Prefer active rows; fall back without is_active filter (older schemas)
+  let { data, error } = await supabase
     .from('employee_faces')
     .select('id')
     .eq('employee_id', employeeId)
     .eq('is_active', true)
     .limit(1);
+  if (error || !data?.length) {
+    const fallback = await supabase
+      .from('employee_faces')
+      .select('id')
+      .eq('employee_id', employeeId)
+      .limit(1);
+    data = fallback.data;
+    error = fallback.error;
+  }
   return { hasface: (data || []).length > 0, error };
 }
 
@@ -79,28 +138,30 @@ export async function saveTrustLog(attendanceId, trustData) {
   return { data, error };
 }
 
-// Clock out
-export async function clockOut(attendanceId) {
-  const { data, error } = await supabase
+// Clock out — employeeId required for ownership verification
+export async function clockOut(attendanceId, employeeId) {
+  let query = supabase
     .from('attendance')
     .update({
       clock_out: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
     })
-    .eq('id', attendanceId)
-    .select()
-    .single();
+    .eq('id', attendanceId);
+  // Verify the attendance record belongs to this employee
+  if (employeeId) query = query.eq('employee_id', employeeId);
+  const { data, error } = await query.select().single();
   return { data, error };
 }
 
 // Get today's attendance for employee
 export async function getTodayAttendance(employeeId) {
+  if (!employeeId) return { data: null, error: null };
   const today = new Date().toISOString().split('T')[0];
   const { data, error } = await supabase
     .from('attendance')
     .select('*')
     .eq('employee_id', employeeId)
     .eq('date', today)
-    .single();
+    .maybeSingle(); // no row = null, not an error
   return { data, error };
 }
 

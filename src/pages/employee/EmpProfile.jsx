@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import {
   HiArrowLeftOnRectangle,
   HiArrowPath,
@@ -38,8 +38,15 @@ import { hasRegisteredFace, getEmployeeFaceDescriptors } from '../../services/at
 import BottomSheet from '../../components/BottomSheet';
 import FileUploader from '../../components/FileUploader';
 import ProfileCompletionBar from '../../components/ProfileCompletionBar';
+import DocLink from '../../components/DocLink';
 import FaceRegistration from '../../components/FaceRegistration';
 import { useTranslation } from '../../lib/i18n';
+import {
+  isDemoMode,
+  showDemoToast,
+  DEMO_EMPLOYEE,
+  DEMO_PROFILE_DATA,
+} from '../../lib/demoGuard';
 import './EmpProfile.css';
 
 export default function EmpProfile() {
@@ -105,6 +112,19 @@ export default function EmpProfile() {
 
   useEffect(() => {
     async function load() {
+      // Full demo profile for design QA (no Supabase)
+      if (isDemoMode()) {
+        setEmp({ ...DEMO_EMPLOYEE });
+        setLeaves(DEMO_PROFILE_DATA.leaves);
+        setTickets(DEMO_PROFILE_DATA.tickets);
+        setDocs(DEMO_PROFILE_DATA.documents);
+        setPendingRequests(DEMO_PROFILE_DATA.updateRequests);
+        setHasFaceReg(DEMO_PROFILE_DATA.hasFace);
+        setFaceCount(DEMO_PROFILE_DATA.faceCount);
+        setLoading(false);
+        return;
+      }
+
       const email = user?.email || user?.user_metadata?.email;
       const { data } = await getEmployeeByEmail(email);
       if (data) {
@@ -133,7 +153,7 @@ export default function EmpProfile() {
 
   // Realtime: when admin approves, PWA auto-syncs employee profile
   useEffect(() => {
-    if (!emp?.id) return;
+    if (!emp?.id || isDemoMode()) return;
     const ch = supabase
       .channel(`emp-profile-rt-${emp.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profile_update_requests', filter: `employee_id=eq.${emp.id}` },
@@ -153,6 +173,10 @@ export default function EmpProfile() {
   useEffect(() => {
     const handler = async () => {
       if (!emp) return;
+      if (isDemoMode()) {
+        setEmp({ ...DEMO_EMPLOYEE });
+        return;
+      }
       const email = user?.email || user?.user_metadata?.email;
       const { data } = await getEmployeeByEmail(email);
       if (data) setEmp(data);
@@ -161,11 +185,19 @@ export default function EmpProfile() {
     return () => window.removeEventListener('emp:refresh', handler);
   }, [emp, user]);
 
-  const handleLogout = async () => { await signOut(); navigate('/app/login'); };
+  const handleLogout = async () => {
+    await signOut();
+    navigate(isDemoMode() ? '/app/welcome' : '/app/login');
+  };
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !emp) return;
+    if (isDemoMode()) {
+      showDemoToast();
+      e.target.value = '';
+      return;
+    }
     setUploadingPhoto(true);
     const { url } = await uploadProfilePhoto(emp.id, file);
     if (url) setEmp(prev => ({ ...prev, photo_url: url }));
@@ -174,6 +206,11 @@ export default function EmpProfile() {
 
   const handleDirectSave = async (fieldName) => {
     if (!emp) return;
+    if (isDemoMode()) {
+      showDemoToast();
+      setEditingField(null);
+      return;
+    }
     setSavingDirect(true);
     const { data } = await updateEmployeeDirectFields(emp.id, { [fieldName]: editValue });
     if (data) setEmp(data);
@@ -181,9 +218,14 @@ export default function EmpProfile() {
     setEditingField(null);
   };
 
-  // Quick edit save — only name / position / whatsapp
+  // Quick edit save - only name / position / whatsapp
   const handleQuickEditSave = async () => {
     if (!emp) return;
+    if (isDemoMode()) {
+      showDemoToast();
+      setQuickEditOpen(false);
+      return;
+    }
     setQeSaving(true);
     const { data } = await updateEmployeeDirectFields(emp.id, {
       name: qeName,
@@ -204,6 +246,12 @@ export default function EmpProfile() {
 
   const handleSubmitUpdateRequest = async () => {
     if (!emp || !updateSheet || !updateValue) return;
+    if (isDemoMode()) {
+      showDemoToast();
+      setUpdateSheet(null);
+      setUpdateValue('');
+      return;
+    }
     setUpdateSubmitting(true);
     await submitUpdateRequest(emp.id, updateSheet.fieldName, updateSheet.fieldLabel, updateSheet.oldValue, updateValue);
     const { data: pr } = await getMyUpdateRequests(emp.id);
@@ -215,6 +263,11 @@ export default function EmpProfile() {
 
   const handleSubmitHelpdesk = async () => {
     if (!helpdeskForm.subject) return;
+    if (isDemoMode()) {
+      showDemoToast();
+      setSheetOpen(false);
+      return;
+    }
     setSubmitting(true);
     await submitTicket(emp.id, helpdeskForm);
     const { data: tk } = await getMyTickets(emp.id);
@@ -225,18 +278,21 @@ export default function EmpProfile() {
   };
 
   const handleUploadSuccess = async () => {
+    if (isDemoMode()) return;
     const { data: dc } = await getEmployeeDocuments(emp.id);
     setDocs(dc || []);
   };
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, flexDirection: 'column', gap: 12 }}>
-      <HiArrowPath size={28} style={{ animation: 'spin 0.8s linear infinite' }} />
-      <span style={{ color: 'var(--muted)', fontSize: 14 }}>{t('loading')}</span>
+    <div className="ep-loading-wrap">
+      <div className="ep-loading-inner">
+        <HiArrowPath size={28} className="ep-spinner" />
+        <span className="ep-loading-text">{t('loading')}</span>
+      </div>
     </div>
   );
 
-  if (!emp) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>{t('not_found')}</div>;
+  if (!emp) return <div className="ep-empty-wrap"><span className="ep-empty-desc">{t('not_found')}</span></div>;
 
   const emergency = emp.emergency_contact || {};
   const bank = emp.bank_account || {};
@@ -253,29 +309,29 @@ export default function EmpProfile() {
     return (
       <div className="profile-info-row">
         <div className="profile-info-icon">{icon}</div>
-        <div style={{ flex: 1 }}>
+        <div className="profile-info-flex">
           <div className="profile-info-label">
             {label}
             {locked && <span className="profile-locked-badge"><HiLockClosed size={9} /> {locale === 'en' ? 'Needs Approval' : 'Perlu Persetujuan'}</span>}
           </div>
           {isEditing ? (
-            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <div className="profile-inline-edit">
               <input
                 autoFocus
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
-                style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, background: 'var(--bg)', color: 'var(--text)' }}
+                className="profile-inline-input"
               />
-              <button onClick={() => handleDirectSave(fieldName)} disabled={savingDirect} style={{ padding: '8px 14px', borderRadius: 8, background: 'var(--primary)', color: '#fff', border: 'none', fontSize: 12, fontWeight: 700 }}>
+              <button onClick={() => handleDirectSave(fieldName)} disabled={savingDirect} className="profile-inline-save">
                 {savingDirect ? '...' : '\u2713'}
               </button>
-              <button onClick={() => setEditingField(null)} style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text)' }}>\u2715</button>
+              <button onClick={() => setEditingField(null)} className="profile-inline-cancel">\u2715</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="profile-info-value-row">
               <div className={`profile-info-value ${!value ? 'empty' : ''}`}>{displayValue}</div>
               {freeEdit && fieldName && (
-                <button onClick={() => { setEditingField(fieldName); setEditValue(value || ''); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: 4 }}>
+                <button onClick={() => { setEditingField(fieldName); setEditValue(value || ''); }} className="profile-edit-btn">
                   <HiPencilSquare size={13} />
                 </button>
               )}
@@ -316,150 +372,138 @@ export default function EmpProfile() {
     <>
     <div className="emp-page">
       {/* Page Title + Settings */}
-      <div className="emp-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 className="emp-page-title">{locale === 'en' ? 'Profile' : locale === 'en' ? 'Profile' : 'Profil'}</h1>
+      <div className="emp-page-header page-header-actions mb-sm">
+        <h1 className="emp-page-title">{locale === 'en' ? 'Profile' : 'Profil'}</h1>
         <button
+          type="button"
           onClick={() => navigate('/app/settings')}
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: '50%',
-            border: '1.5px solid var(--border)',
-            background: 'var(--surface)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: 'var(--muted)',
-          }}
+          className="ep-settings-btn"
+          aria-label="Settings"
         >
-          <HiPencilSquare size={17} />
+          <HiPencilSquare size={15} />
         </button>
       </div>
 
-      {/* ── Hero Profile Card ── */}
-      <div style={{ background: 'linear-gradient(145deg, #EEF4FF 0%, #F0F7FF 50%, #E8F0FE 100%)', borderRadius: 20, padding: '28px 20px 22px', marginBottom: 16, border: '1px solid rgba(0,71,171,0.08)', position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative circles */}
-        <div style={{ position: 'absolute', top: -40, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(0,71,171,0.04)' }} />
-        <div style={{ position: 'absolute', bottom: -30, left: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(0,71,171,0.03)' }} />
-        {/* Avatar */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-          <div style={{ position: 'relative', marginBottom: 14 }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(0,71,171,0.1)', border: '3px solid rgba(0,71,171,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      {/* -- Hero Profile Card (compact) -- */}
+      <div className="ep-hero">
+        <div className="ep-hero-inner">
+          <div className="ep-hero-avatar-wrap">
+            <div className="ep-hero-avatar">
               {emp.photo_url ? (
-                <img src={emp.photo_url} alt={emp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={emp.photo_url} alt={emp.name} />
               ) : (
-                <HiUser size={44} style={{ color: 'var(--primary)' }} />
+                <HiUser size={28} style={{ color: 'var(--primary)' }} />
               )}
               {uploadingPhoto && (
-                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,71,171,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <HiArrowPath size={20} style={{ animation: 'spin 0.8s linear infinite', color: '#fff' }} />
+                <div className="profile-upload-overlay">
+                  <HiArrowPath size={16} className="ep-spinner" style={{ color: '#fff' }} />
                 </div>
               )}
             </div>
-            <button onClick={() => photoInputRef.current?.click()} style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: '50%', background: 'var(--primary)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
-              <HiCamera size={13} />
+            <button type="button" className="ep-hero-cam" onClick={() => photoInputRef.current?.click()} aria-label="Change photo">
+              <HiCamera size={11} />
             </button>
             <input ref={photoInputRef} type="file" accept="image/*" capture="user" style={{ display: 'none' }} onChange={handlePhotoChange} />
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>{emp.name}</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)', marginBottom: 16 }}>{emp.position}{emp.division ? ` — ${emp.division}` : ''}</div>
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: 10, width: '100%' }}>
-            <button
-              onClick={openQuickEdit}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', borderRadius: 12, background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              <HiPencilSquare size={16} /> {locale === 'en' ? 'Edit Profile' : 'Edit Profil'}
+          <h2 className="ep-hero-name">{emp.name}</h2>
+          <p className="ep-hero-role">
+            {emp.position}{emp.division ? ` · ${emp.division}` : ''}
+          </p>
+          <div className="ep-hero-actions">
+            <button type="button" className="ep-hero-btn ep-hero-btn--primary" onClick={openQuickEdit}>
+              <HiPencilSquare size={14} /> {locale === 'en' ? 'Edit' : 'Edit'}
             </button>
-            <button onClick={() => setActiveTab('face')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', borderRadius: 12, background: 'var(--surface)', color: 'var(--primary)', border: '1.5px solid var(--border)', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
-              <HiCamera size={16} /> {locale === 'en' ? 'Face ID' : 'Daftar Wajah'}
+            <button type="button" className="ep-hero-btn ep-hero-btn--ghost" onClick={() => setActiveTab('face')}>
+              <HiCamera size={14} /> Face ID
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Profile Completion ── */}
+      {/* -- Profile Completion -- */}
       <ProfileCompletionBar employee={emp} />
 
-      {/* ── Profil Karyawan Section ── */}
-      <div className="emp-card" style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)', marginBottom: 4 }}>{locale === 'en' ? 'Employee Profile' : 'Profil Karyawan'}</div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 5 }}>
-          <HiLockClosed size={11} />
-          {locale === 'en' ? 'These fields can only be changed by HR Admin' : 'Data ini hanya bisa diubah oleh HR Admin'}
+      {/* -- Profil Karyawan Section -- */}
+      <div className="emp-card ep-lock-card">
+        <div className="ep-lock-title">{locale === 'en' ? 'Employee Profile' : 'Profil Karyawan'}</div>
+        <div className="ep-lock-hint">
+          <HiLockClosed size={10} />
+          {locale === 'en' ? 'Editable by HR Admin only' : 'Hanya bisa diubah HR Admin'}
         </div>
         {[
-          { icon: <HiShieldCheck size={18}/>, label: 'NIK', value: emp.nip ? `NIK-****${emp.nip.slice(-4)}` : '—' },
-          { icon: <HiEnvelope size={18}/>, label: locale === 'en' ? 'Email Address' : 'Alamat Email', value: emp.email ? emp.email.replace(/(.{2}).*(@.*)/, '$1***$2') : '—' },
-          { icon: <HiPhone size={18}/>, label: locale === 'en' ? 'Phone Number' : 'Nomor Telepon', value: emp.whatsapp || emp.phone ? `+62 **** ${(emp.whatsapp || emp.phone).slice(-4)}` : '—' },
-          { icon: <HiCurrencyDollar size={18}/>, label: locale === 'en' ? 'Bank Account' : 'Rekening Bank', value: emp.bank_account?.bank_name ? `${emp.bank_account.bank_name} - ****${String(emp.bank_account.account_number).slice(-4)}` : '—' },
-          { icon: <HiUsers size={18}/>, label: locale === 'en' ? 'Emergency Contact' : 'Kontak Darurat', value: emp.emergency_contact?.name ? `${emp.emergency_contact.name} **** ${emp.emergency_contact.phone?.slice(-4) || ''}` : '—' },
-          { icon: <HiCalendarDays size={18}/>, label: locale === 'en' ? 'Start Date' : 'Mulai Kerja', value: emp.join_date || '—' },
-        ].map((row, i, arr) => (
-          <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,71,171,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}>{row.icon}</div>
-            <span style={{ fontSize: 13, color: 'var(--muted)', flex: 1 }}>{row.label}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textAlign: 'right' }}>{row.value}</span>
-            <HiLockClosed size={13} style={{ color: 'var(--muted)', flexShrink: 0, opacity: 0.5 }} />
+          { icon: <HiShieldCheck size={15} />, label: 'NIK', value: emp.nip ? `NIK-****${emp.nip.slice(-4)}` : '-' },
+          { icon: <HiEnvelope size={15} />, label: locale === 'en' ? 'Email' : 'Email', value: emp.email ? emp.email.replace(/(.{2}).*(@.*)/, '$1***$2') : '-' },
+          { icon: <HiPhone size={15} />, label: locale === 'en' ? 'Phone' : 'Telepon', value: emp.whatsapp || emp.phone ? `+62 **** ${(emp.whatsapp || emp.phone).slice(-4)}` : '-' },
+          { icon: <HiCurrencyDollar size={15} />, label: locale === 'en' ? 'Bank' : 'Bank', value: emp.bank_account?.bank_name ? `${emp.bank_account.bank_name} · ****${String(emp.bank_account.account_number).slice(-4)}` : '-' },
+          { icon: <HiUsers size={15} />, label: locale === 'en' ? 'Emergency' : 'Darurat', value: emp.emergency_contact?.name ? `${emp.emergency_contact.name}` : '-' },
+          { icon: <HiCalendarDays size={15} />, label: locale === 'en' ? 'Start Date' : 'Mulai Kerja', value: emp.join_date || '-' },
+        ].map((row) => (
+          <div key={row.label} className="ep-lock-row">
+            <div className="ep-lock-icon">{row.icon}</div>
+            <span className="ep-lock-label">{row.label}</span>
+            <span className="ep-lock-value">{row.value}</span>
+            <HiLockClosed size={11} style={{ color: 'var(--muted)', flexShrink: 0, opacity: 0.45 }} />
           </div>
         ))}
       </div>
 
-      {/* ── Pengaturan Section ── */}
-      <div className="emp-card" style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}>{locale === 'en' ? 'Settings' : 'Pengaturan'}</div>
-        {/* Dark Mode Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,71,171,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}><HiMoon size={18}/></div>
-          <span style={{ fontSize: 13, color: 'var(--text)', flex: 1, fontWeight: 500 }}>{locale === 'en' ? 'Dark Mode' : 'Mode Gelap'}</span>
-          <button onClick={() => { const dm = localStorage.getItem('hrisync_dark_mode') !== 'true'; localStorage.setItem('hrisync_dark_mode', dm); document.documentElement.setAttribute('data-theme', dm ? 'dark' : 'light'); }} style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: document.documentElement.getAttribute('data-theme') === 'dark' ? 'var(--primary)' : 'var(--border)', position: 'relative', transition: 'background 0.25s', flexShrink: 0 }}>
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: document.documentElement.getAttribute('data-theme') === 'dark' ? 23 : 3, transition: 'left 0.25s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
-          </button>
-        </div>
-        {/* Notifications */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,71,171,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}><HiBellAlert size={18}/></div>
-          <span style={{ fontSize: 13, color: 'var(--text)', flex: 1, fontWeight: 500 }}>{locale === 'en' ? 'Notifications' : 'Notifikasi'}</span>
-          <button style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: 'var(--primary)', position: 'relative', flexShrink: 0 }}>
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: 23, boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
-          </button>
-        </div>
-        {/* Language */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,71,171,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}><HiGlobeAlt size={18}/></div>
-          <span style={{ fontSize: 13, color: 'var(--text)', flex: 1, fontWeight: 500 }}>{locale === 'en' ? 'Language' : 'Bahasa'}</span>
+      {/* -- Pengaturan Section -- */}
+      <div className="emp-card ep-quick-card">
+        <div className="ep-quick-title">{locale === 'en' ? 'Quick Settings' : 'Pengaturan Cepat'}</div>
+        <div className="ep-quick-row">
+          <div className="ep-lock-icon"><HiMoon size={15} /></div>
+          <span className="ep-quick-row-label">{locale === 'en' ? 'Dark Mode' : 'Mode Gelap'}</span>
           <button
-            onClick={toggleLocale}
+            type="button"
+            className="emp-settings__toggle"
             style={{
-              display: 'flex', alignItems: 'center', gap: 0,
-              borderRadius: 16, overflow: 'hidden',
-              border: '1.5px solid var(--border)', background: 'var(--bg)',
-              cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
-              padding: 0, height: 28, flexShrink: 0,
+              background: document.documentElement.getAttribute('data-theme') === 'dark' ? 'var(--primary)' : 'var(--border)',
+              width: 42,
+              height: 24,
             }}
+            onClick={() => {
+              const dm = localStorage.getItem('hrisync_dark_mode') !== 'true';
+              localStorage.setItem('hrisync_dark_mode', dm);
+              document.documentElement.setAttribute('data-theme', dm ? 'dark' : 'light');
+            }}
+            aria-label="Dark mode"
           >
-            <span style={{ padding: '0 9px', height: '100%', display: 'flex', alignItems: 'center', background: locale === 'id' ? 'var(--primary)' : 'transparent', color: locale === 'id' ? '#fff' : 'var(--muted)', transition: 'all 0.2s' }}>ID</span>
-            <span style={{ padding: '0 9px', height: '100%', display: 'flex', alignItems: 'center', background: locale === 'en' ? 'var(--primary)' : 'transparent', color: locale === 'en' ? '#fff' : 'var(--muted)', transition: 'all 0.2s' }}>EN</span>
+            <span
+              className="emp-settings__toggle-knob"
+              style={{
+                width: 18,
+                height: 18,
+                left: document.documentElement.getAttribute('data-theme') === 'dark' ? 21 : 3,
+              }}
+            />
           </button>
         </div>
-        {/* Security */}
-        <div onClick={() => navigate('/app/settings')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0', cursor: 'pointer' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,71,171,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}><HiShieldCheck size={18}/></div>
-          <span style={{ fontSize: 13, color: 'var(--text)', flex: 1, fontWeight: 500 }}>{locale === 'en' ? 'Account Security' : 'Keamanan Akun'}</span>
+        <div className="ep-quick-row">
+          <div className="ep-lock-icon"><HiGlobeAlt size={15} /></div>
+          <span className="ep-quick-row-label">{locale === 'en' ? 'Language' : 'Bahasa'}</span>
+          <button type="button" onClick={toggleLocale} className="ep-lang-pill">
+            <span className={locale === 'id' ? 'is-on' : ''}>ID</span>
+            <span className={locale === 'en' ? 'is-on' : ''}>EN</span>
+          </button>
+        </div>
+        <div className="ep-quick-row" role="button" tabIndex={0} onClick={() => navigate('/app/settings')} onKeyDown={(e) => e.key === 'Enter' && navigate('/app/settings')}>
+          <div className="ep-lock-icon"><HiShieldCheck size={15} /></div>
+          <span className="ep-quick-row-label">{locale === 'en' ? 'All Settings' : 'Semua Pengaturan'}</span>
           <HiChevronDown size={14} style={{ color: 'var(--muted)', transform: 'rotate(-90deg)', flexShrink: 0 }} />
         </div>
       </div>
 
-      {/* ── TABS (hidden, for deeper access) ── */}
-      <div style={{ display: 'flex', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: 4, marginBottom: 16, border: '1px solid var(--border)', overflowX: 'auto' }}>
-        {TABS.map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-            flex: '0 0 auto', minWidth: 64, padding: '10px 8px', borderRadius: 'var(--radius-sm)', border: 'none',
-            background: activeTab === tab.key ? 'var(--primary)' : 'transparent',
-            color: activeTab === tab.key ? '#fff' : 'var(--muted)',
-            fontWeight: 600, fontSize: 13, cursor: 'pointer', transition: 'all 0.2s ease',
-          }}>
+      {/* -- Tabs -- */}
+      <div className="ep-tabs" role="tablist">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            className={'ep-tab' + (activeTab === tab.key ? ' is-active' : '')}
+            onClick={() => setActiveTab(tab.key)}
+          >
             {tab.label}
           </button>
         ))}
@@ -551,7 +595,7 @@ export default function EmpProfile() {
                     <div style={{ fontSize: 11, color: 'var(--muted)' }}>{new Date(d.created_at).toLocaleDateString()}</div>
                   </div>
                 </div>
-                <a href={d.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontSize: 12, fontWeight: 600 }}>{locale === 'en' ? 'View' : 'Lihat'}</a>
+                <DocLink docRef={d.url} title="Lihat" className="" style={{ color: 'var(--primary)', fontSize: 12, fontWeight: 600 }}>{locale === 'en' ? 'View' : 'Lihat'}</DocLink>
               </div>
             )) : (
               <div className="profile-info-value empty" style={{ padding: '8px 0' }}>{locale === 'en' ? 'No documents yet' : 'Belum ada dokumen'}</div>
@@ -588,17 +632,17 @@ export default function EmpProfile() {
           <div className="emp-card" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
               <div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)' }}>{leaveBalance}</div>
+                <div className="info-card-value primary">{leaveBalance}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{locale === 'en' ? 'Remaining' : 'Sisa'}</div>
               </div>
               <div style={{ width: 1, background: 'var(--border)' }} />
               <div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--danger)' }}>{emp.leave_used || 0}</div>
+                <div className="info-card-value danger">{emp.leave_used || 0}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{locale === 'en' ? 'Used' : 'Terpakai'}</div>
               </div>
               <div style={{ width: 1, background: 'var(--border)' }} />
               <div>
-                <div style={{ fontSize: 28, fontWeight: 800 }}>{emp.leave_quota || 0}</div>
+                <div className="info-card-value">{emp.leave_quota || 0}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{locale === 'en' ? 'Total' : 'Total'}</div>
               </div>
             </div>
@@ -616,7 +660,7 @@ export default function EmpProfile() {
               ))}
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)', fontSize: 13 }}>{locale === 'en' ? 'No leave history yet' : 'Belum ada riwayat cuti'}</div>
+            <div style={{ textAlign: 'center', padding: 14, color: 'var(--muted)', fontSize: 13 }}>{locale === 'en' ? 'No leave history yet' : 'Belum ada riwayat cuti'}</div>
           )}
         </div>
       )}
@@ -624,17 +668,17 @@ export default function EmpProfile() {
       {/* DOCS TAB */}
       {activeTab === 'docs' && (
         <div>
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{locale === 'en' ? 'Upload New Document' : 'Unggah Dokumen Baru'}</div>
-            <div style={{ display: 'grid', gap: 10 }}>
-              {['KTP', 'NPWP', 'Ijazah', 'Paklaring', 'Sertifikat', 'SKS (Surat Keterangan Sehat)'].map(type => (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{locale === 'en' ? 'Upload New Document' : 'Unggah Dokumen Baru'}</div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {['KTP', 'NPWP', 'Ijazah', 'Paklaring', 'Sertifikat', 'SKS'].map((type) => (
                 <FileUploader key={type} employeeId={emp.id} type={type} onUploadSuccess={handleUploadSuccess} />
               ))}
             </div>
           </div>
           {docs.length > 0 ? (
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{locale === 'en' ? 'Document List' : 'Daftar Dokumen'}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{locale === 'en' ? 'Document List' : 'Daftar Dokumen'}</div>
               <div style={{ display: 'grid', gap: 8 }}>
                 {docs.map(d => (
                   <div key={d.id} style={{ padding: '12px 14px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
@@ -647,14 +691,14 @@ export default function EmpProfile() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: statusColor(d.status), textTransform: 'uppercase' }}>{d.status}</span>
-                      <a href={d.url} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontSize: 12 }}>{locale === 'en' ? 'View' : 'Lihat'}</a>
+                      <DocLink docRef={d.url} title="Lihat" className="" style={{ color: 'var(--primary)', fontSize: 12 }}>{locale === 'en' ? 'View' : 'Lihat'}</DocLink>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: 14, color: 'var(--muted)', fontSize: 13 }}>
               {locale === 'en' ? 'No documents uploaded yet' : 'Belum ada dokumen yang diunggah'}
             </div>
           )}
@@ -664,7 +708,7 @@ export default function EmpProfile() {
       {/* TICKETS TAB */}
       {activeTab === 'tickets' && (
         <div>
-          <button className="profile-request-btn" style={{ marginTop: 0, marginBottom: 16 }} onClick={() => setSheetOpen(true)}>
+          <button className="profile-request-btn" style={{ marginTop: 0, marginBottom: 12 }} onClick={() => setSheetOpen(true)}>
             <HiChatBubbleLeftRight size={14} /> {locale === 'en' ? 'Create Helpdesk Ticket' : 'Buat Tiket Helpdesk'}
           </button>
           {tickets.length > 0 ? (
@@ -680,7 +724,7 @@ export default function EmpProfile() {
               ))}
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--muted)', fontSize: 13 }}>{locale === 'en' ? 'No tickets yet' : 'Belum ada tiket'}</div>
+            <div style={{ textAlign: 'center', padding: 14, color: 'var(--muted)', fontSize: 13 }}>{locale === 'en' ? 'No tickets yet' : 'Belum ada tiket'}</div>
           )}
         </div>
       )}
@@ -689,91 +733,92 @@ export default function EmpProfile() {
       {activeTab === 'face' && (
         <div>
           {!showFaceRegSheet ? (
-            <div className="emp-card" style={{ marginBottom: 14 }}>
-              {/* Status header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <div style={{
-                  width: 52, height: 52, borderRadius: '50%',
-                  background: hasFaceReg ? 'linear-gradient(135deg,#22c55e,#16a34a)' : 'linear-gradient(135deg,#f59e0b,#d97706)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: hasFaceReg ? '0 4px 14px rgba(34,197,94,0.35)' : '0 4px 14px rgba(245,158,11,0.35)',
-                  flexShrink: 0,
-                }}>
-                  {hasFaceReg ? <HiCheck size={22} color="#fff" strokeWidth={3} /> : <HiCamera size={22} color="#fff" />}
+            <div className="emp-card ep-face-card">
+              <div className="ep-face-status">
+                <div className={'ep-face-badge' + (hasFaceReg ? ' is-ok' : ' is-warn')}>
+                  {hasFaceReg
+                    ? <HiCheck size={16} color="#fff" strokeWidth={2.5} />
+                    : <HiCamera size={16} color="#fff" />}
                 </div>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 800 }}>
+                <div className="ep-face-status-text">
+                  <div className="ep-face-title">
                     {hasFaceReg
                       ? (locale === 'en' ? 'Face ID Active' : 'Face ID Aktif')
                       : (locale === 'en' ? 'Face ID Not Registered' : 'Face ID Belum Terdaftar')}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                  <div className="ep-face-sub">
                     {hasFaceReg
-                      ? (locale === 'en' ? `${faceCount} angle(s) registered · Attendance secured` : `${faceCount} sudut wajah terdaftar · Absensi terlindungi`)
-                      : (locale === 'en' ? 'Register your face to enable secure attendance' : 'Daftarkan wajah untuk absensi yang aman')}
+                      ? (locale === 'en'
+                        ? `${faceCount} angle(s) registered · Attendance secured`
+                        : `${faceCount} sudut wajah · Absensi terlindungi`)
+                      : (locale === 'en'
+                        ? 'Register your face for secure attendance'
+                        : 'Daftarkan wajah untuk absensi aman')}
                   </div>
                 </div>
               </div>
 
-              {/* Feature list */}
-              <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
+              <div className="ep-face-features">
                 {[
-                  { ok: hasFaceReg, label: locale === 'en' ? 'Face Recognition (128-point AI)' : 'Pengenalan Wajah (AI 128-titik)' },
-                  { ok: hasFaceReg, label: locale === 'en' ? 'Liveness Detection (3 challenges)' : 'Deteksi Keaktifan (3 tantangan)' },
-                  { ok: true, label: locale === 'en' ? 'Multi-layer GPS verification' : 'Verifikasi GPS berlapis' },
-                  { ok: true, label: locale === 'en' ? 'Anti-Fake GPS Trust Score' : 'Skor Kepercayaan Anti-Fake GPS' },
+                  { ok: hasFaceReg, label: locale === 'en' ? 'Face recognition (AI)' : 'Pengenalan wajah (AI)' },
+                  { ok: hasFaceReg, label: locale === 'en' ? 'Liveness detection' : 'Deteksi keaktifan' },
+                  { ok: true, label: locale === 'en' ? 'Multi-layer GPS' : 'Verifikasi GPS berlapis' },
+                  { ok: true, label: locale === 'en' ? 'Anti-spoof trust score' : 'Skor anti-spoof GPS' },
                 ].map((f, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                    <span style={{ color: f.ok ? '#22c55e' : 'var(--muted)', fontWeight: 700 }}>{f.ok ? '✓' : '○'}</span>
-                    <span style={{ color: f.ok ? 'var(--text)' : 'var(--muted)' }}>{f.label}</span>
+                  <div key={i} className={'ep-face-feature' + (f.ok ? ' is-ok' : '')}>
+                    <span className="ep-face-feature-mark" aria-hidden>
+                      {f.ok ? <HiCheck size={12} strokeWidth={2.5} /> : '·'}
+                    </span>
+                    <span>{f.label}</span>
                   </div>
                 ))}
               </div>
 
-              {/* Privacy note */}
-              <div style={{ padding: '10px 12px', background: 'rgba(99,102,241,0.06)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.15)', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', marginBottom: 4 }}> {locale === 'en' ? 'Privacy First' : 'Privasi Utama'}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
+              <div className="ep-face-privacy">
+                <div className="ep-face-privacy-title">
+                  {locale === 'en' ? 'Privacy first' : 'Privasi utama'}
+                </div>
+                <div className="ep-face-privacy-body">
                   {locale === 'en'
-                    ? 'Face data is stored as mathematical vectors (128 numbers), not photos. Processing is done on-device. Your biometric data never leaves your phone.'
-                    : 'Data wajah disimpan sebagai angka matematis (128 nilai), bukan foto. Pemrosesan dilakukan di perangkat. Data biometrik tidak pernah dikirim ke server.'}
+                    ? 'Face data is stored as mathematical vectors, not photos. On-device processing only.'
+                    : 'Data wajah disimpan sebagai vektor angka, bukan foto. Pemrosesan di perangkat.'}
                 </div>
               </div>
 
-              {/* Register / Re-register button */}
               <button
+                type="button"
+                className="ep-face-cta"
                 onClick={() => setShowFaceRegSheet(true)}
-                style={{
-                  width: '100%', padding: '14px 20px',
-                  background: hasFaceReg ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'linear-gradient(135deg,#3b82f6,#0047ab)',
-                  color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
-                  fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
-                  boxShadow: '0 4px 14px rgba(59,130,246,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
               >
-                <HiCamera size={16} />
+                <HiCamera size={15} />
                 {hasFaceReg
-                  ? (locale === 'en' ? 'Update Face Registration' : 'Perbarui Registrasi Wajah')
-                  : (locale === 'en' ? 'Register Face Now' : 'Daftar Wajah Sekarang')}
+                  ? (locale === 'en' ? 'Update Face ID' : 'Perbarui Face ID')
+                  : (locale === 'en' ? 'Register Face' : 'Daftar Wajah')}
               </button>
             </div>
           ) : (
             <div className="emp-card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button onClick={() => setShowFaceRegSheet(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex' }}>
-                  <HiXMark size={20} />
+              <div className="ep-face-sheet-head">
+                <button type="button" className="ep-face-sheet-back" onClick={() => setShowFaceRegSheet(false)}>
+                  <HiXMark size={18} />
                 </button>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{locale === 'en' ? 'Face ID Registration' : 'Registrasi Face ID'}</div>
+                <div className="ep-face-sheet-title">
+                  {locale === 'en' ? 'Face ID Registration' : 'Registrasi Face ID'}
+                </div>
               </div>
-              <div style={{ padding: 16 }}>
+              <div style={{ padding: 12 }}>
                 <FaceRegistration
                   employeeId={emp.id}
                   employeeName={emp.name}
                   locale={locale}
                   onComplete={async (descriptors) => {
                     setHasFaceReg(true);
-                    setFaceCount(descriptors.length);
+                    setFaceCount(descriptors?.length || 3);
+                    // Refresh count from DB when possible
+                    try {
+                      const { data } = await getEmployeeFaceDescriptors(emp.id);
+                      if (data?.length) setFaceCount(data.length);
+                    } catch { /* keep local count */ }
                     setShowFaceRegSheet(false);
                   }}
                   onClose={() => setShowFaceRegSheet(false)}
@@ -824,7 +869,7 @@ export default function EmpProfile() {
                   { label: locale === 'en' ? 'Min 8 characters' : 'Min 8 karakter', ok: newPassword.length >= 8 },
                   { label: locale === 'en' ? 'Min 1 uppercase letter' : 'Min 1 huruf kapital', ok: /[A-Z]/.test(newPassword) },
                   { label: locale === 'en' ? 'Min 1 number' : 'Min 1 angka', ok: /[0-9]/.test(newPassword) },
-                  { label: locale === 'en' ? 'Min 1 special char' : 'Min 1 karakter spesial', ok: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) },
+                  { label: locale === 'en' ? 'Min 1 special char' : 'Min 1 karakter spesial', ok: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPassword) },
                 ].map((r, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: r.ok ? 'var(--success)' : 'var(--muted)' }}>
                     <span>{r.ok ? '\u2713' : '\u25cf'}</span> {r.label}
@@ -919,25 +964,25 @@ export default function EmpProfile() {
       </BottomSheet>
     </div>
 
-      {/* ── QUICK EDIT SHEET (name / jabatan / telepon only) ── */}
+      {/* -- QUICK EDIT SHEET (name / jabatan / telepon only) -- */}
       {quickEditOpen && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', animation: 'fadeIn 0.2s ease' }}
           onClick={e => e.target === e.currentTarget && setQuickEditOpen(false)}
         >
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: '24px 24px 0 0', padding: '24px 20px 40px', width: '100%', maxWidth: 480, boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: '18px 18px 0 0', padding: '16px 16px 28px', width: '100%', maxWidth: 480, boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)', margin: '0 auto 20px' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <div style={{ fontSize: 17, fontWeight: 800 }}>{locale === 'en' ? 'Edit Profile' : 'Edit Profil'}</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{locale === 'en' ? 'Edit Profile' : 'Edit Profil'}</div>
               <button onClick={() => setQuickEditOpen(false)} style={{ background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--muted)', width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <HiXMark size={18} />
               </button>
             </div>
-            <div style={{ fontSize: 12, color: '#D97706', marginBottom: 20, padding: '8px 12px', background: 'rgba(245,158,11,0.07)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 12, color: '#D97706', marginBottom: 14, padding: '8px 12px', background: 'rgba(245,158,11,0.07)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <HiLockClosed size={11} />
               {locale === 'en' ? 'Only Name, Position, and Phone can be changed by employees.' : 'Hanya Nama, Jabatan, dan Telepon yang dapat diubah oleh karyawan.'}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 14 }}>
               {[
                 { label: locale === 'en' ? 'Full Name' : 'Nama Lengkap', val: qeName, set: setQeName, type: 'text', ph: 'Nama lengkap' },
                 { label: locale === 'en' ? 'Position / Job Title' : 'Jabatan', val: qePosition, set: setQePosition, type: 'text', ph: 'Staff, Senior Engineer...' },
@@ -955,7 +1000,7 @@ export default function EmpProfile() {
                 {locale === 'en' ? 'Cancel' : 'Batal'}
               </button>
               <button onClick={handleQuickEditSave} disabled={qeSaving || !qeName}
-                style={{ flex: 2, padding: '13px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#0047AB,#2563eb)', color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14, cursor: qeSaving || !qeName ? 'not-allowed' : 'pointer', opacity: qeSaving || !qeName ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                style={{ flex: 2, padding: '13px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#635BFF,#4F46E5)', color: '#fff', fontFamily: 'inherit', fontWeight: 600, fontSize: 14, cursor: qeSaving || !qeName ? 'not-allowed' : 'pointer', opacity: qeSaving || !qeName ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 {qeSaving
                   ? <><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> {locale === 'en' ? 'Saving...' : 'Menyimpan...'}</>
                   : <><HiCheck size={16} /> {locale === 'en' ? 'Save Changes' : 'Simpan'}</>}
@@ -967,3 +1012,4 @@ export default function EmpProfile() {
     </>
   );
 }
+

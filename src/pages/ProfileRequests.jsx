@@ -55,8 +55,6 @@ export default function ProfileRequests() {
  const [rejectNote, setRejectNote] = useState('');
  const [rejectLoading, setRejectLoading] = useState(false);
 
- useEffect(() => { fetchRequests(); }, [filter]);
-
  const fetchRequests = async () => {
  setLoading(true);
  const { data } = await getAllUpdateRequests(filter || undefined);
@@ -64,14 +62,16 @@ export default function ProfileRequests() {
  setLoading(false);
  };
 
+ useEffect(() => { fetchRequests(); }, [filter]);
+
  // Realtime: auto-refresh when any request changes
- useRealtimeTable('profile_update_requests', fetchRequests);
+ useRealtimeTable('profile_update_requests', fetchRequests, { companyId: currentUser?.company_id });
 
  const handleApprove = async (req) => {
  setActionLoading(req.id);
  const { error } = await approveRequest(req.id, employee?.id);
  if (error) {
- alert('Gagal menyetujui: ' + error.message);
+ console.error('[ProfileRequests] Approve error:', error.message);
  }
  await fetchRequests();
  setActionLoading(null);
@@ -94,7 +94,7 @@ export default function ProfileRequests() {
  const rejected = requests.filter(r => r.status === 'rejected').length;
 
  const getInitials = (name) => (name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
- const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+ const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
  const getFieldLabel = (req) => req.field_label || fieldLabels[req.field_name] || req.field_name || 'Informasi Umum';
 
  return (
@@ -106,7 +106,7 @@ export default function ProfileRequests() {
  className="form-select"
  value={filter}
  onChange={e => setFilter(e.target.value)}
- style={{ maxWidth: 160, padding: '9px 12px', fontSize: 13 }}
+ style={{ maxWidth: 160 }}
  >
  <option value="pending"> Menunggu</option>
  <option value="approved"> Disetujui</option>
@@ -116,19 +116,19 @@ export default function ProfileRequests() {
  </div>
 
  {/* Stats */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
+ <div className="stats-grid">
  {[
  { label: 'Menunggu', value: pending, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', icon: <FiClock /> },
  { label: 'Disetujui', value: approved, color: '#16A34A', bg: 'rgba(22,163,74,0.08)', icon: <FiCheck /> },
  { label: 'Ditolak', value: rejected, color: '#DC2626', bg: 'rgba(220,38,38,0.08)', icon: <FiX /> },
- { label: 'Total', value: requests.length, color: '#0047AB', bg: 'rgba(0,71,171,0.06)', icon: <FiUser /> },
+ { label: 'Total', value: requests.length, color: '#635BFF', bg: 'rgba(99,91,255,0.06)', icon: <FiUser /> },
  ].map(s => (
- <div key={s.label} style={{ background: 'var(--surface)', borderRadius: 14, border: '1px solid var(--border)', padding: '16px 20px', boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
- <span style={{ color: s.color, fontSize: 16, padding: '6px', borderRadius: 8, background: s.bg }}>{s.icon}</span>
- <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>{s.label}</span>
+ <div key={s.label} className="info-card">
+ <div className="info-card-header">
+ <span style={{ color: s.color, padding: '6px', borderRadius: 8, background: s.bg }}>{s.icon}</span>
+ <span className="info-card-label">{s.label}</span>
  </div>
- <div style={{ fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>
+ <div className="info-card-value" style={{ color: s.color }}>{s.value}</div>
  </div>
  ))}
  </div>
@@ -145,10 +145,10 @@ export default function ProfileRequests() {
  <tr>
  <th>Karyawan</th>
  <th>Field</th>
- <th>Nilai Lama → Baru</th>
+ <th>Nilai Lama &rarr; Baru</th>
  <th>Tanggal</th>
  <th>Status</th>
- <th style={{ textAlign: 'center' }}>Aksi</th>
+ <th className="td-center">Aksi</th>
  </tr>
  </thead>
  <tbody>
@@ -158,47 +158,47 @@ export default function ProfileRequests() {
  <tr key={req.id}>
  {/* Employee */}
  <td>
- <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+ <div className="btn-icon-row">
  {req.employees?.photo_url ? (
- <img src={req.employees.photo_url} alt="" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', border: '2px solid var(--border)' }} />
+ <img src={req.employees.photo_url} alt="" className="employee-avatar sm" style={{ borderRadius: 10, objectFit: 'cover', border: '2px solid var(--border)' }} />
  ) : (
- <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
+ <div className="employee-avatar sm" style={{ borderRadius: 10, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>
  {getInitials(req.employees?.name)}
  </div>
  )}
  <div>
- <div style={{ fontWeight: 700, fontSize: 13 }}>{req.employees?.name || '—'}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{req.employees?.nip} · {req.employees?.division || req.employees?.position || '-'}</div>
+ <div className="td-semibold td-sm">{req.employees?.name || '-'}</div>
+ <div className="td-muted-sm">{req.employees?.nip}  {req.employees?.division || req.employees?.position || '-'}</div>
  </div>
  </div>
  </td>
 
  {/* Field */}
  <td>
- <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+ <span className="badge-outline td-sm td-semibold">
  {getFieldLabel(req)}
  </span>
  </td>
 
  {/* Values */}
- <td style={{ fontSize: 12, maxWidth: 260 }}>
+ <td className="td-sm td-truncate" style={{ maxWidth: 260 }}>
  {req.old_value && (
- <div style={{ color: 'var(--muted)', textDecoration: 'line-through', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
- {req.old_value.length > 50 ? req.old_value.slice(0, 50) + '…' : req.old_value}
+ <div className="td-muted-sm td-truncate" style={{ textDecoration: 'line-through', marginBottom: 2 }}>
+ {req.old_value.length > 50 ? req.old_value.slice(0, 50) + '...' : req.old_value}
  </div>
  )}
- <div style={{ fontWeight: 600, color: '#16A34A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
- {req.new_value?.length > 60 ? req.new_value.slice(0, 60) + '…' : req.new_value}
+ <div className="td-truncate" style={{ fontWeight: 600, color: '#16A34A' }}>
+ {req.new_value?.length > 60 ? req.new_value.slice(0, 60) + '...' : req.new_value}
  </div>
  </td>
 
  {/* Date */}
- <td style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+ <td className="td-muted-sm" style={{ whiteSpace: 'nowrap' }}>
+ <div className="btn-icon-row" style={{ gap: 5 }}>
  <FiCalendar size={11} /> {formatDate(req.requested_at)}
  </div>
  {req.reviewed_at && (
- <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+ <div className="td-muted-sm" style={{ marginTop: 2 }}>
  Review: {formatDate(req.reviewed_at)}
  </div>
  )}
@@ -206,11 +206,11 @@ export default function ProfileRequests() {
 
  {/* Status */}
  <td>
- <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, whiteSpace: 'nowrap' }}>
+ <span className="badge" style={{ color: st.color, background: st.bg, whiteSpace: 'nowrap' }}>
  {st.label}
  </span>
  {req.review_note && req.status === 'rejected' && (
- <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, fontStyle: 'italic' }}>
+ <div className="td-muted-sm" style={{ marginTop: 3, fontStyle: 'italic' }}>
  "{req.review_note}"
  </div>
  )}
@@ -218,34 +218,29 @@ export default function ProfileRequests() {
 
  {/* Actions */}
  <td>
- <div style={{ display: 'flex', gap: 5, justifyContent: 'center' }}>
+ <div className="btn-icon-row" style={{ justifyContent: 'center' }}>
  {/* Detail */}
  <button
  className="action-btn"
  title="Lihat Detail"
  onClick={() => setDetailReq(req)}
- style={{ color: 'var(--primary)' }}
- >
- <FiEye size={14} />
+ ><FiEye size={14} />
  </button>
 
  {req.status === 'pending' && (
  <>
  <button
- className="action-btn"
+ className="action-btn success"
  title="Setujui & Terapkan"
  disabled={actionLoading === req.id}
  onClick={() => handleApprove(req)}
- style={{ color: '#16A34A' }}
- >
- <FiCheck size={14} />
+ ><FiCheck size={14} />
  </button>
  <button
- className="action-btn"
+ className="action-btn danger"
  title="Tolak"
  disabled={actionLoading === req.id}
  onClick={() => { setRejectModal(req); setRejectNote(''); }}
- style={{ color: '#DC2626' }}
  >
  <FiX size={14} />
  </button>
@@ -271,7 +266,7 @@ export default function ProfileRequests() {
  </div>
  <div className="modal-body" style={{ display: 'grid', gap: 14 }}>
  {/* Employee info */}
- <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px', background: 'var(--bg)', borderRadius: 12 }}>
+ <div className="btn-icon-row" style={{ gap: 14, padding: '14px', background: 'var(--bg)', borderRadius: 12 }}>
  {detailReq.employees?.photo_url ? (
  <img src={detailReq.employees.photo_url} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }} />
  ) : (
@@ -280,39 +275,39 @@ export default function ProfileRequests() {
  </div>
  )}
  <div>
- <div style={{ fontWeight: 700, fontSize: 15 }}>{detailReq.employees?.name || '—'}</div>
- <div style={{ fontSize: 12, color: 'var(--muted)' }}>{detailReq.employees?.nip} · {detailReq.employees?.division}</div>
+ <div className="td-semibold" style={{ fontSize: 15 }}>{detailReq.employees?.name || '-'}</div>
+ <div className="td-muted-sm">{detailReq.employees?.nip}  {detailReq.employees?.division}</div>
  </div>
  </div>
 
  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
  <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 10 }}>
- <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 4 }}>Field</div>
- <div style={{ fontWeight: 700, fontSize: 13 }}>{getFieldLabel(detailReq)}</div>
+ <div className="section-label" style={{ marginBottom: 4 }}>Field</div>
+ <div className="td-semibold td-sm">{getFieldLabel(detailReq)}</div>
  </div>
  <div style={{ padding: '12px 14px', background: 'var(--bg)', borderRadius: 10 }}>
- <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 4 }}>Tanggal Request</div>
- <div style={{ fontWeight: 600, fontSize: 13 }}>{formatDate(detailReq.requested_at)}</div>
+ <div className="section-label" style={{ marginBottom: 4 }}>Tanggal Request</div>
+ <div className="td-semibold td-sm">{formatDate(detailReq.requested_at)}</div>
  </div>
  </div>
 
  {detailReq.old_value && (
  <div style={{ padding: '12px 14px', background: 'rgba(220,38,38,0.04)', border: '1px solid rgba(220,38,38,0.12)', borderRadius: 10 }}>
- <div style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', textTransform: 'uppercase', marginBottom: 6 }}>Nilai Lama</div>
- <div style={{ fontSize: 13, color: 'var(--text)' }}>{detailReq.old_value}</div>
+ <div className="section-label td-danger-bold" style={{ marginBottom: 6 }}>Nilai Lama</div>
+ <div className="td-sm">{detailReq.old_value}</div>
  </div>
  )}
  <div style={{ padding: '12px 14px', background: 'rgba(22,163,74,0.05)', border: '1px solid rgba(22,163,74,0.15)', borderRadius: 10 }}>
- <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', textTransform: 'uppercase', marginBottom: 6 }}>Nilai Baru yang Diminta</div>
- <div style={{ fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>{detailReq.new_value}</div>
+ <div className="section-label" style={{ color: '#16A34A', marginBottom: 6 }}>Nilai Baru yang Diminta</div>
+ <div className="td-sm" style={{ whiteSpace: 'pre-wrap' }}>{detailReq.new_value}</div>
  </div>
 
  {detailReq.review_note && (
- <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10, display: 'flex', gap: 8 }}>
+ <div className="btn-icon-row" style={{ gap: 8, padding: '12px 14px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10 }}>
  <FiMessageSquare size={14} style={{ color: '#D97706', flexShrink: 0, marginTop: 2 }} />
  <div>
- <div style={{ fontSize: 10, fontWeight: 700, color: '#D97706', textTransform: 'uppercase', marginBottom: 4 }}>Catatan Review</div>
- <div style={{ fontSize: 13 }}>{detailReq.review_note}</div>
+ <div className="section-label" style={{ color: '#D97706', marginBottom: 4 }}>Catatan Review</div>
+ <div className="td-sm">{detailReq.review_note}</div>
  </div>
  </div>
  )}
@@ -331,8 +326,7 @@ export default function ProfileRequests() {
  className="btn-primary"
  disabled={actionLoading === detailReq.id}
  onClick={() => handleApprove(detailReq)}
- >
- <FiCheck size={14} /> {actionLoading === detailReq.id ? 'Memproses...' : 'Setujui & Terapkan'}
+ ><FiCheck size={14} /> {actionLoading === detailReq.id ? 'Memproses...' : 'Setujui & Terapkan'}
  </button>
  </>
  )}
@@ -346,17 +340,17 @@ export default function ProfileRequests() {
  <div className="modal-overlay" onClick={() => setRejectModal(null)}>
  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
  <div className="modal-header">
- <h2 style={{ color: '#DC2626' }}><FiX style={{ marginRight: 8 }} /> Tolak Permintaan</h2>
+ <h2 className="td-danger-bold"><FiX style={{ marginRight: 8 }} /> Tolak Permintaan</h2>
  <button className="modal-close" onClick={() => setRejectModal(null)}><FiX /></button>
  </div>
  <div className="modal-body">
- <div style={{ marginBottom: 16, padding: '12px 14px', background: 'rgba(220,38,38,0.04)', borderRadius: 10, border: '1px solid rgba(220,38,38,0.12)', fontSize: 13 }}>
- <div style={{ fontWeight: 700, marginBottom: 4 }}>{getFieldLabel(rejectModal)}</div>
- <div style={{ color: 'var(--muted)', fontSize: 12 }}>dari: {rejectModal.employees?.name}</div>
+ <div className="mb" style={{ padding: '12px 14px', background: 'rgba(220,38,38,0.04)', borderRadius: 10, border: '1px solid rgba(220,38,38,0.12)' }}>
+ <div className="td-semibold mb-sm">{getFieldLabel(rejectModal)}</div>
+ <div className="td-muted-sm">dari: {rejectModal.employees?.name}</div>
  <div style={{ marginTop: 8, color: '#16A34A', fontWeight: 600 }}>Nilai baru: {rejectModal.new_value}</div>
  </div>
  <div className="form-group">
- <label className="form-label">Alasan Penolakan <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(opsional)</span></label>
+ <label className="form-label">Alasan Penolakan <span className="td-muted-sm" style={{ fontWeight: 400 }}>(opsional)</span></label>
  <textarea
  className="form-textarea"
  placeholder="Contoh: Data tidak sesuai format, silakan coba lagi..."
@@ -379,3 +373,5 @@ export default function ProfileRequests() {
  </div>
  );
 }
+
+

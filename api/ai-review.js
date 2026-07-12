@@ -7,18 +7,13 @@
  * POST /api/ai-review
  * Body: { prompt: string, maxTokens?: number }
  */
+import { applyCors } from './_shared/cors.js';
+
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Server-side (no VITE_ prefix)
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const ALLOWED_ORIGINS = [
-  'https://hrisloka.id',
-  'https://www.hrisloka.id',
-  'https://hrisloka.com',
-  'https://www.hrisloka.com',
-];
 
 // Rate limit: max 20 AI requests per IP per minute (prevent quota drain)
 const rateLimitMap = new Map();
@@ -36,33 +31,28 @@ function checkRateLimit(ip) {
   return entry.count <= max;
 }
 
-// Verify Supabase JWT token
+// Verify Supabase JWT token — FAIL CLOSED.
 async function verifyAuth(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
   const token = authHeader.split(' ')[1];
-  if (!SUPABASE_URL) return true; // Skip if not configured (dev mode)
+  if (!token) return false;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return false;
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_SERVICE_KEY || token },
+      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_SERVICE_KEY },
     });
-    return res.ok;
+    if (!res.ok) return false;
+    const user = await res.json();
+    if (user?.email_confirmed_at || user?.confirmed_at) return true;
+    return false;
   } catch {
     return false;
   }
 }
 
 export default async function handler(req, res) {
-  // CORS
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Vary', 'Origin');
+  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

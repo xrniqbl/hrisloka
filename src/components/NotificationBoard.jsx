@@ -6,6 +6,7 @@ import {
   HiGift,
   HiInbox
 } from 'react-icons/hi2';
+import { useAuth } from '../context/AuthContext';
 import * as employeeService from '../services/employeeService';
 import * as leaveService from '../services/leaveService';
 import './NotificationBoard.css';
@@ -18,12 +19,13 @@ function getContractDaysRemaining(contractEnd) {
 export default function NotificationBoard() {
  const [notifications, setNotifications] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { employee } = useAuth();
 
  useEffect(() => {
  async function load() {
  try {
- const { data: empData } = await employeeService.getAllEmployees();
- const { data: leaveData } = await leaveService.getAllLeaves();
+ const { data: empData } = await employeeService.getAllEmployees(undefined, employee?.company_id);
+ const { data: leaveData } = await leaveService.getAllLeaves(undefined, employee?.company_id);
  const employees = empData || [];
  const leaves = leaveData || [];
  const items = [];
@@ -36,7 +38,7 @@ export default function NotificationBoard() {
  const bdStr = emp.birth_date || emp.birthDate;
  if (!bdStr) return;
  const bd = new Date(bdStr);
- // Check both this year and next year to handle year boundary (e.g., Dec 31 → Jan 2)
+ // Check both this year and next year to handle year boundary (e.g., Dec 31 &rarr; Jan 2)
  for (const yr of [now.getFullYear(), now.getFullYear() + 1]) {
  const bday = new Date(yr, bd.getMonth(), bd.getDate());
  if (bday >= now && bday <= weekFromNow) {
@@ -73,7 +75,7 @@ export default function NotificationBoard() {
  items.push({
  type: 'leave',
  icon: <HiInbox />,
- text: <><strong>{emp.name}</strong> mengajukan {typeLabel} ({leave.days} hari) — menunggu approval</>,
+ text: <><strong>{emp.name}</strong> mengajukan {typeLabel} ({leave.days} hari) - menunggu approval</>,
  time: leave.start_date || leave.startDate,
  });
  }
@@ -99,7 +101,7 @@ export default function NotificationBoard() {
  )}
  </span>
  </div>
- <div className="notification-list">
+ <div className="notification-list" role="log" aria-live="polite">
  {loading ? (
  <div style={{ padding: '24px 20px' }}>
  {Array.from({ length: 3 }).map((_, i) => (

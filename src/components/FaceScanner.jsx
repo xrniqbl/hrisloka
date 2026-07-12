@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { requestWakeLock, releaseWakeLock } from '../lib/wakeLock';
 import {
   HiArrowPath,
@@ -7,7 +7,7 @@ import {
 } from 'react-icons/hi2';
 import {
   loadModels, detectSingleFace, extractLandmarkData,
-  checkFacePosition, matchFace, isModelsLoaded
+  checkFacePosition, matchFace, isModelsLoaded, assessFaceQuality
 } from '../lib/faceRecognition';
 import {
   generateChallenges, evaluateChallenge, checkMicroMovement,
@@ -20,12 +20,12 @@ import './FaceScanner.css';
  *
  * Props:
  *   mode: 'verify' (attendance) | 'register' (enrollment)
- *   registeredFaces: Array<{descriptor, label}> — for 'verify' mode
+ *   registeredFaces: Array<{descriptor, label}> - for 'verify' mode
  *   onSuccess(result): called when face verified or registered
  *   onError(message): called on failure
  *   onCapture(descriptor, imageData): for 'register' mode
  *   locale: 'id' | 'en'
- *   strict: boolean — strict liveness (3 challenges)
+ *   strict: boolean - strict liveness (3 challenges)
  */
 export default function FaceScanner({
   mode = 'verify',
@@ -48,7 +48,7 @@ export default function FaceScanner({
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadMessage, setLoadMessage] = useState('');
   const [ovalState, setOvalState] = useState('idle'); // idle | scanning | challenge | success | error
-  const [instruction, setInstruction] = useState(t('Initializing…', 'Memulai…'));
+  const [instruction, setInstruction] = useState(t('Initializing', 'Memulai'));
   const [subText, setSubText] = useState('');
   const [faceDetected, setFaceDetected] = useState(false);
   const [faceDots, setFaceDots] = useState([]);
@@ -60,7 +60,6 @@ export default function FaceScanner({
   const [completedChallenges, setCompletedChallenges] = useState([]);
 
   // Result
-  const [_resultData, _setResultData] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
   const [cameraError, setCameraError] = useState('');
@@ -69,7 +68,7 @@ export default function FaceScanner({
     return locale === 'en' ? en : id;
   }
 
-  // ── Load models & camera ───────────────────────────────────
+  // -- Load models & camera -----------------------------------
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -102,7 +101,7 @@ export default function FaceScanner({
     };
   }, []);
 
-  // ── Start scanning loop once camera ready ─────────────────
+  // -- Start scanning loop once camera ready -----------------
   useEffect(() => {
     if (phase === 'ready' || phase === 'scanning' || phase === 'challenge') {
       const newChallenges = generateChallenges(strict);
@@ -114,7 +113,7 @@ export default function FaceScanner({
     return () => cancelAnimationFrame(rafRef.current);
   }, [phase === 'ready']);
 
-  // ── Camera helpers ─────────────────────────────────────────
+  // -- Camera helpers -----------------------------------------
   const startCamera = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
@@ -137,7 +136,7 @@ export default function FaceScanner({
     }
   }, []);
 
-  // ── Main detection loop ───────────────────────────────────
+  // -- Main detection loop -----------------------------------
   const startDetectionLoop = useCallback(() => {
     let scanningFrames = 0;
     let challengePhase = false;
@@ -216,7 +215,7 @@ export default function FaceScanner({
           setPhase('scanning');
           scanningFrames++;
           const progress = Math.min(100, Math.round((scanningFrames / 15) * 100));
-          setInstruction(t('Scanning face…', 'Memindai wajah…'));
+          setInstruction(t('Scanning face', 'Memindai wajah'));
           setSubText(`${progress}%`);
 
           if (scanningFrames >= 15) {
@@ -232,7 +231,7 @@ export default function FaceScanner({
           // Challenge phase
           const challenge = challenges[currentIdx];
           if (!challenge) {
-            // All challenges done — verify
+            // All challenges done - verify
             await doVerify(detection, passedChallenges);
             return;
           }
@@ -252,7 +251,7 @@ export default function FaceScanner({
                 await doVerify(detection, passedChallenges);
                 return;
               } else {
-                showNextChallenge(currentIdx, passedChallenges);
+                showNextChallenge(currentIdx);
               }
             }
           } else {
@@ -269,7 +268,7 @@ export default function FaceScanner({
     rafRef.current = requestAnimationFrame(loop);
   }, [challenges, mode, registeredFaces]);
 
-  const showNextChallenge = (idx, _passed) => {
+  const showNextChallenge = (idx) => {
     const ch = challenges[idx];
     if (!ch) return;
     setInstruction(`${ch.icon} ${locale === 'en' ? ch.instructionEn : ch.instruction}`);
@@ -278,7 +277,7 @@ export default function FaceScanner({
     // Timeout: if challenge not passed in time, restart from idx
     clearTimeout(challengeTimeoutRef.current);
     challengeTimeoutRef.current = setTimeout(() => {
-      setInstruction(t('⚠️ Too slow. Try again.', '⚠️ Terlalu lama. Coba lagi.'));
+      setInstruction(t('š Too slow. Try again.', 'š Terlalu lama. Coba lagi.'));
       setSubText('');
       // Reset to first challenge
       setCurrentChallengeIdx(0);
@@ -290,7 +289,7 @@ export default function FaceScanner({
     cancelAnimationFrame(rafRef.current);
     setPhase('verifying');
     setShowScanLine(false);
-    setInstruction(t('Verifying identity…', 'Memverifikasi identitas…'));
+    setInstruction(t('Verifying identity', 'Memverifikasi identitas'));
     setSubText('');
 
     // Passive liveness check
@@ -303,7 +302,7 @@ export default function FaceScanner({
 
     if (!overallLiveness && strict) {
       setOvalState('error');
-      setInstruction(t('❌ Liveness check failed. Try again.', '❌ Verifikasi keaktifan gagal. Coba lagi.'));
+      setInstruction(t('Œ Liveness check failed. Try again.', 'Œ Verifikasi keaktifan gagal. Coba lagi.'));
       onError?.('Liveness check failed');
       setTimeout(() => setPhase('ready'), 3000);
       return;
@@ -312,6 +311,13 @@ export default function FaceScanner({
     if (mode === 'verify') {
       // Match against registered faces
       const descriptor = detection.descriptor;
+      if (!registeredFaces?.length) {
+        setOvalState('error');
+        setInstruction(t('No Face ID enrolled. Register first.', 'Face ID belum terdaftar. Daftarkan dulu.'));
+        onError?.('No registered face data');
+        setTimeout(() => setPhase('ready'), 3000);
+        return;
+      }
       const matchResult = matchFace(descriptor, registeredFaces);
 
       if (matchResult.match) {
@@ -323,8 +329,8 @@ export default function FaceScanner({
         });
       } else {
         setOvalState('error');
-        setInstruction(t('❌ Face not recognized. Try again.', '❌ Wajah tidak dikenali. Coba lagi.'));
-        onError?.(`Face not recognized (distance: ${matchResult.distance.toFixed(3)})`);
+        setInstruction(t('Face not recognized. Try again.', 'Wajah tidak dikenali. Coba lagi.'));
+        onError?.(`Face not recognized (distance: ${Number(matchResult.distance || 0).toFixed(3)})`);
         setTimeout(() => setPhase('ready'), 3000);
       }
     } else if (mode === 'register') {
@@ -356,7 +362,7 @@ export default function FaceScanner({
     setFaceDots([]);
     setShowSuccess(true);
     setShowParticles(true);
-    setInstruction(t('✅ Verified!', '✅ Terverifikasi!'));
+    setInstruction(t('œ... Verified!', 'œ... Terverifikasi!'));
     setSubText('');
     if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
     await new Promise(r => setTimeout(r, 1500));
@@ -373,14 +379,14 @@ export default function FaceScanner({
     setPhase('ready');
   };
 
-  // ── Particle positions ────────────────────────────────────
+  // -- Particle positions ------------------------------------
   const particles = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * Math.PI * 2;
     const dist = 80 + Math.random() * 40;
     return { tx: `${Math.cos(angle) * dist}px`, ty: `${Math.sin(angle) * dist}px`, delay: `${i * 0.05}s` };
   });
 
-  // ── Render ────────────────────────────────────────────────
+  // -- Render ------------------------------------------------
 
   if (cameraError) {
     return (
@@ -401,7 +407,7 @@ export default function FaceScanner({
         <div className="face-scanner__progress">
           <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', borderRadius: '50%', margin: '0 auto 16px', border: '2px solid var(--border)' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}></div>
+              <div style={{ fontSize: 20, marginBottom: 8 }}></div>
               <div style={{ fontSize: 13, fontWeight: 700 }}>{loadProgress}%</div>
             </div>
           </div>
@@ -452,7 +458,7 @@ export default function FaceScanner({
           {showSuccess && (
             <div className="face-scanner__success-overlay">
               <div className="face-scanner__success-check">
-                <HiCheck size={30} color="#fff" strokeWidth={3} />
+                <HiCheck size={18} color="#fff" strokeWidth={2.5} />
               </div>
             </div>
           )}
@@ -519,3 +525,5 @@ export default function FaceScanner({
     </div>
   );
 }
+
+

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { FiEdit2, FiX, FiCheck, FiUsers, FiChevronDown, FiChevronRight, FiSearch } from 'react-icons/fi';
 import * as employeeService from '../services/employeeService';
-import { supabase } from '../lib/supabase';
+import * as departmentService from '../services/departmentService';
 import { useAuth } from '../context/AuthContext';
 import { isFounder, getRole } from '../lib/rbac';
 import { TableSkeleton } from '../components/SkeletonLoader';
@@ -25,13 +25,11 @@ export default function OrgChart() {
  const role = getRole(currentEmp);
  const isSuperAdmin = role === 'super_admin' || isFounder(user, currentEmp);
 
- useEffect(() => { fetchData(); }, []);
-
  const fetchData = async () => {
  setLoading(true);
  const [empRes, deptRes] = await Promise.all([
  employeeService.getAllEmployees(undefined, employee?.company_id),
- supabase.from('departments').select('id, name, code').eq('is_active', true).order('name'),
+ departmentService.getActiveDepartments(employee?.company_id),
  ]);
  setEmployees(empRes.data || []);
  setDepartments(deptRes.data || []);
@@ -41,9 +39,11 @@ export default function OrgChart() {
  setLoading(false);
  };
 
+ useEffect(() => { fetchData(); }, []);
+
  // Realtime updates
- useRealtimeTable('employees', fetchData);
- useRealtimeTable('departments', fetchData);
+ useRealtimeTable('employees', fetchData, { companyId: employee?.company_id });
+ useRealtimeTable('departments', fetchData, { companyId: employee?.company_id });
 
  const buildOrgTree = () => {
  const divisions = {};
@@ -103,12 +103,12 @@ export default function OrgChart() {
  };
 
  const getInitials = (name) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
- const divColors = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#F97316'];
+ const divColors = ['#635BFF', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#F97316'];
 
  if (loading) return (
  <div>
  <PageHeader titleKey="orgchart.title" subtitleKey="orgchart.subtitle" />
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: 24 }}>
+ <div className="chart-card">
  <TableSkeleton rows={6} cols={4} />
  </div>
  </div>
@@ -123,7 +123,7 @@ export default function OrgChart() {
  <div>
  <div className="page-header">
  <h1><FiUsers style={{ marginRight: 10 }} />Struktur Organisasi</h1>
- <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+ <div className="page-header-actions">
  <div style={{ position: 'relative' }}>
  <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', fontSize: 14 }} />
  <input
@@ -135,13 +135,11 @@ export default function OrgChart() {
  />
  </div>
  {/* View toggle */}
- <div style={{ display: 'flex', borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+ <div className="view-toggle">
  {['tree', 'grid'].map(v => (
  <button key={v} onClick={() => setView(v)} style={{
- padding: '8px 14px', fontSize: 12, fontWeight: 600,
  background: view === v ? 'var(--primary)' : 'var(--surface)',
  color: view === v ? '#fff' : 'var(--text-secondary)',
- border: 'none', cursor: 'pointer', textTransform: 'capitalize',
  }}>{v === 'tree' ? 'Tree' : 'Grid'}</button>
  ))}
  </div>
@@ -150,37 +148,28 @@ export default function OrgChart() {
 
  {/* Superadmin note */}
  {isSuperAdmin && (
- <div style={{
- marginBottom: 16, padding: '10px 16px', borderRadius: 10,
- background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)',
- fontSize: 12.5, color: '#3B82F6', fontWeight: 600,
- display: 'flex', alignItems: 'center', gap: 8,
- }}>
+ <div className="info-banner mb">
  <FiEdit2 size={13} />
  Klik ikon edit di setiap karyawan untuk mengatur jabatan, divisi, dan atasan langsung mereka.
- Untuk mengelola daftar departemen, pergi ke menu <strong style={{ marginLeft: 4 }}>Karyawan ? Departemen</strong>.
+ Untuk mengelola daftar departemen, pergi ke menu <strong>Karyawan ? Departemen</strong>.
  </div>
  )}
 
  {/* Company top node */}
- <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
- <div style={{
- background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
- color: '#fff', borderRadius: 'var(--radius-md)', padding: '16px 40px',
- textAlign: 'center', boxShadow: 'var(--shadow-md)',
- }}>
- <div style={{ fontSize: 18, fontWeight: 700 }}>{companyName}</div>
- <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{employees.length} Karyawan - {divisionNames.length} Divisi</div>
+ <div className="chart-company-node-wrap">
+ <div className="chart-company-node">
+ <div className="chart-company-name">{companyName}</div>
+ <div className="chart-company-meta">{employees.length} Karyawan - {divisionNames.length} Divisi</div>
  </div>
  </div>
 
- <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
- <div style={{ width: 2, height: 24, background: 'var(--border)' }} />
+ <div className="chart-connector-wrap">
+ <div className="chart-connector-line" />
  </div>
 
  {/* Tree View */}
  {view === 'tree' ? (
- <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 8 }}>
+ <div className="chart-tree-list">
  {filteredDivs.map((divName, idx) => {
  const color = divColors[idx % divColors.length];
  const emps = search
@@ -193,58 +182,45 @@ export default function OrgChart() {
  const managers = emps.filter(isManager);
  const members = emps.filter(e => !isManager(e));
  return (
- <div key={divName} style={{ marginBottom: 12 }}>
- <div onClick={() => toggleDiv(divName)} style={{
- background: 'var(--surface)', borderRadius: 'var(--radius-md)',
- border: '1px solid var(--border)', padding: '14px 20px',
- display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
- boxShadow: 'var(--shadow-xs)', borderLeft: `4px solid ${color}`,
- transition: 'all 0.15s',
- }}>
+ <div key={divName} className="mb-sm">
+ <div onClick={() => toggleDiv(divName)} className="chart-div-row" style={{ borderLeft: `4px solid ${color}` }}>
  {expandedDivs[divName] ? <FiChevronDown style={{ color }} /> : <FiChevronRight style={{ color }} />}
  <FiUsers style={{ color, fontSize: 18 }} />
- <div style={{ flex: 1 }}>
- <div style={{ fontWeight: 700, fontSize: 14 }}>{divName}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{emps.length} orang</div>
+ <div className="chart-div-info">
+ <div className="td-semibold">{divName}</div>
+ <div className="td-muted-sm">{emps.length} orang</div>
  </div>
- <div style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, color }}>
+ <div className="chart-div-badge" style={{ background: `${color}15`, color }}>
  {managers.length} lead - {members.length} staff
  </div>
  </div>
 
  {expandedDivs[divName] && (
- <div style={{ marginLeft: 30, borderLeft: `2px solid ${color}20`, paddingLeft: 20, paddingTop: 8 }}>
+ <div className="chart-emp-list" style={{ borderLeft: `2px solid ${color}20` }}>
  {[...managers, ...members].map(emp => (
- <div key={emp.id} style={{
- display: 'flex', alignItems: 'center', gap: 12,
- padding: isManager(emp) ? '10px 16px' : '8px 16px',
- background: 'var(--surface)', borderRadius: 'var(--radius-sm)',
- border: '1px solid var(--border)', marginBottom: 6,
- boxShadow: isManager(emp) ? 'var(--shadow-xs)' : 'none',
- }}>
- <div style={{ width: isManager(emp) ? 8 : 6, height: isManager(emp) ? 8 : 6, borderRadius: '50%', background: isManager(emp) ? color : `${color}60`, flexShrink: 0 }} />
- <div style={{
- width: isManager(emp) ? 38 : 32, height: isManager(emp) ? 38 : 32, borderRadius: '50%',
+ <div key={emp.id} className={`chart-emp-row${isManager(emp) ? ' is-manager' : ''}`}>
+ <div className="chart-emp-dot" style={{ background: isManager(emp) ? color : `${color}60`, width: isManager(emp) ? 8 : 6, height: isManager(emp) ? 8 : 6 }} />
+ <div className="chart-emp-avatar" style={{
+ width: isManager(emp) ? 38 : 32,
+ height: isManager(emp) ? 38 : 32,
  background: isManager(emp) ? `${color}20` : 'var(--primary-light)',
  color: isManager(emp) ? color : 'var(--primary)',
- display: 'flex', alignItems: 'center', justifyContent: 'center',
- fontWeight: 700, fontSize: isManager(emp) ? 13 : 11, flexShrink: 0,
+ fontSize: isManager(emp) ? 13 : 11,
  border: isManager(emp) ? `2px solid ${color}` : 'none',
  }}>
  {getInitials(emp.name)}
  </div>
- <div style={{ flex: 1, minWidth: 0 }}>
- <div style={{ fontWeight: isManager(emp) ? 700 : 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+ <div className="chart-emp-info">
+ <div className="td-semibold btn-icon-row">
  {emp.name}
- {isManager(emp) && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: `${color}15`, color, fontWeight: 700 }}>LEAD</span>}
+ {isManager(emp) && <span className="chart-lead-badge" style={{ background: `${color}15`, color }}>LEAD</span>}
  </div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+ <div className="td-muted-sm">
  {emp.position || 'Belum diatur'}
  </div>
  </div>
  {isSuperAdmin && (
- <button onClick={() => handleEdit(emp)} className="action-btn" title="Edit jabatan & divisi">
- <FiEdit2 size={13} />
+ <button onClick={() => handleEdit(emp)} className="action-btn" title="Edit jabatan & divisi" aria-label="Edit jabatan dan divisi"><FiEdit2 size={13} />
  </button>
  )}
  </div>
@@ -257,35 +233,40 @@ export default function OrgChart() {
  </div>
  ) : (
  /* Grid View */
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20, marginTop: 16 }}>
+ <div className="stats-grid mb">
  {filteredDivs.map((divName, idx) => {
  const color = divColors[idx % divColors.length];
  const emps = divisions[divName];
  return (
- <div key={divName} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
- <div style={{ background: `linear-gradient(135deg, ${color}15, ${color}08)`, padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+ <div key={divName} className="chart-card chart-card-overflow">
+ <div className="chart-card-header" style={{ background: `linear-gradient(135deg, ${color}15, ${color}08)` }}>
  <FiUsers style={{ color }} />
  <div>
- <div style={{ fontWeight: 700, fontSize: 14, color }}>{divName}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{emps.length} orang</div>
+ <div className="td-semibold chart-div-name" style={{ color }}>{divName}</div>
+ <div className="td-muted-sm">{emps.length} orang</div>
  </div>
  </div>
- <div style={{ padding: '8px 0' }}>
+ <div className="chart-grid-body">
  {emps.map(emp => (
- <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border-light)' }}>
- <div style={{ width: 34, height: 34, borderRadius: '50%', background: isManager(emp) ? `${color}20` : 'var(--primary-light)', color: isManager(emp) ? color : 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0, border: isManager(emp) ? `2px solid ${color}` : 'none' }}>
+ <div key={emp.id} className="chart-grid-emp-row">
+ <div className="chart-emp-avatar" style={{
+ width: 34, height: 34,
+ background: isManager(emp) ? `${color}20` : 'var(--primary-light)',
+ color: isManager(emp) ? color : 'var(--primary)',
+ fontSize: 12,
+ border: isManager(emp) ? `2px solid ${color}` : 'none',
+ }}>
  {getInitials(emp.name)}
  </div>
- <div style={{ flex: 1, minWidth: 0 }}>
- <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+ <div className="chart-emp-info">
+ <div className="td-truncate td-semibold td-sm">
  {emp.name}
- {isManager(emp) && <span style={{ fontSize: 9, marginLeft: 6, padding: '1px 6px', borderRadius: 10, background: `${color}15`, color, fontWeight: 700 }}>LEAD</span>}
+ {isManager(emp) && <span className="chart-lead-badge" style={{ background: `${color}15`, color }}>LEAD</span>}
  </div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{emp.position || 'Belum diatur'}</div>
+ <div className="td-muted-sm">{emp.position || 'Belum diatur'}</div>
  </div>
  {isSuperAdmin && (
- <button onClick={() => handleEdit(emp)} className="action-btn" title="Edit jabatan & divisi">
- <FiEdit2 size={14} />
+ <button onClick={() => handleEdit(emp)} className="action-btn" title="Edit jabatan & divisi" aria-label="Edit jabatan dan divisi"><FiEdit2 size={14} />
  </button>
  )}
  </div>
@@ -298,8 +279,10 @@ export default function OrgChart() {
  )}
 
  {employees.length === 0 && (
- <div className="info-card" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
- Belum ada data karyawan. Tambahkan karyawan di menu <strong>Karyawan ? Data Karyawan</strong>.
+ <div className="ep-empty-wrap">
+ <div className="ep-empty-icon"><FiUsers /></div>
+ <div className="ep-empty-title">Belum ada data karyawan</div>
+ <div className="ep-empty-desc">Tambahkan karyawan di menu <strong>Karyawan &rarr; Data Karyawan</strong>.</div>
  </div>
  )}
 
@@ -312,7 +295,7 @@ export default function OrgChart() {
  <button className="modal-close" onClick={() => setEditingEmp(null)}><FiX /></button>
  </div>
  <div className="modal-body">
- <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)', fontSize: 12.5, color: '#3B82F6' }}>
+ <div className="info-banner mb-sm">
  Perubahan ini akan langsung terlihat di Struktur Organisasi secara realtime.
  </div>
  <div className="form-grid">
@@ -350,7 +333,7 @@ export default function OrgChart() {
  </div>
  <div className="modal-footer">
  <button className="btn-secondary" onClick={() => setEditingEmp(null)}>Batal</button>
- <button className="btn-primary" onClick={handleSave}><FiCheck /> Simpan Perubahan</button>
+ <button className="btn-primary" onClick={handleSave} aria-label="Simpan perubahan"><FiCheck /> Simpan Perubahan</button>
  </div>
  </div>
  </div>
@@ -358,3 +341,12 @@ export default function OrgChart() {
  </div>
  );
 }
+
+
+
+
+
+
+
+
+

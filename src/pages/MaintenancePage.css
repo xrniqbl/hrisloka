@@ -8,7 +8,7 @@
   position: relative;
   overflow: hidden;
   background: #050914;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter Tight', system-ui, sans-serif;
 }
 
 /* ── Background ── */
@@ -32,7 +32,7 @@
   height: 520px;
   top: -120px;
   left: -100px;
-  background: radial-gradient(circle, #1d4ed8 0%, #0047ab 100%);
+  background: radial-gradient(circle, #4338CA 0%, #635BFF 100%);
   animation-delay: 0s;
   animation-duration: 14s;
 }
@@ -126,7 +126,7 @@
   box-shadow:
     0 0 0 1px rgba(255,255,255,0.06) inset,
     0 32px 80px rgba(0,0,0,0.5),
-    0 4px 20px rgba(0,71,171,0.12);
+    0 4px 20px rgba(99,91,255,0.12);
   text-align: center;
 }
 
@@ -256,7 +256,7 @@
 .mnt-progress-fill {
   height: 100%;
   width: 40%;
-  background: linear-gradient(90deg, #1d4ed8, #6366f1, #818cf8);
+  background: linear-gradient(90deg, #4338CA, #6366f1, #818cf8);
   border-radius: 4px;
   animation: mntProgress 3s ease-in-out infinite alternate;
   box-shadow: 0 0 12px rgba(99,102,241,0.6);

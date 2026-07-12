@@ -23,7 +23,7 @@ function SkeletonPage() {
         <div><SkeletonBox w={200} h={28} /><SkeletonBox w={320} h={14} style={{ marginTop: 8 }} /></div>
         <SkeletonBox w={150} h={38} style={{ borderRadius: 10 }} />
       </div></div>
-      <div className="fp-stats" style={{ marginBottom: 24 }}>
+      <div className="fp-stats mb">
         {[1,2,3,4].map(i => <div key={i} className="fp-stat"><SkeletonBox w="55%" h={28} style={{ marginBottom: 8 }} /><SkeletonBox w="70%" h={12} /></div>)}
       </div>
       <div className="fp-card"><div className="fp-table-wrap"><table className="fp-table">
@@ -136,8 +136,8 @@ export default function FounderBackup() {
   const uniqueTables = ['all', ...new Set(deletedRecords.map(r => r.table_name))];
   const filteredDeleted = tableFilter === 'all' ? deletedRecords : deletedRecords.filter(r => r.table_name === tableFilter);
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-  const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+  const fmtDate = (d) => d ? new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+  const fmtDateOnly = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
 
   return (
     <div>
@@ -159,7 +159,7 @@ export default function FounderBackup() {
       </div>
 
       {/* Stats */}
-      <div className="fp-stats" style={{ marginBottom: 24 }}>
+      <div className="fp-stats mb">
         <div className="fp-stat">
           <div className="fp-stat-value">{snapshots.length}</div>
           <div className="fp-stat-label">Total Snapshots</div>
@@ -193,7 +193,7 @@ export default function FounderBackup() {
             display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px',
             borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
             fontWeight: 600, fontSize: 13,
-            background: activeTab === t.key ? 'var(--primary, #0047AB)' : 'none',
+            background: activeTab === t.key ? 'var(--primary, #635BFF)' : 'none',
             color: activeTab === t.key ? '#fff' : 'var(--text-secondary)',
           }}>
             {t.icon} {t.label}
@@ -205,7 +205,7 @@ export default function FounderBackup() {
       {activeTab === 'snapshots' && (
         <>
           {/* Export tool */}
-          <div className="fp-card" style={{ marginBottom: 20 }}>
+          <div className="fp-card mb-sm">
             <div className="fp-card-header"><span className="fp-card-title">Export Data CSV</span></div>
             <div className="fp-card-body">
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -249,15 +249,15 @@ export default function FounderBackup() {
                     </td></tr>
                   ) : snapshots.map(s => (
                     <tr key={s.id} onClick={() => setSelectedSnapshot(selectedSnapshot?.id === s.id ? null : s)} style={{ cursor: 'pointer' }}>
-                      <td style={{ fontWeight: 600 }}>{fmtDateOnly(s.snapshot_date)}</td>
-                      <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>ID {s.company_id}</td>
+                      <td className="td-semibold">{fmtDateOnly(s.snapshot_date)}</td>
+                      <td className="td-muted-sm">ID {s.company_id}</td>
                       <td>{s.employees_json ? JSON.parse(JSON.stringify(s.employees_json)).length || 0 : 0} karyawan</td>
                       <td>{s.attendance_count ?? 0}</td>
                       <td>{s.leave_count ?? 0}</td>
-                      <td style={{ fontSize: 12 }}>
+                      <td className="td-sm">
                         {s.payroll_summary?.total_records
                           ? `${s.payroll_summary.total_records} records`
-                          : '—'}
+                          : '-'}
                       </td>
                       <td>
                         <span style={{ fontSize: 11, color: '#6366F1', fontWeight: 600 }}>
@@ -272,9 +272,9 @@ export default function FounderBackup() {
 
             {/* Snapshot detail drawer */}
             {selectedSnapshot && (
-              <div style={{ padding: '16px 20px', borderTop: '2px solid var(--primary, #0047AB)', background: 'rgba(99,102,241,0.04)' }}>
+              <div style={{ padding: '16px 20px', borderTop: '2px solid var(--primary, #635BFF)', background: 'rgba(99,102,241,0.04)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: 'var(--text)' }}>
-                  Detail Snapshot — {fmtDateOnly(selectedSnapshot.snapshot_date)}
+                  Detail Snapshot - {fmtDateOnly(selectedSnapshot.snapshot_date)}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
@@ -302,7 +302,7 @@ export default function FounderBackup() {
       {activeTab === 'deleted' && (
         <div className="fp-card">
           <div className="fp-card-header">
-            <span className="fp-card-title">Recycle Bin — Data Terhapus</span>
+            <span className="fp-card-title">Recycle Bin - Data Terhapus</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {uniqueTables.map(t => (
                 <button key={t} onClick={() => setTableFilter(t)} style={{
@@ -345,10 +345,10 @@ export default function FounderBackup() {
                       </span>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: 12 }}>#{r.record_id}</td>
-                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    <td className="td-muted-sm">
                       {r.record_data?.full_name || r.record_data?.name || `Company ${r.company_id}`}
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmtDate(r.deleted_at)}</td>
+                    <td className="td-muted-sm">{fmtDate(r.deleted_at)}</td>
                     <td>
                       <button
                         className="fp-btn fp-btn-secondary fp-btn-sm"
@@ -367,7 +367,7 @@ export default function FounderBackup() {
             </table>
           </div>
           <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-secondary)' }}>
-            ⏱ Data disimpan 90 hari · Setelah itu dihapus permanen secara otomatis
+            ⏱ Data disimpan 90 hari  Setelah itu dihapus permanen secara otomatis
           </div>
         </div>
       )}
@@ -408,14 +408,14 @@ export default function FounderBackup() {
                         {l.backup_type}
                       </span>
                     </td>
-                    <td style={{ fontSize: 12 }}>{l.companies?.name || `ID ${l.company_id}` || '—'}</td>
+                    <td className="td-sm">{l.companies?.name || `ID ${l.company_id}` || '-'}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-secondary)' }}>{l.backup_key}</td>
                     <td>
                       <span className={`fp-badge ${l.status === 'completed' ? 'active' : 'expired'}`}>
                         {l.status}
                       </span>
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmtDate(l.created_at)}</td>
+                    <td className="td-muted-sm">{fmtDate(l.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -426,3 +426,4 @@ export default function FounderBackup() {
     </div>
   );
 }
+

@@ -32,7 +32,7 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
         </div>
       </div>
       {hasStats && (
-        <div className="fp-stats" style={{ marginBottom: 24 }}>
+        <div className="fp-stats mb">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="fp-stat">
               <SkeletonBox w={40} h={40} style={{ borderRadius: 10, marginBottom: 14 }} />
@@ -62,12 +62,25 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
   );
 }
 
+const FILTER_STATUS = ['all', 'open', 'in_progress', 'resolved', 'closed'];
+const PRIORITY_COLOR = { low: '#6B7280', medium: '#F59E0B', high: '#EF4444', critical: '#DC2626' };
+const formatRelative = (d) => {
+  if (!d) return '';
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
+const formatLong = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
 export default function FounderSupport() {
   const { toast } = useToast();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  if (loading) return <SkeletonPage cols={4} rows={5} hasStats={true} />;
   const [selected, setSelected] = useState(null);
   const [replies, setReplies] = useState([]);
   const [replyText, setReplyText] = useState('');
@@ -87,6 +100,8 @@ export default function FounderSupport() {
     }
   };
   useEffect(() => { fetchData(); }, []);
+
+  if (loading) return <SkeletonPage cols={4} rows={5} hasStats={true} />;
 
   const openTicket = async (c) => {
     setSelected(c);
@@ -136,7 +151,7 @@ export default function FounderSupport() {
       </div>
 
       {/* Stats */}
-      <div className="fp-stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
+      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {[
           { label: 'Open', count: complaints.filter(c => c.status === 'open').length, cls: 'open' },
           { label: 'In Progress', count: complaints.filter(c => c.status === 'in_progress').length, cls: 'in_progress' },
@@ -202,8 +217,8 @@ export default function FounderSupport() {
                     {c.status.replace('_', ' ')}
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                  {c.companies?.name} · {c.contact_name}
+                <div className="info-card-label">
+                  {c.companies?.name}  {c.contact_name}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: PRIORITY_COLOR[c.priority], background: `${PRIORITY_COLOR[c.priority]}15`, padding: '1px 6px', borderRadius: 10 }}>
@@ -232,7 +247,7 @@ export default function FounderSupport() {
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 4 }}>{selected.subject}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                      From <strong>{selected.contact_name}</strong> ({selected.contact_email}) · {selected.companies?.name} · {formatLong(selected.created_at)}
+                      From <strong>{selected.contact_name}</strong> ({selected.contact_email})  {selected.companies?.name}  {formatLong(selected.created_at)}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>

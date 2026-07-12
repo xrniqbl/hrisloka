@@ -11,21 +11,42 @@ export async function getMyProfile(authUserId) {
   return { data, error };
 }
 
-// Get employee by email (for demo mode)
+/**
+ * Resolve employee for the current session (production-safe).
+ * Prefer email match (normalized), then auth_user_id fallback.
+ */
 export async function getEmployeeByEmail(email) {
+  const clean = String(email || '').trim().toLowerCase();
+  if (!clean) return { data: null, error: null };
+
   const { data, error } = await supabase
     .from('employees')
     .select('*')
-    .eq('email', email)
+    .eq('email', clean)
     .maybeSingle();
-  return { data, error };
+
+  if (data || error) return { data, error };
+
+  // Fallback: auth_user_id (covers email alias / case edge cases after register)
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      const byAuth = await supabase
+        .from('employees')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+      return { data: byAuth.data, error: byAuth.error };
+    }
+  } catch { /* ignore */ }
+
+  return { data: null, error: null };
 }
 
-// Get employee by ID — companyId optional for tenant-scoped admin lookups
-export async function getEmployeeById(id, companyId = null) {
-  let query = supabase.from('employees').select('*').eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.single();
+// Get employee by ID — companyId MANDATORY for tenant-scoped admin lookups
+export async function getEmployeeById(id, companyId) {
+  if (!guardCompanyId(companyId, 'getEmployeeById')) return { data: null, error: new Error('company_id required') };
+  const { data, error } = await supabase.from('employees').select('*').eq('id', id).eq('company_id', companyId).single();
   return { data, error };
 }
 
@@ -124,8 +145,12 @@ export async function getDivisions(companyId) {
 }
 
 // Update freely-editable profile fields (no HR approval needed)
-// Employee can only update their own profile
-export async function updateEmployeeDirectFields(id, fields, authUserId = null) {
+// authUserId MANDATORY — employee can only update their own profile
+export async function updateEmployeeDirectFields(id, fields, authUserId) {
+  if (!authUserId) {
+    console.warn('[TENANT GUARD] updateEmployeeDirectFields: authUserId required');
+    return { data: null, error: new Error('authUserId required') };
+  }
   const allowed = ['photo_url', 'address', 'phone', 'whatsapp', 'personal_email'];
   const safe = {};
   for (const key of Object.keys(fields)) {

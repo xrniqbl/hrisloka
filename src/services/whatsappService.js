@@ -1,4 +1,11 @@
 /**
+ * @env IS_DEV, FONNTE_TOKEN_DEV, FONNTE_TOKEN
+ */
+
+const IS_DEV = import.meta.env.DEV;
+const FONNTE_TOKEN_DEV = import.meta.env.VITE_FONNTE_TOKEN_DEV || "";
+
+/**
  * WhatsApp Notification Service
  *
  * Calls /api/send-whatsapp Vercel serverless function — token stays on server.
@@ -9,12 +16,33 @@
  * 2. Alternatively set VITE_FONNTE_TOKEN for local dev only
  */
 
-const IS_DEV = import.meta.env.DEV;
-const FONNTE_TOKEN_DEV = import.meta.env.VITE_FONNTE_TOKEN; // Dev only
+// Token is only on the server (/api/send-whatsapp). No client-side fallback.
 
 /**
  * Send WhatsApp — routes through /api/send-whatsapp in production.
  */
+
+/**
+ * Dev-only: Direct Fonnte API call (bypasses serverless function).
+ * Only used when IS_DEV && FONNTE_TOKEN_DEV are set.
+ */
+async function sendDirectFonnte(to, message) {
+  try {
+    const res = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': FONNTE_TOKEN_DEV,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ target: to, message, countryCode: '62' }),
+    });
+    const data = await res.json();
+    return { success: data.status === true, error: data.reason || null };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function sendWhatsApp(to, message) {
   if (!to) return { success: false, error: 'No phone number' };
 
@@ -38,26 +66,6 @@ export async function sendWhatsApp(to, message) {
   }
 }
 
-async function sendDirectFonnte(to, message) {
-  if (!FONNTE_TOKEN_DEV) {
-    console.warn('[WhatsApp] No VITE_FONNTE_TOKEN — message skipped');
-    return { success: false, error: 'Fonnte token not configured' };
-  }
-  const phone = to?.replace(/[\s\-\(\)]/g, '').replace(/^0/, '62').replace(/^\+/, '');
-  try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: FONNTE_TOKEN_DEV, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: phone, message, countryCode: '62' }),
-    });
-    const data = await res.json();
-    if (!data.status) throw new Error(data.reason || 'Fonnte send failed');
-    return { success: true };
-  } catch (err) {
-    console.error('[WhatsApp] Direct Fonnte failed:', err);
-    return { success: false, error: err.message };
-  }
-}
 
 // ── WA Message Templates ──────────────────────────────────────────────────────
 
@@ -143,7 +151,7 @@ _HRIS Loka — Smart HR Platform_`;
  * Check if WhatsApp service is configured.
  */
 export function isWhatsAppConfigured() {
-  return !IS_DEV || !!FONNTE_TOKEN_DEV;
+  return true; // Server handles WhatsApp sending
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
@@ -23,7 +23,7 @@ const pwRules = [
 ];
 
 /**
- * EmpResetPassword — handles the password reset flow for PWA employees.
+ * EmpResetPassword - handles the password reset flow for PWA employees.
  * This page is reached via the "reset password" email link from Supabase.
  * Supabase passes the session in the URL hash (#access_token=...).
  */
@@ -97,13 +97,13 @@ export default function EmpResetPassword() {
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg, #f0f4ff)',
-      padding: '24px 16px', fontFamily: "'Plus Jakarta Sans', sans-serif",
+      background: 'var(--bg, #F0EEFF)',
+      padding: '14px 14px', fontFamily: "'Inter Tight', sans-serif",
     }}>
       {/* Background orbs */}
       <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
-        <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(0,71,171,0.12),transparent)', top: -100, right: -80 }} />
-        <div style={{ position: 'absolute', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle,rgba(59,130,246,0.1),transparent)', bottom: 80, left: -60 }} />
+        <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,91,255,0.12),transparent)', top: -100, right: -80 }} />
+        <div style={{ position: 'absolute', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle,rgba(99,91,255,0.1),transparent)', bottom: 80, left: -60 }} />
       </div>
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 400 }}>
@@ -112,13 +112,13 @@ export default function EmpResetPassword() {
         </div>
 
         <div style={{
-          background: 'var(--surface, #fff)', borderRadius: 24,
+          background: 'var(--surface, #fff)', borderRadius: 14,
           padding: '32px 28px',
-          boxShadow: '0 20px 60px rgba(0,71,171,0.1), 0 4px 16px rgba(0,0,0,0.06)',
+          boxShadow: '0 20px 60px rgba(99,91,255,0.1), 0 4px 16px rgba(0,0,0,0.06)',
           border: '1px solid var(--border, #e5e7eb)',
         }}>
 
-          {/* ── INVALID LINK ── */}
+          {/* -- INVALID LINK -- */}
           {status === 'invalid' && (
             <div style={{ textAlign: 'center' }}>
               <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(220,38,38,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -126,20 +126,20 @@ export default function EmpResetPassword() {
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3"/>
                 </svg>
               </div>
-              <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Link Tidak Valid</h1>
+              <h1 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Link Tidak Valid</h1>
               <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 24 }}>
                 Link reset password tidak valid atau sudah kadaluarsa. Silakan minta link baru dari halaman login.
               </p>
               <button
                 onClick={() => navigate('/app/login')}
-                style={{ padding: '12px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#0047AB,#2563eb)', color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                style={{ padding: '12px 24px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#635BFF,#4F46E5)', color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
               >
                 Kembali ke Login
               </button>
             </div>
           )}
 
-          {/* ── SUCCESS ── */}
+          {/* -- SUCCESS -- */}
           {status === 'success' && (
             <div style={{ textAlign: 'center' }}>
               <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -147,38 +147,38 @@ export default function EmpResetPassword() {
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
               </div>
-              <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Password Berhasil Diubah!</h1>
+              <h1 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Password Berhasil Diubah!</h1>
               <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6 }}>
                 Password Anda telah diperbarui. Anda akan diarahkan ke halaman login dalam 3 detik...
               </p>
             </div>
           )}
 
-          {/* ── RESET FORM ── */}
+          {/* -- RESET FORM -- */}
           {(status === 'idle' || status === 'error') && (
             <>
               {/* Header */}
               <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, rgba(0,71,171,0.15), rgba(37,99,235,0.1))', border: '1.5px solid rgba(0,71,171,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0047AB" strokeWidth="2" strokeLinecap="round">
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, rgba(99,91,255,0.15), rgba(79,70,229,0.1))', border: '1.5px solid rgba(99,91,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#635BFF" strokeWidth="2" strokeLinecap="round">
                     <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
                 </div>
-                <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4, color: 'var(--text)' }}>Buat Password Baru</h1>
+                <h1 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4, color: 'var(--text)' }}>Buat Password Baru</h1>
                 <p style={{ fontSize: 13, color: 'var(--muted)' }}>Masukkan password baru untuk akun Anda</p>
               </div>
 
               {/* Session loading warning */}
               {!sessionReady && (
                 <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 14, background: 'rgba(245,158,11,0.08)', color: '#92400E', border: '1px solid rgba(245,158,11,0.2)', fontSize: 13 }}>
-                  ⏳ Memverifikasi link reset... Mohon tunggu.
+                   Memverifikasi link reset... Mohon tunggu.
                 </div>
               )}
 
               {/* Error message */}
               {errorMsg && (
                 <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 14, background: 'rgba(220,38,38,0.08)', color: '#DC2626', border: '1px solid rgba(220,38,38,0.2)', fontSize: 13 }}>
-                  ❌ {errorMsg}
+                  Œ {errorMsg}
                 </div>
               )}
 
@@ -208,12 +208,12 @@ export default function EmpResetPassword() {
                   {newPassword && (
                     <div style={{ marginTop: 8 }}>
                       <div style={{ height: 4, borderRadius: 4, background: 'var(--border)', overflow: 'hidden', marginBottom: 6 }}>
-                        <div style={{ height: '100%', width: `${pwStrength * 25}%`, background: pwStrength <= 1 ? '#ef4444' : pwStrength <= 2 ? '#f59e0b' : pwStrength <= 3 ? '#3b82f6' : '#22c55e', transition: 'all 0.3s', borderRadius: 4 }} />
+                        <div style={{ height: '100%', width: `${pwStrength * 25}%`, background: pwStrength <= 1 ? '#ef4444' : pwStrength <= 2 ? '#f59e0b' : pwStrength <= 3 ? '#635BFF' : '#22c55e', transition: 'all 0.3s', borderRadius: 4 }} />
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         {pwRules.map((r, i) => (
                           <span key={i} style={{ fontSize: 11, color: r.test(newPassword) ? '#22c55e' : 'var(--muted)', fontWeight: 600 }}>
-                            {r.test(newPassword) ? '✓' : '○'} {r.label}
+                            {r.test(newPassword) ? 'œ"' : '-‹'} {r.label}
                           </span>
                         ))}
                       </div>
@@ -248,8 +248,8 @@ export default function EmpResetPassword() {
                   disabled={loading || !isPasswordValid || newPassword !== confirmPassword || !sessionReady}
                   style={{
                     padding: '14px', borderRadius: 12, border: 'none',
-                    background: 'linear-gradient(135deg,#0047AB,#2563eb)',
-                    color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 15,
+                    background: 'linear-gradient(135deg,#635BFF,#4F46E5)',
+                    color: '#fff', fontFamily: 'inherit', fontWeight: 600, fontSize: 15,
                     cursor: 'pointer', opacity: loading || !isPasswordValid || newPassword !== confirmPassword || !sessionReady ? 0.6 : 1,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     transition: 'all 0.2s',
@@ -257,7 +257,7 @@ export default function EmpResetPassword() {
                 >
                   {loading ? (
                     <><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> Menyimpan...</>
-                  ) : '🔐 Simpan Password Baru'}
+                  ) : 'Ÿ" Simpan Password Baru'}
                 </button>
               </form>
 
@@ -265,7 +265,7 @@ export default function EmpResetPassword() {
                 onClick={() => navigate('/app/login')}
                 style={{ marginTop: 16, width: '100%', padding: '12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontFamily: 'inherit', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}
               >
-                ← Kembali ke Login
+                † Kembali ke Login
               </button>
             </>
           )}
@@ -280,3 +280,4 @@ export default function EmpResetPassword() {
     </div>
   );
 }
+

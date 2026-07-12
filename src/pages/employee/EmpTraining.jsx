@@ -44,10 +44,15 @@ export default function EmpTraining() {
     const email = user?.email || user?.user_metadata?.email;
     const { data: empData } = await getEmployeeByEmail(email);
     setEmp(empData);
-    const { data: trainingData } = await supabase
+    // Company-scoped trainings only (production multi-tenant)
+    let q = supabase
       .from('trainings')
       .select('*, training_participants(*, employees(name, division)), training_materials(*)')
       .order('start_date', { ascending: false });
+    if (empData?.company_id) {
+      q = q.eq('company_id', empData.company_id);
+    }
+    const { data: trainingData } = await q;
     setTrainings(trainingData || []);
     const allMaterials = (trainingData || []).flatMap(t =>
       (t.training_materials || []).map(m => ({ ...m, trainingTitle: t.title, trainingCategory: t.category }))
@@ -65,25 +70,25 @@ export default function EmpTraining() {
 
   if (loading) return (
     <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <div className="skeleton skeleton-text" style={{ width: 160, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 200 }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
         {[1,2,3].map(i => <div key={i} className="emp-card" style={{ padding: 14, textAlign: 'center' }}><div className="skeleton" style={{ height: 44, borderRadius: 8 }} /></div>)}
       </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 36, width: 110, borderRadius: 99 }} />)}
       </div>
       {[1,2,3].map(i => <div key={i} className="emp-card" style={{ height: 90, marginBottom: 10 }}><div className="skeleton" style={{ height: '100%', borderRadius: 8 }} /></div>)}
     </div>
   );
 
-  const catColors = { technical: '#3B82F6', soft_skill: '#10B981', compliance: '#F59E0B', leadership: '#8B5CF6', certification: '#EC4899' };
+  const catColors = { technical: '#635BFF', soft_skill: '#10B981', compliance: '#F59E0B', leadership: '#8B5CF6', certification: '#EC4899' };
   const catLabels = locale === 'en'
     ? { technical: 'Technical', soft_skill: 'Soft Skill', compliance: 'Compliance', leadership: 'Leadership', certification: 'Certification' }
     : { technical: 'Technical', soft_skill: 'Soft Skill', compliance: 'Compliance', leadership: 'Leadership', certification: 'Certification' };
-  const statusColors = { upcoming: '#3B82F6', ongoing: '#F59E0B', completed: '#16A34A', cancelled: '#DC2626' };
+  const statusColors = { upcoming: '#635BFF', ongoing: '#F59E0B', completed: '#16A34A', cancelled: '#DC2626' };
   const statusLabels = locale === 'en'
     ? { upcoming: 'Upcoming', ongoing: 'Ongoing', completed: 'Completed', cancelled: 'Cancelled' }
     : { upcoming: 'Akan Datang', ongoing: 'Berlangsung', completed: 'Selesai', cancelled: 'Dibatalkan' };
@@ -95,7 +100,7 @@ export default function EmpTraining() {
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <h1 className="emp-page-title">Training & Learning</h1>
         <p className="emp-page-subtitle">
           {locale === 'en' ? 'Your training programs and learning materials' : 'Pelatihan dan materi pembelajaran Anda'}
@@ -103,25 +108,25 @@ export default function EmpTraining() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
         <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
-          <div className="emp-stat-number" style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>{myTrainings.length}</div>
+          <div className="info-card-value primary">{myTrainings.length}</div>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{locale === 'en' ? 'My Trainings' : 'Training Saya'}</div>
         </div>
         <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
-          <div className="emp-stat-number" style={{ fontSize: 20, fontWeight: 800, color: '#16A34A' }}>
+          <div className="info-card-value success">
             {myTrainings.filter(t => t.status === 'completed').length}
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{locale === 'en' ? 'Completed' : 'Selesai'}</div>
         </div>
         <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
-          <div className="emp-stat-number" style={{ fontSize: 20, fontWeight: 800, color: '#8B5CF6' }}>{materials.length}</div>
+          <div className="emp-stat-number" style={{ fontSize: 15, fontWeight: 600, color: '#8B5CF6' }}>{materials.length}</div>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{locale === 'en' ? 'Materials' : 'Materi'}</div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="emp-chips" style={{ marginBottom: 16 }}>
+      <div className="emp-chips" style={{ marginBottom: 12 }}>
         {[
           { key: 'my', label: locale === 'en' ? 'My Trainings' : 'Training Saya', icon: <HiTrophy size={13} /> },
           { key: 'all', label: locale === 'en' ? 'All Trainings' : 'Semua Training', icon: <HiBookOpen size={13} /> },
@@ -281,3 +286,4 @@ export default function EmpTraining() {
     </div>
   );
 }
+

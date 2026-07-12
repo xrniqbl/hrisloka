@@ -1,4 +1,4 @@
-import { useAuth } from '../context/AuthContext';
+﻿import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 // Simple SVG icons (no emoji)
@@ -45,12 +45,12 @@ export default function PendingVerificationScreen() {
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg, #f0f4ff)', padding: '32px 20px',
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      background: 'var(--bg, #F0EEFF)', padding: '32px 20px',
+      fontFamily: "'Inter Tight', sans-serif",
     }}>
       {/* Background decoration */}
       <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', background: isRejected ? 'radial-gradient(circle,rgba(220,38,38,0.08),transparent)' : 'radial-gradient(circle,rgba(0,71,171,0.08),transparent)', top: -80, right: -60 }} />
+        <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', background: isRejected ? 'radial-gradient(circle,rgba(220,38,38,0.08),transparent)' : 'radial-gradient(circle,rgba(99,91,255,0.08),transparent)', top: -80, right: -60 }} />
         <div style={{ position: 'absolute', width: 200, height: 200, borderRadius: '50%', background: isRejected ? 'radial-gradient(circle,rgba(220,38,38,0.06),transparent)' : 'radial-gradient(circle,rgba(34,197,94,0.08),transparent)', bottom: 60, left: -40 }} />
       </div>
 
@@ -80,7 +80,7 @@ export default function PendingVerificationScreen() {
         </div>
 
         {/* Title */}
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>
           {isRejected ? 'Pendaftaran Ditolak' : 'Menunggu Verifikasi'}
         </h1>
 
@@ -89,6 +89,36 @@ export default function PendingVerificationScreen() {
             ? 'Maaf, pendaftaran akun Anda tidak disetujui oleh HR perusahaan.'
             : `Hai${employee?.name ? ', ' + employee.name.split(' ')[0] : ''}! Pendaftaran Anda sudah diterima dan sedang menunggu verifikasi dari HR perusahaan Anda.`}
         </p>
+
+        {!isRejected && (() => {
+          let emailHint = '';
+          try { emailHint = sessionStorage.getItem('hrisloka_reg_email_hint') || ''; } catch { /* */ }
+          if (!emailHint && !employee) {
+            return (
+              <div style={{
+                padding: '12px 14px', borderRadius: 12, marginBottom: 16, textAlign: 'left',
+                background: 'rgba(99,91,255,0.06)', border: '1px solid rgba(99,91,255,0.15)',
+                fontSize: 13, color: 'var(--text)', lineHeight: 1.5,
+              }}>
+                Jika diminta verifikasi email, buka inbox lalu konfirmasi tautan. Setelah itu login
+                kembali — status tetap menunggu HR sampai disetujui.
+              </div>
+            );
+          }
+          if (emailHint) {
+            return (
+              <div style={{
+                padding: '12px 14px', borderRadius: 12, marginBottom: 16, textAlign: 'left',
+                background: 'rgba(99,91,255,0.06)', border: '1px solid rgba(99,91,255,0.15)',
+                fontSize: 13, color: 'var(--text)', lineHeight: 1.5,
+              }}>
+                Cek email <strong>{emailHint}</strong> untuk konfirmasi akun (jika diminta), lalu login.
+                Akun tetap menunggu verifikasi HR sebelum fitur absensi aktif.
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* Rejection reason */}
         {isRejected && reason && (
@@ -139,11 +169,11 @@ export default function PendingVerificationScreen() {
         {!isRejected && (
           <div style={{
             padding: '12px 16px', borderRadius: 12, marginBottom: 24,
-            background: 'rgba(0,71,171,0.05)', border: '1px solid rgba(0,71,171,0.12)',
+            background: 'rgba(99,91,255,0.05)', border: '1px solid rgba(99,91,255,0.12)',
             fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, textAlign: 'left',
             display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
-            <span style={{ flexShrink: 0, marginTop: 1, color: '#0047AB' }}><IconMail /></span>
+            <span style={{ flexShrink: 0, marginTop: 1, color: '#635BFF' }}><IconMail /></span>
             <span>Anda akan mendapatkan notifikasi melalui <strong>email</strong> setelah akun diverifikasi.
             Jika sudah lebih dari 2 hari, hubungi HR perusahaan Anda.</span>
           </div>
@@ -154,9 +184,9 @@ export default function PendingVerificationScreen() {
           {isRejected && (
             <Link to="/app/register" style={{
               display: 'block', padding: '14px', borderRadius: 12,
-              background: 'linear-gradient(135deg,#0047AB,#2563eb)',
-              color: '#fff', fontWeight: 800, fontSize: 14, textDecoration: 'none',
-              boxShadow: '0 4px 14px rgba(0,71,171,0.35)',
+              background: 'linear-gradient(135deg,#635BFF,#4F46E5)',
+              color: '#fff', fontWeight: 600, fontSize: 14, textDecoration: 'none',
+              boxShadow: '0 4px 14px rgba(99,91,255,0.35)',
             }}>
               Daftar Ulang
             </Link>
@@ -183,3 +213,4 @@ export default function PendingVerificationScreen() {
     </div>
   );
 }
+

@@ -73,10 +73,17 @@ export default async function handler(req, res) {
       const targetDate = new Date(now);
       targetDate.setDate(targetDate.getDate() + days);
       const dateStr = targetDate.toISOString().split('T')[0];
+      const nextDay = new Date(targetDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const nextStr = nextDay.toISOString().split('T')[0];
 
-      // Get subscriptions expiring on that date
+      // Subscriptions whose expires_at falls in [targetDate 00:00, nextDay 00:00).
+      // The previous lt.<date>T23:59:59Z window excluded the last minute of the
+      // day (23:59:59–24:00:00) — a fence-post error that skipped reminders.
+      // Join subscription_plans so plan_name is populated even for rows created
+      // via the founder admin flow (which sets plan_id but not plan_name).
       const { data: expiringSubs } = await supabaseRequest(
-        `/subscriptions?status=eq.active&expires_at=gte.${dateStr}T00:00:00Z&expires_at=lt.${dateStr}T23:59:59Z&select=id,user_id,plan_name`,
+        `/subscriptions?status=eq.active&expires_at=gte.${dateStr}T00:00:00Z&expires_at=lt.${nextStr}T00:00:00Z&select=id,user_id,plan_name,subscription_plans(name)`,
       );
 
       for (const sub of expiringSubs || []) {
@@ -87,7 +94,8 @@ export default async function handler(req, res) {
         const emp = empList?.[0];
         if (!emp) continue;
 
-        const message = `⏰ *HRIS Loka — Pengingat Berlangganan*\n\nHalo, *${emp.name}*!\n\nLangganan *${sub.plan_name || 'HRIS Loka'}* Anda akan berakhir dalam *${days} hari*.\n\nPerbarui berlangganan Anda agar tidak kehilangan akses ke fitur HR.\n\n👉 Kunjungi: https://hrisloka.id/checkout\n\n_HRIS Loka — Smart HR Platform_`;
+        const planName = sub.plan_name || sub.subscription_plans?.name || 'HRIS Loka';
+        const message = `⏰ *HRIS Loka — Pengingat Berlangganan*\n\nHalo, *${emp.name}*!\n\nLangganan *${planName}* Anda akan berakhir dalam *${days} hari*.\n\nPerbarui berlangganan Anda agar tidak kehilangan akses ke fitur HR.\n\n👉 Kunjungi: https://hrisloka.id/checkout\n\n_HRIS Loka — Smart HR Platform_`;
 
         await sendWhatsApp(emp.phone, message);
         results.reminded++;

@@ -12,7 +12,7 @@ import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 
 
-const PRIORITY_COLORS = { low: '#6B7280', medium: '#3B82F6', high: '#F59E0B', critical: '#EF4444' };
+const PRIORITY_COLORS = { low: '#6B7280', medium: '#635BFF', high: '#F59E0B', critical: '#EF4444' };
 const STATUS_LABELS = { active: 'Aktif', completed: 'Selesai', on_hold: 'Ditunda' };
 
 export default function ProjectManagement() {
@@ -24,15 +24,15 @@ export default function ProjectManagement() {
  const [tab, setTab] = useState('list');
  const [modal, setModal] = useState(null); // null | 'create' | 'edit' | 'assign'
  const [selected, setSelected] = useState(null);
- const [form, setForm] = useState({ name: '', client: '', description: '', status: 'active', priority: 'medium', startDate: '', endDate: '', hourlyRate: '', color: '#2563EB' });
+ const [form, setForm] = useState({ name: '', client: '', description: '', status: 'active', priority: 'medium', startDate: '', endDate: '', hourlyRate: '', color: '#4F46E5' });
  const [assignForm, setAssignForm] = useState({ employeeId: '', role: 'member', allocationPct: 100 });
  const [saving, setSaving] = useState(false);
 
  const fetchData = async () => {
  setLoading(true);
  const [p, a, e] = await Promise.all([
- projectService.getAllProjects(),
- projectService.getAllAssignments(),
+ projectService.getAllProjects(employee?.company_id),
+ projectService.getAllAssignments(employee?.company_id),
  employeeService.getAllEmployees(undefined, employee?.company_id),
  ]);
  setProjects(p.data || []);
@@ -42,18 +42,18 @@ export default function ProjectManagement() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('projects', fetchData);
+ useRealtimeTable('projects', fetchData, { companyId: currentUser?.company_id });
 
  useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
 
  const openCreate = () => {
- setForm({ name: '', client: '', description: '', status: 'active', priority: 'medium', startDate: '', endDate: '', hourlyRate: '', color: '#2563EB' });
+ setForm({ name: '', client: '', description: '', status: 'active', priority: 'medium', startDate: '', endDate: '', hourlyRate: '', color: '#4F46E5' });
  setModal('create');
  };
 
  const openEdit = (p) => {
  setSelected(p);
- setForm({ name: p.name, client: p.client || '', description: p.description || '', status: p.status, priority: p.priority, startDate: p.start_date, endDate: p.end_date || '', hourlyRate: p.hourly_rate || '', color: p.color || '#2563EB' });
+ setForm({ name: p.name, client: p.client || '', description: p.description || '', status: p.status, priority: p.priority, startDate: p.start_date, endDate: p.end_date || '', hourlyRate: p.hourly_rate || '', color: p.color || '#4F46E5' });
  setModal('edit');
  };
 
@@ -124,18 +124,18 @@ export default function ProjectManagement() {
  const end = p.end_date ? new Date(p.end_date) : new Date();
  const left = Math.max(0, (start - ganttData.minDate) / 86400000 / ganttData.totalDays * 100);
  const width = Math.max(2, ((end - start) / 86400000 + 1) / ganttData.totalDays * 100);
- return { left: `${left}%`, width: `${width}%`, background: p.color || '#2563EB' };
+ return { left: `${left}%`, width: `${width}%`, background: p.color || '#4F46E5' };
  };
 
  const assignmentsFor = (projectId) => (assignments || []).filter(a => a.project_id === projectId);
 
- if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Memuat proyek...</div>;
+ if (loading) return <div className="ep-loading-wrap"><div className="ep-loading-inner"><div className="ep-spinner" /><div className="ep-loading-text">Memuat proyek...</div></div></div>;
 
  return (
- <div>
+ <div className="admin-page">
  <PageHeader titleKey="projects.title" subtitleKey="projects.subtitle" />
   <div className="page-header-actions">
- <button className="btn-primary" onClick={openCreate}><FiPlus /> Proyek Baru</button>
+ <button className="btn-primary" onClick={openCreate} aria-label="Proyek baru"><FiPlus /> Proyek Baru</button>
  </div>
 
  {/* Tabs */}
@@ -161,16 +161,16 @@ export default function ProjectManagement() {
  {tab === 'list' && (
  <div className="cards-grid">
  {projects.map(p => (
- <div className="info-card" key={p.id} style={{ borderLeft: `4px solid ${p.color || '#2563EB'}` }}>
+ <div className="info-card" key={p.id} style={{ borderLeft: `4px solid ${p.color || '#4F46E5'}` }}>
  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
  <div>
  <div style={{ fontSize: 15, fontWeight: 700 }}>{p.name}</div>
  {p.client && <div style={{ fontSize: 12, color: 'var(--muted)' }}>Klien: {p.client}</div>}
  </div>
  <div style={{ display: 'flex', gap: 6 }}>
- <button className="btn-icon" onClick={() => openAssign(p)} title="Assign"><FiUsers size={14} /></button>
- <button className="btn-icon" onClick={() => openEdit(p)} title="Edit"><FiEdit2 size={14} /></button>
- <button className="btn-icon" onClick={() => handleDelete(p.id)} title="Hapus" style={{ color: 'var(--danger)' }}><FiTrash2 size={14} /></button>
+ <button className="btn-icon" onClick={() => openAssign(p)} title="Assign" aria-label="Assign proyek"><FiUsers size={14} /></button>
+ <button className="btn-icon" onClick={() => openEdit(p)} title="Edit" aria-label="Edit proyek"><FiEdit2 size={14} /></button>
+ <button className="btn-icon" onClick={() => handleDelete(p.id)} title="Hapus" style={{ color: 'var(--danger)' }} aria-label="Hapus proyek"><FiTrash2 size={14} /></button>
  </div>
  </div>
  {p.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>{p.description}</div>}
@@ -271,11 +271,11 @@ export default function ProjectManagement() {
  const overload = r.totalAlloc > 100;
  return (
  <tr key={i} style={overload ? { background: 'rgba(239,68,68,.04)' } : {}}>
- <td style={{ fontWeight: 600 }}>{r.employee?.name || '-'}</td>
+ <td className="td-semibold">{r.employee?.name || '-'}</td>
  <td>{r.employee?.division || '-'}</td>
  <td>
  {r.projects.filter(a => a.projects?.status === 'active').map((a, j) => (
- <span key={j} className="badge" style={{ marginRight: 4, background: `${a.projects?.color || '#2563EB'}18`, color: a.projects?.color || '#2563EB', fontSize: 10 }}>
+ <span key={j} className="badge" style={{ marginRight: 4, background: `${a.projects?.color || '#4F46E5'}18`, color: a.projects?.color || '#4F46E5', fontSize: 10 }}>
  {a.projects?.name} ({a.allocation_pct}%)
  </span>
  ))}
@@ -412,3 +412,4 @@ export default function ProjectManagement() {
  </div>
  );
 }
+

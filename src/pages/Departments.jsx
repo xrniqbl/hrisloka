@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import {
   FiPlus, FiEdit2, FiTrash2, FiX, FiCheck, FiUsers,
@@ -9,6 +9,12 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import { useAuth } from '../context/AuthContext';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 
 export default function Departments() {
@@ -36,7 +42,7 @@ export default function Departments() {
   useEffect(() => { fetchData(); }, [companyId]);
 
   // Realtime: auto-refresh
-  useRealtimeTable('departments', fetchData);
+  useRealtimeTable('departments', fetchData, { companyId: companyId });
 
   const openAdd = () => {
     setEditDept(null);
@@ -63,7 +69,7 @@ export default function Departments() {
   const handleDelete = async (id) => {
     const count = empCounts[id] || 0;
     if (count > 0) {
-      alert(`Tidak bisa dihapus. Masih ada ${count} karyawan di departemen ini.`);
+      console.warn('[Departments] Cannot delete: ' + count + ' employees still assigned');
       return;
     }
     if (!confirm('Hapus departemen ini?')) return;
@@ -100,18 +106,18 @@ export default function Departments() {
 
   return (
     <div className="animate-in">
-      {/* ─── Header ─── */}
+      {/* --- Header --- */}
       <PageHeader titleKey="departments.title" subtitleKey="departments.subtitle" />
   <div className="page-header-actions">
         <div className="page-header-actions">
-          <button className="btn-primary" onClick={openAdd}>
+          <Button onClick={openAdd}>
             <FiPlus /> Tambah Departemen
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* ─── Stats ─── */}
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', marginBottom: 20 }}>
+      {/* --- Stats --- */}
+      <div className="stats-grid mb">
         {[
           { label: 'Total Departemen', value: departments.length, color: '#6366F1', bg: 'rgba(99,102,241,0.08)', icon: <FiBriefcase /> },
           { label: 'Aktif', value: departments.filter(d => d.is_active).length, color: '#10B981', bg: 'rgba(16,185,129,0.08)', icon: <FiCheck /> },
@@ -126,14 +132,14 @@ export default function Departments() {
               {s.icon}
             </div>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{s.label}</div>
+              <div className="info-card-value">{s.value}</div>
+              <div className="info-card-label">{s.label}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ─── Search ─── */}
+      {/* --- Search --- */}
       <div className="filters-bar" style={{ marginBottom: 16 }}>
         <div className="filter-search-wrap">
           <FiSearch className="filter-search-icon" />
@@ -146,25 +152,25 @@ export default function Departments() {
         </div>
       </div>
 
-      {/* ─── Table ─── */}
+      {/* --- Table --- */}
       <div className="data-table-card">
         <div className="table-responsive">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Departemen</th>
-                <th>Deskripsi</th>
-                <th style={{ textAlign: 'center' }}>Karyawan</th>
-                <th style={{ textAlign: 'center' }}>Status</th>
-                <th style={{ textAlign: 'center', width: 100 }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Departemen</TableHead>
+                <TableHead>Deskripsi</TableHead>
+                <TableHead style={{ textAlign: 'center' }}>Karyawan</TableHead>
+                <TableHead style={{ textAlign: 'center' }}>Status</TableHead>
+                <TableHead style={{ textAlign: 'center', width: 100 }}>Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filtered.map(d => (
-                <tr key={d.id} style={{ opacity: d.is_active ? 1 : 0.55 }}>
-                  <td>
-                    <div style={{ fontWeight: 600, color: 'var(--text)' }}>{d.name}</div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                <TableRow key={d.id} style={{ opacity: d.is_active ? 1 : 0.55 }}>
+                  <TableCell>
+                    <div className="td-semibold">{d.name}</div>
+                    <div className="btn-icon-row" style={{ marginTop: 2, flexWrap: 'wrap' }}>
                       {d.code && (
                         <span style={{
                           fontSize: 10, fontWeight: 700, padding: '1px 6px',
@@ -173,122 +179,116 @@ export default function Departments() {
                         }}>{d.code}</span>
                       )}
                       {d.head && (
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        <span className="td-muted-sm">
                           Head: {d.head}
                         </span>
                       )}
                     </div>
-                  </td>
-                  <td style={{ color: 'var(--text-tertiary)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {d.description || '—'}
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
+                  </TableCell>
+                  <TableCell className="td-truncate" style={{ maxWidth: 220 }}>
+                    {d.description || '-'}
+                  </TableCell>
+                  <TableCell style={{ textAlign: 'center' }}>
                     <span className={`badge ${(empCounts[d.id] || 0) > 0 ? 'badge-primary' : 'badge-neutral'}`}>
                       {empCounts[d.id] || 0}
                     </span>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button
+                  </TableCell>
+                  <TableCell style={{ textAlign: 'center' }}>
+                    <Button
                       onClick={() => handleToggleActive(d)}
+                      variant="ghost"
+                      size="icon"
                       className="action-btn"
-                      style={{ color: d.is_active ? '#10B981' : '#9CA3AF', fontSize: 20, border: 'none', background: 'none' }}
-                      title={d.is_active ? 'Aktif — klik untuk nonaktifkan' : 'Nonaktif — klik untuk aktifkan'}
+                      style={{ color: d.is_active ? '#10B981' : '#9CA3AF', fontSize: 20 }}
+                      title={d.is_active ? 'Aktif - klik untuk nonaktifkan' : 'Nonaktif - klik untuk aktifkan'}
                     >
                       {d.is_active ? <FiToggleRight /> : <FiToggleLeft />}
-                    </button>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
+                    </Button>
+                  </TableCell>
+                  <TableCell style={{ textAlign: 'center' }}>
                     <div className="actions-cell">
-                      <button className="action-btn" onClick={() => openEdit(d)} title="Edit">
+                      <Button variant="ghost" size="icon" className="action-btn" onClick={() => openEdit(d)} title="Edit">
                         <FiEdit2 size={14} />
-                      </button>
-                      <button className="action-btn danger" onClick={() => handleDelete(d.id)} title="Hapus">
+                      </Button>
+                      <Button variant="ghost" size="icon" className="action-btn danger" onClick={() => handleDelete(d.id)} title="Hapus">
                         <FiTrash2 size={14} />
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
               {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="empty-state">
+                <TableRow>
+                  <TableCell colSpan={5} className="empty-state">
                     <FiBriefcase size={28} style={{ opacity: 0.2, marginBottom: 8 }} />
                     <div>{search ? `Tidak ada hasil untuk "${search}"` : 'Belum ada departemen'}</div>
                     {!search && (
-                      <button className="btn-primary" onClick={openAdd} style={{ marginTop: 14, fontSize: 12, padding: '8px 16px' }}>
+                      <Button onClick={openAdd}>
                         <FiPlus size={13} /> Tambah Departemen
-                      </button>
+                      </Button>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
-      {/* ─── Modal ─── */}
+      {/* --- Modal --- */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editDept ? 'Edit Departemen' : 'Tambah Departemen Baru'}</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>
+        <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editDept ? 'Edit Departemen' : 'Tambah Departemen Baru'}</DialogTitle>
+              <Button variant="ghost" size="icon" className="modal-close" onClick={() => setShowModal(false)}>
                 <FiX size={18} />
-              </button>
-            </div>
+              </Button>
+            </DialogHeader>
             <div className="modal-body">
               <div className="form-grid">
                 <div className="form-group full-width">
-                  <label className="form-label">Nama Departemen <span className="required">*</span></label>
-                  <input
-                    className="form-input"
+                  <Label>Nama Departemen <span className="required">*</span></Label>
+                  <Input
                     value={form.name}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="Contoh: Human Resources & General Affairs"
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Kode Departemen</label>
-                  <input
-                    className="form-input"
+                  <Label>Kode Departemen</Label>
+                  <Input
                     value={form.code}
                     onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
                     placeholder="HR, IT, FIN"
                     maxLength={10}
-                  />
+ />
                   <span className="form-hint">Singkatan unik untuk departemen</span>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Kepala Departemen</label>
-                  <input
-                    className="form-input"
+                  <Label>Kepala Departemen</Label>
+                  <Input
                     value={form.head}
                     onChange={e => setForm(f => ({ ...f, head: e.target.value }))}
                     placeholder="Nama kepala departemen"
                   />
                 </div>
                 <div className="form-group full-width">
-                  <label className="form-label">Deskripsi</label>
-                  <textarea
-                    className="form-textarea"
+                  <Label>Deskripsi</Label>
+                  <Textarea
                     value={form.description}
                     onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                     placeholder="Penjelasan singkat fungsi departemen ini..."
-                    rows={3}
-                  />
+                    rows={3} />
                 </div>
                 <div className="form-group full-width">
-                  <label className="form-label">Status</label>
+                  <Label>Status</Label>
                   <div
                     onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
                     className="toggle-row"
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
                       border: `1.5px solid ${form.is_active ? '#10B981' : 'var(--border)'}`,
                       background: form.is_active ? 'rgba(16,185,129,0.06)' : 'var(--bg)',
-                      transition: 'all 0.2s',
                     }}
                   >
                     <div style={{
@@ -310,19 +310,19 @@ export default function Departments() {
                 </div>
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-              <button
-                className="btn-primary"
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowModal(false)}>Batal</Button>
+              <Button
                 onClick={handleSave}
                 disabled={!form.name}
               >
                 <FiCheck size={15} /> {editDept ? 'Simpan Perubahan' : 'Tambah Departemen'}
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
       )}
     </div>
   );
 }
+

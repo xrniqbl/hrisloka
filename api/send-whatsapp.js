@@ -7,15 +7,10 @@
  * POST /api/send-whatsapp
  * Body: { to: "628xxx", message: "..." }
  */
+import { applyCors } from './_shared/cors.js';
+
 
 const FONNTE_TOKEN = process.env.FONNTE_TOKEN; // Server-side (no VITE_ prefix)
-
-const ALLOWED_ORIGINS = [
-  'https://hrisloka.id',
-  'https://www.hrisloka.id',
-  'https://hrisloka.com',
-  'https://www.hrisloka.com',
-];
 
 // Rate limit: max 10 WA requests per IP per minute
 const rateLimitMap = new Map();
@@ -36,21 +31,12 @@ function checkRateLimit(ip) {
 // Validate Indonesian/international phone number
 function isValidPhone(phone) {
   if (typeof phone !== 'string') return false;
-  const cleaned = phone.replace(/[\s\-\(\)]/g, '').replace(/^\+/, '');
+  const cleaned = phone.replace(/[\s\-()]/g, '').replace(/^\+/, '');
   return /^[0-9]{8,15}$/.test(cleaned);
 }
 
 export default async function handler(req, res) {
-  // CORS
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Vary', 'Origin');
+  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type' });
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -81,7 +67,7 @@ export default async function handler(req, res) {
   }
 
   // Normalize number
-  const phone = to.replace(/[\s\-\(\)]/g, '').replace(/^0/, '62').replace(/^\+/, '');
+  const phone = to.replace(/[\s\-()]/g, '').replace(/^0/, '62').replace(/^\+/, '');
 
   try {
     const apiRes = await fetch('https://api.fonnte.com/send', {

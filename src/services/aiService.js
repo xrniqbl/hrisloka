@@ -1,53 +1,32 @@
 /**
  * AI Review Service — calls /api/ai-review serverless function.
- *
- * Production: API key stays on the server (no VITE_ prefix).
- * Dev fallback: direct Gemini call if VITE_GEMINI_API_KEY is set.
+ * API key stays on the server only (no client-side Gemini calls).
  */
 
-const IS_DEV = import.meta.env.DEV;
-const GEMINI_API_KEY_DEV = import.meta.env.VITE_GEMINI_API_KEY; // Dev only fallback
-const GEMINI_URL_DEV = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY_DEV}`;
+import { supabase } from '../lib/supabase';
+
+/** Get the current user's access token (for authenticating serverless calls). */
+async function getAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = { 'Content-Type': 'application/json' };
+  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+  return headers;
+}
 
 /**
- * Call AI (server-side in production, direct in dev).
+ * Call AI via serverless function (GEMINI_API_KEY on server).
  */
 async function callGemini(prompt, maxTokens = 800) {
-  try {
-    // Production: call our serverless function
-    const res = await fetch('/api/ai-review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, maxTokens }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'AI server error');
-    return data.text;
-  } catch (err) {
-    // Dev fallback: direct Gemini call
-    if (IS_DEV && GEMINI_API_KEY_DEV) {
-      console.warn('[AI Service] Using dev fallback (direct Gemini)');
-      return callGeminiDirect(prompt, maxTokens);
-    }
-    throw err;
-  }
+  const res = await fetch('/api/ai-review', {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ prompt, maxTokens }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) throw new Error(data.error || 'AI server error');
+  return data.text;
 }
 
-async function callGeminiDirect(prompt, maxTokens = 800) {
-  const response = await fetch(GEMINI_URL_DEV, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: maxTokens },
-    }),
-  });
-  if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('No content from Gemini');
-  return text;
-}
 
 /**
  * Generate an AI-powered employee performance review.

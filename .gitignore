@@ -30,3 +30,6 @@ dist-ssr
 
 # Cybersecurity skills (external tool, not project code)
 cybersecurity-skills/
+
+# Never commit VAPID private keys
+vapid-keys.json

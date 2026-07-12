@@ -78,6 +78,18 @@ export async function getShiftAssignments(companyId) {
   return { data: data || [], error };
 }
 
+/** Get assignments for one employee (PWA) — still requires company scope */
+export async function getMyShiftAssignments(employeeId, companyId) {
+  if (!employeeId) return { data: [], error: null };
+  if (!guardCompanyId(companyId, 'getMyShiftAssignments')) return { data: [], error: null };
+  const { data, error } = await supabase
+    .from('shift_assignments')
+    .select('*, shifts(name, start_time, end_time, color)')
+    .eq('employee_id', employeeId)
+    .order('day_of_week', { ascending: true });
+  return { data: data || [], error };
+}
+
 // Assign shift to employee
 export async function assignShift(employeeId, shiftId, dayOfWeek, effectiveDate) {
   const { data, error } = await supabase

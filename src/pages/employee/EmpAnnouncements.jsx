@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   HiBell,
   HiBolt,
@@ -10,12 +10,14 @@ import {
 import { supabase } from '../../lib/supabase';
 import { subscribeToAnnouncements } from '../../services/broadcastService';
 import { useTranslation } from '../../lib/i18n';
+import { useAuth } from '../../context/AuthContext';
+import { isDemoMode, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 const PRIORITY_CONFIG = {
   urgent: { label: 'Mendesak', color: '#DC2626', bg: 'rgba(220,38,38,0.08)', icon: <HiExclamationTriangle size={12} /> },
   high:   { label: 'Penting',   color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', icon: <HiBolt size={12} /> },
-  normal: { label: 'Info',      color: '#3B82F6', bg: 'rgba(59,130,246,0.08)', icon: <HiInformationCircle size={12} /> },
+  normal: { label: 'Info',      color: '#635BFF', bg: 'rgba(99,91,255,0.08)', icon: <HiInformationCircle size={12} /> },
 };
 
 const READ_KEY = 'hrisync_read_ann';
@@ -46,6 +48,7 @@ function getRelativeTime(d, locale) {
 
 export default function EmpAnnouncements() {
   const { locale } = useTranslation();
+  const { employee } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [readIds, setReadIds] = useState(() => getReadSet());
@@ -54,26 +57,47 @@ export default function EmpAnnouncements() {
   const PRIORITY_CONFIG = {
     urgent: { label: locale === 'en' ? 'Urgent' : 'Mendesak', color: '#DC2626', bg: 'rgba(220,38,38,0.08)', icon: <HiExclamationTriangle size={12} /> },
     high:   { label: locale === 'en' ? 'Important' : 'Penting', color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', icon: <HiBolt size={12} /> },
-    normal: { label: 'Info', color: '#3B82F6', bg: 'rgba(59,130,246,0.08)', icon: <HiInformationCircle size={12} /> },
+    normal: { label: 'Info', color: '#635BFF', bg: 'rgba(99,91,255,0.08)', icon: <HiInformationCircle size={12} /> },
   };
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    if (isDemoMode()) {
+      setAnnouncements([...(DEMO_PROFILE_DATA.announcements || [])]);
+      setLoading(false);
+      return;
+    }
+    let query = supabase
       .from('announcements')
       .select('*')
       .order('created_at', { ascending: false });
+    if (employee?.company_id) {
+      query = query.eq('company_id', employee.company_id);
+    }
+    const { data, error } = await query;
     if (!error) setAnnouncements(data || []);
     setLoading(false);
-  }, []);
+  }, [employee?.company_id]);
 
   useEffect(() => {
     loadData();
+    if (isDemoMode()) return undefined;
+    // Company-scoped realtime — same channel HR uses when broadcasting
     const channel = subscribeToAnnouncements((payload) => {
-      setAnnouncements(prev => [{ ...payload, id: Date.now(), created_at: new Date().toISOString() }, ...prev]);
-    });
-    return () => { supabase.removeChannel(channel); };
-  }, [loadData]);
+      if (employee?.company_id && payload.company_id && String(payload.company_id) !== String(employee.company_id)) {
+        return;
+      }
+      setAnnouncements((prev) => [{
+        id: payload.id || Date.now(),
+        title: payload.title,
+        message: payload.message || payload.content || '',
+        company_id: payload.company_id || employee?.company_id,
+        created_at: payload.created_at || new Date().toISOString(),
+        priority: payload.priority || 'normal',
+      }, ...prev]);
+    }, employee?.company_id);
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, [loadData, employee?.company_id]);
 
   // Pull-to-refresh
   useEffect(() => {
@@ -95,18 +119,18 @@ export default function EmpAnnouncements() {
   const unreadCount = announcements.filter(a => !readIds.has(String(a.id))).length;
 
   if (loading) return (
-    <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+    <div className="emp-page">
+      <div className="mb">
         <div className="skeleton skeleton-text" style={{ width: 140, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 220 }} />
       </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         {[70, 130, 80].map((w, i) => <div key={i} className="skeleton" style={{ width: w, height: 30, borderRadius: 99 }} />)}
       </div>
       <div style={{ display: 'grid', gap: 12 }}>
         {[1, 2, 3].map(i => (
-          <div key={i} className="emp-card" style={{ animation: `fadeInUp 0.4s ease ${i * 0.08}s both` }}>
-            <div className="skeleton" style={{ width: 70, height: 20, borderRadius: 20, marginBottom: 10 }} />
+          <div key={i} className="emp-card" style={{ animationDelay: `${i * 0.08}s` }}>
+            <div className="skeleton" style={{ width: 70, height: 20, borderRadius: 12, marginBottom: 10 }} />
             <div className="skeleton skeleton-text" style={{ width: '80%', marginBottom: 8 }} />
             <div className="skeleton skeleton-text-sm" style={{ marginBottom: 6 }} />
             <div className="skeleton skeleton-text-sm" style={{ width: '90%', marginBottom: 6 }} />
@@ -118,12 +142,12 @@ export default function EmpAnnouncements() {
   );
 
   return (
-    <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+    <div className="emp-page">
+      <div className="mb">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <h1 className="emp-page-title">{locale === 'en' ? 'Announcements' : 'Pengumuman'}</h1>
           {unreadCount > 0 && (
-            <span style={{ padding: '2px 8px', borderRadius: 20, background: '#DC2626', color: '#fff', fontSize: 11, fontWeight: 700 }}>
+            <span className="ann-unread-badge">
               {unreadCount} baru
             </span>
           )}
@@ -162,15 +186,15 @@ export default function EmpAnnouncements() {
             return (
               <div
                 key={a.id || i}
-                className={`emp-card emp-card-interactive emp-card-stagger`}
+                className="emp-card emp-card-interactive emp-card-stagger"
                 style={{ position: 'relative', overflow: 'hidden', borderLeft: `4px solid ${pConf.color}`, opacity: isUnread ? 1 : 0.85 }}
                 onClick={() => handleRead(a.id)}
               >
                 {isUnread && (
-                  <div style={{ position: 'absolute', top: 14, right: 14, width: 8, height: 8, borderRadius: '50%', background: '#DC2626', animation: 'pulseDot 1.8s ease-in-out infinite' }} />
+                  <div className="ann-unread-dot" />
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, color: pConf.color, background: pConf.bg }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, color: pConf.color, background: pConf.bg }}>
                     {pConf.icon} {pConf.label}
                   </span>
                 </div>
@@ -179,7 +203,7 @@ export default function EmpAnnouncements() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)' }}>
                   <HiClock size={12} />
                   {getRelativeTime(a.created_at, locale)}
-                  {isUnread && <span style={{ color: '#3B82F6', fontWeight: 600 }}>� {locale === 'en' ? 'Click to mark as read' : 'Klik untuk tandai dibaca'}</span>}
+                  {isUnread && <span className="ann-read-hint">{locale === 'en' ? 'Click to mark as read' : 'Klik untuk tandai dibaca'}</span>}
                 </div>
               </div>
             );

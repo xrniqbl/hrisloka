@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../lib/i18n';
+import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 const CATEGORY_ICONS = {
@@ -17,7 +18,7 @@ const CATEGORY_ICONS = {
   Smartphone: <HiDevicePhoneMobile size={18} />,
   Vehicle: <HiTruck size={18} />,
 };
-const CATEGORY_COLORS = { Laptop: '#3B82F6', Desktop: '#8B5CF6', Smartphone: '#10B981', Vehicle: '#F59E0B' };
+const CATEGORY_COLORS = { Laptop: '#635BFF', Desktop: '#8B5CF6', Smartphone: '#10B981', Vehicle: '#F59E0B' };
 const CONDITION_COLORS = { Good: '#16A34A', Fair: '#F59E0B', Poor: '#DC2626' };
 
 export default function EmpAssets() {
@@ -29,6 +30,12 @@ export default function EmpAssets() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    if (isDemoMode()) {
+      setEmp({ ...DEMO_EMPLOYEE });
+      setAssets([...(DEMO_PROFILE_DATA.assets || [])]);
+      setLoading(false);
+      return;
+    }
     const email = user?.email || user?.user_metadata?.email;
     const { data: empData } = await getEmployeeByEmail(email);
     if (empData) {
@@ -56,12 +63,12 @@ export default function EmpAssets() {
   };
 
   if (loading) return (
-    <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+    <div className="emp-page">
+      <div className="mb">
         <div className="skeleton skeleton-text" style={{ width: 110, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 240 }} />
       </div>
-      <div className="emp-card emp-card-gradient" style={{ marginBottom: 20, textAlign: 'center', padding: 28 }}>
+      <div className="emp-card emp-card-gradient mb" style={{ textAlign: 'center', padding: 16 }}>
         <div className="skeleton" style={{ height: 60, borderRadius: 12, opacity: 0.3 }} />
       </div>
       <div style={{ display: 'grid', gap: 10 }}>
@@ -70,11 +77,11 @@ export default function EmpAssets() {
     </div>
   );
 
-  if (!emp) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Data tidak ditemukan.</div>;
+  if (!emp) return <div className="ep-empty-wrap"><div className="ep-empty-desc">Data tidak ditemukan.</div></div>;
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 16 }}>
+      <div className="mb">
         <h1 className="emp-page-title">{locale === 'en' ? 'My Assets' : 'Aset Saya'}</h1>
         <p className="emp-page-subtitle">
           {locale === 'en' ? 'Company equipment and assets assigned to you' : 'Peralatan dan aset perusahaan yang dipinjamkan'}
@@ -82,8 +89,8 @@ export default function EmpAssets() {
       </div>
 
       {/* Summary */}
-      <div className="emp-card emp-card-gradient" style={{ marginBottom: 20, textAlign: 'center' }}>
-        <div className="emp-stat-number" style={{ fontSize: 36, fontWeight: 800 }}>{assets.length}</div>
+      <div className="emp-card emp-card-gradient mb" style={{ textAlign: 'center' }}>
+        <div className="info-card-value primary">{assets.length}</div>
         <div style={{ fontSize: 13, opacity: 0.8 }}>
           {locale === 'en' ? 'Assets on Loan' : 'Aset yang Dipinjamkan'}
         </div>
@@ -110,8 +117,7 @@ export default function EmpAssets() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{a.name}</div>
                     {a.brand && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{a.brand}</div>}
-                    <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: `${catColor}12`, color: catColor }}>{a.category}</span>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: `${condColor}12`, color: condColor }}>{conditionLabel(a.condition)}</span>
                       {a.serial && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'var(--bg)', color: 'var(--muted)' }}>SN: {a.serial}</span>}
                     </div>

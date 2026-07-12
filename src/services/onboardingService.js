@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { guardCompanyId } from '../lib/tenantGuard';
 
 // ── Onboarding Tasks (PWA — per employee) ────────────────────────
 export async function getOnboardingTasks(employeeId) {
@@ -22,6 +23,11 @@ export async function createOnboardingTask(data) {
 
 // Bulk create tasks for a new employee from company checklist template
 export async function seedOnboardingTasks(employeeId, companyId) {
+  if (!guardCompanyId(companyId, 'seedOnboardingTasks')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  if (!employeeId) return { data: null, error: { message: 'employee_id required' } };
+
   const { data: templates } = await supabase
     .from('onboarding_checklist')
     .select('*')
@@ -44,6 +50,9 @@ export async function seedOnboardingTasks(employeeId, companyId) {
 
 // ── Onboarding Checklist (Admin — per company) ───────────────────
 export async function getOnboardingChecklist(companyId) {
+  if (!guardCompanyId(companyId, 'getOnboardingChecklist')) {
+    return { data: [], error: null };
+  }
   return supabase
     .from('onboarding_checklist')
     .select('*')
@@ -52,9 +61,15 @@ export async function getOnboardingChecklist(companyId) {
 }
 
 export async function createChecklistItem(data) {
+  if (!guardCompanyId(data?.company_id, 'createChecklistItem')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   return supabase.from('onboarding_checklist').insert(data).select().single();
 }
 
-export async function deleteChecklistItem(id) {
-  return supabase.from('onboarding_checklist').delete().eq('id', id);
+export async function deleteChecklistItem(id, companyId) {
+  if (!guardCompanyId(companyId, 'deleteChecklistItem')) {
+    return { error: { message: 'company_id required' } };
+  }
+  return supabase.from('onboarding_checklist').delete().eq('id', id).eq('company_id', companyId);
 }

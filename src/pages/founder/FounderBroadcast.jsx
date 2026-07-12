@@ -32,7 +32,7 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
         </div>
       </div>
       {hasStats && (
-        <div className="fp-stats" style={{ marginBottom: 24 }}>
+        <div className="fp-stats mb">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="fp-stat">
               <SkeletonBox w={40} h={40} style={{ borderRadius: 10, marginBottom: 14 }} />
@@ -62,12 +62,34 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
   );
 }
 
+const EMPTY_FORM = { title: '', message: '', type: 'info', target: 'all', target_plan_id: '', target_company_id: '', action_url: '', action_label: '' };
+const TYPES = [
+  { value: 'info', label: 'Info', icon: 'ℹ️', color: '#635BFF' },
+  { value: 'promo', label: 'Promo', icon: '🎉', color: '#F59E0B' },
+  { value: 'update', label: 'Update', icon: '🔄', color: '#8B5CF6' },
+  { value: 'warning', label: 'Warning', icon: '⚠️', color: '#EF4444' },
+  { value: 'maintenance', label: 'Maintenance', icon: '🔧', color: '#6B7280' },
+];
+const TARGETS = [
+  { value: 'all', label: 'All Subscribers' },
+  { value: 'plan', label: 'Specific Plan' },
+  { value: 'company', label: 'Specific Company' },
+];
+const formatDateTime = (d) => d ? new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+function BroadcastTypeBadge({ type }) {
+  const t = TYPES.find(t => t.value === type) || TYPES[0];
+  return (
+    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: `${t.color}18`, color: t.color }}>
+      {t.icon} {t.label}
+    </span>
+  );
+}
+
 export default function FounderBroadcast() {
   const { toast } = useToast();
   const [broadcasts, setBroadcasts] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  if (loading) return <SkeletonPage cols={5} rows={5} hasStats={false} />;
   const [showCompose, setShowCompose] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [sending, setSending] = useState(false);
@@ -86,6 +108,8 @@ export default function FounderBroadcast() {
     }
   };
   useEffect(() => { fetchData(); }, []);
+
+  if (loading) return <SkeletonPage cols={5} rows={5} hasStats={false} />;
 
   const handleSend = async () => {
     if (!form.title || !form.message) return;
@@ -137,7 +161,7 @@ export default function FounderBroadcast() {
       </div>
 
       {/* Stats */}
-      <div className="fp-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 24 }}>
+      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="fp-stat">
           <div className="fp-stat-value">{broadcasts.length}</div>
           <div className="fp-stat-label">Total Broadcasts</div>
@@ -290,7 +314,7 @@ export default function FounderBroadcast() {
                 <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', marginTop: 4 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Preview</div>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${typeConfig[form.type]?.color || '#3B82F6'}18`, color: typeConfig[form.type]?.color || '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${typeConfig[form.type]?.color || '#635BFF'}18`, color: typeConfig[form.type]?.color || '#635BFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {TYPES.find(t => t.value === form.type)?.icon}
                     </div>
                     <div>
@@ -324,7 +348,7 @@ export default function FounderBroadcast() {
               <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                 <BroadcastTypeBadge type={preview.type} />
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {preview.target === 'all' ? 'All subscribers' : 'Specific target'} · {formatDateTime(preview.sent_at)}
+                  {preview.target === 'all' ? 'All subscribers' : 'Specific target'}  {formatDateTime(preview.sent_at)}
                 </span>
               </div>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 10 }}>{preview.title}</div>

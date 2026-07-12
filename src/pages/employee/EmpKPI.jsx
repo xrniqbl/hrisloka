@@ -29,7 +29,7 @@ function calcOverallScore(metrics) {
 
 const getColor = (score) => {
   if (score >= 90) return '#16A34A';
-  if (score >= 70) return '#0047AB';
+  if (score >= 70) return '#635BFF';
   if (score >= 50) return '#F59E0B';
   return '#DC2626';
 };
@@ -78,19 +78,19 @@ export default function EmpKPI() {
 
   if (loading) return (
     <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <div className="skeleton skeleton-text" style={{ width: 150, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 200 }} />
       </div>
       {/* Score hero skeleton */}
-      <div className="emp-card" style={{ textAlign: 'center', marginBottom: 20, padding: '28px 20px' }}>
+      <div className="emp-card" style={{ textAlign: 'center', marginBottom: 14, padding: '14px 14px' }}>
         <div className="skeleton skeleton-circle" style={{ width: 110, height: 110, margin: '0 auto 12px' }} />
         <div className="skeleton skeleton-text" style={{ width: 80, margin: '0 auto 6px' }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 140, margin: '0 auto' }} />
       </div>
       <div style={{ display: 'grid', gap: 12 }}>
         {[1, 2].map(i => (
-          <div key={i} className="emp-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div key={i} className="emp-card chart-card-header">
             <div>
               <div className="skeleton skeleton-text" style={{ width: 100, marginBottom: 6 }} />
               <div className="skeleton skeleton-text-sm" style={{ width: 60 }} />
@@ -109,7 +109,7 @@ export default function EmpKPI() {
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <h1 className="emp-page-title">{locale === 'en' ? 'KPI & Performance' : 'KPI & Kinerja'}</h1>
         <p className="emp-page-subtitle">
           {locale === 'en' ? 'Your performance targets and achievements' : 'Target dan pencapaian kinerja Anda'}
@@ -118,9 +118,9 @@ export default function EmpKPI() {
 
       {/* Score Hero Card */}
       {latestKpi ? (
-        <div className="emp-card emp-card-gradient" style={{ textAlign: 'center', marginBottom: 20 }}>
+        <div className="emp-card emp-card-gradient" style={{ textAlign: 'center', marginBottom: 14 }}>
           <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.8, marginBottom: 8 }}>
-            {locale === 'en' ? 'Latest Score' : 'Skor Terbaru'} — {latestKpi.period}
+            {locale === 'en' ? 'Latest Score' : 'Skor Terbaru'} - {latestKpi.period}
           </div>
           <div style={{ position: 'relative', width: 110, height: 110, margin: '0 auto 12px' }}>
             <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
@@ -132,7 +132,7 @@ export default function EmpKPI() {
               />
             </svg>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>{latestScore}</div>
+              <div className="info-card-value">{latestScore}</div>
               <div style={{ fontSize: 10, opacity: 0.8 }}>/ 100</div>
             </div>
           </div>
@@ -140,7 +140,7 @@ export default function EmpKPI() {
           <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{getFeedback(latestScore)}</div>
         </div>
       ) : (
-        <div className="emp-card emp-empty" style={{ marginBottom: 20 }}>
+        <div className="emp-card emp-empty" style={{ marginBottom: 14 }}>
           <div className="emp-empty-icon"><HiArrowTrendingUp size={24} /></div>
           <div className="emp-empty-title">{locale === 'en' ? 'No KPI data yet' : 'Belum ada KPI'}</div>
           <div className="emp-empty-desc">{locale === 'en' ? 'Admin has not set KPI targets for you yet.' : 'Admin belum menetapkan KPI untuk Anda.'}</div>
@@ -158,14 +158,14 @@ export default function EmpKPI() {
             return (
               <div key={kpi.id} className="emp-card emp-card-interactive emp-card-stagger" style={{ padding: 16 }}
                 onClick={() => setExpandedId(isExpanded ? null : kpi.id)}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="chart-card-header">
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700 }}>{kpi.period}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                       {metrics.length} {locale === 'en' ? 'metrics' : 'metrik'}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="btn-icon-row">
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color, background: `${color}12`, border: `2px solid ${color}` }}>
                         {overall}
@@ -202,7 +202,7 @@ export default function EmpKPI() {
                     })}
                     <div style={{ padding: '12px 14px', background: `${color}08`, borderRadius: 8, border: `1px solid ${color}20`, textAlign: 'center', marginTop: 4 }}>
                       <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>Overall Score</div>
-                      <div style={{ fontSize: 24, fontWeight: 800, color }}>{overall}%</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color }}>{overall}%</div>
                       <div style={{ fontSize: 12, fontWeight: 700, color }}>Grade {getGrade(overall)}</div>
                     </div>
                   </div>
@@ -215,3 +215,4 @@ export default function EmpKPI() {
     </div>
   );
 }
+

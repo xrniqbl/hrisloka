@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * NotRegistered — shown when a user signs in with Google OAuth
+ * NotRegistered - shown when a user signs in with Google OAuth
  * but their email is NOT found in the employees table.
  * They cannot proceed to any dashboard or PWA.
  */
@@ -32,7 +32,7 @@ export default function NotRegistered() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px 16px',
-      fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+      fontFamily: "'Inter Tight', system-ui, sans-serif",
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -88,7 +88,7 @@ export default function NotRegistered() {
 
         {/* Title */}
         <h1 style={{
-          fontSize: 24, fontWeight: 800,
+          fontSize: 24, fontWeight: 600,
           color: '#F1F5F9',
           marginBottom: 10,
           letterSpacing: '-0.5px',
@@ -142,7 +142,7 @@ export default function NotRegistered() {
                 width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                 background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 800, color: '#F87171', marginTop: 1,
+                fontSize: 10, fontWeight: 600, color: '#F87171', marginTop: 1,
               }}>{i + 1}</div>
               <span style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.5 }}>{text}</span>
             </div>
@@ -212,3 +212,4 @@ export default function NotRegistered() {
     </div>
   );
 }
+

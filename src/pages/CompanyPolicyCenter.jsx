@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FiBookOpen, FiPlus, FiX, FiCheck, FiEdit2, FiTrash2, FiDownload, FiSearch, FiFile, FiUpload, FiEye } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import * as policyService from '../services/policyService';
@@ -6,7 +6,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 
 const CATEGORIES = [
-  { id: 'sop', label: 'SOP', color: '#3B82F6' },
+  { id: 'sop', label: 'SOP', color: '#635BFF' },
   { id: 'regulation', label: 'Peraturan Perusahaan', color: '#8B5CF6' },
   { id: 'policy', label: 'Kebijakan HR', color: '#10B981' },
   { id: 'guideline', label: 'Panduan Kerja', color: '#F59E0B' },
@@ -26,7 +26,7 @@ const SEED_POLICIES = [
 export default function CompanyPolicyCenter() {
  const { employee } = useAuth();
  const companyId = employee?.company_id;
- const [loading, setLoading] = useState(true);
+ const [, setLoading] = useState(true);
  const [policies, setPolicies] = useState([]);
  const [search, setSearch] = useState('');
  const [filterCategory, setFilterCategory] = useState('');
@@ -91,16 +91,16 @@ export default function CompanyPolicyCenter() {
  }));
 
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
- <h1><FiBookOpen style={{ marginRight: 10 }} /> Company Policy Center</h1>
+ <h1><FiBookOpen className="icon-mr" /> Company Policy Center</h1>
  <div className="page-header-actions">
- <button className="btn-primary" onClick={openCreate}><FiPlus /> Tambah Kebijakan</button>
+ <button className="btn-primary" onClick={openCreate} aria-label="Tambah kebijakan"><FiPlus /> Tambah Kebijakan</button>
  </div>
  </div>
 
  {/* Stats */}
- <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+ <div className="filters-bar mb" style={{ flexWrap: 'wrap' }}>
  {statsByCategory.map(s => (
  <div
  key={s.id}
@@ -114,9 +114,9 @@ export default function CompanyPolicyCenter() {
  }}
  >
  <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />
- <span style={{ fontSize: 13, fontWeight: 600 }}>{s.label}</span>
+ <span className="td-semibold">{s.label}</span>
  <span style={{
- fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 12,
+ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 12,
  background: `${s.color}20`, color: s.color,
  }}>
  {s.count}
@@ -126,19 +126,19 @@ export default function CompanyPolicyCenter() {
  </div>
 
  {/* Search */}
- <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
- <div style={{ position: 'relative', flex: 1 }}>
- <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
- <input className="form-input" placeholder="Cari kebijakan..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 36 }} />
+ <div className="filters-bar mb">
+ <div className="filter-search-wrap" style={{ flex: 1 }}>
+ <FiSearch className="filter-search-icon" />
+ <input className="filter-search" placeholder="Cari kebijakan..." value={search} onChange={e => setSearch(e.target.value)} />
  </div>
  </div>
 
  {/* Policy Cards */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+ <div className="stats-grid">
  {filtered.length === 0 ? (
- <div className="info-card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
- <FiBookOpen style={{ fontSize: 36, marginBottom: 8, opacity: 0.4 }} />
- <div>Tidak ada kebijakan ditemukan.</div>
+ <div className="info-card ep-empty-wrap" style={{ gridColumn: '1/-1' }}>
+ <FiBookOpen className="ep-empty-icon" style={{ opacity: 0.4 }} />
+ <div className="ep-empty-title">Tidak ada kebijakan ditemukan.</div>
  </div>
  ) : filtered.map(p => {
  const cat = getCatInfo(p.category);
@@ -147,29 +147,25 @@ export default function CompanyPolicyCenter() {
  <div style={{ padding: '20px 20px 16px' }}>
  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
  <div style={{ flex: 1 }}>
- <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{p.title}</div>
- <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+ <div className="td-semibold" style={{ fontSize: 15, marginBottom: 6 }}>{p.title}</div>
+ <div className="btn-icon-row" style={{ flexWrap: 'wrap' }}>
  <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 700, color: '#fff', background: cat.color }}>{cat.label}</span>
- <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600, color: p.status === 'active' ? 'var(--success)' : 'var(--muted)', background: p.status === 'active' ? 'var(--success-light)' : 'var(--bg)' }}>
+ <span className={`status-badge ${p.status === 'active' ? 'active' : 'inactive'}`}>
  {p.status === 'active' ? 'Aktif' : 'Draft'}
  </span>
  </div>
  </div>
- <div style={{ display: 'flex', gap: 4 }}>
- <button className="action-btn" onClick={() => openEdit(p)}><FiEdit2 size={13} /></button>
- <button className="action-btn danger" onClick={() => handleDelete(p.id)}><FiTrash2 size={13} /></button>
+ <div className="actions-cell">
+ <button className="action-btn" onClick={() => openEdit(p)} aria-label="Edit kebijakan"><FiEdit2 size={13} /></button>
+ <button className="action-btn danger" onClick={() => handleDelete(p.id)} aria-label="Hapus kebijakan"><FiTrash2 size={13} /></button>
  </div>
  </div>
- <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>{p.description}</p>
+ <p className="td-muted-sm" style={{ lineHeight: 1.5, marginBottom: 12 }}>{p.description}</p>
  </div>
- <div style={{
- display: 'flex', justifyContent: 'space-between', padding: '10px 20px',
- background: 'var(--bg)', fontSize: 11, color: 'var(--muted)',
- borderTop: '1px solid var(--border-light)',
- }}>
+ <div className="data-table-header" style={{ fontSize: 11, color: 'var(--muted)' }}>
  <span>v{p.version}</span>
- <span>Berlaku: {p.effective_date || '—'}</span>
- <span>Update: {p.updated_at || '—'}</span>
+ <span>Berlaku: {p.effective_date || '-'}</span>
+ <span>Update: {p.updated_at || '-'}</span>
  </div>
  </div>
  );
@@ -219,7 +215,7 @@ export default function CompanyPolicyCenter() {
  </div>
  <div className="modal-footer">
  <button className="btn-secondary" onClick={() => setModal(null)}>Batal</button>
- <button className="btn-primary" onClick={handleSubmit} disabled={!form.title}><FiCheck /> {editId ? 'Update' : 'Simpan'}</button>
+ <button className="btn-primary" onClick={handleSubmit} disabled={!form.title} aria-label="Simpan kebijakan"><FiCheck /> {editId ? 'Update' : 'Simpan'}</button>
  </div>
  </div>
  </div>
@@ -227,3 +223,6 @@ export default function CompanyPolicyCenter() {
  </div>
  );
 }
+
+
+

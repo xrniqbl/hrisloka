@@ -1,5 +1,5 @@
 /* ================================================================== */
-/* EmployeeProfile — Premium HR Admin Profile Page                      */
+/* EmployeeProfile - Premium HR Admin Profile Page                      */
 /* Clean, professional design without emoji                             */
 /* ================================================================== */
 
@@ -53,7 +53,7 @@
 
 .ep-page-title {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   margin: 0;
   letter-spacing: -0.3px;
@@ -105,10 +105,10 @@
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: #fff;
   letter-spacing: -1px;
-  box-shadow: 0 8px 24px rgba(0, 71, 171, 0.25);
+  box-shadow: 0 8px 24px rgba(99, 91, 255, 0.25);
 }
 
 .ep-avatar img {
@@ -139,7 +139,7 @@
 
 .ep-hero-name {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   margin: 0 0 4px;
   letter-spacing: -0.3px;
@@ -261,7 +261,7 @@
 .ep-tab-btn.active {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 3px 10px rgba(0, 71, 171, 0.3);
+  box-shadow: 0 3px 10px rgba(99, 91, 255, 0.3);
   font-weight: 700;
 }
 
@@ -305,7 +305,7 @@
   flex-shrink: 0;
 }
 
-.ep-card-icon.blue   { background: rgba(0,71,171,0.1);   color: #0047AB; }
+.ep-card-icon.blue   { background: rgba(99,91,255,0.1);   color: #635BFF; }
 .ep-card-icon.green  { background: rgba(34,197,94,0.1);  color: #16A34A; }
 .ep-card-icon.purple { background: rgba(139,92,246,0.1); color: #7C3AED; }
 .ep-card-icon.orange { background: rgba(245,158,11,0.1); color: #D97706; }
@@ -314,7 +314,7 @@
 
 .ep-card-title {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   letter-spacing: 0.1px;
 }
@@ -397,7 +397,7 @@
 
 /* ── Payroll Hero Card ── */
 .ep-payroll-hero {
-  background: linear-gradient(135deg, #0047AB 0%, #1D4ED8 50%, #4F46E5 100%);
+  background: linear-gradient(135deg, #635BFF 0%, #4338CA 50%, #4F46E5 100%);
   border-radius: 16px;
   padding: 28px 32px;
   color: #fff;
@@ -428,7 +428,7 @@
 
 .ep-payroll-hero-amount {
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -1px;
   line-height: 1.1;
   margin-bottom: 4px;
@@ -465,7 +465,7 @@
 
 .ep-payroll-stat-value {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
   letter-spacing: -0.5px;
 }
@@ -493,7 +493,7 @@
 
 .ep-leave-bar-stat {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--primary);
 }
 
@@ -656,7 +656,7 @@
   padding: 13px;
   border-radius: 12px;
   border: none;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   font-family: inherit;
   display: flex;
@@ -670,11 +670,11 @@
 .ep-role-save-btn.primary {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(0,71,171,0.3);
+  box-shadow: 0 4px 14px rgba(99,91,255,0.3);
 }
 
 .ep-role-save-btn.primary:hover {
-  box-shadow: 0 6px 20px rgba(0,71,171,0.4);
+  box-shadow: 0 6px 20px rgba(99,91,255,0.4);
   transform: translateY(-1px);
 }
 
@@ -768,4 +768,116 @@
   .ep-access-grid { grid-template-columns: 1fr; }
   .ep-avatar { width: 68px; height: 68px; font-size: 22px; border-radius: 18px; }
   .ep-tabs { width: 100%; }
+}
+
+/* ── Loading / Empty states ── */
+.ep-loading-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+}
+.ep-loading-inner {
+  text-align: center;
+}
+.ep-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+.ep-loading-text {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.ep-empty-wrap {
+  text-align: center;
+  padding: 80px 20px;
+}
+.ep-empty-icon {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: var(--text-secondary);
+}
+.ep-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+.ep-empty-desc {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+/* ── Btn icon helpers ── */
+.btn-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+/* ── Leave remaining color helpers ── */
+.ep-leave-low  { color: var(--danger, #DC2626); }
+.ep-leave-ok   { color: #16A34A; }
+/* ── Payroll hero spacing ── */
+.ep-payroll-hero.mb { margin-bottom: 20px; }
+/* ── Payroll total rows ── */
+.ep-info-row.total-row { border-top: 2px solid var(--border); margin-top: 2px; }
+.ep-info-label.bold    { font-weight: 600; }
+.ep-info-value.size-md { font-size: 15px; font-weight: 600; }
+/* ── Payroll empty ── */
+.ep-payroll-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+/* ── Access tab ── */
+.ep-access-body { padding: 0 24px; }
+.ep-role-label-tiny {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  
+  letter-spacing: 0.2px;
+  margin-bottom: 2px;
+}
+.ep-role-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.ep-role-selector-wrap { margin-bottom: 12px; }
+.ep-role-selector-label {
+  font-size: 11px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  
+  letter-spacing: 0.5px;
+}
+.ep-save-btn-wrap { margin-bottom: 14px; }
+.ep-role-error {
+  font-size: 12px;
+  color: var(--danger);
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.ep-ref-body { padding: 12px 24px; }
+.ep-role-dot-sm {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ep-ref-role-name {
+  font-size: 12px;
+  font-weight: 600;
 }

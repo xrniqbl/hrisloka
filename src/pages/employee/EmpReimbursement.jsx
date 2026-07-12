@@ -115,7 +115,7 @@ export default function EmpReimbursement() {
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 14 }}>
         <h1 className="emp-page-title">
           {locale === 'en' ? 'Reimbursement' : 'Reimburse'}
         </h1>
@@ -125,18 +125,18 @@ export default function EmpReimbursement() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div className="emp-card" style={{ padding: 16 }}>
           <div style={{ fontSize: 11, color: '#D97706', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
             {locale === 'en' ? 'Pending' : 'Menunggu'}
           </div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: '#D97706' }}>{fmt(pendingTotal)}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#D97706' }}>{fmt(pendingTotal)}</div>
         </div>
         <div className="emp-card" style={{ padding: 16 }}>
           <div style={{ fontSize: 11, color: '#16A34A', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
             {locale === 'en' ? 'Approved' : 'Disetujui'}
           </div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: '#16A34A' }}>{fmt(approvedTotal)}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#16A34A' }}>{fmt(approvedTotal)}</div>
         </div>
       </div>
 
@@ -146,7 +146,7 @@ export default function EmpReimbursement() {
         style={{
           width: '100%', padding: '15px', borderRadius: 'var(--radius-md)',
           background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
-          color: '#fff', border: 'none', fontWeight: 800, fontSize: 15,
+          color: '#fff', border: 'none', fontWeight: 600, fontSize: 15,
           cursor: 'pointer', fontFamily: 'inherit',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           boxShadow: '0 6px 20px rgba(124,58,237,0.28)', marginBottom: 24,
@@ -158,7 +158,7 @@ export default function EmpReimbursement() {
       </button>
 
       {/* List */}
-      <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, color: 'var(--text)' }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>
         {locale === 'en' ? 'Request History' : 'Riwayat Pengajuan'}
       </div>
 
@@ -184,11 +184,11 @@ export default function EmpReimbursement() {
                       <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 6 }}>{item.category}</span>
                       <span style={{ fontSize: 12, color: 'var(--muted)' }}>{item.date}</span>
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--text)' }}>{fmt(item.amount)}</div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{fmt(item.amount)}</div>
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{item.description}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: sc.color, background: sc.bg, padding: '4px 10px', borderRadius: 20 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: sc.color, background: sc.bg, padding: '4px 10px', borderRadius: 12 }}>
                       {item.status === 'pending' ? (locale === 'en' ? 'Pending' : 'Menunggu')
                         : item.status === 'approved' ? (locale === 'en' ? 'Approved' : 'Disetujui')
                         : (locale === 'en' ? 'Rejected' : 'Ditolak')}
@@ -288,3 +288,4 @@ export default function EmpReimbursement() {
     </div>
   );
 }
+

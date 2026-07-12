@@ -2,21 +2,19 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiSearch, FiMapPin, FiClock, FiBriefcase, FiChevronRight, FiUsers, FiArrowRight } from 'react-icons/fi';
 import { supabase } from '../../lib/supabase';
+import { useFeatureFlags } from '../../context/FeatureFlagContext';
 import './PublicCareers.css';
 
 export default function PublicCareers() {
  const { slug } = useParams();
  const navigate = useNavigate();
+ const { isEnabled, loading: flagsLoading } = useFeatureFlags();
  const [jobs, setJobs] = useState([]);
  const [settings, setSettings] = useState(null);
  const [loading, setLoading] = useState(true);
  const [search, setSearch] = useState('');
  const [filterDept, setFilterDept] = useState('all');
  const [filterType, setFilterType] = useState('all');
-
- useEffect(() => {
- fetchData();
- }, [slug]);
 
  const fetchData = async () => {
  setLoading(true);
@@ -31,7 +29,7 @@ export default function PublicCareers() {
  .eq('is_active', true)
  .maybeSingle();
  settingsData = data;
- } catch (e) {
+ } catch {
  // Table might not exist yet — use defaults
  console.log('career_settings not available, using defaults');
  }
@@ -41,7 +39,7 @@ export default function PublicCareers() {
  slug: slug || 'informasilowongan',
  company_name: 'HRIS Loka',
  company_description: 'Platform HRIS Modern untuk Perusahaan Indonesia',
- accent_color: '#0047AB',
+ accent_color: '#635BFF',
  is_active: true,
  });
 
@@ -61,6 +59,10 @@ export default function PublicCareers() {
  setLoading(false);
  };
 
+ useEffect(() => {
+ fetchData();
+ }, [slug]);
+
  // Dynamic accent color
  useEffect(() => {
  if (settings?.accent_color) {
@@ -70,6 +72,17 @@ export default function PublicCareers() {
  document.documentElement.style.removeProperty('--career-primary');
  };
  }, [settings]);
+
+ if (!flagsLoading && !isEnabled('public_careers')) {
+   return (
+     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
+       <div>
+         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Karir tidak tersedia</h1>
+         <p style={{ color: '#6B7280', fontSize: 14 }}>Halaman lowongan publik dinonaktifkan untuk platform ini.</p>
+       </div>
+     </div>
+   );
+ }
 
  // Filters
  const departments = [...new Set(jobs.map(j => j.department).filter(Boolean))];

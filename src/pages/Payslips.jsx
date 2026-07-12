@@ -1,13 +1,12 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { FiX, FiDownload, FiPrinter, FiSend } from 'react-icons/fi';
 import * as employeeService from '../services/employeeService';
 import { useAuth } from '../context/AuthContext';
-import { sendPayslipEmail, isEmailConfigured } from '../services/emailService';
+import { sendPayslipEmail } from '../services/emailService';
 import { sendPayslipPush } from '../services/pushService';
 import { sendWhatsApp, buildPayslipMessage } from '../services/whatsappService';
 import { generatePayslipPDF } from '../lib/pdfGenerator';
-import { calculateSalary } from '../lib/payrollEngine';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 import '../styles/shared.css';
@@ -41,8 +40,6 @@ export default function Payslips() {
  const payslips = employees.map((emp) => {
  const base = emp.base_salary || emp.baseSalary || 0;
  const allowance = emp.allowance || 0;
- const bpjsRate = parseFloat(emp.bpjs_rate || emp.bpjsRate || 0.04);
- const taxRate = parseFloat(emp.tax_rate || emp.taxRate || 0.05);
 
  const gross = base + allowance;
  const bpjsKes = Math.round(base * 0.01);
@@ -109,12 +106,12 @@ export default function Payslips() {
  const emp = slip.employee || slip;
  const companyName = (() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'HRIS Loka'; } catch { return 'HRIS Loka'; } })();
  printWindow.document.write(`<!DOCTYPE html><html><head><title>Payslip - ${emp.name}</title>
- <style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;padding:40px;max-width:700px;margin:0 auto;color:#1e293b}
- h1{font-size:20px;color:#0047AB;margin:0}h2{font-size:14px;color:#64748B;font-weight:500;margin:4px 0 0}
- .header{border-bottom:2px solid #0047AB;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between}
+ <style>body{font-family:'Inter Tight',system-ui,sans-serif;padding:40px;max-width:700px;margin:0 auto;color:#1e293b}
+ h1{font-size:20px;color:#635BFF;margin:0}h2{font-size:14px;color:#64748B;font-weight:500;margin:4px 0 0}
+ .header{border-bottom:2px solid #635BFF;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between}
  table{width:100%;border-collapse:collapse;margin:12px 0}td{padding:6px 0;font-size:13px}
  .label{color:#64748B}.value{text-align:right;font-weight:600}.deduction{color:#DC2626}
- .total{background:#0047AB;color:#fff;padding:12px 16px;border-radius:8px;margin-top:16px;display:flex;justify-content:space-between;font-weight:700}
+ .total{background:#635BFF;color:#fff;padding:12px 16px;border-radius:8px;margin-top:16px;display:flex;justify-content:space-between;font-weight:700}
  @media print{body{padding:20px}}</style></head><body>
  <div class="header"><div><h1>${companyName}</h1><h2>Slip Gaji Karyawan</h2></div>
  <div style="text-align:right"><div style="font-weight:700;font-size:14px">Periode: ${slip.period || '-'}</div>
@@ -144,14 +141,14 @@ export default function Payslips() {
     try {
       // Email
       if (emp.email) {
-        sendPayslipEmail({ employeeName: emp.name, employeeEmail: emp.email, month, year, netSalary: slip.takeHomePay }).catch(() => {});
+        sendPayslipEmail({ employeeName: emp.name, employeeEmail: emp.email, month, year, netSalary: slip.takeHomePay }).catch((e) => console.warn('[Action failed]', e?.message || e));
       }
       // WhatsApp
       if (emp.phone) {
-        sendWhatsApp(emp.phone, buildPayslipMessage(emp.name, month, year, slip.takeHomePay)).catch(() => {});
+        sendWhatsApp(emp.phone, buildPayslipMessage(emp.name, month, year, slip.takeHomePay)).catch((e) => console.warn('[Action failed]', e?.message || e));
       }
       // Push
-      sendPayslipPush(emp.id, month, year).catch(() => {});
+      sendPayslipPush(emp.id, month, year).catch((e) => console.warn('[Action failed]', e?.message || e));
       successCount++;
     } catch { /* continue */ }
   }
@@ -164,16 +161,15 @@ export default function Payslips() {
  <div className="animate-in">
  <div className="page-header">
  <h1>{t('payslips.title')}</h1>
- <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-  <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+ <div className="page-header-actions">
+  <span className="period-label">
    Periode: {period}
   </span>
   <button className="btn-primary" onClick={handleSendAllPayslips} disabled={sending || payslips.length === 0}
-    style={{ fontSize: 13 }}>
-   <FiSend /> {sending ? 'Mengirim...' : 'Kirim Semua Payslip'}
+ aria-label="Kirim semua payslip"><FiSend /> {sending ? 'Mengirim...' : 'Kirim Semua Payslip'}
   </button>
  </div>
- {sendResult && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>{sendResult}</div>}
+ {sendResult && <div className="send-result-notice">{sendResult}</div>}
  </div>
 
  {loading ? (
@@ -202,7 +198,7 @@ export default function Payslips() {
  </thead>
  <tbody>
  {payslips.map((slip) => (
- <tr key={slip.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(slip)}>
+ <tr key={slip.id} className="tr-clickable" onClick={() => setSelected(slip)}>
  <td>
  <div className="employee-cell">
  <div className="employee-avatar">
@@ -214,14 +210,13 @@ export default function Payslips() {
  </div>
  </div>
  </td>
- <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{slip.employee.division}</td>
- <td style={{ fontWeight: 600 }}>{formatCurrency(slip.baseSalary)}</td>
- <td style={{ color: 'var(--danger)', fontWeight: 600 }}>- {formatCurrency(slip.totalDeductions)}</td>
- <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(slip.takeHomePay)}</td>
+ <td className="td-secondary-sm">{slip.employee.division}</td>
+ <td className="td-semibold">{formatCurrency(slip.baseSalary)}</td>
+ <td className="td-danger-bold">- {formatCurrency(slip.totalDeductions)}</td>
+ <td className="td-primary-bold">{formatCurrency(slip.takeHomePay)}</td>
  <td>
  <div className="actions-cell">
- <button className="action-btn" title="Download PDF" onClick={(e) => { e.stopPropagation(); handleDownloadPDF(slip); }}>
- <FiDownload />
+ <button className="action-btn" title="Download PDF" onClick={(e) => { e.stopPropagation(); handleDownloadPDF(slip); }} aria-label="Download PDF"><FiDownload />
  </button>
  </div>
  </td>
@@ -238,75 +233,59 @@ export default function Payslips() {
  <div className="modal-overlay" onClick={() => setSelected(null)}>
  <div className="modal-box large" onClick={(e) => e.stopPropagation()}>
  <div className="modal-header">
- <h2>Slip Gaji — {selected.employee.name}</h2>
+ <h2>Slip Gaji - {selected.employee.name}</h2>
  <button className="modal-close" onClick={() => setSelected(null)}><FiX /></button>
  </div>
  <div className="modal-body">
  {/* Company Header */}
- <div style={{
- textAlign: 'center', marginBottom: 28, paddingBottom: 20,
- borderBottom: '2px solid var(--primary-light)',
- }}>
- <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', letterSpacing: '-0.3px' }}>{(() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'HRIS Loka'; } catch { return 'HRIS Loka'; } })()}</div>
- <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>PT. Solusi Teknologi Indonesia</div>
- <div style={{
- display: 'inline-block', marginTop: 12, padding: '5px 16px',
- background: 'var(--primary-light)', borderRadius: 'var(--radius-full)',
- fontSize: 12, fontWeight: 700, color: 'var(--primary)',
- }}>
+ <div className="payslip-company-header">
+ <div className="payslip-company-name">{(() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'HRIS Loka'; } catch { return 'HRIS Loka'; } })()}</div>
+ <div className="payslip-company-sub">PT. Solusi Teknologi Indonesia</div>
+ <div className="payslip-period-badge">
  Periode: {selected.period}
  </div>
  </div>
 
  {/* Employee Info Grid */}
- <div style={{
- display: 'grid', gridTemplateColumns: '1fr 1fr',
- gap: '10px 24px', marginBottom: 24, fontSize: 13,
- }}>
+ <div className="payslip-info-grid">
  {[
  ['Nama', selected.employee.name],
  ['NIP', selected.employee.nip || selected.employee.employee_id || '-'],
  ['Divisi', selected.employee.division],
  ['Jabatan', selected.employee.position],
  ].map(([label, val]) => (
- <div key={label} style={{ display: 'flex', gap: 8 }}>
- <span style={{ color: 'var(--text-tertiary)', minWidth: 60 }}>{label}:</span>
- <span style={{ fontWeight: 600 }}>{val}</span>
+ <div key={label} className="payslip-info-row">
+ <span className="payslip-info-label">{label}:</span>
+ <span className="td-semibold">{val}</span>
  </div>
  ))}
  </div>
 
- {/* Income & Deductions — Two Column */}
- <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+ {/* Income & Deductions - Two Column */}
+ <div className="payslip-columns">
  {/* Income */}
- <div style={{
- background: 'var(--success-light)', borderRadius: 'var(--radius-md)',
- padding: 20, border: 'none',
- }}>
- <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
+ <div className="payslip-income-box">
+ <div className="payslip-box-title income">
  Pendapatan
  </div>
  {[
  ['Gaji Pokok', selected.baseSalary],
  ['Tunjangan', selected.allowance],
  ].map(([k, v]) => (
- <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: 13 }}>
- <span style={{ color: 'var(--text-secondary)' }}>{k}</span>
- <span style={{ fontWeight: 600 }}>{formatCurrency(v)}</span>
+ <div key={k} className="payslip-row">
+ <span className="payslip-row-label">{k}</span>
+ <span className="td-semibold">{formatCurrency(v)}</span>
  </div>
  ))}
- <div style={{ borderTop: '1.5px solid rgba(22,163,74,0.15)', paddingTop: 10, marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700 }}>
+ <div className="payslip-subtotal">
  <span>Total</span>
  <span>{formatCurrency(selected.grossIncome)}</span>
  </div>
  </div>
 
  {/* Deductions */}
- <div style={{
- background: 'var(--danger-light)', borderRadius: 'var(--radius-md)',
- padding: 20, border: 'none',
- }}>
- <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 }}>
+ <div className="payslip-deduction-box">
+ <div className="payslip-box-title deduction">
  Potongan
  </div>
  {[
@@ -315,41 +294,33 @@ export default function Payslips() {
  ['BPJS JP', selected.bpjs.bpjsJP],
  ['PPh 21', selected.pph21],
  ].map(([k, v]) => (
- <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', fontSize: 13 }}>
- <span style={{ color: 'var(--text-secondary)' }}>{k}</span>
- <span style={{ fontWeight: 600, color: 'var(--danger)' }}>- {formatCurrency(v)}</span>
+ <div key={k} className="payslip-row">
+ <span className="payslip-row-label">{k}</span>
+ <span className="payslip-row-value--danger">- {formatCurrency(v)}</span>
  </div>
  ))}
- <div style={{ borderTop: '1.5px solid rgba(220,38,38,0.15)', paddingTop: 10, marginTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700, color: 'var(--danger)' }}>
+ <div className="payslip-subtotal danger">
  <span>Total</span>
  <span>- {formatCurrency(selected.totalDeductions)}</span>
  </div>
  </div>
  </div>
 
- {/* Take Home Pay — Highlighted */}
- <div style={{
- marginTop: 24, padding: '22px 28px', borderRadius: 'var(--radius-lg)',
- background: 'linear-gradient(135deg, var(--primary) 0%, #1a6adf 100%)',
- color: '#fff',
- display: 'flex', justifyContent: 'space-between', alignItems: 'center',
- boxShadow: '0 4px 16px rgba(0, 71, 171, 0.25)',
- }}>
- <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.85 }}>Take Home Pay</span>
- <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.5px' }}>{formatCurrency(selected.takeHomePay)}</span>
+ {/* Take Home Pay - Highlighted */}
+ <div className="payslip-takehome">
+ <span className="payslip-takehome-label">Take Home Pay</span>
+ <span className="payslip-takehome-value">{formatCurrency(selected.takeHomePay)}</span>
  </div>
 
  {/* Footer Note */}
- <div style={{ marginTop: 16, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
+ <div className="payslip-footer-note">
  Dokumen ini dibuat secara otomatis oleh sistem HRIS Loka
  </div>
  </div>
  <div className="modal-footer">
- <button className="btn-secondary" onClick={() => handlePrint(selected)}>
- <FiPrinter /> Print
+ <button className="btn-secondary" onClick={() => handlePrint(selected)} aria-label="Print"><FiPrinter /> Print
  </button>
- <button className="btn-primary" onClick={() => handleDownloadPDF(selected)}>
- <FiDownload /> Download PDF
+ <button className="btn-primary" onClick={() => handleDownloadPDF(selected)} aria-label="Download PDF"><FiDownload /> Download PDF
  </button>
  </div>
  </div>
@@ -358,3 +329,5 @@ export default function Payslips() {
  </div>
  );
 }
+
+

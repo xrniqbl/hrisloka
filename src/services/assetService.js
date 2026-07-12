@@ -44,9 +44,10 @@ export async function createAsset(asset) {
   return { data, error };
 }
 
-// Update asset — verify company ownership
+// Update asset — MANDATORY company ownership
 export async function updateAsset(id, asset, companyId) {
-  let query = supabase
+  if (!guardCompanyId(companyId, 'updateAsset')) return { data: null, error: { message: 'company_id required' } };
+  const { data, error } = await supabase
     .from('assets')
     .update({
       name: asset.name,
@@ -59,17 +60,16 @@ export async function updateAsset(id, asset, companyId) {
       condition: asset.condition,
       notes: asset.notes,
     })
-    .eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.select().single();
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select().single();
   return { data, error };
 }
 
-// Delete asset — verify company ownership
+// Delete asset — MANDATORY company ownership
 export async function deleteAsset(id, companyId) {
-  let query = supabase.from('assets').delete().eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { error } = await query;
+  if (!guardCompanyId(companyId, 'deleteAsset')) return { error: { message: 'company_id required' } };
+  const { error } = await supabase.from('assets').delete().eq('id', id).eq('company_id', companyId);
   return { error };
 }
 

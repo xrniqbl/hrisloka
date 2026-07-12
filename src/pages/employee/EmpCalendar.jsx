@@ -1,45 +1,54 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   HiArrowPath,
   HiBookOpen,
   HiCalendarDays,
-  HiChevronLeft,
-  HiChevronRight,
   HiClock,
-  HiStar,
-  HiViewfinderCircle
+  HiStar
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import * as holidayService from '../../services/holidayService';
 import { getMyLeaves } from '../../services/leaveService';
-import { getShiftAssignments } from '../../services/shiftService';
+import { getMyShiftAssignments } from '../../services/shiftService';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../lib/i18n';
+import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
 import '../../styles/shared.css';
 
 const MONTHS_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS_ID = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const EVENT_COLORS = {
  holiday: '#DC2626',
  leave: '#10B981',
- shift: '#3B82F6',
+ shift: '#635BFF',
  training: '#8B5CF6',
 };
+function parseDate(value) {
+ if (!value) return undefined;
+ const [year, month, day] = String(value).split('-').map(Number);
+ return new Date(year, month - 1, day);
+}
+
+function toDateString(date) {
+ const year = date.getFullYear();
+ const month = String(date.getMonth() + 1).padStart(2, '0');
+ const day = String(date.getDate()).padStart(2, '0');
+ return `${year}-${month}-${day}`;
+}
 
 export default function EmpCalendar() {
   const { user } = useAuth();
   const { locale } = useTranslation();
 
   const MONTHS = locale === 'en' ? MONTHS_EN : MONTHS_ID;
-  const DAYS = locale === 'en' ? DAYS_EN : DAYS_ID;
   const EVENT_TYPE_LABELS = locale === 'en'
     ? { holiday: 'Holiday', leave: 'Leave', shift: 'Shift', training: 'Training' }
     : { holiday: 'Hari Libur', leave: 'Cuti', shift: 'Shift', training: 'Training' };
-  const [emp, setEmp] = useState(null);
+  const [_emp, setEmp] = useState(null);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
   const [holidays, setHolidays] = useState([]);
@@ -51,47 +60,61 @@ export default function EmpCalendar() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'agenda'
 
   const loadData = useCallback(async () => {
- setLoading(true);
- const email = user?.email || user?.user_metadata?.email;
- const { data: empData } = await getEmployeeByEmail(email);
- setEmp(empData);
+    setLoading(true);
 
- const [hRes, lRes, sRes, tRes] = await Promise.all([
- holidayService.getAllHolidays(year),
- empData ? getMyLeaves(empData.id) : { data: [] },
- getShiftAssignments(),
- supabase.from('trainings')
- .select('*, training_participants(employee_id)')
- .order('start_date', { ascending: true }),
- ]);
+    if (isDemoMode()) {
+      setEmp({ ...DEMO_EMPLOYEE });
+      setHolidays([...(DEMO_PROFILE_DATA.holidays || [])]);
+      setLeaves((DEMO_PROFILE_DATA.leaves || []).filter((l) => l.status === 'approved'));
+      setShifts([...(DEMO_PROFILE_DATA.shifts || [])]);
+      setTrainings([]);
+      setLoading(false);
+      return;
+    }
 
- setHolidays(hRes.data || []);
- setLeaves((lRes.data || []).filter(l => l.status === 'approved'));
+    const email = user?.email || user?.user_metadata?.email;
+    const { data: empData } = await getEmployeeByEmail(email);
+    setEmp(empData);
 
- if (empData) {
- const myShifts = (sRes.data || []).filter(s => s.employee_id === empData.id);
- setShifts(myShifts);
- const myTrainings = (tRes.data || []).filter(t =>
- (t.training_participants || []).some(p => p.employee_id === empData.id) &&
- (t.status === 'upcoming' || t.status === 'ongoing')
- );
- setTrainings(myTrainings);
- }
- setLoading(false);
- }, [user, year]);
+    const holidayPromise = empData?.company_id
+      ? holidayService.getAllHolidays(year, empData.company_id)
+      : holidayService.getAllHolidays(year);
 
- const today = new Date();
+    const [hRes, lRes, tRes] = await Promise.all([
+      holidayPromise,
+      empData ? getMyLeaves(empData.id) : Promise.resolve({ data: [] }),
+      supabase.from('trainings')
+        .select('*, training_participants(employee_id)')
+        .order('start_date', { ascending: true }),
+    ]);
+
+    setHolidays(hRes?.data || []);
+    setLeaves((lRes.data || []).filter((l) => l.status === 'approved'));
+
+    if (empData?.id && empData?.company_id) {
+      const { data: myShifts } = await getMyShiftAssignments(empData.id, empData.company_id);
+      setShifts(myShifts || []);
+      const myTrainings = (tRes.data || []).filter((t) =>
+        (t.training_participants || []).some((p) => p.employee_id === empData.id) &&
+        (t.status === 'upcoming' || t.status === 'ongoing'),
+      );
+      setTrainings(myTrainings);
+    } else {
+      setShifts([]);
+      setTrainings([]);
+    }
+    setLoading(false);
+  }, [user, year]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    window.addEventListener('emp:refresh', loadData);
+    return () => window.removeEventListener('emp:refresh', loadData);
+  }, [loadData]);
+
+  const today = new Date();
  const isToday = (d) => today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
-
- const daysInMonth = new Date(year, month + 1, 0).getDate();
- const firstDay = new Date(year, month, 1).getDay();
-
- const calendarDays = useMemo(() => {
- const days = [];
- for (let i = 0; i < firstDay; i++) days.push(null);
- for (let d = 1; d <= daysInMonth; d++) days.push(d);
- return days;
- }, [month, year, daysInMonth, firstDay]);
 
  const getDateStr = (d) => `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
@@ -134,17 +157,25 @@ export default function EmpCalendar() {
  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); setSelectedDate(null); };
 
  const selectedEvents = selectedDate ? getDateEvents(selectedDate) : [];
+ const selectedCalendarDate = selectedDate ? new Date(year, month, selectedDate) : undefined;
+ const markedDates = useMemo(() => {
+  const datesByType = { holiday: [], leave: [], shift: [], training: [] };
+  for (let day = 1; day <= new Date(year, month + 1, 0).getDate(); day++) {
+   getDateEvents(day).forEach((event) => datesByType[event.type]?.push(new Date(year, month, day)));
+  }
+  return datesByType;
+ }, [year, month, holidays, leaves, shifts, trainings]);
  const todayStr = today.toISOString().split('T')[0];
  const upcomingHolidays = holidays.filter(h => h.date >= todayStr).slice(0, 5);
 
   if (loading) {
     return (
       <div style={{ animation: "fadeInUp 0.3s ease" }}>
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 12 }}>
           <div className="skeleton skeleton-text" style={{ width: 100, height: 22, marginBottom: 8 }} />
           <div className="skeleton skeleton-text-sm" style={{ width: 200 }} />
         </div>
-        <div className="emp-card" style={{ height: 340, marginBottom: 16 }}>
+        <div className="emp-card" style={{ height: 340, marginBottom: 12 }}>
           <div className="skeleton" style={{ height: '100%', borderRadius: 8 }} />
         </div>
         {[1,2,3].map(i => <div key={i} className="emp-card" style={{ height: 56, marginBottom: 8 }}><div className="skeleton" style={{ height: '100%', borderRadius: 8 }} /></div>)}
@@ -192,86 +223,56 @@ export default function EmpCalendar() {
             {locale === 'en' ? 'Agenda' : 'Agenda'}
           </button>
         </div>
-      </div>
-
-
-      {/* Calendar Card (Grid mode) */}
+      </div>      {/* Calendar Card (Grid mode) */}
       {viewMode === 'grid' && (
-      <div className="emp-card" style={{ padding: 0, marginBottom: 16, overflow: 'hidden' }}>
-        {/* Month Navigation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--primary), #1D4ED8)' }}>
-          <button onClick={prevMonth} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}><HiChevronLeft size={18} /></button>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>{MONTHS[month]} {year}</div>
-            {(year !== today.getFullYear() || month !== today.getMonth()) && (
-              <button
-                onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelectedDate(today.getDate()); }}
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 20, color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 10px', cursor: 'pointer', marginTop: 4, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4, margin: '4px auto 0' }}
-              >
-                <HiViewfinderCircle size={10} /> {locale === 'en' ? 'Today' : 'Hari Ini'}
-              </button>
-            )}
+      <div className="emp-card" style={{ padding: 0, marginBottom: 12, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)', background: 'linear-gradient(135deg, var(--primary), #4338CA)' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 16, color: '#fff' }}>{MONTHS[month]} {year}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)' }}>{locale === 'en' ? 'Modern Coss/shadcn calendar' : 'Kalender modern Coss/shadcn'}</div>
           </div>
-          <button onClick={nextMonth} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}><HiChevronRight size={18} /></button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelectedDate(today.getDate()); }}
+          >
+            {locale === 'en' ? 'Today' : 'Hari Ini'}
+          </Button>
         </div>
-
-        {/* Day Headers */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--border)' }}>
-          {DAYS.map(d => (
-            <div key={d} style={{ textAlign: 'center', padding: '8px 0', fontSize: 11, fontWeight: 700, color: (d === 'Min' || d === 'Sun') ? '#DC2626' : 'var(--muted)' }}>{d}</div>
-          ))}
-        </div>
-
-        {/* Days Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {calendarDays.map((d, i) => {
-            const events = d ? getDateEvents(d) : [];
-            const isSunday = i % 7 === 0;
-            const hasHoliday = events.some(e => e.type === 'holiday');
-            const hasLeave = events.some(e => e.type === 'leave');
-            const isSelected = selectedDate === d;
-            return (
-              <div
-                key={i}
-                onClick={() => d && setSelectedDate(isSelected ? null : d)}
-                style={{
-                  minHeight: 48, padding: '4px 2px', textAlign: 'center',
-                  cursor: d ? 'pointer' : 'default',
-                  background: isSelected ? 'rgba(0,71,171,0.08)' : hasHoliday ? 'rgba(220,38,38,0.04)' : hasLeave ? 'rgba(16,185,129,0.04)' : 'transparent',
-                  borderBottom: '1px solid var(--border-light, rgba(0,0,0,0.04))',
-                  borderRight: (i + 1) % 7 !== 0 ? '1px solid var(--border-light, rgba(0,0,0,0.04))' : 'none',
-                  transition: 'background 0.15s',
-                }}
-              >
-                {d && (
-                  <>
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: isToday(d) ? 800 : 500,
-                      color: isToday(d) ? '#fff' : isSunday || hasHoliday ? '#DC2626' : 'var(--text)',
-                      background: isToday(d) ? 'var(--primary)' : 'transparent' }}>
-                      {d}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
-                      {[...new Set(events.map(e => e.color))].slice(0, 3).map((color, j) => (
-                        <div key={j} style={{ width: 5, height: 5, borderRadius: '50%', background: color }} />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+        <div style={{ padding: 12, display: 'flex', justifyContent: 'center' }}>
+          <Calendar
+            mode="single"
+            selected={selectedCalendarDate}
+            month={new Date(year, month, 1)}
+            onMonthChange={(date) => { setYear(date.getFullYear()); setMonth(date.getMonth()); setSelectedDate(null); }}
+            onSelect={(date) => {
+              if (!date) return;
+              setYear(date.getFullYear());
+              setMonth(date.getMonth());
+              setSelectedDate(date.getDate());
+            }}
+            showOutsideDays
+            captionLayout="dropdown"
+            modifiers={markedDates}
+            modifiersClassNames={{
+              holiday: 'text-red-600 [&>button]:after:bg-red-600',
+              leave: 'text-emerald-600 [&>button]:after:bg-emerald-600',
+              shift: 'text-blue-600 [&>button]:after:bg-blue-600',
+              training: 'text-violet-600 [&>button]:after:bg-violet-600',
+            }}
+            className="w-full max-w-[430px] [--cell-size:--spacing(12)] sm:[--cell-size:--spacing(11)]"
+          />
         </div>
       </div>
       )}
-
       {/* Agenda View */}
       {viewMode === 'agenda' && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 12 }}>
           {/* Month nav for agenda too */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: 'linear-gradient(135deg, var(--primary), #1D4ED8)', borderRadius: 'var(--radius-md)', color: '#fff' }}>
-            <button onClick={prevMonth} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}><HiChevronLeft size={16} /></button>
-            <span style={{ fontWeight: 800, fontSize: 15 }}>{MONTHS[month]} {year}</span>
-            <button onClick={nextMonth} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}><HiChevronRight size={16} /></button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '10px 14px', background: 'linear-gradient(135deg, var(--primary), #4338CA)', borderRadius: 'var(--radius-md)', color: '#fff' }}>
+            <Button variant="secondary" size="sm" onClick={prevMonth}>‹</Button>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>{MONTHS[month]} {year}</span>
+            <Button variant="secondary" size="sm" onClick={nextMonth}>›</Button>
           </div>
           {agendaEvents.length === 0 ? (
             <div className="emp-card emp-empty">
@@ -282,7 +283,7 @@ export default function EmpCalendar() {
             <div key={date} className="emp-card emp-card-stagger" style={{ marginBottom: 8, padding: 0, overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: evts.length ? '1px solid var(--border)' : 'none', background: isToday(day) ? 'var(--primary)' : 'transparent' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: isToday(day) ? 'rgba(255,255,255,0.2)' : 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: isToday(day) ? '#fff' : 'var(--primary)' }}>{day}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: isToday(day) ? '#fff' : 'var(--primary)' }}>{day}</span>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: isToday(day) ? '#fff' : 'var(--muted)', textTransform: 'uppercase' }}>
                   {new Date(date).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { weekday: 'long' })}
@@ -307,7 +308,7 @@ export default function EmpCalendar() {
 
       {/* Legend */}
       {viewMode === 'grid' && (
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         {[
           { color: EVENT_COLORS.holiday, label: locale === 'en' ? 'Holiday' : 'Libur' },
           { color: EVENT_COLORS.leave, label: locale === 'en' ? 'Leave' : 'Cuti' },
@@ -324,7 +325,7 @@ export default function EmpCalendar() {
 
       {/* Selected Date Events (grid mode only) */}
       {viewMode === 'grid' && selectedDate && (
-        <div className="emp-card" style={{ marginBottom: 16 }}>
+        <div className="emp-card" style={{ marginBottom: 12 }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
             {selectedDate} {MONTHS[month]} {year}
           </div>
@@ -357,7 +358,7 @@ export default function EmpCalendar() {
           <div style={{ fontSize: 13, color: 'var(--muted)' }}>{locale === 'en' ? 'No upcoming holidays.' : 'Tidak ada hari libur mendatang.'}</div>
         ) : upcomingHolidays.map(h => (
           <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border-light, rgba(0,0,0,0.04))' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#DC2626', color: '#fff', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, lineHeight: 1.1 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#DC2626', color: '#fff', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600, lineHeight: 1.1 }}>
               {new Date(h.date).getDate()}
               <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.8 }}>{MONTHS[new Date(h.date).getMonth()]?.slice(0, 3)}</span>
             </div>
@@ -371,3 +372,6 @@ export default function EmpCalendar() {
     </div>
   );
 }
+
+
+

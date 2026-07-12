@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+ï»¿import { useState, useEffect, useCallback } from 'react';
 import {
   HiCalendarDays,
   HiChevronLeft,
@@ -7,8 +7,9 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
-import { getShiftAssignments } from '../../services/shiftService';
+import { getMyShiftAssignments } from '../../services/shiftService';
 import { useTranslation } from '../../lib/i18n';
+import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 const DAYS_ID = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
@@ -17,7 +18,7 @@ const DAYS_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturd
 export default function EmpShift() {
   const { user } = useAuth();
   const { locale } = useTranslation();
-  const [emp, setEmp] = useState(null);
+
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -47,13 +48,21 @@ export default function EmpShift() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    if (isDemoMode()) {
+      setShifts((DEMO_PROFILE_DATA.shifts || []).map((s) => ({
+        ...s,
+        employee_id: DEMO_EMPLOYEE.id,
+      })));
+      setLoading(false);
+      return;
+    }
     const email = user?.email || user?.user_metadata?.email || '';
     const { data: empData } = await getEmployeeByEmail(email);
-    if (empData) {
-      setEmp(empData);
-      const { data: all } = await getShiftAssignments();
-      const mine = (all || []).filter(a => a.employee_id === empData.id);
-      setShifts(mine);
+    if (empData?.id && empData?.company_id) {
+      const { data: mine } = await getMyShiftAssignments(empData.id, empData.company_id);
+      setShifts(mine || []);
+    } else {
+      setShifts([]);
     }
     setLoading(false);
   }, [user]);
@@ -67,12 +76,12 @@ export default function EmpShift() {
 
   if (loading) return (
     <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <div className="skeleton skeleton-text" style={{ width: 130, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 200 }} />
       </div>
-      <div className="skeleton" style={{ height: 56, borderRadius: 'var(--radius-md)', marginBottom: 16 }} />
-      <div className="emp-card emp-card-gradient" style={{ marginBottom: 16, height: 90 }}>
+      <div className="skeleton" style={{ height: 56, borderRadius: 'var(--radius-md)', marginBottom: 12 }} />
+      <div className="emp-card emp-card-gradient" style={{ marginBottom: 12, height: 90 }}>
         <div className="skeleton" style={{ height: '100%', borderRadius: 12, opacity: 0.3 }} />
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
@@ -89,7 +98,7 @@ export default function EmpShift() {
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <h1 className="emp-page-title">
           {locale === 'en' ? 'Work Schedule' : 'Jadwal Shift'}
         </h1>
@@ -99,7 +108,7 @@ export default function EmpShift() {
       </div>
 
       {/* Week Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
         <button onClick={() => setWeekOffset(w => w - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
           <HiChevronLeft size={18} />
         </button>
@@ -120,18 +129,18 @@ export default function EmpShift() {
       </div>
 
       {/* Today's Shift Card */}
-      <div className="emp-card emp-card-gradient" style={{ marginBottom: 16, textAlign: 'center', padding: '20px' }}>
+      <div className="emp-card emp-card-gradient" style={{ marginBottom: 12, textAlign: 'center', padding: '20px' }}>
         {shiftByDay[todayIdx] ? (
           <>
             <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
               {locale === 'en' ? "Today's Shift" : 'Shift Hari Ini'}
             </div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
               {shiftByDay[todayIdx].shifts?.name || 'Shift'}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14, opacity: 0.9 }}>
               <HiClock size={16} />
-              {shiftByDay[todayIdx].shifts?.start_time?.slice(0, 5)} — {shiftByDay[todayIdx].shifts?.end_time?.slice(0, 5)}
+              {shiftByDay[todayIdx].shifts?.start_time?.slice(0, 5)}  {shiftByDay[todayIdx].shifts?.end_time?.slice(0, 5)}
             </div>
           </>
         ) : (
@@ -151,7 +160,7 @@ export default function EmpShift() {
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '14px 16px',
               border: isToday ? '2px solid var(--primary)' : '1px solid var(--border)',
-              background: isToday ? 'rgba(37,99,235,0.04)' : 'var(--surface)',
+              background: isToday ? 'rgba(79,70,229,0.04)' : 'var(--surface)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
@@ -159,7 +168,7 @@ export default function EmpShift() {
                   background: isToday ? 'var(--primary)' : 'var(--surface)',
                   border: isToday ? 'none' : '1px solid var(--border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 800, fontSize: 12,
+                  fontWeight: 600, fontSize: 12,
                   color: isToday ? '#fff' : 'var(--muted)',
                 }}>
                   {day.slice(0, 3)}
@@ -178,7 +187,7 @@ export default function EmpShift() {
                     {shift.shifts?.name}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {shift.shifts?.start_time?.slice(0, 5)} — {shift.shifts?.end_time?.slice(0, 5)}
+                    {shift.shifts?.start_time?.slice(0, 5)}  {shift.shifts?.end_time?.slice(0, 5)}
                   </div>
                 </div>
               ) : (
@@ -193,3 +202,4 @@ export default function EmpShift() {
     </div>
   );
 }
+

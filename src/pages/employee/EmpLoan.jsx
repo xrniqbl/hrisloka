@@ -12,12 +12,13 @@ import { getMyLoans, submitLoan, getLoanPayments } from '../../services/loanServ
 import BottomSheet from '../../components/BottomSheet';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
+import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 const fmt = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
 export default function EmpLoan() {
-  const { user } = useAuth();
+  const { user, employee: authEmployee } = useAuth();
   const { locale } = useTranslation();
   const toast = useToast();
   const [emp, setEmp] = useState(null);
@@ -25,21 +26,32 @@ export default function EmpLoan() {
   const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
   const [expandedLoan, setExpandedLoan] = useState(null);
   const [payments, setPayments] = useState({});
   const [form, setForm] = useState({ amount: '', monthlyDeduction: '', reason: '' });
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const email = user?.email || user?.user_metadata?.email;
-    const { data: empData } = await getEmployeeByEmail(email);
+    if (isDemoMode()) {
+      setEmp({ ...DEMO_EMPLOYEE });
+      setLoans([...(DEMO_PROFILE_DATA.loans || [])]);
+      setLoading(false);
+      return;
+    }
+    let empData = authEmployee;
+    if (!empData?.id) {
+      const email = user?.email || user?.user_metadata?.email;
+      const res = await getEmployeeByEmail(email);
+      empData = res.data;
+    }
     if (empData) {
       setEmp(empData);
       const { data: loanData } = await getMyLoans(empData.id);
       setLoans(loanData || []);
     }
     setLoading(false);
-  }, [user]);
+  }, [user, authEmployee?.id]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -49,17 +61,46 @@ export default function EmpLoan() {
   }, [loadData]);
 
   const handleSubmit = async () => {
-    if (!emp || !form.amount) return;
+    setFormError('');
+    if (!emp || !form.amount || Number(form.amount) <= 0) {
+      setFormError(locale === 'en' ? 'Enter a valid loan amount.' : 'Masukkan nominal pinjaman yang valid.');
+      return;
+    }
     setSubmitting(true);
     const amount = Number(form.amount);
-    await submitLoan(emp.id, {
+    const monthlyDeduction = Number(form.monthlyDeduction) || Math.round(amount / 12);
+
+    if (isDemoMode()) {
+      setLoans((prev) => [{
+        id: `demo-loan-${Date.now()}`,
+        amount,
+        remaining: amount,
+        monthly_deduction: monthlyDeduction,
+        reason: form.reason,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      }, ...prev]);
+      setForm({ amount: '', monthlyDeduction: '', reason: '' });
+      setSubmitting(false);
+      setSheetOpen(false);
+      toast.success(locale === 'en' ? 'Demo loan submitted!' : 'Pinjaman demo dikirim!');
+      return;
+    }
+
+    const { error } = await submitLoan(emp.id, {
       amount,
-      monthlyDeduction: Number(form.monthlyDeduction) || Math.round(amount / 12),
+      monthlyDeduction,
       reason: form.reason,
+      companyId: emp.company_id,
     });
+    setSubmitting(false);
+    if (error) {
+      setFormError(error.message || (locale === 'en' ? 'Failed to submit loan' : 'Gagal mengajukan pinjaman'));
+      toast?.error?.(error.message);
+      return;
+    }
     setForm({ amount: '', monthlyDeduction: '', reason: '' });
     await loadData();
-    setSubmitting(false);
     setSheetOpen(false);
     toast.success(locale === 'en' ? 'Loan application submitted!' : 'Pengajuan pinjaman berhasil dikirim!');
   };
@@ -75,21 +116,21 @@ export default function EmpLoan() {
 
   if (loading) return (
     <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+      <div className="mb">
         <div className="skeleton skeleton-text" style={{ width: 160, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 220 }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
         {[1,2].map(i => <div key={i} className="emp-card" style={{ padding: 14, textAlign: 'center' }}><div className="skeleton" style={{ height: 48, borderRadius: 8 }} /></div>)}
       </div>
-      <div className="skeleton" style={{ height: 52, borderRadius: 'var(--radius-md)', marginBottom: 20 }} />
+      <div className="skeleton" style={{ height: 52, borderRadius: 'var(--radius-md)', marginBottom: 14 }} />
       <div style={{ display: 'grid', gap: 10 }}>
         {[1,2].map(i => <div key={i} className="emp-card" style={{ height: 100 }}><div className="skeleton" style={{ height: '100%', borderRadius: 8 }} /></div>)}
       </div>
     </div>
   );
 
-  if (!emp) return <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Data tidak ditemukan.</div>;
+  if (!emp) return <div className="ep-empty-wrap"><div className="ep-empty-desc">Data tidak ditemukan.</div></div>;
 
   const statusLabels = {
     pending: locale === 'en' ? 'Pending' : 'Menunggu',
@@ -104,40 +145,34 @@ export default function EmpLoan() {
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 16 }}>
+      <div className="mb">
         <h1 className="emp-page-title">{locale === 'en' ? 'Loans & Cash Advances' : 'Pinjaman / Kasbon'}</h1>
         <p className="emp-page-subtitle">{locale === 'en' ? 'Manage loans and installment history' : 'Kelola pinjaman dan riwayat cicilan'}</p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
         <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>{locale === 'en' ? 'Remaining Balance' : 'Sisa Pinjaman'}</div>
-          <div className="emp-stat-number" style={{ fontSize: 18, fontWeight: 800, color: totalRemaining > 0 ? '#DC2626' : 'var(--success)' }}>{fmt(totalRemaining)}</div>
+          <div className="emp-stat-number" style={{ color: totalRemaining > 0 ? '#DC2626' : 'var(--success)' }}>{fmt(totalRemaining)}</div>
         </div>
         <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>{locale === 'en' ? 'Monthly Installment' : 'Cicilan/Bulan'}</div>
-          <div className="emp-stat-number" style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary)' }}>{fmt(totalMonthly)}</div>
+          <div className="emp-stat-number">{fmt(totalMonthly)}</div>
         </div>
       </div>
 
       {/* Apply Button */}
       <button
         onClick={() => setSheetOpen(true)}
-        style={{
-          width: '100%', padding: '14px', marginBottom: 20,
-          background: 'linear-gradient(135deg, var(--primary), #1D4ED8)',
-          color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
-          fontWeight: 700, fontSize: 14, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: '0 4px 14px rgba(0,71,171,0.25)', fontFamily: 'inherit',
-        }}
+        className="btn-primary"
+        style={{ width: '100%', marginBottom: 14 }}
       >
         <HiCurrencyDollar size={18} /> {locale === 'en' ? 'Apply for New Loan' : 'Ajukan Pinjaman Baru'}
       </button>
 
       {/* Loan List */}
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
+      <div className="section-label mb-sm">
         {locale === 'en' ? `Loan History (${loans.length})` : `Riwayat Pinjaman (${loans.length})`}
       </div>
       {loans.length === 0 ? (
@@ -154,8 +189,8 @@ export default function EmpLoan() {
               <div key={l.id} className="emp-card emp-card-interactive emp-card-stagger" style={{ padding: 16 }} onClick={() => toggleExpand(l)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 800 }}>{fmt(l.amount)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{l.start_date || l.created_at?.split('T')[0] || '—'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{fmt(l.amount)}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{l.start_date || l.created_at?.split('T')[0] || '-'}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className={`status-badge ${l.status === 'active' ? 'active' : l.status === 'paid' ? 'approved' : l.status}`}>
@@ -227,6 +262,11 @@ export default function EmpLoan() {
         }
       >
         <div style={{ display: 'grid', gap: 14 }}>
+          {formError && (
+            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', color: '#DC2626', fontSize: 12, fontWeight: 600 }}>
+              {formError}
+            </div>
+          )}
           {activeLoans.length > 0 && (
             <div style={{ padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#D97706', fontWeight: 600 }}>
               <HiBellAlert />
@@ -237,7 +277,7 @@ export default function EmpLoan() {
           )}
           <div>
             <label className="emp-label">{locale === 'en' ? 'Loan Amount (Rp) *' : 'Jumlah Pinjaman (Rp) *'}</label>
-            <input className="emp-input" type="number" placeholder="5000000" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+            <input className="emp-input" type="number" placeholder="5000000" value={form.amount} onChange={e => { setForm({ ...form, amount: e.target.value }); setFormError(''); }} />
           </div>
           <div>
             <label className="emp-label">{locale === 'en' ? 'Monthly Installment (Rp)' : 'Cicilan per Bulan (Rp)'}</label>

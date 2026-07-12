@@ -49,7 +49,7 @@ export default function ContractEditor({ isTemplate = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [contract, setContract] = useState(null);
-  const [_company, _setCompany] = useState(null);
+  const [, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -91,7 +91,7 @@ export default function ContractEditor({ isTemplate = false }) {
     if (showSignModal && canvasRef.current) {
       sigPadRef.current = new SignaturePad(canvasRef.current, {
         backgroundColor: 'rgba(255,255,255,0)',
-        penColor: '#0047AB',
+        penColor: '#635BFF',
         minWidth: 1.5,
         maxWidth: 2.5,
       });
@@ -169,7 +169,7 @@ export default function ContractEditor({ isTemplate = false }) {
 
   const handleSaveSignature = async () => {
     if (!sigPadRef.current || sigPadRef.current.isEmpty()) {
-      alert('Silakan tulis tanda tangan terlebih dahulu.');
+      console.warn('[ContractEditor] Signature required');
       return;
     }
     const sigData = sigPadRef.current.toDataURL('image/png');
@@ -200,7 +200,7 @@ export default function ContractEditor({ isTemplate = false }) {
   );
 
   const statusColor = {
-    draft: '#6B7280', sent: '#0047AB', signed: '#16A34A', expired: '#DC2626'
+    draft: '#6B7280', sent: '#635BFF', signed: '#16A34A', expired: '#DC2626'
   }[contract?.status] || '#6B7280';
 
   const handleColorChange = (color) => {
@@ -213,8 +213,7 @@ export default function ContractEditor({ isTemplate = false }) {
       {/* Header */}
       <div className="page-header" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button className="btn-secondary" style={{ padding: '8px 14px' }} onClick={() => navigate(isTemplate ? '/contracts' : '/contracts')}>
-            <FiArrowLeft size={14} />
+          <button className="btn-secondary" style={{ padding: '8px 14px' }} onClick={() => navigate(isTemplate ? '/contracts' : '/contracts')} aria-label="Kembali"><FiArrowLeft size={14} />
           </button>
           <div>
             <h1 style={{ fontSize: 18 }}>
@@ -239,8 +238,7 @@ export default function ContractEditor({ isTemplate = false }) {
               <button className="btn-secondary" onClick={() => openSignModal('company')} style={{ fontSize: 12 }}>
                 {hasCompanySig ? <FiCheckCircle size={12} style={{ color: '#16A34A' }} /> : <FiEdit3 size={12} />} TTD Perusahaan
               </button>
-              <button className="btn-secondary" onClick={handleMarkSent} style={{ fontSize: 12 }}>
-                <FiSend size={12} /> Tandai Terkirim
+              <button className="btn-secondary" onClick={handleMarkSent} style={{ fontSize: 12 }} aria-label="Tandai terkirim"><FiSend size={12} /> Tandai Terkirim
               </button>
             </>
           )}
@@ -256,7 +254,7 @@ export default function ContractEditor({ isTemplate = false }) {
       </div>
 
       <div className="ce-wrapper">
-        {/* ─── Editor Panel ─── */}
+        {/* --- Editor Panel --- */}
         <div className="ce-editor-panel">
           {/* Toolbar */}
           <div className="ce-toolbar">
@@ -357,7 +355,7 @@ export default function ContractEditor({ isTemplate = false }) {
             {/* Horizontal Rule */}
             <div className="ce-toolbar-divider" />
             <button className="ce-toolbar-btn" onMouseDown={e => { e.preventDefault(); editor?.chain().focus().setHorizontalRule().run(); }} style={{ fontSize: 12 }} title="Garis Horizontal">
-              —
+              -
             </button>
 
             {/* Undo/Redo */}
@@ -373,7 +371,7 @@ export default function ContractEditor({ isTemplate = false }) {
           </div>
         </div>
 
-        {/* ─── Side Panel ─── */}
+        {/* --- Side Panel --- */}
         <div className="ce-side-panel">
           {/* Variables */}
           <div className="ce-panel-card">
@@ -421,8 +419,7 @@ export default function ContractEditor({ isTemplate = false }) {
                         </div>
                       </div>
                       {!s.has && (
-                        <button className="btn-secondary" style={{ fontSize: 11, padding: '5px 10px' }} onClick={() => openSignModal(s.who)}>
-                          <FiEdit3 size={11} /> Tanda Tangani
+                        <button className="btn-secondary" style={{ fontSize: 11, padding: '5px 10px' }} onClick={() => openSignModal(s.who)} aria-label="Tanda tangani"><FiEdit3 size={11} /> Tanda Tangani
                         </button>
                       )}
                     </div>
@@ -436,16 +433,14 @@ export default function ContractEditor({ isTemplate = false }) {
           <div className="ce-panel-card">
             <div className="ce-panel-title">Aksi Cepat</div>
             <div className="ce-panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ width: '100%', justifyContent: 'center' }}>
-                <FiSave size={13} /> {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+              <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ width: '100%', justifyContent: 'center' }} aria-label="Simpan perubahan"><FiSave size={13} /> {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
               </button>
               <button className="btn-secondary" onClick={handleExportPDF} disabled={pdfExporting} style={{ width: '100%', justifyContent: 'center' }}>
                 {pdfExporting ? <FiRefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <FiDownload size={13} />}
                 {pdfExporting ? 'Mengekspor...' : 'Export ke PDF'}
               </button>
               {!isTemplate && (
-                <button className="btn-secondary" onClick={handleMarkSent} style={{ width: '100%', justifyContent: 'center', color: '#0047AB' }}>
-                  <FiSend size={13} /> Tandai Sudah Dikirim
+                <button className="btn-secondary" onClick={handleMarkSent} style={{ width: '100%', justifyContent: 'center', color: '#635BFF' }} aria-label="Tandai sudah dikirim"><FiSend size={13} /> Tandai Sudah Dikirim
                 </button>
               )}
             </div>
@@ -473,8 +468,7 @@ export default function ContractEditor({ isTemplate = false }) {
               <button
                 onClick={() => sigPadRef.current?.clear()}
                 style={{ marginTop: 8, padding: '6px 14px', fontSize: 12, background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}
-              >
-                <FiRotateCcw size={12} /> Hapus & Ulangi
+              ><FiRotateCcw size={12} /> Hapus & Ulangi
               </button>
               <div style={{ marginTop: 14, padding: 12, background: '#FFFBEB', borderRadius: 8, border: '1px solid #FDE68A', fontSize: 12, color: '#92400E' }}>
                 Dengan menyimpan tanda tangan ini, Anda menyetujui bahwa tanda tangan digital ini memiliki kekuatan hukum yang setara dengan tanda tangan fisik sesuai UU No. 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik (ITE).
@@ -482,8 +476,7 @@ export default function ContractEditor({ isTemplate = false }) {
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setShowSignModal(false)}>Batal</button>
-              <button className="btn-primary" onClick={handleSaveSignature}>
-                <FiCheckCircle size={13} /> Simpan Tanda Tangan
+              <button className="btn-primary" onClick={handleSaveSignature} aria-label="Simpan tanda tangan"><FiCheckCircle size={13} /> Simpan Tanda Tangan
               </button>
             </div>
           </div>
@@ -492,3 +485,5 @@ export default function ContractEditor({ isTemplate = false }) {
     </div>
   );
 }
+
+

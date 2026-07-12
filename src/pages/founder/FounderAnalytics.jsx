@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiMonitor, FiSmartphone, FiTablet, FiTrendingUp, FiBarChart2, FiRefreshCw } from 'react-icons/fi';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
@@ -10,7 +10,7 @@ import './founder.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend);
 
-const chartFont = { family: 'Plus Jakarta Sans', weight: '500', size: 12 };
+const chartFont = { family: 'Inter Tight', weight: '500', size: 12 };
 const tooltipConfig = {
   backgroundColor: 'rgba(10,15,30,0.92)', titleFont: { ...chartFont, weight: '700' }, bodyFont: chartFont,
   cornerRadius: 8, padding: { top: 8, bottom: 8, left: 12, right: 12 },
@@ -33,13 +33,10 @@ function SkeletonBox({ w = '100%', h = 28 }) {
 
 function EmptyState({ icon, title, sub }) {
   return (
-    <div style={{
-      height: 200, display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 8,
-    }}>
-      <div style={{ fontSize: 36, color: 'var(--border)' }}>{icon}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{title}</div>
-      {sub && <div style={{ fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7 }}>{sub}</div>}
+    <div className="ep-empty-wrap">
+      <div className="ep-empty-icon">{icon}</div>
+      <div className="ep-empty-title">{title}</div>
+      {sub && <div className="ep-empty-desc">{sub}</div>}
     </div>
   );
 }
@@ -161,7 +158,7 @@ export default function FounderAnalytics() {
         <div className="fp-header-top">
           <div>
             <h1 className="fp-title">Website Analytics</h1>
-            <p className="fp-subtitle">Track platform usage and user engagement — data real dari Supabase</p>
+            <p className="fp-subtitle">Track platform usage and user engagement - data real dari Supabase</p>
           </div>
           <div className="fp-actions">
             <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 9, padding: 3 }}>
@@ -190,14 +187,14 @@ export default function FounderAnalytics() {
       {/* Error banner */}
       {error && (
         <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#DC2626', fontSize: 13, marginBottom: 20 }}>
-          ⚠️ {error} — Menampilkan data kosong, bukan data palsu.
+          š {error} - Menampilkan data kosong, bukan data palsu.
         </div>
       )}
 
-      {/* No data notice (when analytics table is empty — users haven't generated events yet) */}
+      {/* No data notice (when analytics table is empty - users haven't generated events yet) */}
       {!loading && !error && pageViews === 0 && (
         <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', color: '#6366F1', fontSize: 13, marginBottom: 20 }}>
-          ℹ️ Belum ada event analytics tercatat dalam {period} hari terakhir. Data akan muncul setelah pengguna aktif menggunakan platform.
+          „ Belum ada event analytics tercatat dalam {period} hari terakhir. Data akan muncul setelah pengguna aktif menggunakan platform.
         </div>
       )}
 
@@ -220,7 +217,7 @@ export default function FounderAnalytics() {
       </div>
 
       {/* Traffic chart */}
-      <div className="fp-card" style={{ marginBottom: 20 }}>
+      <div className="fp-card mb-sm">
         <div className="fp-card-header">
           <span className="fp-card-title">Traffic Overview</span>
           <span className="fp-card-badge">Last {period} days</span>
@@ -252,7 +249,7 @@ export default function FounderAnalytics() {
                 <div style={{ height: 220, position: 'relative' }}>
                   <Doughnut data={deviceChartData} options={deviceOptions} />
                   <div style={{ position: 'absolute', top: '42%', left: '50%', transform: 'translate(-50%,-55%)', textAlign: 'center', pointerEvents: 'none' }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>{totalDevices.toLocaleString('id-ID')}</div>
+                    <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)' }}>{totalDevices.toLocaleString('id-ID')}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Total</div>
                   </div>
                 </div>
@@ -293,3 +290,4 @@ export default function FounderAnalytics() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+ï»¿import { useState, useEffect } from 'react';
 import {
   HiArrowTopRightOnSquare,
   HiBookOpen,
@@ -11,6 +11,8 @@ import {
 } from 'react-icons/hi2';
 import { getAllPolicies } from '../../services/policyService';
 import { useTranslation } from '../../lib/i18n';
+import { useAuth } from '../../context/AuthContext';
+import { isDemoMode } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 const CATEGORY_ICONS = {
@@ -22,7 +24,7 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_COLORS = {
- sop: '#3B82F6',
+ sop: '#635BFF',
  regulation: '#8B5CF6',
  policy: '#10B981',
  guideline: '#F59E0B',
@@ -45,6 +47,7 @@ const FALLBACK_POLICIES = [
 
 export default function EmpPolicy() {
   const { locale } = useTranslation();
+  const { employee } = useAuth();
   const [policies, setPolicies] = useState([]);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -54,7 +57,14 @@ export default function EmpPolicy() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data, error } = await getAllPolicies();
+      if (isDemoMode()) {
+        setPolicies(FALLBACK_POLICIES);
+        setLoading(false);
+        return;
+      }
+      const { data } = employee?.company_id
+        ? await getAllPolicies(employee.company_id)
+        : await getAllPolicies();
       if (data && data.length > 0) {
         setPolicies(data);
       } else {
@@ -64,7 +74,7 @@ export default function EmpPolicy() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [employee?.company_id]);
 
   const CATEGORY_LABELS = locale === 'en' ? CATEGORY_LABELS_EN : CATEGORY_LABELS_ID;
   const categories = ['all', ...Object.keys(CATEGORY_LABELS).filter(k => policies.some(p => p.category === k))];
@@ -82,8 +92,8 @@ export default function EmpPolicy() {
  });
 
   if (loading) return (
-    <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div className="emp-card emp-card-gradient" style={{ marginBottom: 16, padding: '20px 16px' }}>
+    <div className="ep-loading-wrap">
+      <div className="emp-card emp-card-gradient" style={{ marginBottom: 12, padding: '20px 16px' }}>
         <div className="skeleton" style={{ height: 20, width: 180, borderRadius: 8, opacity: 0.3, marginBottom: 8 }} />
         <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 6, opacity: 0.2, marginBottom: 14 }} />
         <div className="skeleton" style={{ height: 38, borderRadius: 10, opacity: 0.2 }} />
@@ -93,14 +103,14 @@ export default function EmpPolicy() {
   );
 
   return (
-    <div style={{ paddingBottom: 24, animation: 'fadeInUp 0.35s ease' }}>
+    <div className="ep-loading-wrap" style={{ paddingBottom: 24 }}>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0047AB 100%)', borderRadius: 'var(--radius-md)', padding: '20px 16px', marginBottom: 16, color: '#fff' }}>
+      <div className="emp-card emp-card-gradient" style={{ marginBottom: 12, color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <HiBookOpen size={20} />
-          <div style={{ fontSize: 17, fontWeight: 800 }}>{locale === 'en' ? 'Company Policies' : 'Kebijakan Perusahaan'}</div>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{locale === 'en' ? 'Company Policies' : 'Kebijakan Perusahaan'}</div>
         </div>
-        <div style={{ fontSize: 12, opacity: 0.75 }}>{policies.length} {locale === 'en' ? 'active policies available' : 'kebijakan aktif tersedia'}</div>
+        <div className="td-muted-sm" style={{ opacity: 0.75 }}>{policies.length} {locale === 'en' ? 'active policies available' : 'kebijakan aktif tersedia'}</div>
         <div style={{ position: 'relative', marginTop: 14 }}>
           <HiMagnifyingGlass size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.6)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)}
@@ -110,7 +120,7 @@ export default function EmpPolicy() {
       </div>
 
       {/* Category filter */}
-      <div className="emp-chips" style={{ marginBottom: 16 }}>
+      <div className="emp-chips" style={{ marginBottom: 12 }}>
         {categories.map(cat => (
           <button key={cat} className={`emp-chip ${activeCategory === cat ? 'active' : ''}`}
             onClick={() => setActiveCategory(cat)}
@@ -123,9 +133,9 @@ export default function EmpPolicy() {
 
       {/* Policy list */}
       {filtered.length === 0 ? (
-        <div className="emp-card emp-empty">
-          <div className="emp-empty-icon"><HiBookOpen size={24} /></div>
-          <div className="emp-empty-title">{locale === 'en' ? 'No policies found' : 'Tidak ada kebijakan ditemukan'}</div>
+        <div className="ep-empty-wrap">
+          <div className="ep-empty-icon"><HiBookOpen size={24} /></div>
+          <div className="ep-empty-title">{locale === 'en' ? 'No policies found' : 'Tidak ada kebijakan ditemukan'}</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
@@ -140,10 +150,10 @@ export default function EmpPolicy() {
                     {CATEGORY_ICONS[p.category] || <HiDocumentText size={16} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{p.title}</div>
+                    <div className="td-semibold" style={{ marginBottom: 2 }}>{p.title}</div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: `${color}18`, color }}>{CATEGORY_LABELS[p.category]}</span>
-                      <span style={{ fontSize: 10, color: 'var(--muted)' }}>v{p.version} • {locale === 'en' ? 'Effective' : 'Berlaku'}: {p.effective_date}</span>
+                      <span className="td-muted-sm">v{p.version}  {locale === 'en' ? 'Effective' : 'Berlaku'}: {p.effective_date}</span>
                     </div>
                   </div>
                   <div style={{ color: 'var(--muted)', transition: 'transform 0.2s', transform: isOpen ? 'rotate(90deg)' : 'none' }}>
@@ -152,9 +162,9 @@ export default function EmpPolicy() {
                 </div>
                 {isOpen && (
                   <div style={{ padding: '0 16px 16px 16px', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ paddingTop: 12, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{p.description}</div>
-                    <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)' }}>
-                      <span>{locale === 'en' ? 'Last updated' : 'Terakhir diupdate'}: {p.updated_at}</span>
+                    <div className="td-muted-sm" style={{ paddingTop: 12, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{p.description}</div>
+                    <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
+                      <span className="td-muted-sm">{locale === 'en' ? 'Last updated' : 'Terakhir diupdate'}: {p.updated_at}</span>
                       {p.file_url && <a href={p.file_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, color, fontWeight: 700, textDecoration: 'none' }}>
                         <HiArrowTopRightOnSquare size={12} /> {locale === 'en' ? 'Open Document' : 'Buka Dokumen'}
                       </a>}
@@ -169,3 +179,4 @@ export default function EmpPolicy() {
     </div>
   );
 }
+

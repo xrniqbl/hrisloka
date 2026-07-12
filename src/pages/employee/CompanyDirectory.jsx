@@ -35,15 +35,15 @@ export default function CompanyDirectory() {
 
   const getInitials = (name = '') => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const getColor = (name = '') => {
-    const colors = ['#0047AB', '#10B981', '#8B5CF6', '#EC4899', '#F59E0B', '#3B82F6', '#EF4444', '#06B6D4'];
+    const colors = ['#635BFF', '#10B981', '#8B5CF6', '#EC4899', '#F59E0B', '#635BFF', '#EF4444', '#06B6D4'];
     let hash = 0;
     for (const ch of name) hash = ch.charCodeAt(0) + (hash << 5) - hash;
     return colors[Math.abs(hash) % colors.length];
   };
 
   if (loading) return (
-    <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+    <div className="emp-page">
+      <div className="mb">
         <div className="skeleton skeleton-text" style={{ width: 120, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 160 }} />
       </div>
@@ -74,7 +74,7 @@ export default function CompanyDirectory() {
         <div style={{
           width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
           background: `${color}18`, color, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: 15, fontWeight: 800,
+          justifyContent: 'center', fontSize: 15, fontWeight: 600,
           border: `2px solid ${color}30`,
         }}>
           {getInitials(emp.name)}
@@ -86,21 +86,21 @@ export default function CompanyDirectory() {
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           {emp.phone && (
             <a href={`https://wa.me/${emp.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer"
-               style={{ width: 34, height: 34, borderRadius: '50%', background: '#F0FDF4', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+               className="dir-contact-btn dir-contact-btn--green"
                title="WhatsApp">
               <HiChatBubbleOvalLeft size={15} />
             </a>
           )}
           {emp.phone && (
             <a href={`tel:${emp.phone}`}
-               style={{ width: 34, height: 34, borderRadius: '50%', background: '#F0FDF4', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+               className="dir-contact-btn dir-contact-btn--green"
                title="Telepon">
               <HiPhone size={14} />
             </a>
           )}
           {emp.email && (
             <a href={`mailto:${emp.email}`}
-               style={{ width: 34, height: 34, borderRadius: '50%', background: '#EFF6FF', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+               className="dir-contact-btn dir-contact-btn--blue"
                title="Email">
               <HiEnvelope size={14} />
             </a>
@@ -112,25 +112,25 @@ export default function CompanyDirectory() {
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 16 }}>
+      <div className="mb">
         <h1 className="emp-page-title">{locale === 'en' ? 'Company Directory' : 'Buku Kontak'}</h1>
         <p className="emp-page-subtitle">{filtered.length} {locale === 'en' ? 'employees found' : 'karyawan ditemukan'}</p>
       </div>
 
       {/* Search */}
-      <div style={{ position: 'relative', marginBottom: 12 }}>
-        <HiMagnifyingGlass style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+      <div className="dir-search-wrap">
+        <HiMagnifyingGlass className="dir-search-icon" />
         <input
           type="text"
           placeholder={locale === 'en' ? 'Search name, division, or position...' : 'Cari nama, divisi, atau jabatan...'}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontFamily: 'inherit' }}
+          className="form-input dir-search-input"
         />
       </div>
 
       {/* Group toggle */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      <div className="dir-toggle-row">
         <button onClick={() => setGroupByDept(g => !g)} style={{
           display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 99,
           border: '1.5px solid var(--border)', background: groupByDept ? 'var(--primary)' : 'var(--surface)',
@@ -148,21 +148,21 @@ export default function CompanyDirectory() {
       )}
 
       {groupByDept ? (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div className="dir-dept-grid">
           {sortedDepts.map(dept => (
             <div key={dept}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 12, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} />
-                {dept} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>({grouped[dept].length})</span>
+              <div className="dir-dept-label">
+                <div className="dir-dept-dot" />
+                {dept} <span className="dir-dept-count">({grouped[dept].length})</span>
               </div>
-              <div style={{ display: 'grid', gap: 8 }}>
+              <div className="dir-card-grid">
                 {grouped[dept].map(emp => <EmployeeCard key={emp.id} emp={emp} />)}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div className="dir-card-grid">
           {filtered.map(emp => <EmployeeCard key={emp.id} emp={emp} />)}
         </div>
       )}

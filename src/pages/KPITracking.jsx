@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from '../lib/i18n';
 import {
  Chart as ChartJS,
@@ -11,7 +11,6 @@ import {
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
 import { FiPlus, FiX, FiCheck, FiTrash2 } from 'react-icons/fi';
-import { supabase } from '../lib/supabase';
 import * as kpiService from '../services/kpiService';
 import { useAuth } from '../context/AuthContext';
 import * as employeeService from '../services/employeeService';
@@ -24,7 +23,7 @@ import { PageSkeleton } from '../components/SkeletonLoader';
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-const chartFont = { family: 'Plus Jakarta Sans', weight: '500' };
+const chartFont = { family: 'Inter Tight', weight: '500' };
 
 const defaultMetrics = [
  { name: 'Disiplin', target: 100, actual: 0, weight: 1 },
@@ -82,7 +81,7 @@ export default function KPITracking() {
  const fetchData = async () => {
  setLoading(true);
  const [kpiRes, empRes] = await Promise.all([
- kpiService.getAllKPIs(),
+ kpiService.getAllKPIs(employee?.company_id),
  employeeService.getAllEmployees(undefined, employee?.company_id),
  ]);
  setKpiData(kpiRes.data || []);
@@ -91,7 +90,7 @@ export default function KPITracking() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('kpi_records', fetchData);
+ useRealtimeTable('kpi_records', fetchData, { companyId: currentUser?.company_id });
 
  const getColor = (score) => {
  if (score >= 90) return 'var(--success)';
@@ -253,21 +252,21 @@ export default function KPITracking() {
 
   if (loading) return <PageSkeleton hasStats={true} tableRows={6} tableCols={5} />;
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
  <h1>{t('kpi.title')}</h1>
  <div className="page-header-actions">
- <button className="btn-primary" onClick={openCreateKPI}><FiPlus /> Buat KPI</button>
+ <button className="btn-primary" onClick={openCreateKPI} aria-label="Buat KPI"><FiPlus /> Buat KPI</button>
  </div>
  </div>
 
  {loading ? (
- <div style={{ padding: 20 }}>Loading...</div>
+ <div className="ep-loading-wrap"><div className="ep-loading-inner"><div className="ep-spinner" /><div className="ep-loading-text">Loading...</div></div></div>
  ) : kpiData.length === 0 ? (
- <div className="info-card" style={{ textAlign: 'center', padding: 40 }}>
- <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Belum ada data KPI</div>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>Klik "Buat KPI" untuk membuat record KPI pertama.</div>
- <button className="btn-primary" onClick={openCreateKPI}><FiPlus /> Buat KPI</button>
+ <div className="ep-empty-wrap">
+ <div className="ep-empty-title">Belum ada data KPI</div>
+ <div className="ep-empty-desc">Klik "Buat KPI" untuk membuat record KPI pertama.</div>
+ <button className="btn-primary" onClick={openCreateKPI} aria-label="Buat KPI"><FiPlus /> Buat KPI</button>
  </div>
  ) : (
  <>
@@ -275,26 +274,26 @@ export default function KPITracking() {
  <div style={{ display: 'grid', gridTemplateColumns: selectedRadar ? '1fr 1fr' : '1fr', gap: 20, marginBottom: 28 }}>
  {/* Company-wide average radar */}
  {avgMetrics && (
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: 28, boxShadow: 'var(--shadow-card)' }}>
- <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+ <div className="chart-card">
+ <div className="chart-card-header">
  <div>
- <div style={{ fontSize: 15, fontWeight: 700 }}>Radar Kinerja Perusahaan</div>
- <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Rata-rata semua karyawan</div>
+ <div className="chart-card-title">Radar Kinerja Perusahaan</div>
+ <div className="chart-card-subtitle">Rata-rata semua karyawan</div>
  </div>
  </div>
- <div style={{ height: 300 }}>
- <Radar data={radarData(avgMetrics.labels, avgMetrics.scores, 'Rata-rata', '#0047AB')} options={radarOptions} />
+ <div className="chart-container" style={{ height: 300 }}>
+ <Radar data={radarData(avgMetrics.labels, avgMetrics.scores, 'Rata-rata', '#635BFF')} options={radarOptions} />
  </div>
  </div>
  )}
 
  {/* Individual employee radar */}
  {selectedRadar && (
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: 28, boxShadow: 'var(--shadow-card)' }}>
- <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+ <div className="chart-card">
+ <div className="chart-card-header">
  <div>
- <div style={{ fontSize: 15, fontWeight: 700 }}>{selectedRadar.employee?.name || 'Karyawan'}</div>
- <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+ <div className="chart-card-title">{selectedRadar.employee?.name || 'Karyawan'}</div>
+ <div className="chart-card-subtitle">
  {selectedRadar.employee?.position} - {selectedRadar.employee?.division}
  </div>
  </div>
@@ -306,7 +305,7 @@ export default function KPITracking() {
  {selectedRadar.overall}
  </div>
  </div>
- <div style={{ height: 300 }}>
+ <div className="chart-container" style={{ height: 300 }}>
  <Radar data={radarData(selectedRadar.labels, selectedRadar.scores, selectedRadar.employee?.name || '', '#8B5CF6')} options={radarOptions} />
  </div>
  </div>
@@ -314,7 +313,7 @@ export default function KPITracking() {
  </div>
 
  {/* Performance Formula Info */}
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: '14px 20px', marginBottom: 20, border: '1px solid var(--border)', fontSize: 12, color: 'var(--text-secondary)' }}>
+ <div className="info-card" style={{ padding: '14px 20px', marginBottom: 20 }}>
  <strong>Formula Perhitungan:</strong> Score per metrik = (Actual / Target) x 100 (max 100). Overall Score = rata-rata tertimbang semua metrik berdasarkan bobot (weight).
  </div>
 
@@ -336,10 +335,10 @@ export default function KPITracking() {
  transition: 'all 0.2s',
  }}
  >
- <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+ <div className="data-table-header mb-sm" style={{ justifyContent: 'space-between' }}>
  <div>
- <div style={{ fontSize: 14, fontWeight: 700 }}>{emp?.name || '-'}</div>
- <div style={{ fontSize: 12, color: 'var(--muted)' }}>{emp?.position || ''} - {emp?.division || ''}</div>
+ <div className="td-semibold" style={{ fontSize: 14 }}>{emp?.name || '-'}</div>
+ <div className="td-muted-sm">{emp?.position || ''} - {emp?.division || ''}</div>
  </div>
  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -354,8 +353,7 @@ export default function KPITracking() {
  Grade {getGrade(computedOverall)}
  </span>
  </div>
- <button className="action-btn danger" onClick={(e) => { e.stopPropagation(); handleDeleteKPI(kpi.id); }} title="Hapus KPI">
- <FiTrash2 size={13} />
+ <button className="action-btn danger" onClick={(e) => { e.stopPropagation(); handleDeleteKPI(kpi.id); }} title="Hapus KPI" aria-label="Hapus KPI"><FiTrash2 size={13} />
  </button>
  </div>
  </div>
@@ -452,17 +450,16 @@ export default function KPITracking() {
  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Score</label>
  <div style={{ fontSize: 16, fontWeight: 700, color: getColor(score) }}>{score}%</div>
  </div>
- <button className="action-btn danger" onClick={() => removeMetric(i)} style={{ marginBottom: 2 }}><FiTrash2 size={13} /></button>
+ <button className="action-btn danger" onClick={() => removeMetric(i)} style={{ marginBottom: 2 }} aria-label="Hapus metrik"><FiTrash2 size={13} /></button>
  </div>
  );
  })}
 
- <button className="btn-secondary" style={{ marginTop: 8 }} onClick={addMetric}><FiPlus /> Tambah Metrik</button>
+ <button className="btn-secondary" style={{ marginTop: 8 }} onClick={addMetric} aria-label="Tambah metrik"><FiPlus /> Tambah Metrik</button>
 
- {/* Overall Preview */}
- <div style={{ marginTop: 20, padding: 16, background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '2px solid var(--border)', textAlign: 'center' }}>
- <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Overall Score (Preview)</div>
- <div style={{ fontSize: 36, fontWeight: 800, color: getColor(calcOverallScore(kpiForm.metrics)) }}>
+ <div className="info-card" style={{ marginTop: 20, border: '2px solid var(--border)', textAlign: 'center' }}>
+ <div className="info-card-label">Overall Score (Preview)</div>
+ <div className="info-card-value" style={{ color: getColor(calcOverallScore(kpiForm.metrics)) }}>
  {calcOverallScore(kpiForm.metrics)}%
  </div>
  <div style={{ fontSize: 14, fontWeight: 700, color: getColor(calcOverallScore(kpiForm.metrics)) }}>
@@ -472,8 +469,7 @@ export default function KPITracking() {
  </div>
  <div className="modal-footer">
  <button className="btn-secondary" onClick={() => setModal(null)}>Batal</button>
- <button className="btn-primary" onClick={handleCreateKPI} disabled={!kpiForm.employeeId || kpiForm.metrics.length === 0}>
- <FiCheck /> Simpan KPI
+ <button className="btn-primary" onClick={handleCreateKPI} disabled={!kpiForm.employeeId || kpiForm.metrics.length === 0} aria-label="Simpan KPI"><FiCheck /> Simpan KPI
  </button>
  </div>
  </div>
@@ -482,3 +478,5 @@ export default function KPITracking() {
  </div>
  );
 }
+
+

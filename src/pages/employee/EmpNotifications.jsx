@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../lib/i18n';
+import { isDemoMode, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 const READ_KEY = 'hrisync_notif_read';
@@ -30,7 +31,7 @@ const NOTIF_COLORS = {
   announcement: '#F59E0B',
   approval: '#10B981',
   payslip: '#16A34A',
-  leave: '#3B82F6',
+  leave: '#635BFF',
   submission: '#8B5CF6',
   system: '#6B7280',
 };
@@ -69,9 +70,8 @@ function markAllRead(ids) {
 }
 
 export default function EmpNotifications() {
-  const { user } = useAuth();
+  const { user, employee: authEmployee } = useAuth();
   const { locale } = useTranslation();
-  const [emp, setEmp] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,32 +80,61 @@ export default function EmpNotifications() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const email = user?.email || user?.user_metadata?.email;
-    const { data: empData } = await getEmployeeByEmail(email);
 
-    // Company-wide announcements
-    const { data: annData } = await supabase
-      .from('announcements').select('*').order('created_at', { ascending: false }).limit(20);
+    if (isDemoMode()) {
+      const demo = DEMO_PROFILE_DATA.notifications || [];
+      setAnnouncements(demo.filter((n) => n.type === 'announcement'));
+      setSubmissions(demo.filter((n) => n.type !== 'announcement'));
+      setLoading(false);
+      return;
+    }
+
+    let empData = authEmployee;
+    if (!empData?.id) {
+      const email = user?.email || user?.user_metadata?.email;
+      const res = await getEmployeeByEmail(email);
+      empData = res.data;
+    }
+
+    // Company-scoped announcements (avoid cross-tenant leak)
+    let annQuery = supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (empData?.company_id) {
+      annQuery = annQuery.eq('company_id', empData.company_id);
+    }
+    const { data: annData } = await annQuery;
     setAnnouncements((annData || []).map(a => ({ ...a, type: 'announcement' })));
 
     if (empData) {
-      setEmp(empData);
       const empId = empData.id;
-      // Fetch all module notifications in parallel
-      const [leaveRes, otRes, reimbRes, loanRes, apprRes, ticketRes, payRes] = await Promise.all([
+      const [leaveRes, otRes, reimbRes, loanRes, apprRes, ticketRes, payRes, notifRes] = await Promise.all([
         supabase.from('leave_requests').select('*').eq('employee_id', empId).in('status', ['approved','rejected']).order('updated_at', { ascending: false }).limit(10),
         supabase.from('overtime_requests').select('*').eq('employee_id', empId).in('status', ['approved','rejected']).order('updated_at', { ascending: false }).limit(10),
         supabase.from('reimbursements').select('*').eq('employee_id', empId).in('status', ['approved','rejected','paid']).order('updated_at', { ascending: false }).limit(10),
-        supabase.from('loans').select('*').eq('employee_id', empId).in('status', ['approved','rejected']).order('updated_at', { ascending: false }).limit(5),
+        supabase.from('loans').select('*').eq('employee_id', empId).in('status', ['approved','rejected','active']).order('updated_at', { ascending: false }).limit(5),
         supabase.from('appraisals').select('*').eq('employee_id', empId).order('created_at', { ascending: false }).limit(5),
         supabase.from('tickets').select('*').eq('employee_id', empId).eq('status', 'resolved').order('updated_at', { ascending: false }).limit(5),
         supabase.from('payroll_records').select('*').eq('employee_id', empId).eq('status', 'paid').order('created_at', { ascending: false }).limit(3),
+        // Explicit in-app notifications written by HR services (approve leave, activate account, etc.)
+        supabase.from('notifications').select('*').eq('employee_id', empId).order('created_at', { ascending: false }).limit(30),
       ]);
       const en = locale === 'en';
+      const fromTable = (notifRes.data || []).map((n) => ({
+        id: `notif_${n.id}`,
+        type: n.type || 'system',
+        title: n.title,
+        message: n.message || n.body || '',
+        status: n.read ? 'read' : 'unread',
+        created_at: n.created_at,
+      }));
       const newSubs = [
+        ...fromTable,
         ...(leaveRes.data||[]).map(s => ({ id:`leave_${s.id}`, type:'leave',
           title: en ? `Leave ${s.status==='approved'?'Approved':'Rejected'}` : `Cuti ${s.status==='approved'?'Disetujui':'Ditolak'}`,
-          message: en ? `${s.type} leave (${s.start_date}→${s.end_date}) was ${s.status}.` : `Cuti ${s.type} (${s.start_date}→${s.end_date}) ${s.status==='approved'?'disetujui':'ditolak'}.`,
+          message: en ? `${s.type} leave (${s.start_date}->${s.end_date}) was ${s.status}.` : `Cuti ${s.type} (${s.start_date}->${s.end_date}) ${s.status==='approved'?'disetujui':'ditolak'}.`,
           status:s.status, created_at:s.updated_at||s.created_at })),
         ...(otRes.data||[]).map(s => ({ id:`ot_${s.id}`, type:'approval',
           title: en ? `Overtime ${s.status==='approved'?'Approved':'Rejected'}` : `Lembur ${s.status==='approved'?'Disetujui':'Ditolak'}`,
@@ -116,8 +145,8 @@ export default function EmpNotifications() {
           message: en ? `${s.category||s.type} claim Rp${Number(s.amount).toLocaleString()} was ${s.status}.` : `Klaim ${s.category||s.type} Rp${Number(s.amount).toLocaleString()} ${s.status==='paid'?'dibayar':s.status==='approved'?'disetujui':'ditolak'}.`,
           status:s.status, created_at:s.updated_at||s.created_at })),
         ...(loanRes.data||[]).map(s => ({ id:`loan_${s.id}`, type:'payslip',
-          title: en ? `Loan ${s.status==='approved'?'Approved':'Rejected'}` : `Pinjaman ${s.status==='approved'?'Disetujui':'Ditolak'}`,
-          message: en ? `Loan Rp${Number(s.amount).toLocaleString()} was ${s.status}.` : `Pinjaman Rp${Number(s.amount).toLocaleString()} ${s.status==='approved'?'disetujui':'ditolak'}.`,
+          title: en ? `Loan ${s.status==='approved'||s.status==='active'?'Approved':'Rejected'}` : `Pinjaman ${s.status==='approved'||s.status==='active'?'Disetujui':'Ditolak'}`,
+          message: en ? `Loan Rp${Number(s.amount).toLocaleString()} was ${s.status}.` : `Pinjaman Rp${Number(s.amount).toLocaleString()} status: ${s.status}.`,
           status:s.status, created_at:s.updated_at||s.created_at })),
         ...(apprRes.data||[]).map(s => ({ id:`ap_${s.id}`, type:'system',
           title: en ? 'Performance Review Available' : 'Penilaian Kinerja Tersedia',
@@ -132,10 +161,19 @@ export default function EmpNotifications() {
           message: en ? `Salary for ${s.month?new Date(s.month).toLocaleDateString('en-US',{month:'long',year:'numeric'}):'this month'} paid.` : `Gaji ${s.month?new Date(s.month).toLocaleDateString('id-ID',{month:'long',year:'numeric'}):'bulan ini'} sudah ditransfer.`,
           status:'paid', created_at:s.created_at })),
       ];
-      setSubmissions(newSubs);
+      // Dedupe by id, newest first
+      const seen = new Set();
+      const deduped = newSubs
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .filter((n) => {
+          if (seen.has(n.id)) return false;
+          seen.add(n.id);
+          return true;
+        });
+      setSubmissions(deduped);
     }
     setLoading(false);
-  }, [user, locale]);
+  }, [user, locale, authEmployee?.id]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -145,17 +183,23 @@ export default function EmpNotifications() {
     return () => window.removeEventListener('emp:refresh', loadData);
   }, [loadData]);
 
-  // Realtime subscription for new announcements
+  // Realtime subscription for new announcements (skip in demo)
   useEffect(() => {
+    if (isDemoMode()) return undefined;
+    const companyId = authEmployee?.company_id;
     const ch = supabase
       .channel('notif-rt')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements' },
-        (payload) => {
-          setAnnouncements(prev => [{ ...payload.new, type: 'announcement' }, ...prev]);
-        })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'announcements',
+        ...(companyId ? { filter: `company_id=eq.${companyId}` } : {}),
+      }, (payload) => {
+        setAnnouncements(prev => [{ ...payload.new, type: 'announcement' }, ...prev]);
+      })
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, []);
+  }, [authEmployee?.company_id]);
 
   const FILTERS = [
     { key: 'all',          label: locale === 'en' ? 'All'           : 'Semua' },
@@ -166,13 +210,28 @@ export default function EmpNotifications() {
     { key: 'submission',   label: locale === 'en' ? 'Support'       : 'Bantuan' },
   ];
 
+  const allNotifs = [...announcements, ...submissions];
+  const filtered = activeFilter === 'all' ? allNotifs : allNotifs.filter(n => n.type === activeFilter);
+  const unreadCount = allNotifs.filter(n => !readIds.has(String(n.id))).length;
+
+  const handleMarkRead = (id) => {
+    markRead(id);
+    setReadIds(prev => { const s = new Set(prev); s.add(String(id)); return s; });
+  };
+
+  const handleMarkAllRead = () => {
+    const ids = allNotifs.map(n => String(n.id));
+    markAllRead(ids);
+    setReadIds(prev => { const s = new Set(prev); ids.forEach(id => s.add(id)); return s; });
+  };
+
   if (loading) return (
-    <div style={{ animation: 'fadeInUp 0.3s ease' }}>
-      <div style={{ marginBottom: 20 }}>
+    <div className="ep-loading-wrap">
+      <div style={{ marginBottom: 14 }}>
         <div className="skeleton skeleton-text" style={{ width: 120, height: 20, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 200 }} />
       </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         {[80, 120, 90].map((w, i) => (
           <div key={i} className="skeleton" style={{ width: w, height: 30, borderRadius: 99 }} />
         ))}
@@ -198,41 +257,17 @@ export default function EmpNotifications() {
     <div className="emp-page">
       {/* Header */}
       <div className="emp-page-header">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="page-header-actions">
+          <div className="btn-icon-row">
             <h1 className="emp-page-title">
               {locale === 'en' ? 'Notifications' : 'Notifikasi'}
             </h1>
             {unreadCount > 0 && (
-              <span style={{
-                padding: '2px 8px',
-                borderRadius: 20,
-                background: 'var(--primary)',
-                color: '#fff',
-                fontSize: 11,
-                fontWeight: 700,
-              }}>
-                {unreadCount}
-              </span>
+              <span className="status-badge active">{unreadCount}</span>
             )}
           </div>
           {unreadCount > 0 && (
-            <button
-              onClick={handleMarkAllRead}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                background: 'none',
-                border: 'none',
-                color: 'var(--primary)',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: '4px 0',
-                fontFamily: 'inherit',
-              }}
-            >
+            <button className="action-btn success" onClick={handleMarkAllRead}>
               <HiCheckCircle size={14} />
               {locale === 'en' ? 'Mark all read' : 'Tandai dibaca'}
             </button>
@@ -275,7 +310,7 @@ export default function EmpNotifications() {
                 {!isRead && (
                   <div style={{ position: 'absolute', top: 14, right: 14, width: 7, height: 7, borderRadius: '50%', background: color, animation: 'pulseDot 1.8s ease-in-out infinite' }} />
                 )}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div className="btn-icon-row" style={{ alignItems: 'flex-start' }}>
                   <div className="emp-icon-badge" style={{ background: `${color}15`, color, borderRadius: 10, width: 36, height: 36 }}>
                     {NOTIF_ICONS[n.type] || <HiBell size={16} />}
                   </div>
@@ -286,7 +321,7 @@ export default function EmpNotifications() {
                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
                       {n.message}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--muted)' }}>
+                    <div className="btn-icon-row" style={{ fontSize: 11, color: 'var(--muted)' }}>
                       <HiClock size={11} />
                       {formatRelativeDate(n.created_at, locale)}
                     </div>

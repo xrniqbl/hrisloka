@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { updateSEOTags, injectSchema } from '../lib/seo';
@@ -11,7 +11,7 @@ const fadeUp = {
 };
 const stagger = (d = 0.1) => ({ hidden: {}, show: { transition: { staggerChildren: d } } });
 
-/* ─── Step Cards ─── */
+/* --- Step Cards --- */
 const ANDROID_STEPS = [
   {
     num: '01',
@@ -39,8 +39,8 @@ const ANDROID_STEPS = [
   },
   {
     num: '03',
-    title: 'Ketuk Menu Titik Tiga (⋮)',
-    desc: 'Di pojok kanan atas browser Chrome, ketuk ikon tiga titik vertikal (⋮) untuk membuka menu pilihan.',
+    title: 'Ketuk Menu Titik Tiga (‹)',
+    desc: 'Di pojok kanan atas browser Chrome, ketuk ikon tiga titik vertikal (‹) untuk membuka menu pilihan.',
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
         <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
@@ -96,7 +96,7 @@ const IOS_STEPS = [
   {
     num: '03',
     title: 'Ketuk Ikon Share (Bagikan)',
-    desc: 'Di bagian bawah Safari, ketuk ikon Share yang berbentuk kotak dengan panah ke atas (↑). Ikon ini berwarna biru.',
+    desc: 'Di bagian bawah Safari, ketuk ikon Share yang berbentuk kotak dengan panah ke atas (&rarr;). Ikon ini berwarna biru.',
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
@@ -146,7 +146,7 @@ const BENEFITS = [
     ),
     title: 'Tampilan Fullscreen',
     desc: 'Tampil seperti aplikasi native tanpa address bar, lebih nyaman digunakan.',
-    color: '#3B82F6',
+    color: '#635BFF',
   },
   {
     icon: (
@@ -193,7 +193,7 @@ const BENEFITS = [
     ),
     title: 'Selalu Update Otomatis',
     desc: 'Tidak perlu update manual. Fitur terbaru otomatis tersedia setiap kali dibuka.',
-    color: '#0047AB',
+    color: '#635BFF',
   },
 ];
 
@@ -207,7 +207,7 @@ export default function InstallGuide() {
     window.matchMedia('(display-mode: standalone)').matches ||
     navigator.standalone === true;
 
-  // ── SEO: update meta per page ───────────────────────────────
+  // -- SEO: update meta per page -------------------------------
   useEffect(() => {
     updateSEOTags({ page: 'install' });
     // HowTo schema khusus untuk panduan install PWA
@@ -236,7 +236,7 @@ export default function InstallGuide() {
           '@type': 'HowToStep',
           'position': 3,
           'name': 'Buka Menu Browser',
-          'text': 'Android: Ketuk ikon tiga titik (⋮) di pojok kanan atas. iPhone: Ketuk ikon Share (kotak dengan panah ke atas) di bagian bawah Safari.',
+          'text': 'Android: Ketuk ikon tiga titik (‹) di pojok kanan atas. iPhone: Ketuk ikon Share (kotak dengan panah ke atas) di bagian bawah Safari.',
         },
         {
           '@type': 'HowToStep',
@@ -288,10 +288,6 @@ export default function InstallGuide() {
 
   const steps = activeTab === 'android' ? ANDROID_STEPS : IOS_STEPS;
 
-  // Detect mobile OS for modal default tab
-  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-  const defaultOS = /iPhone|iPad/i.test(navigator.userAgent) ? 'ios' : 'android';
-
   return (
     <div className="lp" lang="id">
       {/* Simple navbar */}
@@ -310,7 +306,7 @@ export default function InstallGuide() {
       </nav>
 
       <main>
-        {/* ─── HERO ─── */}
+        {/* --- HERO --- */}
         <section className="ig-hero">
           <div className="ig-hero-bg">
             <div className="ig-hero-orb ig-orb1" />
@@ -335,7 +331,7 @@ export default function InstallGuide() {
 
             <motion.p className="ig-hero-sub" variants={fadeUp}>
               Akses slip gaji, absensi, pengajuan cuti, dan semua fitur HR kapan saja<br />
-              langsung dari layar utama HP — tanpa perlu download dari toko aplikasi.
+              langsung dari layar utama HP - tanpa perlu download dari toko aplikasi.
             </motion.p>
 
             {/* Phone mockup preview */}
@@ -368,11 +364,11 @@ export default function InstallGuide() {
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                   <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                {isAlreadyInstalled ? 'Sudah Terinstall! ✓' : 'Siap Diinstall'}
+                {isAlreadyInstalled ? 'Sudah Terinstall! œ"' : 'Siap Diinstall'}
               </div>
             </motion.div>
 
-            {/* ── INSTALL BUTTON — always visible ── */}
+            {/* -- INSTALL BUTTON - always visible -- */}
             {!isAlreadyInstalled && (
               <motion.div variants={fadeUp} style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                 {installState === 'installed' ? (
@@ -380,7 +376,7 @@ export default function InstallGuide() {
                     display: 'inline-flex', alignItems: 'center', gap: 10,
                     padding: '16px 36px', borderRadius: 100,
                     background: 'linear-gradient(135deg,#22c55e,#16a34a)',
-                    color: '#fff', fontWeight: 800, fontSize: 16,
+                    color: '#fff', fontWeight: 600, fontSize: 16,
                     boxShadow: '0 8px 32px rgba(34,197,94,0.4)',
                   }}>
                     Aplikasi Berhasil Terinstall!
@@ -395,12 +391,12 @@ export default function InstallGuide() {
                         padding: '18px 44px', borderRadius: 100,
                         background: installState === 'installing'
                           ? 'linear-gradient(135deg,#6366f1,#4f46e5)'
-                          : 'linear-gradient(135deg,#0047AB,#2563eb)',
+                          : 'linear-gradient(135deg,#635BFF,#4F46E5)',
                         color: '#fff', border: 'none', cursor: installState === 'installing' ? 'not-allowed' : 'pointer',
-                        fontWeight: 800, fontSize: 17, fontFamily: 'inherit',
+                        fontWeight: 600, fontSize: 17, fontFamily: 'inherit',
                         boxShadow: promptReady
-                          ? '0 8px 32px rgba(0,71,171,0.5), 0 0 0 6px rgba(0,71,171,0.12)'
-                          : '0 8px 32px rgba(0,71,171,0.35)',
+                          ? '0 8px 32px rgba(99,91,255,0.5), 0 0 0 6px rgba(99,91,255,0.12)'
+                          : '0 8px 32px rgba(99,91,255,0.35)',
                         transition: 'all 0.3s ease',
                         animation: promptReady ? 'pulseBtn 2s ease-in-out infinite' : 'none',
                       }}
@@ -421,7 +417,7 @@ export default function InstallGuide() {
                     {promptReady ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 6px #22c55e', animation: 'blink 1.2s ease-in-out infinite' }} />
-                        Siap diinstall — klik tombol di atas
+                        Siap diinstall - klik tombol di atas
                       </div>
                     ) : (
                       <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 1.5 }}>
@@ -439,7 +435,7 @@ export default function InstallGuide() {
                   display: 'inline-flex', alignItems: 'center', gap: 10,
                   padding: '14px 28px', borderRadius: 100,
                   background: 'linear-gradient(135deg,#22c55e,#16a34a)',
-                  color: '#fff', fontWeight: 800, fontSize: 15,
+                  color: '#fff', fontWeight: 600, fontSize: 15,
                   boxShadow: '0 8px 24px rgba(34,197,94,0.35)',
                 }}>
                   Aplikasi Sudah Terinstall di HP Kamu!
@@ -449,7 +445,7 @@ export default function InstallGuide() {
           </motion.div>
         </section>
 
-        {/* ── MANUAL INSTALL MODAL ── */}
+        {/* -- MANUAL INSTALL MODAL -- */}
         {showManualModal && (
           <div
             onClick={e => { if (e.target === e.currentTarget) setShowManualModal(false); }}
@@ -466,7 +462,7 @@ export default function InstallGuide() {
               animation: 'slideUp 0.35s cubic-bezier(0.22,1,0.36,1)',
             }}>
               <div style={{ width: 40, height: 4, background: '#e2e8f0', borderRadius: 4, margin: '0 auto 24px' }} />
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 6, textAlign: 'center' }}>Install di HP Kamu</h3>
+              <h3 style={{ fontSize: 20, fontWeight: 600, color: '#0f172a', marginBottom: 6, textAlign: 'center' }}>Install di HP Kamu</h3>
               <p style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 20, lineHeight: 1.6 }}>
                 Buka halaman ini di browser HP kamu, lalu ikuti langkah berikut:
               </p>
@@ -475,17 +471,17 @@ export default function InstallGuide() {
               <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: '#f1f5f9', borderRadius: 12, padding: 4 }}>
                 <button
                   onClick={() => setActiveTab('android')}
-                  style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, background: activeTab === 'android' ? '#0047AB' : 'transparent', color: activeTab === 'android' ? '#fff' : '#64748b', transition: 'all 0.2s' }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, background: activeTab === 'android' ? '#635BFF' : 'transparent', color: activeTab === 'android' ? '#fff' : '#64748b', transition: 'all 0.2s' }}
                 >Android (Chrome)</button>
                 <button
                   onClick={() => setActiveTab('ios')}
-                  style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, background: activeTab === 'ios' ? '#0047AB' : 'transparent', color: activeTab === 'ios' ? '#fff' : '#64748b', transition: 'all 0.2s' }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, background: activeTab === 'ios' ? '#635BFF' : 'transparent', color: activeTab === 'ios' ? '#fff' : '#64748b', transition: 'all 0.2s' }}
                 >iPhone (Safari)</button>
               </div>
 
               {(activeTab === 'android' ? ANDROID_STEPS : IOS_STEPS).slice(2).map((step, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: i < 2 ? '1px solid #f1f5f9' : 'none' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#0047AB,#2563eb)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{i + 3}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#635BFF,#4F46E5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12, flexShrink: 0 }}>{i + 3}</div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 2 }}>{step.title}</div>
                     <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{step.desc}</div>
@@ -495,7 +491,7 @@ export default function InstallGuide() {
 
               <button
                 onClick={() => setShowManualModal(false)}
-                style={{ width: '100%', marginTop: 20, padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#0047AB,#2563eb)', color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}
+                style={{ width: '100%', marginTop: 20, padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#635BFF,#4F46E5)', color: '#fff', fontFamily: 'inherit', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
               >
                 Mengerti
               </button>
@@ -503,12 +499,12 @@ export default function InstallGuide() {
           </div>
         )}
 
-        {/* ─── BENEFITS ─── */}
+        {/* --- BENEFITS --- */}
         <section className="ig-benefits lp-section" id="benefits">
           <div className="lp-container">
             <div className="lp-section-head" style={{ textAlign: 'center', marginBottom: 48 }}>
               <div className="lp-overline">Kenapa Harus Install?</div>
-              <h2 className="lp-section-title">Pengalaman Lebih Baik<br /><span style={{ color: 'var(--primary, #0047AB)' }}>Seperti Aplikasi Asli</span></h2>
+              <h2 className="lp-section-title">Pengalaman Lebih Baik<br /><span style={{ color: 'var(--primary, #635BFF)' }}>Seperti Aplikasi Asli</span></h2>
               <p className="lp-section-desc">Nikmati fitur yang sama persis dengan aplikasi mobile asli, tanpa harus pergi ke Play Store atau App Store.</p>
             </div>
             <motion.div
@@ -533,7 +529,7 @@ export default function InstallGuide() {
           </div>
         </section>
 
-        {/* ─── INSTALL GUIDE ─── */}
+        {/* --- INSTALL GUIDE --- */}
         <section className="ig-guide lp-section" id="cara-install">
           <div className="lp-container">
             <div className="lp-section-head" style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -589,7 +585,7 @@ export default function InstallGuide() {
             {/* Note box */}
             <div className="ig-note">
               <div className="ig-note-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0047AB" strokeWidth="2" strokeLinecap="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#635BFF" strokeWidth="2" strokeLinecap="round">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3"/>
                 </svg>
               </div>
@@ -600,7 +596,7 @@ export default function InstallGuide() {
           </div>
         </section>
 
-        {/* ─── FAQ ─── */}
+        {/* --- FAQ --- */}
         <section className="ig-faq lp-section" id="faq">
           <div className="lp-container" style={{ maxWidth: 760 }}>
             <div className="lp-section-head" style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -634,7 +630,7 @@ export default function InstallGuide() {
           </div>
         </section>
 
-        {/* ─── CTA ─── */}
+        {/* --- CTA --- */}
         <section className="ig-cta">
           <div className="ig-cta-bg">
             <div className="ig-cta-orb" />
@@ -678,21 +674,21 @@ export default function InstallGuide() {
         </section>
       </main>
 
-      {/* ── STICKY FLOATING INSTALL BAR ── */}
+      {/* -- STICKY FLOATING INSTALL BAR -- */}
       {!isAlreadyInstalled && installState !== 'installed' && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000,
           padding: '16px 20px 24px',
           background: 'rgba(255,255,255,0.92)',
           backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(0,71,171,0.1)',
+          borderTop: '1px solid rgba(99,91,255,0.1)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.1)',
           display: 'flex', alignItems: 'center', gap: 12,
           animation: 'slideUpBar 0.5s cubic-bezier(0.22,1,0.36,1)',
         }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-            background: 'linear-gradient(135deg,#0047AB,#2563eb)',
+            background: 'linear-gradient(135deg,#635BFF,#4F46E5)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
@@ -701,9 +697,9 @@ export default function InstallGuide() {
             </svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a', lineHeight: 1.2 }}>Install HRIS Loka</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a', lineHeight: 1.2 }}>Install HRIS Loka</div>
             <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
-              {promptReady ? 'Klik untuk install langsung — siap dipasang!' : 'Tambahkan ke layar utama HP kamu'}
+              {promptReady ? 'Klik untuk install langsung - siap dipasang!' : 'Tambahkan ke layar utama HP kamu'}
             </div>
           </div>
           <button
@@ -712,11 +708,11 @@ export default function InstallGuide() {
             style={{
               padding: '12px 22px', borderRadius: 100, border: 'none',
               background: promptReady
-                ? 'linear-gradient(135deg,#0047AB,#2563eb)'
-                : 'linear-gradient(135deg,#0047AB,#2563eb)',
-              color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14,
+                ? 'linear-gradient(135deg,#635BFF,#4F46E5)'
+                : 'linear-gradient(135deg,#635BFF,#4F46E5)',
+              color: '#fff', fontFamily: 'inherit', fontWeight: 600, fontSize: 14,
               cursor: installState === 'installing' ? 'not-allowed' : 'pointer',
-              boxShadow: promptReady ? '0 4px 16px rgba(0,71,171,0.4)' : '0 4px 12px rgba(0,71,171,0.3)',
+              boxShadow: promptReady ? '0 4px 16px rgba(99,91,255,0.4)' : '0 4px 12px rgba(99,91,255,0.3)',
               whiteSpace: 'nowrap', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
             }}
@@ -733,7 +729,7 @@ export default function InstallGuide() {
       {/* Simple footer */}
       <div className="ig-footer">
         <div className="lp-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <span>© 2026 HRIS Loka. Dibuat dengan ❤ di Bandung.</span>
+          <span> 2026 HRIS Loka. Dibuat dengan  di Bandung.</span>
           <div style={{ display: 'flex', gap: 20 }}>
             <Link to="/landing">Beranda</Link>
             <Link to="/login">Masuk</Link>
@@ -762,3 +758,4 @@ function FaqItem({ q, a }) {
     </div>
   );
 }
+

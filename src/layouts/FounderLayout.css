@@ -139,7 +139,7 @@
   background: #D97706;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .founder-layout-main {
     margin-left: 0;
     padding: 80px 16px 24px;

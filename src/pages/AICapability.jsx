@@ -8,12 +8,12 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 
-const levelColors = { beginner: '#6D8196', intermediate: '#F59E0B', advanced: '#0047AB', expert: '#16A34A' };
+const levelColors = { beginner: '#6D8196', intermediate: '#F59E0B', advanced: '#635BFF', expert: '#16A34A' };
 const levelLabels = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced', expert: 'Expert' };
 
 function getReadinessLabel(score) {
  if (score >= 80) return { label: 'Highly Adaptive', color: '#16A34A' };
- if (score >= 60) return { label: 'Adaptive', color: '#0047AB' };
+ if (score >= 60) return { label: 'Adaptive', color: '#635BFF' };
  if (score >= 40) return { label: 'Developing', color: '#F59E0B' };
  return { label: 'Low Adoption', color: '#DC2626' };
 }
@@ -40,14 +40,12 @@ export default function AICapability() {
  const [filterDivision, setFilterDivision] = useState('all');
  const [addForm, setAddForm] = useState({ employeeId: '', skills: [] });
 
- useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
-
  const fetchData = async () => {
  setLoading(true);
  const [empRes, aiRes, certRes] = await Promise.all([
  employeeService.getAllEmployees(undefined, employee?.company_id),
- supabase.from('ai_capabilities').select('*, employees(name, division, position)').order('employee_id'),
- supabase.from('ai_certifications').select('*, employees(name)').order('employee_id'),
+ supabase.from('ai_capabilities').select('*, employees(name, division, position)').eq('company_id', employee?.company_id).order('employee_id'),
+ supabase.from('ai_certifications').select('*, employees(name)').eq('company_id', employee?.company_id).order('employee_id'),
  ]);
  setEmployees(empRes.data || []);
  setAiData(aiRes.data || []);
@@ -55,8 +53,10 @@ export default function AICapability() {
  setLoading(false);
  };
 
+ useEffect(() => { if (employee?.company_id, fetchData) fetchData(); }, [employee?.company_id]);
+
  // Realtime: auto-refresh
- useRealtimeTable('ai_capabilities', fetchData);
+ useRealtimeTable('ai_capabilities', fetchData, { companyId: employee?.company_id });
 
  // Group AI data per employee
  const buildCapabilityMap = () => {
@@ -116,7 +116,9 @@ export default function AICapability() {
  score: s.score,
  level: s.score >= 80 ? 'expert' : s.score >= 60 ? 'advanced' : s.score >= 40 ? 'intermediate' : 'beginner',
  assessed_date: new Date().toISOString().split('T')[0],
- }));
+ 
+    company_id: employee?.company_id,
+  }));
  if (rows.length === 0) return;
  await supabase.from('ai_capabilities').insert(rows);
  closeModal();
@@ -125,7 +127,7 @@ export default function AICapability() {
 
  const handleDeleteSkill = async (id) => {
  if (!confirm('Hapus skill ini?')) return;
- await supabase.from('ai_capabilities').delete().eq('id', id);
+ await supabase.from('ai_capabilities').delete().eq('id', id).eq('company_id', employee?.company_id);
  fetchData();
  };
 
@@ -160,51 +162,52 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  setReviewResult(draft);
  };
 
- if (loading) return <div className="animate-in"><h1>AI Capability Mapping</h1><p style={{ color: 'var(--muted)' }}>Memuat data...</p></div>;
+ if (loading) return <div className="admin-page"><h1>AI Capability Mapping</h1><p className="td-muted-sm">Memuat data...</p></div>;
 
  return (
- <div className="animate-in">
+ <div className="admin-page">
  <div className="page-header">
  <h1>AI Capability Mapping</h1>
- <div className="page-header-actions" style={{ display: 'flex', gap: 10 }}>
- <button className="btn-secondary" onClick={openAddModal}><FiPlus /> Tambah Skill</button>
- <button className="btn-primary" onClick={openSmartReview}><FiZap /> Smart Review Generator</button>
+ <div className="page-header-actions">
+ <button className="btn-secondary" onClick={openAddModal} aria-label="Tambah skill"><FiPlus /> Tambah Skill</button>
+ <button className="btn-primary" onClick={openSmartReview} aria-label="Smart review generator"><FiZap /> Smart Review Generator</button>
  </div>
  </div>
 
  {/* Division AI Readiness Cards */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
+ <div className="stats-grid" style={{ marginBottom: 28 }}>
  {divisions.map(div => {
  const score = getDivisionScore(div);
  const readiness = getReadinessLabel(score);
  return (
- <div key={div} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: 20, boxShadow: 'var(--shadow-card)' }}>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>{div}</div>
- <div style={{ fontSize: 28, fontWeight: 700, color: readiness.color, marginBottom: 8 }}>{score}%</div>
+ <div key={div} className="info-card">
+ <div className="info-card-label">{div}</div>
+ <div className="info-card-value" style={{ color: readiness.color }}>{score}%</div>
  <div className="progress-bar" style={{ marginBottom: 8 }}>
  <div className="progress-fill" style={{ width: `${score}%`, background: readiness.color }} />
  </div>
- <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, color: '#fff', background: readiness.color }}>{readiness.label}</span>
+ <span className="status-badge" style={{ background: readiness.color, color: '#fff' }}>{readiness.label}</span>
  </div>
  );
  })}
  {divisions.length === 0 && (
- <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 20, color: 'var(--muted)', fontSize: 13 }}>
+ <div className="empty-state" style={{ gridColumn: '1/-1' }}>
  Belum ada data AI capability. Klik "Tambah Skill" untuk mulai menambahkan.
  </div>
  )}
  </div>
 
  {/* Employee AI Skills Table */}
- <div className="filters-bar" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+ <div className="filters-bar">
  <input className="filter-search" placeholder="Cari karyawan..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1 }} />
- <select className="form-select" value={filterDivision} onChange={e => setFilterDivision(e.target.value)} style={{ minWidth: 160, padding: '8px 12px', fontSize: 13 }}>
+ <select className="filter-select" value={filterDivision} onChange={e => setFilterDivision(e.target.value)}>
  <option value="all">Semua Divisi</option>
  {divisions.map(d => <option key={d} value={d}>{d}</option>)}
  </select>
  </div>
 
  <div className="data-table-card">
+ <div className="table-responsive">
  <table className="data-table">
  <thead>
  <tr>
@@ -219,36 +222,37 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  </thead>
  <tbody>
  {filtered.length === 0 ? (
- <tr><td colSpan="7" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Belum ada data AI capability.</td></tr>
+ <tr><td colSpan="7" className="empty-state">Belum ada data AI capability.</td></tr>
  ) : filtered.map(m => {
  const topSkill = m.skills.reduce((a, b) => a.score > b.score ? a : b);
  return (
  <tr key={m.employeeId}>
- <td style={{ fontWeight: 600 }}>{m.emp?.name}</td>
+ <td className="td-semibold">{m.emp?.name}</td>
  <td>{m.emp?.division}</td>
  <td>
- <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+ <div className="btn-icon-row">
  <div className="progress-bar" style={{ width: 60 }}>
  <div className="progress-fill" style={{ width: `${m.avgScore}%`, background: getReadinessLabel(m.avgScore).color }} />
  </div>
- <span style={{ fontWeight: 600, fontSize: 13 }}>{m.avgScore}%</span>
+ <span className="td-semibold">{m.avgScore}%</span>
  </div>
  </td>
  <td>
- <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, color: '#fff', background: levelColors[topSkill.level] }}>
+ <span className="status-badge" style={{ background: levelColors[topSkill.level], color: '#fff' }}>
  {topSkill.name}
  </span>
  </td>
- <td style={{ fontSize: 12 }}>
- {m.certifications.length ? m.certifications.map(c => c.name).join(', ') : <span style={{ color: 'var(--muted)' }}>-</span>}
+ <td className="td-sm">
+ {m.certifications.length ? m.certifications.map(c => c.name).join(', ') : <span className="td-muted-sm">-</span>}
  </td>
- <td style={{ fontSize: 12 }}>{m.lastAssessed}</td>
- <td><button className="action-btn" onClick={() => openProfile(m)}><FiEye /></button></td>
+ <td className="td-sm">{m.lastAssessed}</td>
+ <td><button className="action-btn" onClick={() => openProfile(m)} aria-label="Lihat profil"><FiEye /></button></td>
  </tr>
  );
  })}
  </tbody>
  </table>
+ </div>
  </div>
 
  {/* Employee AI Profile Modal */}
@@ -256,37 +260,37 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  <div className="modal-overlay" onClick={closeModal}>
  <div className="modal-box large" onClick={e => e.stopPropagation()}>
  <div className="modal-header">
- <h2><FiCpu style={{ marginRight: 8 }} /> AI Profile - {selected.emp?.name}</h2>
+ <h2><FiCpu className="icon-mr" /> AI Profile - {selected.emp?.name}</h2>
  <button className="modal-close" onClick={closeModal}><FiX /></button>
  </div>
  <div className="modal-body">
- <div style={{ marginBottom: 20 }}>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>{selected.emp?.division} - {selected.emp?.position}</div>
- <div style={{ fontSize: 13, color: 'var(--muted)' }}>Last assessed: {selected.lastAssessed}</div>
+ <div className="mb">
+ <div className="td-muted-sm">{selected.emp?.division} - {selected.emp?.position}</div>
+ <div className="td-muted-sm">Last assessed: {selected.lastAssessed}</div>
  </div>
  <div style={{ display: 'grid', gap: 12 }}>
  {selected.skills.map(sk => (
- <div key={sk.id} style={{ padding: 14, background: 'var(--bg)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+ <div key={sk.id} className="info-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
  <div>
- <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{sk.name}</div>
- <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, color: '#fff', background: levelColors[sk.level] }}>{levelLabels[sk.level]}</span>
+ <div className="td-semibold mb-sm">{sk.name}</div>
+ <span className="status-badge" style={{ background: levelColors[sk.level], color: '#fff' }}>{levelLabels[sk.level]}</span>
  </div>
- <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
+ <div className="btn-icon-row" style={{ minWidth: 140 }}>
  <div className="progress-bar" style={{ flex: 1 }}>
  <div className="progress-fill" style={{ width: `${sk.score}%`, background: levelColors[sk.level] }} />
  </div>
- <span style={{ fontWeight: 700, fontSize: 14, minWidth: 36, textAlign: 'right' }}>{sk.score}%</span>
- <button onClick={() => handleDeleteSkill(sk.id)} className="action-btn danger" title="Hapus skill" style={{ marginLeft: 4 }}><FiTrash2 size={13} /></button>
+ <span className="td-semibold" style={{ minWidth: 36, textAlign: 'right' }}>{sk.score}%</span>
+ <button onClick={() => handleDeleteSkill(sk.id)} className="action-btn danger" title="Hapus skill" aria-label="Hapus skill"><FiTrash2 size={13} /></button>
  </div>
  </div>
  ))}
  </div>
  {selected.certifications.length > 0 && (
- <div style={{ marginTop: 20 }}>
- <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 8 }}>Sertifikasi</div>
- <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+ <div className="mb">
+ <div className="section-label mb-sm">Sertifikasi</div>
+ <div className="btn-icon-row" style={{ flexWrap: 'wrap' }}>
  {selected.certifications.map(c => (
- <span key={c.id} style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+ <span key={c.id} className="status-badge active btn-icon-row">
  <FiAward size={14} /> {c.name}
  </span>
  ))}
@@ -303,21 +307,21 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  <div className="modal-overlay" onClick={closeModal}>
  <div className="modal-box large" onClick={e => e.stopPropagation()}>
  <div className="modal-header">
- <h2><FiPlus style={{ marginRight: 8 }} /> Tambah AI Skills</h2>
+ <h2><FiPlus className="icon-mr" /> Tambah AI Skills</h2>
  <button className="modal-close" onClick={closeModal}><FiX /></button>
  </div>
  <div className="modal-body">
- <div className="form-group" style={{ marginBottom: 20 }}>
+ <div className="form-group mb">
  <label className="form-label">Karyawan *</label>
  <select className="form-select" value={addForm.employeeId} onChange={e => setAddForm({ ...addForm, employeeId: e.target.value })}>
  <option value="">- Pilih Karyawan -</option>
  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name} - {emp.division || 'No divisi'}</option>)}
  </select>
  </div>
- <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>AI Skills Assessment</div>
+ <div className="section-label mb-sm">AI Skills Assessment</div>
  <div style={{ display: 'grid', gap: 10 }}>
  {addForm.skills.map((sk, i) => (
- <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+ <div key={i} className="btn-icon-row">
  <input
  className="form-input"
  style={{ flex: 2 }}
@@ -340,7 +344,7 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  }}
  style={{ flex: 1 }}
  />
- <span style={{ fontSize: 13, fontWeight: 700, minWidth: 36 }}>{sk.score}%</span>
+ <span className="td-semibold" style={{ minWidth: 36 }}>{sk.score}%</span>
  <button
  onClick={() => setAddForm({ ...addForm, skills: addForm.skills.filter((_, j) => j !== i) })}
  className="action-btn danger"
@@ -349,14 +353,13 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  ))}
  </div>
  <button
- className="btn-secondary"
- style={{ marginTop: 12 }}
+ className="btn-secondary mb-sm"
  onClick={() => setAddForm({ ...addForm, skills: [...addForm.skills, { name: '', score: 50, level: 'intermediate' }] })}
  ><FiPlus /> Tambah Skill</button>
  </div>
  <div className="modal-footer">
  <button className="btn-secondary" onClick={closeModal}>Batal</button>
- <button className="btn-primary" onClick={handleAddSubmit} disabled={!addForm.employeeId}><FiSave /> Simpan</button>
+ <button className="btn-primary" onClick={handleAddSubmit} disabled={!addForm.employeeId} aria-label="Simpan"><FiSave /> Simpan</button>
  </div>
  </div>
  </div>
@@ -367,20 +370,20 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  <div className="modal-overlay" onClick={closeModal}>
  <div className="modal-box large" onClick={e => e.stopPropagation()}>
  <div className="modal-header">
- <h2><FiZap style={{ marginRight: 8 }} /> Smart Review Generator</h2>
+ <h2><FiZap className="icon-mr" /> Smart Review Generator</h2>
  <button className="modal-close" onClick={closeModal}><FiX /></button>
  </div>
  <div className="modal-body">
- <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>Pilih karyawan untuk men-generate draf evaluasi kinerja bulanan secara otomatis berdasarkan data AI Capability.</p>
- <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+ <p className="td-muted-sm mb">Pilih karyawan untuk men-generate draf evaluasi kinerja bulanan secara otomatis berdasarkan data AI Capability.</p>
+ <div className="btn-icon-row mb">
  <select className="form-select" style={{ flex: 1 }} value={reviewEmpId} onChange={e => setReviewEmpId(e.target.value)}>
  <option value="">- Pilih Karyawan -</option>
  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name} - {emp.division || '-'}</option>)}
  </select>
- <button className="btn-primary" onClick={generateReview} disabled={!reviewEmpId}><FiZap /> Generate</button>
+ <button className="btn-primary" onClick={generateReview} disabled={!reviewEmpId} aria-label="Generate"><FiZap /> Generate</button>
  </div>
  {reviewResult && (
- <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-md)', padding: 20, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, whiteSpace: 'pre-wrap', maxHeight: 400, overflow: 'auto' }}>
+ <div className="data-table-card" style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, whiteSpace: 'pre-wrap', maxHeight: 400, overflow: 'auto' }}>
  {reviewResult}
  </div>
  )}
@@ -391,3 +394,6 @@ ${aiCap && aiCap.skills.some(s => s.score < 50) ? '- Sertakan dalam program pela
  </div>
  );
 }
+
+
+

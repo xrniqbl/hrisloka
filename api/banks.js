@@ -3,13 +3,8 @@
  * Returns available Indonesian bank list via api.co.id
  * Bank API key stays server-side (process.env.BANK_VALIDATION_API_KEY)
  */
+import { applyCors } from './_shared/cors.js';
 
-const ALLOWED_ORIGINS = [
-  'https://hrisloka.id',
-  'https://www.hrisloka.id',
-  'https://hrisloka.com',
-  'https://www.hrisloka.com',
-];
 
 // Simple in-memory rate limit: max 30 req/min per IP
 const rateLimitMap = new Map();
@@ -28,16 +23,7 @@ function checkRateLimit(ip) {
 }
 
 export default async function handler(req, res) {
-  // CORS — allowlist only (no wildcard)
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Vary', 'Origin');
+  applyCors(req, res, { methods: 'GET, OPTIONS', headers: 'Content-Type' });
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -63,7 +49,7 @@ export default async function handler(req, res) {
     // Cache for 1 hour — bank list rarely changes
     res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     res.status(response.status).json(data);
-  } catch (error) {
+  } catch {
     res.status(500).json({ is_success: false, message: 'Bank service unavailable' });
   }
 }

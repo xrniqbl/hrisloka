@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
-import { FiSearch, FiPlus, FiMoreVertical, FiX, FiCheck, FiRefreshCw, FiCalendar, FiUsers } from 'react-icons/fi';
+import { FiSearch, FiX, FiUsers } from 'react-icons/fi';
 import * as founderService from '../../services/founderService';
-import { getAllCompanies } from '../../services/companyService';
 import './founder.css';
 // \u2500\u2500 Skeleton helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function SkeletonBox({ w = '100%', h = 28, style = {} }) {
@@ -21,7 +20,7 @@ function TableRowSkeleton({ cols = 5 }) {
     </tr>
   );
 }
-// ── Skeleton helper ──────────────────────────────────────────────────────────
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Skeleton helper ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
   return (
     <div>
@@ -62,16 +61,26 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
   );
 }
 
+const STATUS_OPTIONS = ['all', 'active', 'expired', 'cancelled', 'suspended'];
+const PLAN_OPTIONS = ['all', 'Free', 'Starter', 'Pro', 'Enterprise'];
+const formatIDR = (v) => v ? `Rp ${(v || 0).toLocaleString('id-ID')}` : '-';
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+
+function PlanBadge({ slug, name }) {
+  return <span className={`fp-badge ${slug || 'free'}`}>{name}</span>;
+}
+function StatusBadge({ status }) {
+  return <span className={`fp-badge ${status || 'cancelled'}`}>{status}</span>;
+}
+
 export default function FounderSubscribers() {
   const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  if (loading) return <SkeletonPage cols={6} rows={8} hasStats={false} />;
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [planFilter, setPlanFilter] = useState('all');
   const [selected, setSelected] = useState(null);
-  const [actionMenu, setActionMenu] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -86,6 +95,50 @@ export default function FounderSubscribers() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const handleCancelSubscription = async (sub) => {
+    const reason = window.prompt(`Alasan pembatalan langganan untuk ${sub.companies?.name}:`);
+    if (!reason) return;
+    
+    setActionLoading(sub.id);
+    try {
+      const { error } = await founderService.cancelSubscription(sub.id, reason);
+      if (error) throw error;
+      await fetchData();
+      setSelected(null);
+    } catch (err) {
+      alert(`Gagal membatalkan langganan: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleExtendSubscription = async (sub) => {
+    const days = window.prompt(`Perpanjang langganan ${sub.companies?.name} berapa hari?`, '30');
+    if (!days || isNaN(days) || Number(days) <= 0) return;
+    
+    setActionLoading(sub.id);
+    try {
+      const currentEndDate = sub.expires_at ? new Date(sub.expires_at) : new Date();
+      const newEndDate = new Date(currentEndDate);
+      newEndDate.setDate(newEndDate.getDate() + Number(days));
+      
+      const { error } = await founderService.updateSubscription(sub.id, {
+        status: 'active',
+        expires_at: newEndDate.toISOString(),
+        notes: `Extended by founder for ${days} days`,
+      });
+      if (error) throw error;
+      await fetchData();
+      setSelected(null);
+    } catch (err) {
+      alert(`Gagal memperpanjang langganan: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) return <SkeletonPage cols={6} rows={8} hasStats={false} />;
 
   const filtered = subs.filter(s => {
     const name = s.companies?.name?.toLowerCase() || '';
@@ -190,7 +243,7 @@ export default function FounderSubscribers() {
                           : getInitials(sub.companies?.name)}
                       </div>
                       <div>
-                        <div className="fp-entity-name">{sub.companies?.name || '—'}</div>
+                        <div className="fp-entity-name">{sub.companies?.name || '-'}</div>
                         <div className="fp-entity-sub">{sub.companies?.company_code}</div>
                       </div>
                     </div>
@@ -200,15 +253,15 @@ export default function FounderSubscribers() {
                   </td>
                   <td><StatusBadge status={sub.status} /></td>
                   <td>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{formatIDR(sub.amount)}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{formatIDR(sub.price_paid)}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>/{sub.billing_cycle}</div>
                   </td>
-                  <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatDate(sub.start_date)}</td>
-                  <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{formatDate(sub.end_date)}</td>
+                  <td className="td-muted-sm">{formatDate(sub.starts_at)}</td>
+                  <td className="td-muted-sm">{formatDate(sub.expires_at)}</td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600 }}>
                       <FiUsers size={12} style={{ color: 'var(--text-secondary)' }} />
-                      {sub.employee_count ?? '—'}
+                      {sub.onboarding_profiles?.employee_count ?? '-'}
                     </div>
                   </td>
                   <td>
@@ -253,11 +306,11 @@ export default function FounderSubscribers() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
                 {[
                   { label: 'Plan', value: selected.subscription_plans?.name || 'Free' },
-                  { label: 'Billing Cycle', value: selected.billing_cycle || '—' },
-                  { label: 'Amount', value: formatIDR(selected.amount) },
-                  { label: 'Employees', value: selected.employee_count ?? '—' },
-                  { label: 'Start Date', value: formatDate(selected.start_date) },
-                  { label: 'End Date', value: formatDate(selected.end_date) },
+                  { label: 'Billing Cycle', value: selected.billing_cycle || '-' },
+                  { label: 'Amount', value: formatIDR(selected.price_paid) },
+                  { label: 'Employees', value: selected.onboarding_profiles?.employee_count ?? '-' },
+                  { label: 'Start Date', value: formatDate(selected.starts_at) },
+                  { label: 'End Date', value: formatDate(selected.expires_at) },
                 ].map(item => (
                   <div key={item.label} style={{ paddingBottom: 14, borderBottom: '1px solid var(--border)', marginBottom: 14 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
@@ -267,8 +320,24 @@ export default function FounderSubscribers() {
               </div>
             </div>
             <div className="fp-modal-footer">
-              <button className="fp-btn fp-btn-danger fp-btn-sm">Cancel Subscription</button>
-              <button className="fp-btn fp-btn-primary fp-btn-sm">Extend Plan</button>
+              <button
+                className="fp-btn fp-btn-danger fp-btn-sm"
+                onClick={() => {
+                  if (window.confirm(`Batalkan langganan ${selected.companies?.name}? Tindakan ini tidak dapat dibatalkan.`)) {
+                    handleCancelSubscription(selected);
+                  }
+                }}
+                disabled={actionLoading === selected?.id || selected?.status === 'cancelled'}
+              >
+                {actionLoading === selected?.id ? 'Membatalkan...' : 'Cancel Subscription'}
+              </button>
+              <button
+                className="fp-btn fp-btn-primary fp-btn-sm"
+                onClick={() => handleExtendSubscription(selected)}
+                disabled={actionLoading === selected?.id}
+              >
+                {actionLoading === selected?.id ? 'Memperpanjang...' : 'Extend Plan'}
+              </button>
             </div>
           </div>
         </div>
@@ -276,3 +345,6 @@ export default function FounderSubscribers() {
     </div>
   );
 }
+
+
+

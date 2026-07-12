@@ -9,7 +9,7 @@ export default function MaintenancePage() {
   const { user, employee } = useAuth();
   const founderUser = isFounder(user, employee);
 
-  const [settings, setSettings] = useState(() => {
+  const [settings, _setSettings] = useState(() => {
     try {
       const s = localStorage.getItem('founder_maintenance_settings');
       return s ? JSON.parse(s) : {};
@@ -18,7 +18,7 @@ export default function MaintenancePage() {
     }
   });
 
-  const [platform, setPlatform] = useState(() => {
+  const [platform, _setPlatform] = useState(() => {
     try {
       const s = localStorage.getItem('founder_platform_settings');
       return s ? JSON.parse(s) : { name: 'HRIS Loka', support_email: 'support@hrisloka.id' };
@@ -144,8 +144,8 @@ export default function MaintenancePage() {
 
         {/* Footer */}
         <div className="mnt-footer">
-          <span>{platform.name} — All rights reserved</span>
-          <span>·</span>
+          <span>{platform.name} - All rights reserved</span>
+          <span></span>
           <a href={`mailto:${platform.support_email || 'support@hrisloka.id'}`}>Contact Support</a>
         </div>
       </div>

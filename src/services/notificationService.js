@@ -113,14 +113,33 @@ export async function createNotification({
   const ok = await assertEmployeeInCompany(employeeId, companyId, 'createNotification');
   if (!ok) return { data: null, error: { message: 'tenant isolation: target employee not in company' } };
 
-  return supabase.from('notifications').insert({
+  const text = message || body || null;
+  const row = {
     employee_id: employeeId,
     type,
     title,
-    message: message || body || null,
-    body: body || message || null,
+    body: text,
     data,
-  });
+  };
+  // Prefer schema with body; some DBs also have message
+  let result = await supabase.from('notifications').insert({
+    ...row,
+    message: text,
+  }).select().single();
+
+  if (result.error && /message|column/i.test(result.error.message || '')) {
+    result = await supabase.from('notifications').insert(row).select().single();
+  }
+  // Retry without data/jsonb if needed
+  if (result.error && /data|column/i.test(result.error.message || '')) {
+    result = await supabase.from('notifications').insert({
+      employee_id: employeeId,
+      type,
+      title,
+      body: text,
+    }).select().single();
+  }
+  return result;
 }
 
 /**

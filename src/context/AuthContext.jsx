@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from '../lib/supabase';
 import { getEmployeeByEmail } from '../services/employeeService';
 import { trackEvent } from '../services/founderService';
-import { isDemoMode, deactivateDemo } from '../lib/demoGuard';
+import { isDemoMode, deactivateDemo, DEMO_USER, DEMO_EMPLOYEE } from '../lib/demoGuard';
 
 const AuthContext = createContext({});
 
@@ -13,6 +13,16 @@ export const useAuth = () => useContext(AuthContext);
 const getIsPWA = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
   navigator.standalone === true;
+
+function applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading) {
+  setIsDemo(true);
+  setUser(DEMO_USER);
+  setEmployee(DEMO_EMPLOYEE);
+  setSession(null);
+  setHasOnboarding(true);
+  setOnboardingLoading(false);
+  setLoading(false);
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -125,7 +135,18 @@ export function AuthProvider({ children }) {
     };
 
     // ── Session init ────────────────────────────────────────────────────────
+    // Demo mode (design QA): inject fake session first; still attach auth listener
+    // so leaving demo + real login keeps working without a full remount.
+    if (isDemoMode()) {
+      applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading);
+    }
+
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      // Keep demo session if active (no real Supabase user required)
+      if (isDemoMode()) {
+        applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading);
+        return;
+      }
       // Desktop: check 12-hour session expiry
       if (s && !getIsPWA()) {
         const loginTime = localStorage.getItem('hrisync_login_time');
@@ -146,6 +167,11 @@ export function AuthProvider({ children }) {
     // ── Auth state changes ──────────────────────────────────────────────────
     // NOTE: renamed to authListener to avoid shadowing the 'subscription' state var
     const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((_event, s) => {
+      // Never overwrite demo session with a null Supabase session
+      if (isDemoMode()) {
+        applyDemoSession(setUser, setEmployee, setSession, setIsDemo, setLoading, setHasOnboarding, setOnboardingLoading);
+        return;
+      }
       setSession(s);
       const newUser = s?.user ?? null;
       setUser(newUser);
@@ -180,7 +206,7 @@ export function AuthProvider({ children }) {
             let resolvedEmp = null;
             const { data: empByEmail } = await supabase
               .from('employees')
-              .select('role, auth_user_id')
+              .select('role, auth_user_id, account_status, company_id')
               .eq('email', userEmail)
               .maybeSingle();
             resolvedEmp = empByEmail;
@@ -188,20 +214,29 @@ export function AuthProvider({ children }) {
             if (!resolvedEmp && userId) {
               const { data: empById } = await supabase
                 .from('employees')
-                .select('role, auth_user_id')
+                .select('role, auth_user_id, account_status, company_id')
                 .eq('auth_user_id', userId)
                 .maybeSingle();
               resolvedEmp = empById;
             }
 
-            // ── STEP 3: Registered employee/admin — route by role ──────────
+            // ── STEP 3: Registered employee/admin — route by role + status ─
             if (resolvedEmp) {
+              const status = resolvedEmp.account_status;
+              if (status === 'pending_verification' || (status && String(status).includes('pending'))) {
+                window.location.replace('/app/pending');
+                return;
+              }
+              if (status === 'rejected') {
+                window.location.replace('/app/rejected');
+                return;
+              }
               const empRole = resolvedEmp.role || 'employee';
               if (empRole === 'employee' && !isPwa) {
                 // Employee must use PWA, not desktop browser
                 window.location.replace('/employee-web-access');
               } else {
-                const defaultDest = isPwa ? '/app/home' : '/dashboard';
+                const defaultDest = isPwa || empRole === 'employee' ? '/app/home' : '/dashboard';
                 window.location.replace(safeSavedPath || defaultDest);
               }
               return;
@@ -300,10 +335,14 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     trackEvent('logout', { path: window.location.pathname }).catch(() => {});
+    const wasDemo = isDemoMode();
     // Clear demo mode if active
     deactivateDemo();
     setIsDemo(false);
-    const { error } = await supabase.auth.signOut();
+    let error = null;
+    if (!wasDemo) {
+      ({ error } = await supabase.auth.signOut());
+    }
     // Clear all localStorage session keys including grace period bypass
     localStorage.removeItem('hrisync_role');
     localStorage.removeItem('hrisync_login_time');

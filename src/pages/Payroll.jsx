@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useTranslation } from '../lib/i18n';
 import { FiDollarSign, FiDownload } from 'react-icons/fi';
 import {
@@ -13,13 +16,13 @@ import { Bar } from 'react-chartjs-2';
 import * as employeeService from '../services/employeeService';
 import { useAuth } from '../context/AuthContext';
 import * as overtimeService from '../services/overtimeService';
-
 import * as payrollService from '../services/payrollService';
+import { sendPayslipPush } from '../services/pushService';
+import { createNotification } from '../services/notificationService';
 
 import { calculateSalary } from '../lib/payrollEngine';
 import { exportToExcel } from '../lib/excelExport';
 import { generatePayslipPDF } from '../lib/pdfGenerator';
-import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
@@ -28,7 +31,7 @@ import { PageSkeleton } from '../components/SkeletonLoader';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
-const chartFont = { family: 'Plus Jakarta Sans', weight: '500' };
+const chartFont = { family: 'Inter Tight', weight: '500' };
 
 export default function Payroll() {
   const { t } = useTranslation();
@@ -38,16 +41,28 @@ export default function Payroll() {
  const [overtimeRecords, setOvertimeRecords] = useState([]);
  const [loading, setLoading] = useState(true);
 
- useEffect(() => { fetchData(); }, []);
+ const [publishing, setPublishing] = useState(false);
+ const [publishMsg, setPublishMsg] = useState('');
 
-  const fetchData = async () => {
+ const fetchData = async () => {
     setLoading(true);
-    const { data: empData } = await employeeService.getAllEmployees(undefined, employee?.company_id);
-    const { data: otData } = await overtimeService.getAllOvertime(undefined, employee?.company_id);
+    if (!employee?.company_id) {
+      setEmployees([]);
+      setOvertimeRecords([]);
+      setLoading(false);
+      return;
+    }
+    const { data: empData } = await employeeService.getAllEmployees(undefined, employee.company_id);
+    const { data: otData } = await overtimeService.getAllOvertime(undefined, employee.company_id);
     setEmployees(empData || []);
     setOvertimeRecords(otData || []);
     setLoading(false);
   };
+
+ useEffect(() => {
+  if (employee?.company_id) fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [employee?.company_id]);
 
  // Compute payroll data from employees + overtime
  const payrollData = useMemo(() => {
@@ -100,7 +115,7 @@ export default function Payroll() {
  {
  label: 'Gaji + Tunjangan',
  data: divisionCostData.base,
- backgroundColor: '#0047AB',
+ backgroundColor: '#635BFF',
  borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 6, bottomRight: 6 },
  barPercentage: 0.5,
  borderSkipped: false,
@@ -180,59 +195,115 @@ export default function Payroll() {
  await generatePayslipPDF(emp, payrollDataForPDF);
  };
 
+ /** Persist payroll so PWA EmpPayslip can read payroll_records */
+ const handlePublishPayroll = async () => {
+  if (!employee?.company_id || payrollData.length === 0) return;
+  setPublishing(true);
+  setPublishMsg('');
+  const records = payrollData.map((row) => ({
+    employee_id: row.id,
+    period: selectedMonth,
+    base_salary: row.salary.baseSalary || 0,
+    allowance: row.salary.allowance || 0,
+    overtime_pay: row.salary.overtimePay || 0,
+    overtime_hours: row.salary.overtimeHours || 0,
+    gross_income: row.salary.grossIncome || 0,
+    bpjs_kesehatan: row.salary.bpjs?.bpjsKesehatan || 0,
+    bpjs_jht: row.salary.bpjs?.bpjsJHT || 0,
+    bpjs_jp: row.salary.bpjs?.bpjsJP || 0,
+    pph21: row.salary.pph21 || 0,
+    total_deductions: row.salary.totalDeductions || 0,
+    take_home_pay: row.salary.takeHomePay || 0,
+    status: 'generated',
+  }));
+  const { data, error } = await payrollService.batchSavePayroll(records, employee.company_id);
+  if (error) {
+    setPublishMsg('Gagal menyimpan: ' + (error.message || 'error'));
+    setPublishing(false);
+    return;
+  }
+  // Notify each employee (PWA notifikasi + push)
+  const monthLabel = new Date(selectedMonth + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  for (const row of (data || records)) {
+    const empId = row.employee_id;
+    createNotification({
+      employeeId: empId,
+      companyId: employee.company_id,
+      type: 'payslip',
+      title: 'Slip gaji tersedia',
+      body: `Slip gaji ${monthLabel} sudah dapat dilihat di aplikasi.`,
+      data: { path: '/app/payslip', period: selectedMonth },
+    }).catch(() => {});
+    sendPayslipPush(empId, selectedMonth.split('-')[1], selectedMonth.split('-')[0]).catch(() => {});
+  }
+  setPublishMsg(`Payroll ${selectedMonth} tersimpan (${(data || records).length} karyawan). Karyawan dapat lihat di PWA.`);
+  setPublishing(false);
+ };
+
   if (loading) return <PageSkeleton hasStats={true} tableRows={6} tableCols={6} />;
  return (
  <div>
  <div className="page-header">
  <h1>{t('payroll.title')}</h1>
  <div className="page-header-actions">
- <input
+ <Input
  type="month"
- className="form-input"
+ className="input-month"
  value={selectedMonth}
  onChange={(e) => setSelectedMonth(e.target.value)}
- style={{ width: 180 }}
  />
- <button className="btn-primary" onClick={handleExportExcel}><FiDownload /> Export Payroll</button>
+ <Button onClick={handleExportExcel}><FiDownload /> Export Payroll</Button>
+ <Button
+  onClick={handlePublishPayroll}
+  disabled={publishing || payrollData.length === 0}
+  style={{ background: publishing ? 'var(--border)' : 'var(--success)' }}
+ >
+  {publishing ? 'Menyimpan...' : 'Publikasi ke PWA'}
+ </Button>
  </div>
  </div>
+ {publishMsg && (
+  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', color: '#15803d', fontSize: 13, fontWeight: 600 }}>
+   {publishMsg}
+  </div>
+ )}
 
  {/* Summary Cards */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
+ <div className="stats-grid">
  <div className="info-card">
- <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Total Penghasilan Kotor</div>
- <div style={{ fontSize: 22, fontWeight: 700 }}>{formatCurrency(totals.gross)}</div>
+ <div className="info-card-label">Total Penghasilan Kotor</div>
+ <div className="info-card-value">{formatCurrency(totals.gross)}</div>
  </div>
  <div className="info-card">
- <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Total Potongan</div>
- <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--danger)' }}>- {formatCurrency(totals.deductions)}</div>
+ <div className="info-card-label">Total Potongan</div>
+ <div className="info-card-value danger">- {formatCurrency(totals.deductions)}</div>
  </div>
  <div className="info-card">
- <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Biaya Lembur</div>
- <div style={{ fontSize: 22, fontWeight: 700, color: '#F59E0B' }}>{formatCurrency(totals.overtime)}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+ <div className="info-card-label">Biaya Lembur</div>
+ <div className="info-card-value warning">{formatCurrency(totals.overtime)}</div>
+ <div className="info-card-subtext">
  {totals.baseSalary > 0 ? `${((totals.overtime / totals.baseSalary) * 100).toFixed(1)}% dari gaji pokok` : '-'}
  </div>
  </div>
- <div className="info-card" style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))', color: '#fff', border: 'none' }}>
- <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Total Take Home Pay</div>
- <div style={{ fontSize: 22, fontWeight: 700 }}>{formatCurrency(totals.net)}</div>
+ <div className="info-card highlight">
+ <div className="info-card-label light">Total Take Home Pay</div>
+ <div className="info-card-value">{formatCurrency(totals.net)}</div>
  </div>
  </div>
 
  {/* Overtime Cost by Division Chart */}
  {divisionCostData.labels.length > 0 && (
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: 28, boxShadow: 'var(--shadow-card)', marginBottom: 28 }}>
- <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+ <div className="chart-card">
+ <div className="chart-card-header">
  <div>
- <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Biaya Gaji & Lembur per Divisi</div>
- <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Perbandingan biaya per departemen</div>
+ <div className="chart-card-title">Biaya Gaji & Lembur per Divisi</div>
+ <div className="chart-card-subtitle">Perbandingan biaya per departemen</div>
  </div>
- <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 999, background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B' }}>
+ <span className="chart-card-badge warning">
  {selectedMonth}
  </span>
  </div>
- <div style={{ height: 280 }}>
+ <div className="chart-container">
  <Bar data={stackedBarData} options={stackedBarOptions} />
  </div>
  </div>
@@ -241,53 +312,54 @@ export default function Payroll() {
  {/* Payroll Table */}
  <div className="data-table-card">
  <div className="table-responsive">
- <table className="data-table">
- <thead>
- <tr>
- <th>Karyawan</th>
- <th style={{ textAlign: 'right' }}>Gaji Pokok</th>
- <th style={{ textAlign: 'right' }}>Tunjangan</th>
- <th style={{ textAlign: 'right' }}>Lembur</th>
- <th style={{ textAlign: 'right' }}>BPJS</th>
- <th style={{ textAlign: 'right' }}>PPh 21</th>
- <th style={{ textAlign: 'right' }}>Take Home Pay</th>
- <th>Aksi</th>
- </tr>
- </thead>
- <tbody>
+ <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Karyawan</TableHead>
+            <TableHead className="th-right">Gaji Pokok</TableHead>
+            <TableHead className="th-right">Tunjangan</TableHead>
+            <TableHead className="th-right">Lembur</TableHead>
+            <TableHead className="th-right">BPJS</TableHead>
+            <TableHead className="th-right">PPh 21</TableHead>
+            <TableHead className="th-right">Take Home Pay</TableHead>
+            <TableHead>Aksi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
  {payrollData.map((emp) => (
- <tr key={emp.id}>
- <td>
- <div className="employee-cell">
- <div className="employee-avatar" style={{ width: 30, height: 30, fontSize: 11 }}>
- {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
- </div>
- <div>
- <div className="employee-name">{emp.name}</div>
- <div className="employee-dept">{emp.division}</div>
- </div>
- </div>
- </td>
- <td style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: 12 }}>{formatCurrency(emp.salary.baseSalary)}</td>
- <td style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: 12 }}>{formatCurrency(emp.salary.allowance)}</td>
- <td style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: 12, color: emp.salary.overtimePay > 0 ? 'var(--primary)' : 'var(--muted)' }}>
- {formatCurrency(emp.salary.overtimePay)}
- </td>
- <td style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: 12, color: 'var(--danger)' }}>-{formatCurrency(emp.salary.bpjs.total)}</td>
- <td style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: 12, color: 'var(--danger)' }}>-{formatCurrency(emp.salary.pph21)}</td>
- <td style={{ textAlign: 'right', fontWeight: 700, fontSize: 13 }}>{formatCurrency(emp.salary.takeHomePay)}</td>
- <td>
- <button className="action-btn" title="Download PDF" onClick={() => handleDownloadIndividual(emp)}><FiDownload /></button>
- </td>
- </tr>
+          <TableRow key={emp.id}>
+            <TableCell>
+              <div className="employee-cell">
+                <div className="employee-avatar sm">
+                  {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <div>
+                  <div className="employee-name">{emp.name}</div>
+                  <div className="employee-dept">{emp.division}</div>
+                </div>
+              </div>
+            </TableCell>
+            <TableCell className="td-numeric">{formatCurrency(emp.salary.baseSalary)}</TableCell>
+            <TableCell className="td-numeric">{formatCurrency(emp.salary.allowance)}</TableCell>
+            <TableCell className={emp.salary.overtimePay > 0 ? 'td-numeric primary' : 'td-numeric'}>
+              {formatCurrency(emp.salary.overtimePay)}
+            </TableCell>
+            <TableCell className="td-numeric danger">-{formatCurrency(emp.salary.bpjs.total)}</TableCell>
+            <TableCell className="td-numeric danger">-{formatCurrency(emp.salary.pph21)}</TableCell>
+            <TableCell className="td-numeric total">{formatCurrency(emp.salary.takeHomePay)}</TableCell>
+            <TableCell>
+              <Button variant="ghost" size="sm" onClick={() => handleDownloadIndividual(emp)}><FiDownload /></Button>
+            </TableCell>
+          </TableRow>
  ))}
  {payrollData.length === 0 && (
- <tr><td colSpan={8} className="empty-state">Belum ada data karyawan.</td></tr>
+ <TableRow><TableCell colSpan={8} className="empty-state">Belum ada data karyawan.</TableCell></TableRow>
  )}
- </tbody>
- </table>
+        </TableBody>
+      </Table>
  </div>
  </div>
  </div>
  );
 }
+

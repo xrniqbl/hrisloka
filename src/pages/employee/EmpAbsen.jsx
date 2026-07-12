@@ -34,6 +34,9 @@ import {
 import FaceScanner from '../../components/FaceScanner';
 import FaceRegistration from '../../components/FaceRegistration';
 import { isBackgroundSyncSupported, queueRequest } from '../../lib/backgroundSync';
+import { useFeatureFlags } from '../../context/FeatureFlagContext';
+import { isDemoMode, DEMO_EMPLOYEE, showDemoToast } from '../../lib/demoGuard';
+import { useToast } from '../../components/Toast';
 import './EmpAbsen.css';
 import '../../styles/shared.css';
 
@@ -53,7 +56,7 @@ function TrustBadge({ score, level, flags }) {
       fontSize: 12, fontWeight: 700, border: `1px solid ${style.color}30`
     }}>
       {style.icon} Trust Score: {score}/100
-      {flags?.length > 0 && <span style={{ fontWeight: 400 }}>· {flags.length} flag</span>}
+      {flags?.length > 0 && <span style={{ fontWeight: 400 }}> {flags.length} flag</span>}
     </div>
   );
 }
@@ -74,6 +77,10 @@ const STEPS = ['gps', 'face', 'confirm', 'done'];
 export default function EmpAbsen() {
   const { user } = useAuth();
   const { locale } = useTranslation();
+  const { isEnabled } = useFeatureFlags();
+  const toast = useToast();
+  const faceEnabled = isEnabled('face_attendance');
+  const geofenceEnabled = isEnabled('geofence');
   const [emp, setEmp] = useState(null);
   const [office, setOffice] = useState(null);
   const [history, setHistory] = useState([]);
@@ -83,6 +90,9 @@ export default function EmpAbsen() {
   const [step, setStep] = useState('gps');
   const [registeredFaces, setRegisteredFaces] = useState([]);
   const [hasFaceReg, setHasFaceReg] = useState(null); // null = checking
+  const [submitError, setSubmitError] = useState('');
+  /** Tracks last successful action for correct done-step copy (mode flips before render) */
+  const [lastAction, setLastAction] = useState(null); // 'in' | 'out' | null
 
   // GPS state
   const [location, setLocation] = useState(null);
@@ -122,6 +132,25 @@ export default function EmpAbsen() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      // Demo: full UI flow without Supabase writes
+      if (isDemoMode()) {
+        setEmp({ ...DEMO_EMPLOYEE });
+        setHistory([]);
+        setTodayAtt(null);
+        setMode('in');
+        setHasFaceReg(true);
+        setRegisteredFaces([]); // verify may skip if empty + demo
+        setOffice({
+          id: 'demo-office',
+          name: 'Kantor Demo',
+          latitude: -6.2,
+          longitude: 106.8,
+          radius_meters: 500000, // wide so demo GPS usually inside
+        });
+        setPageLoading(false);
+        return;
+      }
+
       const email = user?.email || user?.user_metadata?.email;
       const { data: empData } = await getEmployeeByEmail(email);
       if (cancelled || !empData) { setPageLoading(false); return; }
@@ -150,13 +179,32 @@ export default function EmpAbsen() {
         setRegisteredFaces(descriptors || []);
       }
 
-      // Branch-specific geofence
+      // Branch-specific geofence first
       if (empData.branch_id) {
         const { data: branchData } = await getBranchById(empData.branch_id);
-        if (branchData) setOffice({ id: branchData.id, name: branchData.name, latitude: branchData.latitude, longitude: branchData.longitude, radius_meters: branchData.radius_meters });
+        if (branchData?.latitude != null && branchData?.longitude != null) {
+          setOffice({
+            id: branchData.id,
+            name: branchData.name,
+            latitude: branchData.latitude,
+            longitude: branchData.longitude,
+            radius_meters: branchData.radius_meters || 100,
+          });
+        }
       }
-      const { data: locs } = await getOfficeLocations();
-      if (locs?.length) setOffice(prev => prev || locs[0]);
+      // Company office locations (MUST pass company_id — guard blocks without it)
+      if (empData.company_id) {
+        const { data: locs } = await getOfficeLocations(empData.company_id);
+        if (locs?.length) {
+          setOffice((prev) => prev || {
+            id: locs[0].id,
+            name: locs[0].name,
+            latitude: locs[0].latitude,
+            longitude: locs[0].longitude,
+            radius_meters: locs[0].radius_meters || 100,
+          });
+        }
+      }
 
       setPageLoading(false);
     }
@@ -250,13 +298,53 @@ export default function EmpAbsen() {
     }
   }, [todayAtt, locale]);
 
-  const inRadius = location && office
-    ? getDistance(location.lat, location.lng, parseFloat(office.latitude), parseFloat(office.longitude)) <= office.radius_meters
-    : false;
+  const inRadius = !geofenceEnabled
+    ? true // platform geofence disabled — do not block by radius
+    : (location && office
+      ? getDistance(location.lat, location.lng, parseFloat(office.latitude), parseFloat(office.longitude)) <= office.radius_meters
+      : false);
 
   const distance = location && office
     ? Math.round(getDistance(location.lat, location.lng, parseFloat(office.latitude), parseFloat(office.longitude)))
     : null;
+
+  // When face attendance is disabled, or no face enrolled yet, skip face step after GPS
+  const goAfterGps = useCallback(async () => {
+    if (!faceEnabled || hasFaceReg === false) {
+      setFaceResult({ skipped: true, matchResult: { match: true, confidence: 1, distance: 0 } });
+      setStep('confirm');
+      return;
+    }
+    // Demo without descriptors: skip match (enrollment is local-only in demo)
+    if (isDemoMode() && (!registeredFaces || registeredFaces.length === 0)) {
+      setFaceResult({ skipped: true, matchResult: { match: true, confidence: 1, distance: 0 } });
+      setStep('confirm');
+      return;
+    }
+    // Ensure descriptors are loaded before FaceScanner verify (empty list = always fail)
+    let faces = registeredFaces;
+    if ((!faces || faces.length === 0) && emp?.id && !isDemoMode()) {
+      try {
+        const { data } = await getEmployeeFaceDescriptors(emp.id);
+        faces = data || [];
+        setRegisteredFaces(faces);
+      } catch { /* continue */ }
+    }
+    if (!faces || faces.length === 0) {
+      // Force re-enroll rather than a guaranteed failed scan
+      setHasFaceReg(false);
+      setShowFaceReg(true);
+      try {
+        toast?.error?.(
+          locale === 'en'
+            ? 'Face data missing. Please register Face ID again.'
+            : 'Data wajah tidak ditemukan. Daftarkan Face ID ulang.',
+        );
+      } catch { /* */ }
+      return;
+    }
+    setStep('face');
+  }, [faceEnabled, hasFaceReg, registeredFaces, emp, locale, toast]);
 
   // ——— Step 2: Face result callback ————————————————————————————
   const handleFaceSuccess = useCallback((result) => {
@@ -271,12 +359,28 @@ export default function EmpAbsen() {
 
   // ——— Step 3: Submit attendance ——————————————————————————————
   const handleConfirm = async () => {
-    if (!emp || !location) return;
+    if (!emp || !location) {
+      setSubmitError(
+        locale === 'en'
+          ? 'Employee or GPS data missing. Go back and retry GPS.'
+          : 'Data karyawan atau GPS hilang. Kembali dan ulangi verifikasi GPS.',
+      );
+      return;
+    }
+    if (mode === 'out' && !todayAtt?.id && !isDemoMode()) {
+      setSubmitError(
+        locale === 'en'
+          ? 'No clock-in record found for today. Refresh and try again.'
+          : 'Data clock-in hari ini tidak ditemukan. Muat ulang lalu coba lagi.',
+      );
+      return;
+    }
     setSubmitLoading(true);
+    setSubmitError('');
 
     const finalTrust = trustResult ? {
       ...trustResult,
-      faceVerified: faceResult?.matchResult?.match || false,
+      faceVerified: faceResult?.matchResult?.match || faceResult?.skipped || false,
       faceDistance: faceResult?.matchResult?.distance,
       faceConfidence: faceResult?.matchResult?.confidence,
       livenessResult: faceResult?.livenessResult,
@@ -294,8 +398,40 @@ export default function EmpAbsen() {
     }
 
     try {
+      // Demo: complete UI without writing to Supabase
+      if (isDemoMode()) {
+        if (mode === 'out') {
+          setTodayAtt((prev) => ({
+            ...(prev || {}),
+            clock_out: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          }));
+          setLastAction('out');
+          setMode('done_both');
+        } else {
+          setTodayAtt({
+            id: 'demo-att',
+            clock_in: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            clock_out: null,
+          });
+          setLastAction('in');
+          setMode('out');
+        }
+        setStep('done');
+        try { toast?.success?.(locale === 'en' ? 'Demo attendance recorded' : 'Absensi demo tercatat'); } catch { /* */ }
+        if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+        setSubmitLoading(false);
+        return;
+      }
+
       if (mode === 'out' && todayAtt?.id) {
-        await serviceClockOut(todayAtt.id);
+        const { error: outErr } = await serviceClockOut(todayAtt.id, emp.id);
+        if (outErr) throw outErr;
+        setLastAction('out');
+        setMode('done_both');
+        setTodayAtt((prev) => prev ? {
+          ...prev,
+          clock_out: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        } : prev);
       } else {
         const clockInPayload = {
           employee_id: emp.id,
@@ -303,7 +439,7 @@ export default function EmpAbsen() {
           longitude: location.lng,
           inRadius,
           selfieVerified: true,
-          locationId: office?.id || 1,
+          locationId: office?.id && office.id !== 'demo-office' ? office.id : null,
           faceVerified: finalTrust?.faceVerified || false,
           faceDistance: finalTrust?.faceDistance,
           faceConfidence: finalTrust?.faceConfidence,
@@ -312,28 +448,50 @@ export default function EmpAbsen() {
           antiSpoofFlags: finalTrustResult?.flags || [],
         };
 
-        let attRecord = null;
-        try {
-          const { data } = await serviceClockIn(emp.id, clockInPayload);
-          attRecord = data;
-        } catch (networkErr) {
-          // Offline fallback: queue for background sync
-          if (isBackgroundSyncSupported()) {
-            const queued = await queueRequest(
-              '/api/attendance/clock-in',
-              'POST',
-              { 'Content-Type': 'application/json' },
-              JSON.stringify(clockInPayload)
-            );
-            if (queued) {
-              console.log('[EmpAbsen] Queued clock-in for background sync');
+        // Offline first
+        if (!navigator.onLine && isBackgroundSyncSupported()) {
+          await queueRequest(
+            '/api/attendance/clock-in',
+            'POST',
+            { 'Content-Type': 'application/json' },
+            JSON.stringify(clockInPayload),
+          );
+          setLastAction('in');
+          setMode('out');
+          setStep('done');
+          try { toast?.success?.(locale === 'en' ? 'Saved offline — will sync later' : 'Tersimpan offline — akan disinkronkan'); } catch { /* */ }
+          if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+          setSubmitLoading(false);
+          return;
+        }
+
+        const { data: attRecord, error: inErr } = await serviceClockIn(emp.id, clockInPayload);
+        if (inErr) {
+          // Network-ish failure → queue for later
+          const msg = inErr.message || '';
+          if (!navigator.onLine || /fetch|network|Failed to fetch/i.test(msg)) {
+            if (isBackgroundSyncSupported()) {
+              await queueRequest(
+                '/api/attendance/clock-in',
+                'POST',
+                { 'Content-Type': 'application/json' },
+                JSON.stringify(clockInPayload),
+              );
+              setLastAction('in');
+              setMode('out');
               setStep('done');
-              if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+              try { toast?.success?.(locale === 'en' ? 'Saved offline — will sync later' : 'Tersimpan offline — akan disinkronkan'); } catch { /* */ }
               setSubmitLoading(false);
               return;
             }
           }
-          throw networkErr;
+          throw inErr;
+        }
+
+        if (attRecord) {
+          setTodayAtt(attRecord);
+          setLastAction('in');
+          setMode('out');
         }
 
         // Save detailed trust log async (non-blocking)
@@ -352,6 +510,9 @@ export default function EmpAbsen() {
       if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
     } catch (err) {
       console.error('Submit error:', err);
+      const msg = err?.message || (locale === 'en' ? 'Failed to submit attendance' : 'Gagal mengirim absensi');
+      setSubmitError(msg);
+      try { toast?.error?.(msg); } catch { /* */ }
     }
     setSubmitLoading(false);
   };
@@ -364,13 +525,15 @@ export default function EmpAbsen() {
     setTrustResult(null);
     setFaceResult(null);
     setLocError('');
+    setSubmitError('');
+    setLastAction(null);
   };
 
   // ——— Skeleton loading ————————————————————————————————————————
   if (pageLoading) {
     return (
       <div style={{ animation: 'fadeInUp 0.3s ease' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 10 }} />
           <div><div className="skeleton skeleton-text" style={{ width: 140, marginBottom: 6 }} />
             <div className="skeleton skeleton-text-sm" style={{ width: 100 }} /></div>
@@ -380,9 +543,31 @@ export default function EmpAbsen() {
     );
   }
 
+  if (!emp) {
+    return (
+      <div className="absen-page">
+        <div className="absen-card" style={{ textAlign: 'center', padding: 28 }}>
+          <HiExclamationTriangle size={28} color="#D97706" style={{ marginBottom: 10 }} />
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+            {t('Employee data not found', 'Data karyawan tidak ditemukan')}
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.5 }}>
+            {t(
+              'Your account is not linked to an employee profile. Contact HR or re-login.',
+              'Akun belum terhubung ke profil karyawan. Hubungi HR atau login ulang.',
+            )}
+          </p>
+          <button className="absen-action-btn" style={{ width: '100%' }} onClick={() => window.location.reload()}>
+            {t('Reload', 'Muat Ulang')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ——— No face registered banner ——————————————————————————————
   const noFaceBanner = hasFaceReg === false && (
-    <div style={{ padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
+    <div style={{ padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
       <HiCamera size={18} color="#D97706" style={{ flexShrink: 0, marginTop: 2 }} />
       <div>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#D97706', marginBottom: 4 }}>
@@ -405,11 +590,11 @@ export default function EmpAbsen() {
   if (showFaceReg) {
     return (
       <div className="absen-page">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <button onClick={() => setShowFaceReg(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex' }}>
             <HiChevronLeft size={22} />
           </button>
-          <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
+          <h1 style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>
             {t('Face Registration', 'Registrasi Wajah')}
           </h1>
         </div>
@@ -420,8 +605,20 @@ export default function EmpAbsen() {
             locale={locale}
             onComplete={async (descriptors) => {
               setHasFaceReg(true);
-              const { data } = await getEmployeeFaceDescriptors(emp.id);
-              setRegisteredFaces(data || []);
+              // Prefer freshly captured descriptors so verify works immediately
+              // (DB fetch may lag RLS / demo has no rows)
+              const fromCapture = (descriptors || []).map((d, i) => ({
+                descriptor: d,
+                label: `photo_${i + 1}`,
+              }));
+              let faces = fromCapture;
+              if (emp?.id && !isDemoMode()) {
+                try {
+                  const { data } = await getEmployeeFaceDescriptors(emp.id);
+                  if (data?.length) faces = data;
+                } catch { /* use capture */ }
+              }
+              setRegisteredFaces(faces);
               setShowFaceReg(false);
             }}
             onClose={() => setShowFaceReg(false)}
@@ -473,7 +670,7 @@ export default function EmpAbsen() {
         }}>
           <div style={{
             width: 34, height: 34, borderRadius: '50%',
-            background: 'rgba(0,71,171,0.1)', border: '2px solid rgba(0,71,171,0.2)',
+            background: 'rgba(99,91,255,0.1)', border: '2px solid rgba(99,91,255,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'var(--primary)',
             animation: isRefreshing ? 'spin 0.8s linear infinite' : 'none',
@@ -485,10 +682,10 @@ export default function EmpAbsen() {
       )}
 
       {/* ---- HRIS Loka Header ---- */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #1565C0, #1976D2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="15" rx="2" fill="white" fillOpacity="0.9"/><rect x="9" y="12" width="6" height="10" rx="1" fill="#1565C0"/><rect x="4" y="2" width="16" height="8" rx="1" fill="white" fillOpacity="0.6"/></svg>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #5449FF, #1976D2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="15" rx="2" fill="white" fillOpacity="0.9"/><rect x="9" y="12" width="6" height="10" rx="1" fill="#5449FF"/><rect x="4" y="2" width="16" height="8" rx="1" fill="white" fillOpacity="0.6"/></svg>
           </div>
           <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px' }}>HRIS Loka</span>
         </div>
@@ -498,11 +695,11 @@ export default function EmpAbsen() {
       {mode !== 'done_both' && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text)', letterSpacing: '-0.3px' }}>
+            <h1 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text)', letterSpacing: '-0.3px' }}>
               {t('Biometric Attendance', 'Absensi Biometrik Loka')}
             </h1>
             {step !== 'done' && (
-              <div style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(0,71,171,0.08)', border: '1px solid rgba(0,71,171,0.15)', fontSize: 12, fontWeight: 700, color: 'var(--primary)', flexShrink: 0 }}>
+              <div style={{ padding: '4px 12px', borderRadius: 12, background: 'rgba(99,91,255,0.08)', border: '1px solid rgba(99,91,255,0.15)', fontSize: 12, fontWeight: 700, color: 'var(--primary)', flexShrink: 0 }}>
                 {t(`Step ${['gps','face','confirm'].indexOf(step)+1} / 3`, `Tahap ${['gps','face','confirm'].indexOf(step)+1} / 3`)}
               </div>
             )}
@@ -524,11 +721,11 @@ export default function EmpAbsen() {
 
       {/* All done state */}
       {mode === 'done_both' && (
-        <div className="emp-card" style={{ textAlign: 'center', padding: 40, marginBottom: 16 }}>
-          <div className="absen-check-icon"><HiCheck size={28} /></div>
-          <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>{t("Today's Attendance Complete", 'Absensi Hari Ini Selesai')}</div>
+        <div className="emp-card" style={{ textAlign: 'center', padding: 40, marginBottom: 12 }}>
+          <div className="absen-check-icon"><HiCheck size={20} strokeWidth={2.5} /></div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>{t("Today's Attendance Complete", 'Absensi Hari Ini Selesai')}</div>
           <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
-            {t('In', 'Masuk')}: {todayAtt?.clock_in} &nbsp;·&nbsp; {t('Out', 'Keluar')}: {todayAtt?.clock_out}
+            {t('In', 'Masuk')}: {todayAtt?.clock_in} &nbsp;&nbsp; {t('Out', 'Keluar')}: {todayAtt?.clock_out}
           </div>
           {todayAtt?.trust_score && (
             <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -542,25 +739,25 @@ export default function EmpAbsen() {
       {mode !== 'done_both' && step === 'gps' && (
         <div className="absen-card" style={{ textAlign: 'center' }}>
           {/* Feature chips - icon based */}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 20, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
               <HiMapPin size={12} style={{ color: 'var(--primary)' }} /> {t('Accurate', 'Akurat')}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 20, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
               <HiClock size={12} style={{ color: 'var(--primary)' }} /> Real-time
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 20, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
               <HiShieldCheck size={12} style={{ color: 'var(--primary)' }} /> {t('Safe', 'Aman')}
             </div>
           </div>
 
           {/* Map visual */}
-          <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(135deg, #EEF2FF 0%, #E8F4FF 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', position: 'relative', boxShadow: '0 0 0 16px rgba(0,71,171,0.04), 0 0 0 32px rgba(0,71,171,0.02)' }}>
-            <div style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1.5px solid rgba(0,71,171,0.12)', animation: 'pulseDot 2s ease-in-out infinite' }} />
-            <HiMapPin size={40} style={{ color: 'var(--primary)', filter: 'drop-shadow(0 4px 8px rgba(0,71,171,0.25))' }} />
+          <div style={{ width: 140, height: 140, borderRadius: '50%', background: 'linear-gradient(135deg, #F0EEFF 0%, #E8F4FF 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px', position: 'relative', boxShadow: '0 0 0 16px rgba(99,91,255,0.04), 0 0 0 32px rgba(99,91,255,0.02)' }}>
+            <div style={{ position: 'absolute', width: '100%', height: '100%', borderRadius: '50%', border: '1.5px solid rgba(99,91,255,0.12)', animation: 'pulseDot 2s ease-in-out infinite' }} />
+            <HiMapPin size={40} style={{ color: 'var(--primary)', filter: 'drop-shadow(0 4px 8px rgba(99,91,255,0.25))' }} />
           </div>
 
-          <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>
+          <h2 style={{ fontSize: 14, fontWeight: 800, marginBottom: 6 }}>
             {t('GPS Coordinate Detection', 'Deteksi Koordinat GPS')}
           </h2>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.6 }}>
@@ -570,9 +767,21 @@ export default function EmpAbsen() {
             )}
           </p>
 
+          {geofenceEnabled && !office && (
+            <div className="absen-alert danger" style={{ marginBottom: 12, textAlign: 'left' }}>
+              <HiExclamationTriangle />
+              <span>
+                {t(
+                  'No office geofence configured for your company. Contact HR to set office location.',
+                  'Lokasi kantor (geofence) belum diatur. Hubungi HR untuk menambahkan lokasi kantor.',
+                )}
+              </span>
+            </div>
+          )}
+
           {/* Anti-spoofing progress */}
           {antiSpoofRunning && (
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 12 }}>
               <div className="absen-loading">
                 <div className="absen-spinner" />
                 <span style={{ fontSize: 13 }}>{antiSpoofStep}</span>
@@ -643,13 +852,20 @@ export default function EmpAbsen() {
                   <div><div style={{ fontWeight: 700 }}>{t('Attendance Blocked', 'Absensi Diblokir')}</div>
                     <div style={{ fontSize: 12, marginTop: 4 }}>{t('Contact HR.', 'Hubungi HR.')}</div></div>
                 </div>
-              ) : !hasFaceReg ? (
+              ) : faceEnabled && !hasFaceReg ? (
                 <div style={{ padding: 12, background: 'rgba(245,158,11,0.08)', borderRadius: 10, fontSize: 13, color: '#D97706', textAlign: 'left' }}>
                   {t('Register your face first to continue.', 'Daftarkan wajah Anda terlebih dahulu.')}
                 </div>
               ) : (
-                <button className="absen-action-btn" style={{ width: '100%' }} onClick={() => setStep('face')}>
-                  <HiCamera size={16} /> {t('Continue to Face Scan', 'Lanjut ke Pemindaian Wajah')} →
+                <button
+                  type="button"
+                  className="absen-action-btn"
+                  style={{ width: '100%' }}
+                  onClick={() => { void goAfterGps(); }}
+                >
+                  {faceEnabled
+                    ? <><HiCamera size={16} /> {t('Continue to Face Scan', 'Lanjut ke Pemindaian Wajah')} →</>
+                    : <>{t('Continue to Confirm', 'Lanjut ke Konfirmasi')} →</>}
                 </button>
               )}
             </div>
@@ -660,10 +876,10 @@ export default function EmpAbsen() {
       {/* ——— STEP: FACE ID —————————————————————————————————————————— */}
       {mode !== 'done_both' && step === 'face' && (
         <div className="absen-card" style={{ alignItems: 'center', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>
+          <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
              Face ID
           </h2>
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
             {t('Complete the liveness challenges to verify your identity.', 'Selesaikan tantangan untuk memverifikasi identitas Anda.')}
           </p>
           <FaceScanner
@@ -681,24 +897,24 @@ export default function EmpAbsen() {
       {mode !== 'done_both' && step === 'confirm' && (
         <div className="absen-card" style={{ textAlign: 'center' }}>
           {/* Icon header */}
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(0,71,171,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(99,91,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <HiClipboardDocumentCheck size={32} style={{ color: 'var(--primary)' }} />
           </div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>
+          <h2 style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>
             {t('Attendance Confirmation', 'Konfirmasi Absensi')}
           </h2>
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
             {t('Check your attendance details before finishing.', 'Periksa detail absensi Anda sebelum menyelesaikan.')}
           </p>
 
           {/* Detail rows */}
-          <div style={{ textAlign: 'left', marginBottom: 16 }}>
+          <div style={{ textAlign: 'left', marginBottom: 12 }}>
             {[
-              { icon: <HiCalendarDays size={18} />, label: t('Date', 'Tanggal'), val: new Date().toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), iconBg: 'rgba(0,71,171,0.08)', iconColor: 'var(--primary)' },
-              { icon: <HiClock size={18} />, label: t('Time', 'Waktu'), val: `${new Date().toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} WIB`, iconBg: 'rgba(0,71,171,0.08)', iconColor: 'var(--primary)' },
-              { icon: <HiMapPin size={18} />, label: t('Location', 'Lokasi'), val: office?.name || 'HQ', iconBg: 'rgba(0,71,171,0.08)', iconColor: 'var(--primary)' },
+              { icon: <HiCalendarDays size={18} />, label: t('Date', 'Tanggal'), val: new Date().toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), iconBg: 'rgba(99,91,255,0.08)', iconColor: 'var(--primary)' },
+              { icon: <HiClock size={18} />, label: t('Time', 'Waktu'), val: `${new Date().toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} WIB`, iconBg: 'rgba(99,91,255,0.08)', iconColor: 'var(--primary)' },
+              { icon: <HiMapPin size={18} />, label: t('Location', 'Lokasi'), val: office?.name || 'HQ', iconBg: 'rgba(99,91,255,0.08)', iconColor: 'var(--primary)' },
               { icon: <HiShieldCheck size={18} />, label: t('Office Radius', 'Radius Kantor'), val: inRadius ? t('✓ Verified (Safe)', '✓ Terverifikasi (Aman)') : t('⚠ Outside Radius', '⚠ Di Luar Radius'), valColor: inRadius ? '#16A34A' : '#DC2626', iconBg: inRadius ? 'rgba(16,185,129,0.1)' : 'rgba(220,38,38,0.08)', iconColor: inRadius ? '#10B981' : '#DC2626' },
-              { icon: <HiUser size={18} />, label: t('Name', 'Nama'), val: emp?.name, iconBg: 'rgba(0,71,171,0.08)', iconColor: 'var(--primary)', valBold: true },
+              { icon: <HiUser size={18} />, label: t('Name', 'Nama'), val: emp?.name, iconBg: 'rgba(99,91,255,0.08)', iconColor: 'var(--primary)', valBold: true },
             ].map((row, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0', borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: row.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: row.iconColor, flexShrink: 0 }}>
@@ -711,7 +927,7 @@ export default function EmpAbsen() {
           </div>
 
           {/* Security notice */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(0,71,171,0.06)', borderRadius: 12, marginBottom: 16, textAlign: 'left' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'rgba(99,91,255,0.06)', borderRadius: 12, marginBottom: 12, textAlign: 'left' }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <HiShieldCheck size={18} style={{ color: '#fff' }} />
             </div>
@@ -720,27 +936,50 @@ export default function EmpAbsen() {
             </span>
           </div>
 
+          {submitError && (
+            <div className="absen-alert danger" style={{ marginBottom: 12, textAlign: 'left' }}>
+              <HiExclamationTriangle style={{ flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, marginBottom: 2 }}>{t('Submit failed', 'Gagal mengirim')}</div>
+                <div style={{ fontSize: 12 }}>{submitError}</div>
+              </div>
+            </div>
+          )}
+
           <button className={`absen-action-btn ${mode === 'out' ? 'danger' : ''}`} onClick={handleConfirm} disabled={submitLoading} style={{ width: '100%', marginBottom: 10, borderRadius: 100, padding: '16px', fontSize: 15 }}>
-            {submitLoading ? t('Submitting...', 'Mengirim...') : <><HiCheck size={18} /> {mode === 'out' ? t('Confirm Clock Out', 'Konfirmasi Absen Keluar') : t('Confirm & Finish Attendance', 'Konfirmasi & Selesaikan Absensi')}</>}
+            {submitLoading
+              ? t('Submitting...', 'Mengirim...')
+              : (
+                <>
+                  <HiCheck size={18} />
+                  {submitError
+                    ? t('Retry Submit', 'Coba Kirim Lagi')
+                    : mode === 'out'
+                      ? t('Confirm Clock Out', 'Konfirmasi Absen Keluar')
+                      : t('Confirm & Finish Attendance', 'Konfirmasi & Selesaikan Absensi')}
+                </>
+              )}
           </button>
-          <button onClick={() => setStep('gps')} style={{ width: '100%', padding: '14px', borderRadius: 100, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 14, fontWeight: 700, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button onClick={() => { setSubmitError(''); setStep('gps'); }} style={{ width: '100%', padding: '14px', borderRadius: 100, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 14, fontWeight: 700, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
             {t('Back', 'Kembali')}
           </button>
         </div>
       )}
 
-      {/* â”€â”€â”€â”€ STEP: DONE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ——— STEP: DONE ——— */}
       {mode !== 'done_both' && step === 'done' && (
         <div className="absen-card" style={{ textAlign: 'center' }}>
-          <div className="absen-done-icon"><HiCheck size={32} /></div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--success)', marginBottom: 6 }}>
-            {mode === 'out' ? t('Clock Out Successful!', 'Absen Keluar Berhasil!') : t('Clock In Successful!', 'Absen Masuk Berhasil!')}
+          <div className="absen-done-icon"><HiCheck size={22} strokeWidth={2.5} /></div>
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--success)', marginBottom: 6 }}>
+            {(lastAction || mode) === 'out'
+              ? t('Clock Out Successful!', 'Absen Keluar Berhasil!')
+              : t('Clock In Successful!', 'Absen Masuk Berhasil!')}
           </h2>
           <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 4 }}>
             {t('Attendance recorded securely.', 'Absensi tercatat dengan aman.')}
           </p>
           {trustResult && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
               <TrustBadge score={trustResult.trustScore} level={trustResult.level} flags={trustResult.flags} />
             </div>
           )}
@@ -758,7 +997,7 @@ export default function EmpAbsen() {
         </div>
 
         {showRecap && (
-          <div className="emp-card" style={{ marginBottom: 16, padding: 16 }}>
+          <div className="emp-card" style={{ marginBottom: 12, padding: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <button onClick={() => setRecapMonth(m => m - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}><HiChevronLeft size={18} /></button>
               <span style={{ fontWeight: 700, fontSize: 14 }}>
@@ -770,10 +1009,10 @@ export default function EmpAbsen() {
               {[
                 { label: t('Present', 'Hadir'), count: monthlyHistory.filter(h => h.in_radius).length, color: 'var(--success)', bg: 'rgba(16,185,129,0.06)' },
                 { label: t('Outside', 'Di Luar'), count: monthlyHistory.filter(h => !h.in_radius && h.clock_in).length, color: '#F59E0B', bg: 'rgba(245,158,11,0.06)' },
-                { label: 'Total', count: monthlyHistory.length, color: 'var(--primary)', bg: 'rgba(59,130,246,0.06)' },
+                { label: 'Total', count: monthlyHistory.length, color: 'var(--primary)', bg: 'rgba(99,91,255,0.06)' },
               ].map(s => (
                 <div key={s.label} style={{ padding: 12, background: s.bg, borderRadius: 8 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.count}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{s.count}</div>
                   <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)' }}>{s.label}</div>
                 </div>
               ))}

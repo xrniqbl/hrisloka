@@ -12,8 +12,9 @@ import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
-import { supabase } from '../../lib/supabase';
+import { submitOvertime, getMyOvertime } from '../../services/overtimeService';
 import BottomSheet from '../../components/BottomSheet';
+import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 const STATUS_COLORS = {
@@ -34,15 +35,17 @@ export default function EmpOvertime() {
   const [form, setForm] = useState({ date: '', start_time: '', end_time: '', reason: '', category: 'Reguler' });
 
   const load = useCallback(async () => {
+    if (isDemoMode()) {
+      setEmp({ ...DEMO_EMPLOYEE });
+      setOvertimes([...(DEMO_PROFILE_DATA.overtimes || [])]);
+      setLoading(false);
+      return;
+    }
     const email = user?.email || user?.user_metadata?.email;
     const { data: empData } = await getEmployeeByEmail(email);
     if (!empData) { setLoading(false); return; }
     setEmp(empData);
-    const { data } = await supabase
-      .from('overtime_requests')
-      .select('*')
-      .eq('employee_id', empData.id)
-      .order('created_at', { ascending: false });
+    const { data } = await getMyOvertime(empData.id);
     setOvertimes(data || []);
     setLoading(false);
   }, [user]);
@@ -64,14 +67,31 @@ export default function EmpOvertime() {
     try {
       const start = new Date(`${form.date}T${form.start_time}`);
       const end = new Date(`${form.date}T${form.end_time}`);
-      const durationHours = Math.max(0, (end - start) / 3600000);
+      let durationHours = (end - start) / 3600000;
+      if (durationHours < 0) durationHours += 24; // overnight
+      durationHours = Math.round(Math.max(0.5, durationHours) * 10) / 10;
+      const reason = `[${form.category}] ${form.start_time}–${form.end_time} · ${form.reason}`;
 
-      const { error } = await supabase.from('overtime_requests').insert({
-        employee_id: emp.id,
+      if (isDemoMode()) {
+        setOvertimes((prev) => [{
+          id: `demo-ot-${Date.now()}`,
+          date: form.date,
+          hours: durationHours,
+          reason,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        }, ...prev]);
+        toast?.success(locale === 'en' ? 'Demo overtime submitted!' : 'Lembur demo dikirim!');
+        setSheetOpen(false);
+        setForm({ date: '', start_time: '', end_time: '', reason: '', category: 'Reguler' });
+        setSubmitting(false);
+        return;
+      }
+
+      const { error } = await submitOvertime(emp.id, {
         date: form.date,
-        hours: Math.round(durationHours * 10) / 10,
-        reason: `[${form.category}] ${form.start_time}�${form.end_time} � ${form.reason}`,
-        status: 'pending',
+        hours: durationHours,
+        reason,
       });
 
       if (error) throw error;
@@ -80,7 +100,7 @@ export default function EmpOvertime() {
       setForm({ date: '', start_time: '', end_time: '', reason: '', category: 'Reguler' });
       load();
     } catch (err) {
-      toast?.error(locale === 'en' ? 'Failed to submit. Please try again.' : 'Gagal mengirim. Coba lagi.');
+      toast?.error(err?.message || (locale === 'en' ? 'Failed to submit. Please try again.' : 'Gagal mengirim. Coba lagi.'));
     }
     setSubmitting(false);
   };
@@ -96,7 +116,7 @@ export default function EmpOvertime() {
   return (
     <div className="emp-page">
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
+      <div className="mb">
         <h1 className="emp-page-title">
           {locale === 'en' ? 'Overtime' : 'Lembur'}
         </h1>
@@ -106,16 +126,16 @@ export default function EmpOvertime() {
       </div>
 
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-        <div className="emp-card" style={{ padding: '16px', textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{totalThisMonth.length}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>
+      <div className="stats-grid" style={{ marginBottom: 14 }}>
+        <div className="emp-card" style={{ textAlign: 'center' }}>
+          <div className="info-card-value primary">{totalThisMonth.length}</div>
+          <div className="period-label">
             {locale === 'en' ? 'This Month' : 'Bulan Ini'}
           </div>
         </div>
-        <div className="emp-card" style={{ padding: '16px', textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#16A34A', lineHeight: 1 }}>{approvedHours.toFixed(1)}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>
+        <div className="emp-card" style={{ textAlign: 'center' }}>
+          <div className="info-card-value success">{approvedHours.toFixed(1)}</div>
+          <div className="period-label">
             {locale === 'en' ? 'Approved Hours' : 'Jam Disetujui'}
           </div>
         </div>
@@ -124,22 +144,15 @@ export default function EmpOvertime() {
       {/* Apply Button */}
       <button
         onClick={() => setSheetOpen(true)}
-        style={{
-          width: '100%', padding: '15px', borderRadius: 'var(--radius-md)',
-          background: 'linear-gradient(135deg, #EF4444, #DC2626)',
-          color: '#fff', border: 'none', fontWeight: 800, fontSize: 15,
-          cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: '0 6px 20px rgba(220,38,38,0.28)', marginBottom: 24,
-          transition: 'all 0.2s ease',
-        }}
+        className="btn-primary"
+        style={{ width: '100%', marginBottom: 24 }}
       >
         <HiClock size={18} />
         {locale === 'en' ? 'Request Overtime' : 'Ajukan Lembur'}
       </button>
 
       {/* History List */}
-      <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, color: 'var(--text)' }}>
+      <div className="section-label mb-sm">
         {locale === 'en' ? 'Overtime History' : 'Riwayat Lembur'}
       </div>
 
@@ -148,10 +161,10 @@ export default function EmpOvertime() {
           {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 72, borderRadius: 14 }} />)}
         </div>
       ) : overtimes.length === 0 ? (
-        <div className="emp-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <HiClock size={36} style={{ color: 'var(--border)', marginBottom: 12 }} />
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>{locale === 'en' ? 'No overtime records yet' : 'Belum ada riwayat lembur'}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{locale === 'en' ? 'Submit an overtime request above.' : 'Ajukan permintaan lembur di atas.'}</div>
+        <div className="ep-empty-wrap">
+          <div className="ep-empty-icon"><HiClock size={36} /></div>
+          <div className="ep-empty-title">{locale === 'en' ? 'No overtime records yet' : 'Belum ada riwayat lembur'}</div>
+          <div className="ep-empty-desc">{locale === 'en' ? 'Submit an overtime request above.' : 'Ajukan permintaan lembur di atas.'}</div>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
@@ -161,16 +174,16 @@ export default function EmpOvertime() {
               <div key={o.id} className="emp-card" style={{ padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 800 }}>{o.date}</div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                    <div className="td-semibold">{o.date}</div>
+                    <div className="td-muted-sm" style={{ marginTop: 2 }}>
                       {(o.hours || o.duration_hours || 0)}h
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: sc.color, background: sc.bg, padding: '4px 10px', borderRadius: 20 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: sc.color, background: sc.bg, padding: '4px 10px', borderRadius: 12 }}>
                     {locale === 'en' ? o.status : sc.label}
                   </span>
                 </div>
-                {o.reason && <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>{o.reason}</div>}
+                {o.reason && <div className="td-muted-sm" style={{ fontStyle: 'italic' }}>{o.reason}</div>}
               </div>
             );
           })}
@@ -224,7 +237,7 @@ export default function EmpOvertime() {
             />
           </div>
           {form.start_time && form.end_time && (
-            <div style={{ padding: '10px 14px', background: 'rgba(0,71,171,0.06)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '10px 14px', background: 'rgba(99,91,255,0.06)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
               <HiClock size={14} style={{ color: 'var(--primary)' }} />
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
                 {(() => {
@@ -239,3 +252,4 @@ export default function EmpOvertime() {
     </div>
   );
 }
+

@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { updateSEOTags, injectSchema } from '../lib/seo';
 
 const FEATURES_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'ItemList',
-  name: 'Fitur Lengkap HRIS Loka — Software HR Indonesia',
+  name: 'Fitur Lengkap HRIS Loka - Software HR Indonesia',
   description: 'Daftar fitur lengkap platform manajemen SDM HRIS Loka untuk perusahaan Indonesia',
   url: 'https://hrisloka.com/fitur',
   numberOfItems: 12,
@@ -26,40 +26,40 @@ const FEATURES_SCHEMA = {
 };
 
 const FEATURES = [
-  { id: 'absensi', icon: '📍', color: '#0047AB', title: 'Absensi GPS Real-time', sub: 'Anti-fraud · Face Recognition · Geofencing', desc: 'Sistem absensi karyawan paling canggih di Indonesia. Karyawan clock-in/out dari HP menggunakan GPS real-time, verifikasi wajah (face recognition), dan analisis anti-spoofing berlapis. Admin bisa pantau siapa hadir, di mana, dan kapan — secara real-time.', points: ['GPS geofencing dengan radius custom per lokasi', 'Face recognition & liveness detection', 'Deteksi spoofing GPS (fake location)', 'Riwayat kehadiran dan laporan otomatis', 'Mode offline dengan sinkronisasi otomatis', 'Foto selfie saat clock-in sebagai bukti'] },
-  { id: 'penggajian', icon: '💰', color: '#16A34A', title: 'Penggajian Otomatis', sub: 'BPJS · PPh 21 · Slip Gaji Digital', desc: 'Hitung gaji karyawan secara otomatis setiap bulan — termasuk gaji pokok, tunjangan, lembur, potongan BPJS Ketenagakerjaan, BPJS Kesehatan, dan PPh 21 sesuai regulasi Indonesia. Slip gaji digital langsung terkirim ke karyawan.', points: ['Kalkulasi otomatis BPJS TK, BPJS Kesehatan, PPh 21', 'Slip gaji digital PDF + notifikasi otomatis', 'Rekap payroll Excel & PDF untuk accounting', 'Riwayat payroll per karyawan', 'Formula gaji fleksibel per karyawan', 'Integrasi data kehadiran & lembur'] },
-  { id: 'karyawan', icon: '👥', color: '#7C3AED', title: 'Manajemen Karyawan', sub: 'Profil · Kontrak · Struktur Organisasi', desc: 'Kelola seluruh data karyawan dalam satu database terpusat. Dari profil personal, riwayat pekerjaan, kontrak digital, hingga struktur organisasi — semua tersedia dalam satu platform.', points: ['Database karyawan lengkap (2000+ field)', 'Generator kontrak kerja digital (PKWT/PKWTT)', 'Struktur organisasi & hierarki jabatan', 'Dokumen karyawan (sertifikat, SIM, KTP)', 'Import massal via Excel', 'Audit trail lengkap setiap perubahan'] },
-  { id: 'kpi', icon: '📊', color: '#F59E0B', title: 'Penilaian Kinerja KPI', sub: 'OKR · 360° Review · Performance Report', desc: 'Sistem penilaian kinerja berbasis KPI yang terstruktur dan objektif. Evaluasi performa karyawan secara berkala dengan metode 360 derajat, OKR tracking, dan laporan performa berbasis data.', points: ['Template KPI siap pakai per divisi', 'Evaluasi 360° (atasan, rekan, bawahan)', 'OKR tracking bulanan/kuartalan', 'Self-assessment karyawan', 'Laporan performa otomatis', 'Integrasi dengan rencana pengembangan'] },
-  { id: 'rekrutmen', icon: '🎯', color: '#EC4899', title: 'Rekrutmen & Onboarding', sub: 'Job Posting · Screening · Onboarding Digital', desc: 'Pipeline rekrutmen end-to-end dalam satu platform. Dari membuat lowongan kerja, screening kandidat, penjadwalan wawancara, hingga onboarding karyawan baru yang mulus.', points: ['Manajemen lowongan kerja internal', 'Pipeline kandidat dengan kanban board', 'Penilaian & scoring kandidat', 'Penjadwalan wawancara terintegrasi', 'Checklist onboarding digital', 'Welcome kit & tugas onboarding karyawan baru'] },
-  { id: 'ai', icon: '🤖', color: '#06B6D4', title: 'AI Capability Mapping', sub: 'Skill Gap Analysis · Talent Planning · AI Review', desc: 'Fitur unggulan berbasis kecerdasan buatan yang memetakan kompetensi dan potensi setiap karyawan. Identifikasi skill gap, rencanakan pengembangan, dan buat keputusan talent yang lebih cerdas.', points: ['Pemetaan kompetensi otomatis berbasis AI', 'Identifikasi skill gap per individu & tim', 'Rekomendasi pengembangan personalized', 'AI-generated performance review', 'Analisis potensi karyawan', 'Talent succession planning'] },
+  { id: 'absensi', icon: '📋', color: '#635BFF', title: 'Absensi GPS Real-time', sub: 'Anti-fraud  Face Recognition  Geofencing', desc: 'Sistem absensi karyawan paling canggih di Indonesia. Karyawan clock-in/out dari HP menggunakan GPS real-time, verifikasi wajah, dan analisis anti-spoofing berlapis.', points: ['GPS geofencing dengan radius custom per lokasi', 'Face recognition & liveness detection', 'Deteksi spoofing GPS (fake location)', 'Riwayat kehadiran dan laporan otomatis', 'Mode offline dengan sinkronisasi otomatis', 'Foto selfie saat clock-in sebagai bukti'] },
+  { id: 'penggajian', icon: '💰', color: '#16A34A', title: 'Penggajian Otomatis', sub: 'BPJS  PPh 21  Slip Gaji Digital', desc: 'Hitung gaji karyawan secara otomatis setiap bulan termasuk gaji pokok, tunjangan, lembur, potongan BPJS dan PPh 21 sesuai regulasi Indonesia.', points: ['Kalkulasi otomatis BPJS TK, BPJS Kesehatan, PPh 21', 'Slip gaji digital PDF + notifikasi otomatis', 'Rekap payroll Excel & PDF untuk accounting', 'Riwayat payroll per karyawan', 'Formula gaji fleksibel per karyawan', 'Integrasi data kehadiran & lembur'] },
+  { id: 'karyawan', icon: '👥', color: '#7C3AED', title: 'Manajemen Karyawan', sub: 'Profil  Kontrak  Struktur Organisasi', desc: 'Kelola seluruh data karyawan dalam satu database terpusat. Profil personal, riwayat pekerjaan, kontrak digital, hingga struktur organisasi.', points: ['Database karyawan lengkap (2000+ field)', 'Generator kontrak kerja digital (PKWT/PKWTT)', 'Struktur organisasi & hierarki jabatan', 'Dokumen karyawan (sertifikat, SIM, KTP)', 'Import massal via Excel', 'Audit trail lengkap setiap perubahan'] },
+  { id: 'kpi', icon: '📊', color: '#F59E0B', title: 'Penilaian Kinerja KPI', sub: 'OKR  360 Review  Performance Report', desc: 'Sistem penilaian kinerja berbasis KPI yang terstruktur. Evaluasi performa karyawan dengan metode 360 derajat, OKR tracking, dan laporan berbasis data.', points: ['Template KPI siap pakai per divisi', 'Evaluasi 360 derajat (atasan, rekan, bawahan)', 'OKR tracking bulanan/kuartalan', 'Self-assessment karyawan', 'Laporan performa otomatis', 'Integrasi dengan rencana pengembangan'] },
+  { id: 'rekrutmen', icon: '🎯', color: '#EC4899', title: 'Rekrutmen & Onboarding', sub: 'Job Posting  Screening  Onboarding Digital', desc: 'Pipeline rekrutmen end-to-end dalam satu platform. Dari lowongan kerja, screening kandidat, penjadwalan wawancara, hingga onboarding karyawan baru.', points: ['Manajemen lowongan kerja internal', 'Pipeline kandidat dengan kanban board', 'Penilaian & scoring kandidat', 'Penjadwalan wawancara terintegrasi', 'Checklist onboarding digital', 'Welcome kit & tugas onboarding karyawan baru'] },
+  { id: 'ai', icon: '🤖', color: '#06B6D4', title: 'AI Capability Mapping', sub: 'Skill Gap Analysis  Talent Planning  AI Review', desc: 'Fitur berbasis kecerdasan buatan yang memetakan kompetensi dan potensi setiap karyawan. Identifikasi skill gap dan buat keputusan talent yang lebih cerdas.', points: ['Pemetaan kompetensi otomatis berbasis AI', 'Identifikasi skill gap per individu & tim', 'Rekomendasi pengembangan personalized', 'AI-generated performance review', 'Analisis potensi karyawan', 'Talent succession planning'] },
 ];
 
 const s = {
   page: { fontFamily: 'Inter, system-ui, sans-serif' },
   nav: { padding: '16px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', background: '#fff', position: 'sticky', top: 0, zIndex: 100 },
-  hero: { textAlign: 'center', padding: '72px 24px 56px', background: 'linear-gradient(160deg, #EFF6FF 0%, #fff 60%)' },
-  h1: { fontSize: 'clamp(28px,5vw,50px)', fontWeight: 900, color: '#0F172A', marginBottom: 16, lineHeight: 1.15 },
+  hero: { textAlign: 'center', padding: '72px 24px 56px', background: 'linear-gradient(160deg, #F0EEFF 0%, #fff 60%)' },
+  h1: { fontSize: 'clamp(28px,5vw,50px)', fontWeight: 600, color: '#0F172A', marginBottom: 16, lineHeight: 1.15 },
   lead: { fontSize: 18, color: '#64748B', maxWidth: 600, margin: '0 auto 32px', lineHeight: 1.7 },
   pills: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 32 },
-  pill: { padding: '6px 14px', borderRadius: 20, background: '#EFF6FF', color: '#0047AB', fontSize: 13, fontWeight: 600 },
+  pill: { padding: '6px 14px', borderRadius: 20, background: '#F0EEFF', color: '#635BFF', fontSize: 13, fontWeight: 600 },
   section: { maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px' },
   featureSection: (_color) => ({ padding: '56px 0', borderBottom: '1px solid #F1F5F9' }),
   featureGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center', maxWidth: 1000, margin: '0 auto' },
-  featureIcon: (_color) => ({ width: 80, height: 80, borderRadius: 24, background: `${color}12`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, marginBottom: 20 }),
-  featureTitle: { fontSize: 28, fontWeight: 900, marginBottom: 6, color: '#0F172A' },
-  featureSub: (_color) => ({ fontSize: 13, fontWeight: 700, color, marginBottom: 16 }),
+  featureIcon: (color) => ({ width: 80, height: 80, borderRadius: 24, background: `${color}12`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 20 }),
+  featureTitle: { fontSize: 20, fontWeight: 600, marginBottom: 6, color: '#0F172A' },
+  featureSub: (color) => ({ fontSize: 13, fontWeight: 700, color, marginBottom: 16 }),
   featureDesc: { fontSize: 15, color: '#475569', lineHeight: 1.8, marginBottom: 24 },
   featurePoints: { listStyle: 'none', padding: 0, margin: 0 },
   featurePoint: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 0', fontSize: 14, color: '#374151' },
-  check: (_color) => ({ width: 20, height: 20, borderRadius: '50%', background: `${color}15`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }),
-  cta: { textAlign: 'center', margin: '72px 0 0', padding: '56px 24px', background: 'linear-gradient(135deg, #0047AB, #1D6AE5)', borderRadius: 24, maxWidth: 800, marginLeft: 'auto', marginRight: 'auto' },
-  ctaBtn: { display: 'inline-block', padding: '16px 40px', background: '#fff', color: '#0047AB', borderRadius: 12, fontWeight: 800, fontSize: 16, textDecoration: 'none', marginTop: 16 },
+  check: (color) => ({ width: 20, height: 20, borderRadius: '50%', background: `${color}15`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 11, flexShrink: 0 }),
+  cta: { textAlign: 'center', margin: '72px 0 0', padding: '56px 24px', background: 'linear-gradient(135deg, #635BFF, #5449FF)', borderRadius: 24, maxWidth: 800, marginLeft: 'auto', marginRight: 'auto' },
+  ctaBtn: { display: 'inline-block', padding: '16px 40px', background: '#fff', color: '#635BFF', borderRadius: 12, fontWeight: 600, fontSize: 16, textDecoration: 'none', marginTop: 16 },
 };
 
 export default function FiturPage() {
   useEffect(() => {
     updateSEOTags({
-      title: 'Fitur HRIS Loka — Absensi GPS, Penggajian Otomatis, KPI, Rekrutmen',
+      title: 'Fitur HRIS Loka - Absensi GPS, Penggajian Otomatis, KPI, Rekrutmen',
       description: 'Fitur lengkap HRIS Loka: absensi GPS real-time dengan face recognition, penggajian otomatis BPJS & PPh 21, penilaian KPI, rekrutmen digital, AI Capability Mapping. Platform HR #1 Indonesia.',
       canonical: 'https://hrisloka.com/fitur',
       keywords: 'fitur HRIS Indonesia, absensi GPS karyawan, penggajian otomatis, penilaian KPI, rekrutmen digital, software HR lengkap, HRIS cloud Indonesia',
@@ -70,24 +70,24 @@ export default function FiturPage() {
   return (
     <div style={s.page}>
       <nav style={s.nav}>
-        <Link to="/" style={{ fontSize: 20, fontWeight: 900, color: '#0047AB', textDecoration: 'none' }}>HRIS Loka</Link>
+        <Link to="/" style={{ fontSize: 20, fontWeight: 600, color: '#635BFF', textDecoration: 'none' }}>HRIS Loka</Link>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-          <Link to="/fitur" style={{ fontSize: 14, color: '#0047AB', fontWeight: 700, textDecoration: 'none', borderBottom: '2px solid #0047AB', paddingBottom: 2 }}>Fitur</Link>
+          <Link to="/fitur" style={{ fontSize: 14, color: '#635BFF', fontWeight: 700, textDecoration: 'none', borderBottom: '2px solid #635BFF', paddingBottom: 2 }}>Fitur</Link>
           <Link to="/harga" style={{ fontSize: 14, color: '#64748B', fontWeight: 600, textDecoration: 'none' }}>Harga</Link>
-          <Link to="/login" style={{ padding: '8px 20px', background: '#0047AB', color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>Mulai Gratis</Link>
+          <Link to="/login" style={{ padding: '8px 20px', background: '#635BFF', color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>Mulai Gratis</Link>
         </div>
       </nav>
 
       <header style={s.hero}>
-        <h1 style={s.h1}>Semua Fitur HR dalam<br /><span style={{ color: '#0047AB' }}>Satu Platform</span></h1>
-        <p style={s.lead}>HRIS Loka mengintegrasikan seluruh proses HR — dari absensi, penggajian, KPI, hingga rekrutmen — dalam satu sistem yang mudah digunakan oleh tim HR dan karyawan.</p>
+        <h1 style={s.h1}>Semua Fitur HR dalam<br /><span style={{ color: '#635BFF' }}>Satu Platform</span></h1>
+        <p style={s.lead}>HRIS Loka mengintegrasikan seluruh proses HR - dari absensi, penggajian, KPI, hingga rekrutmen - dalam satu sistem yang mudah digunakan oleh tim HR dan karyawan.</p>
         <div style={s.pills}>
           {['Absensi GPS Real-time', 'Penggajian Otomatis', 'Penilaian KPI', 'Rekrutmen Digital', 'AI Capability Mapping', 'Analitik HR'].map(p => (
             <span key={p} style={s.pill}>{p}</span>
           ))}
         </div>
-        <Link to="/login" style={{ display: 'inline-block', padding: '14px 36px', background: '#0047AB', color: '#fff', borderRadius: 12, fontWeight: 800, fontSize: 15, textDecoration: 'none' }}>
-          Coba Gratis 14 Hari →
+        <Link to="/login" style={{ display: 'inline-block', padding: '14px 36px', background: '#635BFF', color: '#fff', borderRadius: 12, fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
+          Coba Gratis 14 Hari &rarr;
         </Link>
       </header>
 
@@ -103,7 +103,7 @@ export default function FiturPage() {
                 <ul style={s.featurePoints}>
                   {feat.points.map(p => (
                     <li key={p} style={s.featurePoint}>
-                      <div style={s.check(feat.color)}>✓</div>
+                      <div style={s.check(feat.color)}>œ"</div>
                       {p}
                     </li>
                   ))}
@@ -112,7 +112,7 @@ export default function FiturPage() {
               <div style={{ direction: 'ltr', background: `${feat.color}06`, borderRadius: 20, padding: 32, border: `1px solid ${feat.color}15`, minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ textAlign: 'center', color: feat.color }}>
                   <div style={{ fontSize: 40, marginBottom: 16 }}>{feat.icon}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800 }}>{feat.title}</div>
+                  <div style={{ fontSize: 18, fontWeight: 600 }}>{feat.title}</div>
                   <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 8 }}>{feat.sub}</div>
                 </div>
               </div>
@@ -122,9 +122,9 @@ export default function FiturPage() {
 
         {/* CTA */}
         <div style={s.cta}>
-          <h2 style={{ fontSize: 28, fontWeight: 900, color: '#fff', marginBottom: 12 }}>Mulai Gunakan HRIS Loka Hari Ini</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Mulai Gunakan HRIS Loka Hari Ini</h2>
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 16, marginBottom: 8 }}>Gratis hingga 10 karyawan. Trial 14 hari untuk paket berbayar.</p>
-          <Link to="/login" style={s.ctaBtn}>Daftar Gratis Sekarang →</Link>
+          <Link to="/login" style={s.ctaBtn}>Daftar Gratis Sekarang &rarr;</Link>
           <div style={{ marginTop: 20 }}>
             <Link to="/harga" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, textDecoration: 'underline' }}>Lihat semua paket harga</Link>
           </div>
@@ -133,3 +133,4 @@ export default function FiturPage() {
     </div>
   );
 }
+

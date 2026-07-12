@@ -10,6 +10,7 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import DocLink from '../components/DocLink';
 
 export default function ApprovalDashboard() {
  const { employee } = useAuth();
@@ -20,21 +21,30 @@ export default function ApprovalDashboard() {
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTab] = useState('leave');
 
+ const companyId = employee?.company_id;
+
  useEffect(() => {
+ if (!companyId) return;
  fetchData();
  const docSub = documentService.subscribeToDocuments(() => {
  fetchData();
  });
  return () => { if (docSub) docSub.unsubscribe(); };
- }, []);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [companyId]);
 
  const fetchData = async () => {
+ if (!companyId) {
+ setLeaves([]); setReimbursements([]); setDocuments([]); setOvertimeReqs([]);
+ setLoading(false);
+ return;
+ }
  setLoading(true);
  const [lv, rb, dc, ot] = await Promise.all([
- leaveService.getAllLeaveRequests(),
- reimbursementService.getAllReimbursements(employee?.company_id),
- documentService.getAllDocuments(),
- overtimeService.getAllOvertime(),
+ leaveService.getAllLeaveRequests(undefined, companyId),
+ reimbursementService.getAllReimbursements(companyId),
+ documentService.getAllDocuments(companyId),
+ overtimeService.getAllOvertime(undefined, companyId),
  ]);
  setLeaves(lv.data || []);
  setReimbursements(rb.data || []);
@@ -44,32 +54,34 @@ export default function ApprovalDashboard() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('leave_requests', fetchData);
+ useRealtimeTable('leave_requests', fetchData, { companyId, enabled: !!companyId });
 
  const handleAction = async (service, id, status) => {
+ if (!companyId) return;
  let error;
  if (service === 'leave') {
- ({ error } = await leaveService.updateLeaveStatus(id, status, employee?.id));
+ ({ error } = await leaveService.updateLeaveStatus(id, status, employee?.id, companyId));
  if (!error) await logAction({ action: `APPROVE_LEAVE_${status.toUpperCase()}`, targetTable: 'leave_requests', targetId: id, newValue: { status } });
  } else if (service === 'reimburse') {
- ({ error } = await reimbursementService.updateReimbursementStatus(id, status));
+ ({ error } = await reimbursementService.updateReimbursementStatus(id, status, companyId));
  if (!error) await logAction({ action: `APPROVE_REIMBURSE_${status.toUpperCase()}`, targetTable: 'reimbursements', targetId: id, newValue: { status } });
  } else if (service === 'document') {
- ({ error } = await documentService.updateDocumentStatus(id, status));
+ ({ error } = await documentService.updateDocumentStatus(id, status, companyId));
  if (!error) await logAction({ action: `APPROVE_DOC_${status.toUpperCase()}`, targetTable: 'documents', targetId: id, newValue: { status } });
  } else if (service === 'overtime') {
  if (status === 'approved') {
- ({ error } = await overtimeService.approveOvertime(id, employee?.id));
+ ({ error } = await overtimeService.approveOvertime(id, employee?.id, companyId));
  } else {
- ({ error } = await overtimeService.rejectOvertime(id));
+ ({ error } = await overtimeService.rejectOvertime(id, companyId));
  }
  if (!error) await logAction({ action: `APPROVE_OT_${status.toUpperCase()}`, targetTable: 'overtime_requests', targetId: id, newValue: { status } });
  }
 
  if (!error) fetchData();
+ else console.warn('[ApprovalDashboard] action failed:', error?.message);
  };
 
- if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><FiLoader className="spin" /> Loading...</div>;
+ if (loading) return <div className="ep-loading-wrap"><div className="ep-loading-inner"><div className="ep-spinner" /><div className="ep-loading-text">Loading...</div></div></div>;
 
  const pendingLeaves = leaves.filter(l => l.status === 'pending');
  const pendingReimbursements = reimbursements.filter(r => r.status === 'pending');
@@ -107,19 +119,19 @@ export default function ApprovalDashboard() {
  const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
  return (
+ <div className="admin-page">
+ <div className="page-header">
  <div>
- <div className="page-header" style={{ marginBottom: 24 }}>
- <div>
- <h1 style={{ fontSize: 24, fontWeight: 800 }}>Pusat Persetujuan</h1>
- <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+ <h1>Pusat Persetujuan</h1>
+ <p className="td-muted-sm">
  Kelola semua pengajuan karyawan dalam satu tempat.
- {totalPending > 0 && <span style={{ color: 'var(--warning)', fontWeight: 600 }}> - {totalPending} item menunggu</span>}
+ {totalPending > 0 && <span className="text-danger" style={{ fontWeight: 600 }}> - {totalPending} item menunggu</span>}
  </p>
  </div>
  </div>
 
  {/* Metrics */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+ <div className="stats-grid" style={{ marginBottom: 24 }}>
  {tabs.map(tab => (
  <div
  key={tab.key}
@@ -131,21 +143,21 @@ export default function ApprovalDashboard() {
  transition: 'all 0.2s ease',
  }}
  >
- <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: tab.color, marginBottom: 8 }}>
- {tab.icon} <span style={{ fontSize: 12, fontWeight: 700 }}>{tab.label}</span>
+ <div className="btn-icon-row" style={{ color: tab.color, marginBottom: 8 }}>
+ {tab.icon} <span className="td-semibold">{tab.label}</span>
  </div>
- <div style={{ fontSize: 28, fontWeight: 800 }}>{tab.count}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{tab.desc}</div>
+ <div className="info-card-value">{tab.count}</div>
+ <div className="info-card-label">{tab.desc}</div>
  </div>
  ))}
  </div>
 
  {/* List */}
  <div className="data-table-card">
- <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+ <div className="data-table-header">
  <span>{getTabTitle()}</span>
  {getActiveItems().length > 0 && (
- <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 20, background: 'var(--primary)', color: '#fff', fontWeight: 700 }}>
+ <span className="status-badge active">
  {getActiveItems().length} pending
  </span>
  )}
@@ -167,36 +179,36 @@ export default function ApprovalDashboard() {
  {getActiveItems().map(item => (
  <tr key={item.id}>
  <td>
- <div style={{ fontWeight: 600 }}>{item.employees?.name || '-'}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{item.employees?.division || ''}</div>
+ <div className="td-semibold">{item.employees?.name || '-'}</div>
+ <div className="td-muted-sm">{item.employees?.division || ''}</div>
  </td>
  <td>
- <div style={{ fontSize: 13 }}>{item.type || item.category || item.name || '-'}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+ <div className="td-sm">{item.type || item.category || item.name || '-'}</div>
+ <div className="td-truncate td-muted-sm">
  {item.reason || item.notes || item.description || ''}
  </div>
  </td>
  {activeTab === 'overtime' && (
  <td>
- <span style={{ fontWeight: 600 }}>{item.hours}h</span>
- <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 4 }}>x{item.rate}</span>
+ <span className="td-semibold">{item.hours}h</span>
+ <span className="td-muted-sm" style={{ marginLeft: 4 }}>x{item.rate}</span>
  </td>
  )}
  {activeTab === 'reimburse' && (
- <td style={{ fontWeight: 600 }}>{formatCurrency(item.amount)}</td>
+ <td className="td-semibold">{formatCurrency(item.amount)}</td>
  )}
- <td style={{ fontSize: 12 }}>
+ <td className="td-sm">
  {item.date || item.start_date || new Date(item.created_at).toLocaleDateString('id-ID')}
  </td>
  <td>
  <span className="status-badge pending">Pending</span>
  </td>
  <td>
- <div style={{ display: 'flex', gap: 8 }}>
- <button className="action-btn" title="Approve" onClick={() => handleAction(activeTab, item.id, 'approved')} style={{ color: 'var(--success)' }}><FiCheck /></button>
+ <div className="actions-cell">
+ <button className="action-btn success" title="Approve" onClick={() => handleAction(activeTab, item.id, 'approved')} aria-label="Approve"><FiCheck /></button>
  <button className="action-btn danger" title="Reject" onClick={() => handleAction(activeTab, item.id, 'rejected')}><FiX /></button>
  {(item.url || item.receipt_url) && (
- <a href={item.url || item.receipt_url} target="_blank" rel="noreferrer" className="action-btn" title="View"><FiFileText /></a>
+ <DocLink docRef={item.url || item.receipt_url} title="View"><FiFileText /></DocLink>
  )}
  </div>
  </td>
@@ -206,7 +218,7 @@ export default function ApprovalDashboard() {
  </table>
  </div>
  {getActiveItems().length === 0 && (
- <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
+ <div className="empty-state">
  Semua pengajuan {getTabTitle().toLowerCase()} telah diproses.
  </div>
  )}
@@ -214,3 +226,5 @@ export default function ApprovalDashboard() {
  </div>
  );
 }
+
+

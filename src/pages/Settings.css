@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════ */
-/* Settings Page — Premium Tabbed Layout            */
+/* Settings Page - Premium Tabbed Layout            */
 /* ════════════════════════════════════════════════ */
 
 /* Tab Navigation */
@@ -40,7 +40,7 @@
 .settings-tab-btn.active {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 71, 171, 0.25);
+  box-shadow: 0 2px 8px rgba(99, 91, 255, 0.25);
 }
 
 /* Settings Card */
@@ -187,8 +187,8 @@
   flex: 1;
   padding: 14px 18px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(0,71,171,0.06), rgba(37,99,235,0.04));
-  border: 2px solid rgba(0,71,171,0.2);
+  background: linear-gradient(135deg, rgba(99,91,255,0.06), rgba(79,70,229,0.04));
+  border: 2px solid rgba(99,91,255,0.2);
   font-family: 'Fira Code', monospace;
   font-size: 22px;
   font-weight: 800;
@@ -200,9 +200,9 @@
 /* Info banner */
 .settings-info-banner {
   padding: 14px 18px;
-  background: rgba(0, 71, 171, 0.05);
+  background: rgba(99, 91, 255, 0.05);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(0, 71, 171, 0.15);
+  border: 1px solid rgba(99, 91, 255, 0.15);
   font-size: 13px;
   color: var(--primary);
   font-weight: 500;

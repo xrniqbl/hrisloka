@@ -13,7 +13,7 @@ import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 
 const REPORT_TYPES = [
- { id: 'headcount', label: 'Headcount Summary', icon: <FiUsers />, color: '#3B82F6' },
+ { id: 'headcount', label: 'Headcount Summary', icon: <FiUsers />, color: '#635BFF' },
  { id: 'attendance', label: 'Attendance Report', icon: <FiClock />, color: '#10B981' },
  { id: 'leave', label: 'Leave Summary', icon: <FiCalendar />, color: '#F59E0B' },
  { id: 'demographics', label: 'Demographics', icon: <FiPieChart />, color: '#8B5CF6' },
@@ -31,8 +31,6 @@ export default function AnalyticsReportBuilder() {
  const [filterStatus, setFilterStatus] = useState('');
  const [_dateRange, _setDateRange] = useState({ from: '', to: '' });
 
- useEffect(() => { fetchData(); }, []);
-
  const fetchData = async () => {
  setLoading(true);
  const [empRes, attRes, leaveRes] = await Promise.all([
@@ -45,6 +43,8 @@ export default function AnalyticsReportBuilder() {
  setLeaves(leaveRes.data || []);
  setLoading(false);
  };
+
+ useEffect(() => { fetchData(); }, []);
 
  const divisions = [...new Set(employees.map(e => e.division).filter(Boolean))].sort();
 
@@ -83,7 +83,7 @@ export default function AnalyticsReportBuilder() {
  return { labels: Object.keys(map), data: Object.values(map) };
  }, [leaves]);
 
- const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#6366F1', '#14B8A6', '#E11D48'];
+ const COLORS = ['#635BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#6366F1', '#14B8A6', '#E11D48'];
 
  const handleExport = () => {
  let data = [];
@@ -126,13 +126,13 @@ export default function AnalyticsReportBuilder() {
  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Summary</div>
  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
  {[
- { label: 'Total', value: filtered.length, color: '#3B82F6' },
+ { label: 'Total', value: filtered.length, color: '#635BFF' },
  { label: 'Tetap', value: filtered.filter(e => e.status === 'permanent').length, color: '#10B981' },
  { label: 'Kontrak', value: filtered.filter(e => e.status === 'contract').length, color: '#F59E0B' },
  { label: 'Divisi', value: divisions.length, color: '#8B5CF6' },
  ].map(s => (
  <div key={s.label} style={{ padding: 16, borderRadius: 'var(--radius-md)', background: `${s.color}10`, textAlign: 'center' }}>
- <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
+ <div style={{ fontSize: 20, fontWeight: 600, color: s.color }}>{s.value}</div>
  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{s.label}</div>
  </div>
  ))}
@@ -158,7 +158,7 @@ export default function AnalyticsReportBuilder() {
  <div style={{ height: 260 }}>
  <Doughnut data={{
  labels: genderData.labels,
- datasets: [{ data: genderData.data, backgroundColor: ['#3B82F6', '#EC4899', '#9CA3AF'], borderWidth: 0 }],
+ datasets: [{ data: genderData.data, backgroundColor: ['#635BFF', '#EC4899', '#9CA3AF'], borderWidth: 0 }],
  }} options={chartOptions} />
  </div>
  </div>
@@ -190,13 +190,13 @@ export default function AnalyticsReportBuilder() {
  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Leave Summary</div>
  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
  {[
- { label: 'Total Request', value: leaves.length, color: '#3B82F6' },
+ { label: 'Total Request', value: leaves.length, color: '#635BFF' },
  { label: 'Approved', value: leaves.filter(l => l.status === 'approved').length, color: '#10B981' },
  { label: 'Pending', value: leaves.filter(l => l.status === 'pending').length, color: '#F59E0B' },
  { label: 'Rejected', value: leaves.filter(l => l.status === 'rejected').length, color: '#DC2626' },
  ].map(s => (
  <div key={s.label} style={{ padding: 16, borderRadius: 'var(--radius-md)', background: `${s.color}10`, textAlign: 'center' }}>
- <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
+ <div style={{ fontSize: 20, fontWeight: 600, color: s.color }}>{s.value}</div>
  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{s.label}</div>
  </div>
  ))}
@@ -217,7 +217,7 @@ export default function AnalyticsReportBuilder() {
  <div style={{ height: 260 }}>
  <Doughnut data={{
  labels: ['Hadir', 'Terlambat', 'Cuti', 'Tidak Hadir'],
- datasets: [{ data: [present, late, onLeave, Math.max(0, absent)], backgroundColor: ['#10B981', '#F59E0B', '#3B82F6', '#DC2626'], borderWidth: 0 }],
+ datasets: [{ data: [present, late, onLeave, Math.max(0, absent)], backgroundColor: ['#10B981', '#F59E0B', '#635BFF', '#DC2626'], borderWidth: 0 }],
  }} options={chartOptions} />
  </div>
  </div>
@@ -227,11 +227,11 @@ export default function AnalyticsReportBuilder() {
  {[
  { label: 'Hadir', value: present, color: '#10B981' },
  { label: 'Terlambat', value: late, color: '#F59E0B' },
- { label: 'Cuti', value: onLeave, color: '#3B82F6' },
+ { label: 'Cuti', value: onLeave, color: '#635BFF' },
  { label: 'Tidak Hadir', value: Math.max(0, absent), color: '#DC2626' },
  ].map(s => (
  <div key={s.label} style={{ padding: 16, borderRadius: 'var(--radius-md)', background: `${s.color}10`, textAlign: 'center' }}>
- <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
+ <div style={{ fontSize: 20, fontWeight: 600, color: s.color }}>{s.value}</div>
  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{s.label}</div>
  </div>
  ))}
@@ -264,7 +264,7 @@ export default function AnalyticsReportBuilder() {
  const days = Math.ceil((new Date(e.contract_end) - new Date()) / 86400000);
  return (
  <tr key={e.id}>
- <td style={{ fontWeight: 600 }}>{e.name}</td>
+ <td className="td-semibold">{e.name}</td>
  <td>{e.division}</td>
  <td>{e.position}</td>
  <td>{e.contract_end}</td>
@@ -289,7 +289,7 @@ export default function AnalyticsReportBuilder() {
  <div className="page-header">
  <h1><FiBarChart2 style={{ marginRight: 10 }} /> Analytics & Report Builder</h1>
  <div className="page-header-actions">
- <button className="btn-secondary" onClick={handleExport}><FiDownload /> Export Excel</button>
+ <button className="btn-secondary" onClick={handleExport} aria-label="Export Excel"><FiDownload /> Export Excel</button>
  </div>
  </div>
 
@@ -325,8 +325,7 @@ export default function AnalyticsReportBuilder() {
  <option value="probation">Probasi</option>
  </select>
  {(filterDivision || filterStatus) && (
- <button className="btn-secondary" onClick={() => { setFilterDivision(''); setFilterStatus(''); }} style={{ padding: '8px 14px', fontSize: 12 }}>
- <FiRefreshCw /> Reset
+ <button className="btn-secondary" onClick={() => { setFilterDivision(''); setFilterStatus(''); }} style={{ padding: '8px 14px', fontSize: 12 }} aria-label="Reset filter"><FiRefreshCw /> Reset
  </button>
  )}
  <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>
@@ -339,3 +338,5 @@ export default function AnalyticsReportBuilder() {
  </div>
  );
 }
+
+

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import {
   HiBuildingOffice2,
   HiMagnifyingGlass,
@@ -19,7 +19,7 @@ const MANAGER_KEYWORDS = ['director', 'manager', 'head', 'lead', 'chief', 'vp', 
 const isManager = (emp) => MANAGER_KEYWORDS.some(k => (emp.position || '').toLowerCase().includes(k));
 
 const DIV_COLORS = [
-  '#0047AB','#10B981','#8B5CF6','#F59E0B','#EF4444',
+  '#635BFF','#10B981','#8B5CF6','#F59E0B','#EF4444',
   '#EC4899','#06B6D4','#F97316','#84CC16','#A855F7',
 ];
 
@@ -115,11 +115,11 @@ export default function EmpOrgChart() {
   if (loading) return (
     <div style={{ animation: 'fadeInUp 0.3s ease' }}>
       <div className="skeleton" style={{ height: 24, width: 180, borderRadius: 6, marginBottom: 6 }} />
-      <div className="skeleton" style={{ height: 14, width: 120, borderRadius: 4, marginBottom: 20 }} />
-      <div className="skeleton" style={{ height: 44, borderRadius: 12, marginBottom: 16 }} />
+      <div className="skeleton" style={{ height: 14, width: 120, borderRadius: 4, marginBottom: 14 }} />
+      <div className="skeleton" style={{ height: 44, borderRadius: 12, marginBottom: 12 }} />
       {[1, 2, 3].map(i => (
         <div key={i} className="emp-card" style={{ marginBottom: 10 }}>
-          <div className="skeleton" style={{ height: 18, width: '45%', borderRadius: 5, marginBottom: 16 }} />
+          <div className="skeleton" style={{ height: 18, width: '45%', borderRadius: 5, marginBottom: 12 }} />
           {[1, 2].map(j => (
             <div key={j} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
               <div className="skeleton skeleton-circle" style={{ width: 36, height: 36, flexShrink: 0 }} />
@@ -143,13 +143,13 @@ export default function EmpOrgChart() {
         </h1>
         <p className="emp-page-subtitle">
           {employees.length} {locale === 'en' ? 'employees' : 'karyawan'}
-          {' · '}
+          {'  '}
           {divisionNames.length} {locale === 'en' ? 'divisions' : 'divisi'}
         </p>
       </div>
 
       {/* Search */}
-      <div style={{ position: 'relative', marginBottom: 16 }}>
+      <div style={{ position: 'relative', marginBottom: 12 }}>
         <HiMagnifyingGlass
           size={15}
           style={{
@@ -240,7 +240,7 @@ export default function EmpOrgChart() {
                       {divName}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                      {managers.length > 0 && `${managers.length} lead · `}
+                      {managers.length > 0 && `${managers.length} lead  `}
                       {members.length} anggota
                     </div>
                   </div>
@@ -248,7 +248,7 @@ export default function EmpOrgChart() {
                     fontSize: 11,
                     fontWeight: 700,
                     padding: '3px 10px',
-                    borderRadius: 20,
+                    borderRadius: 12,
                     background: `${color}12`,
                     color,
                     flexShrink: 0,
@@ -319,7 +319,7 @@ export default function EmpOrgChart() {
                                   borderRadius: 6,
                                   background: `${color}15`,
                                   color,
-                                  fontWeight: 800,
+                                  fontWeight: 600,
                                   letterSpacing: '0.4px',
                                   flexShrink: 0,
                                   textTransform: 'uppercase',
@@ -334,7 +334,7 @@ export default function EmpOrgChart() {
                                   borderRadius: 6,
                                   background: 'var(--primary)',
                                   color: '#fff',
-                                  fontWeight: 800,
+                                  fontWeight: 600,
                                   letterSpacing: '0.4px',
                                   flexShrink: 0,
                                   textTransform: 'uppercase',
@@ -440,3 +440,4 @@ export default function EmpOrgChart() {
     </div>
   );
 }
+

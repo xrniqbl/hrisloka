@@ -45,10 +45,9 @@ import { isFounder, getRole } from '../lib/rbac';
 import { supabase } from '../lib/supabase';
 import { requestPersistentStorage } from '../lib/backgroundSync';
 import UpdatePrompt from '../components/UpdatePrompt';
-import InstallPrompt from '../components/InstallPrompt';
 import EmpProfileSetup from '../pages/employee/EmpProfileSetup';
 import './EmployeeLayout.css';
-import { isDemoMode } from '../lib/demoGuard';
+import { isDemoMode, DEMO_EMPLOYEE } from '../lib/demoGuard';
 
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch { /* intentionally empty */ } };
 
@@ -319,33 +318,70 @@ export default function EmployeeLayout() {
 
   // Load employee data for header avatar + name + setup status
   useEffect(() => {
-    if (!user?.email) return;
-    supabase.from('employees').select('id,name,photo_url,division,position,profile_setup_done')
-      .eq('email', user.email).single()
-      .then(({ data }) => {
-        if (data) {
-          setEmpData(data);
-          // profile_setup_done may not exist yet (old rows) - treat null as not done
-          setSetupDone(data.profile_setup_done === true);
-        }
+    // Design QA: full PWA chrome with fake employee (no Supabase)
+    if (isDemoMode()) {
+      setEmpData({
+        id: DEMO_EMPLOYEE.id,
+        name: DEMO_EMPLOYEE.name,
+        photo_url: DEMO_EMPLOYEE.photo_url,
+        division: DEMO_EMPLOYEE.division,
+        position: DEMO_EMPLOYEE.position,
+        profile_setup_done: true,
+        role: DEMO_EMPLOYEE.role,
       });
-  }, [user]);
+      setSetupDone(true);
+      return;
+    }
+    if (!user?.email && !user?.id) return;
+    // Prefer AuthContext employee when available (production session)
+    if (employee?.id) {
+      setEmpData({
+        id: employee.id,
+        name: employee.name,
+        photo_url: employee.photo_url,
+        division: employee.division,
+        position: employee.position,
+        profile_setup_done: employee.profile_setup_done,
+        role: employee.role,
+        company_id: employee.company_id,
+      });
+      // Self-register already collected core fields → treat null as done for active accounts
+      const done = employee.profile_setup_done === true
+        || employee.account_status === 'active'
+        || employee.account_status === 'approved';
+      setSetupDone(done);
+      return;
+    }
+    const email = String(user.email || '').trim().toLowerCase();
+    let query = supabase
+      .from('employees')
+      .select('id,name,photo_url,division,position,profile_setup_done,account_status,company_id,role');
+    if (email) query = query.eq('email', email);
+    else query = query.eq('auth_user_id', user.id);
+    query.maybeSingle().then(({ data }) => {
+      if (data) {
+        setEmpData(data);
+        const done = data.profile_setup_done === true
+          || data.account_status === 'active'
+          || data.account_status === 'approved';
+        setSetupDone(done);
+      }
+    });
+  }, [user, employee?.id, employee?.profile_setup_done, employee?.account_status]);
 
-  // Load unread notifications count (graceful: table may not exist).
-  // RLS scopes notifications to the caller (employee_id matching
-  // auth_user_id = auth.uid()), so no manual user_id filter is needed.
-  // The previous .eq('user_id', ...) targeted a non-existent column and
-  // always returned 0.
+  // Unread notifications for this employee only (production)
   useEffect(() => {
-    if (!user?.id) return;
+    const empId = employee?.id || empData?.id;
+    if (!empId) return;
     supabase.from('notifications').select('id', { count: 'exact', head: true })
+      .eq('employee_id', empId)
       .eq('read', false)
       .then(({ count, error }) => {
         if (error) return; // table missing or RLS denied - don't fake 0
         setUnreadCount(count || 0);
       })
       .catch(() => {});
-  }, [user, location.pathname]);
+  }, [employee?.id, empData?.id, location.pathname]);
 
   // Sync lang from localStorage
   useEffect(() => {
@@ -454,8 +490,10 @@ export default function EmployeeLayout() {
     return h < 12 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
   };
 
+  const demo = isDemoMode();
+
   // Guards
-  if (loading) {
+  if (!demo && loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)' }}>
         <div style={{ textAlign: 'center' }}>
@@ -466,55 +504,69 @@ export default function EmployeeLayout() {
     );
   }
 
-  // Demo mode - bypass all employee guards
-  if (isDemoMode()) return <Outlet />;
-
-  if (!user) return <Navigate to="/app/login" replace />;
-
-  // Guard: Google user with no employee record:
-  // hasOnboarding = true  &rarr; registered a company but not in employees &rarr; block
-  // hasOnboarding = false &rarr; brand new Google signup &rarr; send to checkout
-  if (!loading && !employee && user.app_metadata?.provider === 'google') {
-    return <Navigate to={hasOnboarding ? '/not-registered' : '/checkout'} replace />;
-  }
-
-  // Guard: HR Admin / Manager / Super Admin who open PWA in a desktop browser
-  // should be redirected to the HR portal. (Founders have full access to both.)
-  if (!isFounder(user, employee) && !isPWA) {
-    const empRole = getRole(employee);
-    if (['super_admin', 'hr_admin', 'manager'].includes(empRole)) {
-      return <Navigate to="/dashboard" replace />;
-    }
-  }
-
-  if (!isFounder(user, employee)) {
+  // Demo mode keeps full PWA shell (header + bottom nav) for design QA
+  if (!demo) {
+    if (!user) {
+    // First open this session → splash, else welcome (login / register)
     try {
-      const raw = localStorage.getItem('founder_maintenance_settings');
-      if (raw && JSON.parse(raw)?.is_maintenance) return <Navigate to="/maintenance" replace />;
+      if (!sessionStorage.getItem('hrisloka_splash_seen')) {
+        return <Navigate to="/app/splash" replace />;
+      }
     } catch { /* ignore */ }
+    return <Navigate to="/app/welcome" replace />;
   }
 
-  if (employee) {
-    const status = employee.account_status;
-    if (status === 'pending_verification') return <Navigate to="/app/pending" replace />;
-    if (status === 'rejected') return <Navigate to="/app/rejected" replace />;
-  }
+    // Guard: Google user with no employee record:
+    // hasOnboarding = true  → registered a company but not in employees → block
+    // hasOnboarding = false → brand new Google signup → send to checkout
+    if (!loading && !employee && user.app_metadata?.provider === 'google') {
+      return <Navigate to={hasOnboarding ? '/not-registered' : '/checkout'} replace />;
+    }
 
-  // Feature flag gate (platform-level disable)
-  if (!isEmpPathEnabled(location.pathname)) {
-    return <Navigate to="/app/home" replace />;
-  }
+    // Guard: HR Admin / Manager / Super Admin who open PWA in a desktop browser
+    // should be redirected to the HR portal. (Founders have full access to both.)
+    if (!isFounder(user, employee) && !isPWA) {
+      const empRole = getRole(employee);
+      if (['super_admin', 'hr_admin', 'manager'].includes(empRole)) {
+        return <Navigate to="/dashboard" replace />;
+      }
+    }
 
-  // -- Profile Setup Gate --
-  // Show mandatory form for new employees who haven't filled in locked data
-  if (!setupDone && empData && !isFounder(user, employee)) {
-    return (
-      <EmpProfileSetup
-        employeeId={empData?.id}
-        employeeName={empData?.name || user?.email?.split('@')[0] || 'Karyawan'}
-        onComplete={() => setSetupDone(true)}
-      />
-    );
+    if (!isFounder(user, employee)) {
+      try {
+        const raw = localStorage.getItem('founder_maintenance_settings');
+        if (raw && JSON.parse(raw)?.is_maintenance) return <Navigate to="/maintenance" replace />;
+      } catch { /* ignore */ }
+    }
+
+    if (employee) {
+      const status = employee.account_status;
+      if (status === 'pending_verification' || (status && String(status).includes('pending'))) {
+        return <Navigate to="/app/pending" replace />;
+      }
+      if (status === 'rejected') return <Navigate to="/app/rejected" replace />;
+      if (!employee.company_id && !isFounder(user, employee)) {
+        // Incomplete registration / orphaned account
+        return <Navigate to="/app/pending" replace />;
+      }
+    }
+
+    // Feature flag gate (platform-level disable)
+    if (!isEmpPathEnabled(location.pathname)) {
+      return <Navigate to="/app/home" replace />;
+    }
+
+    // -- Profile Setup Gate --
+    // Show mandatory form for new employees who haven't filled in locked data
+    if (!setupDone && empData && !isFounder(user, employee)) {
+      return (
+        <EmpProfileSetup
+          employeeId={empData?.id}
+          employeeName={empData?.name || user?.email?.split('@')[0] || 'Karyawan'}
+          onComplete={() => setSetupDone(true)}
+        />
+      );
+    }
   }
 
 
@@ -522,8 +574,6 @@ export default function EmployeeLayout() {
     <div className="emp-layout">
       {/* App Update Prompt */}
       <UpdatePrompt />
-      {/* PWA Install Banner */}
-      <InstallPrompt />
       {/* Offline banners */}
       {isOffline && (
         <div className="offline-banner">
@@ -584,8 +634,8 @@ export default function EmployeeLayout() {
         </div>
       )}
 
-      {/* Page Content */}
-      <main id="main-content" role="main" tabIndex={-1}>
+      {/* Page Content — must use .emp-content for padding + bottom-nav clearance */}
+      <main id="main-content" className="emp-content" role="main" tabIndex={-1}>
         <Outlet />
       </main>
 

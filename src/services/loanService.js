@@ -16,6 +16,7 @@ export async function getAllLoans(companyId) {
 
 // Get loans for specific employee
 export async function getMyLoans(employeeId) {
+  if (!employeeId) return { data: [], error: null };
   const { data, error } = await supabase
     .from('loans')
     .select('*, loan_payments(*)')
@@ -26,18 +27,41 @@ export async function getMyLoans(employeeId) {
 
 // Submit loan request
 export async function submitLoan(employeeId, loanData) {
+  if (!employeeId) return { data: null, error: { message: 'employeeId required' } };
+  const amount = Number(loanData?.amount);
+  if (!amount || amount <= 0) {
+    return { data: null, error: { message: 'Nominal pinjaman harus lebih dari 0' } };
+  }
+  if (amount > 500_000_000) {
+    return { data: null, error: { message: 'Nominal pinjaman melebihi batas' } };
+  }
+  const monthly = Number(loanData.monthlyDeduction) || Math.round(amount / 12);
+  if (monthly <= 0 || monthly > amount) {
+    return { data: null, error: { message: 'Cicilan bulanan tidak valid' } };
+  }
+
+  const payload = {
+    employee_id: employeeId,
+    amount,
+    remaining: amount,
+    monthly_deduction: monthly,
+    reason: loanData.reason || null,
+    status: 'pending',
+  };
+  // Prefer company_id when available (multi-tenant rows)
+  if (loanData.companyId) payload.company_id = loanData.companyId;
+
   const { data, error } = await supabase
     .from('loans')
-    .insert({
-      employee_id: employeeId,
-      amount: loanData.amount,
-      remaining: loanData.amount,
-      monthly_deduction: loanData.monthlyDeduction,
-      reason: loanData.reason,
-      status: 'pending',
-    })
+    .insert(payload)
     .select()
     .single();
+
+  // Retry without company_id if column missing
+  if (error && /company_id|column/i.test(error.message || '') && payload.company_id) {
+    delete payload.company_id;
+    return supabase.from('loans').insert(payload).select().single();
+  }
   return { data, error };
 }
 
@@ -66,10 +90,19 @@ export async function approveLoan(id, approverId, companyId) {
       const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan pinjaman sebesar Rp ${amount} telah *DISETUJUI*.\n\n_HRIS Loka — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[loanService] WA error:', e));
     }
-    if (emp?.auth_user_id) {
-      sendPushToEmployee(emp.auth_user_id, 'HRIS Loka — Pinjaman Disetujui ✅', `Pinjaman Rp ${amount} telah disetujui.`, '/app/loan')
-        .catch(e => console.warn('[loanService] push error:', e));
-    }
+    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Pinjaman Disetujui ✅', `Pinjaman Rp ${amount} telah disetujui.`, '/app/loan', companyId)
+      .catch(e => console.warn('[loanService] push error:', e));
+    try {
+      const { createNotification } = await import('./notificationService');
+      createNotification({
+        employeeId: data.employee_id,
+        companyId,
+        type: 'payslip',
+        title: 'Pinjaman disetujui',
+        body: `Pinjaman Rp ${amount} telah disetujui.`,
+        data: { path: '/app/loan' },
+      }).catch(() => {});
+    } catch { /* optional */ }
   }
 
   return { data, error };
@@ -96,10 +129,19 @@ export async function rejectLoan(id, companyId) {
       const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan pinjaman sebesar Rp ${amount} telah *DITOLAK*.\n\n_HRIS Loka — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[loanService] WA error:', e));
     }
-    if (emp?.auth_user_id) {
-      sendPushToEmployee(emp.auth_user_id, 'HRIS Loka — Pinjaman Ditolak ❌', `Pinjaman Rp ${amount} ditolak.`, '/app/loan')
-        .catch(e => console.warn('[loanService] push error:', e));
-    }
+    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Pinjaman Ditolak ❌', `Pinjaman Rp ${amount} ditolak.`, '/app/loan', companyId)
+      .catch(e => console.warn('[loanService] push error:', e));
+    try {
+      const { createNotification } = await import('./notificationService');
+      createNotification({
+        employeeId: data.employee_id,
+        companyId,
+        type: 'payslip',
+        title: 'Pinjaman ditolak',
+        body: `Pinjaman Rp ${amount} ditolak.`,
+        data: { path: '/app/loan' },
+      }).catch(() => {});
+    } catch { /* optional */ }
   }
 
   return { data, error };

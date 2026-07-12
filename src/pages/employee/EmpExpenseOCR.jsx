@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+﻿import { useState, useRef, useCallback } from 'react';
 import {
   HiArrowUpTray,
   HiCamera,
@@ -18,7 +18,7 @@ import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import '../../styles/shared.css';
 
-// ── Receipt OCR parser ────────────────────────────────────────────────────────
+// -- Receipt OCR parser --------------------------------------------------------
 function parseReceiptText(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
@@ -43,7 +43,7 @@ function parseReceiptText(text) {
   const merchant = lines[0] || '';
 
   let date = '';
-  const datePattern = /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/;
+  const datePattern = /(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/;
   for (const line of lines) {
     const m = line.match(datePattern);
     if (m) {
@@ -149,7 +149,8 @@ export default function EmpExpenseOCR() {
       }
 
       const { error } = await supabase.from('reimbursements').insert({
-        employee_id: emp.id,
+          employee_id: emp.id,
+          company_id: emp.company_id,
         category: form.category,
         amount: parseInt(form.amount, 10),
         notes: form.notes,
@@ -178,7 +179,7 @@ export default function EmpExpenseOCR() {
     if (cameraRef.current) cameraRef.current.value = '';
   };
 
-  // ── Success State ─────────────────────────────────────────────────────────
+  // -- Success State ---------------------------------------------------------
   if (submitted) {
     return (
       <div className="emp-page">
@@ -186,7 +187,7 @@ export default function EmpExpenseOCR() {
           <div style={{
             width: 64,
             height: 64,
-            borderRadius: 20,
+            borderRadius: 12,
             background: 'rgba(16,185,129,0.1)',
             color: '#10B981',
             display: 'flex',
@@ -196,7 +197,7 @@ export default function EmpExpenseOCR() {
           }}>
             <HiCheckCircle size={32} />
           </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
             {locale === 'en' ? 'Expense Submitted' : 'Reimburse Terkirim'}
           </div>
           <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
@@ -233,8 +234,8 @@ export default function EmpExpenseOCR() {
 
       {/* Upload / Camera area */}
       {!imageUrl && (
-        <div style={{ display: 'grid', gap: 10, marginBottom: 16 }}>
-          {/* Camera — primary action */}
+        <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
+          {/* Camera - primary action */}
           <input
             ref={cameraRef}
             type="file"
@@ -246,10 +247,10 @@ export default function EmpExpenseOCR() {
           <button
             onClick={() => cameraRef.current?.click()}
             style={{
-              padding: '24px 16px',
+              padding: '14px 14px',
               borderRadius: 'var(--radius-md)',
               border: '2px dashed var(--primary)',
-              background: 'rgba(0,71,171,0.03)',
+              background: 'rgba(99,91,255,0.03)',
               color: 'var(--primary)',
               cursor: 'pointer',
               fontFamily: 'inherit',
@@ -264,7 +265,7 @@ export default function EmpExpenseOCR() {
               width: 48,
               height: 48,
               borderRadius: 14,
-              background: 'rgba(0,71,171,0.08)',
+              background: 'rgba(99,91,255,0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -281,7 +282,7 @@ export default function EmpExpenseOCR() {
             </div>
           </button>
 
-          {/* File picker — secondary */}
+          {/* File picker - secondary */}
           <input
             ref={fileRef}
             type="file"
@@ -302,7 +303,7 @@ export default function EmpExpenseOCR() {
 
       {/* Receipt Preview */}
       {imageUrl && (
-        <div className="emp-card" style={{ marginBottom: 16, overflow: 'hidden', padding: 0 }}>
+        <div className="emp-card" style={{ marginBottom: 12, overflow: 'hidden', padding: 0 }}>
           <div style={{ position: 'relative' }}>
             <img
               src={imageUrl}
@@ -377,20 +378,9 @@ export default function EmpExpenseOCR() {
       {result && !scanning && (
         <div className="emp-card" style={{ padding: 18 }}>
           {/* Auto-detected badge */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            marginBottom: 16,
-            padding: '5px 12px',
-            background: 'rgba(16,185,129,0.08)',
-            borderRadius: 8,
-            border: '1px solid rgba(16,185,129,0.15)',
-          }}>
-            <HiReceiptPercent size={13} style={{ color: '#10B981' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#059669' }}>
-              {locale === 'en' ? 'Auto-detected from receipt' : 'Terdeteksi otomatis dari struk'}
-            </span>
+          <div className="status-badge approved" style={{ display: 'inline-flex', gap: 6, marginBottom: 12, padding: '5px 12px', borderRadius: 8 }}>
+            <HiReceiptPercent size={13} />
+            <span>{locale === 'en' ? 'Auto-detected from receipt' : 'Terdeteksi otomatis dari struk'}</span>
           </div>
 
           <div style={{ display: 'grid', gap: 14 }}>
@@ -398,7 +388,7 @@ export default function EmpExpenseOCR() {
             <div className="emp-form-group">
               <label className="emp-label">
                 {locale === 'en' ? 'Amount (Rp)' : 'Jumlah (Rp)'}
-                <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>
+                <span className="text-danger icon-mr">*</span>
               </label>
               <div style={{ position: 'relative' }}>
                 <HiCurrencyDollar
@@ -422,7 +412,7 @@ export default function EmpExpenseOCR() {
                 />
               </div>
               {result.amount > 0 && (
-                <div style={{ fontSize: 11, color: '#10B981', fontWeight: 600 }}>
+                <div className="td-muted-sm" style={{ color: '#10B981', fontWeight: 600 }}>
                   Terdeteksi: Rp {result.amount.toLocaleString('id-ID')}
                 </div>
               )}
@@ -498,3 +488,4 @@ export default function EmpExpenseOCR() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { FiPlus, FiX, FiUserMinus, FiCheckSquare, FiAlertTriangle, FiCheck } from 'react-icons/fi';
 import * as offboardingService from '../services/offboardingService';
@@ -9,10 +9,16 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageSkeleton } from '../components/SkeletonLoader';
 
-const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
-const statusColors = { initiated: '#F59E0B', 'in-progress': '#0047AB', completed: '#16A34A' };
+const statusColors = { initiated: '#F59E0B', 'in-progress': '#635BFF', completed: '#16A34A' };
 const statusLabels = { initiated: 'Initiated', 'in-progress': 'In Progress', completed: 'Completed' };
 const typeLabels = { resign: 'Resign', 'contract-end': 'Habis Kontrak', terminated: 'Terminated' };
 
@@ -26,24 +32,24 @@ export default function Offboarding() {
  const [selected, setSelected] = useState(null);
  const [form, setForm] = useState({ employeeId: '', type: 'resign', reason: '', lastWorkingDay: '' });
 
- useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
-
  const fetchData = async () => {
  setLoading(true);
- const { data: offData } = await offboardingService.getAllOffboarding();
+ const { data: offData } = await offboardingService.getAllOffboarding(employee?.company_id);
  const { data: empData } = await employeeService.getAllEmployees(undefined, employee?.company_id);
  setRecords(offData || []);
  setEmployees(empData || []);
  setLoading(false);
  };
 
+ useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
+
  // Realtime: auto-refresh
- useRealtimeTable('offboarding', fetchData);
+ useRealtimeTable('offboarding', fetchData, { companyId: currentUser?.company_id });
 
  const stats = [
- { label: 'Total Offboarding', value: records.length, color: '#0047AB' },
+ { label: 'Total Offboarding', value: records.length, color: '#635BFF' },
  { label: 'Initiated', value: records.filter(r => r.status === 'initiated').length, color: '#F59E0B' },
- { label: 'In Progress', value: records.filter(r => r.status === 'in-progress').length, color: '#0047AB' },
+ { label: 'In Progress', value: records.filter(r => r.status === 'in-progress').length, color: '#635BFF' },
  { label: 'Completed', value: records.filter(r => r.status === 'completed').length, color: '#16A34A' },
  ];
 
@@ -89,98 +95,96 @@ export default function Offboarding() {
 
   if (loading) return <PageSkeleton hasStats={false} tableRows={6} tableCols={5} />;
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
  <h1>{t('offboarding.title')}</h1>
  <div className="page-header-actions">
- <button className="btn-primary" onClick={openInitiate}><FiPlus /> Initiate Offboarding</button>
+ <Button onClick={openInitiate}><FiPlus /> Initiate Offboarding</Button>
  </div>
  </div>
 
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+ <div className="stats-grid">
  {stats.map(s => (
- <div key={s.label} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>{s.label}</div>
- <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+ <div key={s.label} className="info-card">
+ <div className="info-card-label">{s.label}</div>
+ <div className="info-card-value" style={{ color: s.color }}>{s.value}</div>
  </div>
  ))}
  </div>
 
  <div className="data-table-card">
- <table className="data-table">
- <thead>
- <tr>
- <th>Karyawan</th>
- <th>Divisi</th>
- <th>Tipe</th>
- <th>Status</th>
- <th>Tanggal Inisiasi</th>
- <th>Hari Terakhir</th>
- <th>Clearance</th>
- <th>Aksi</th>
- </tr>
- </thead>
- <tbody>
+ <Table>
+ <TableHeader>
+ <TableRow>
+ <TableHead>Karyawan</TableHead>
+ <TableHead>Divisi</TableHead>
+ <TableHead>Tipe</TableHead>
+ <TableHead>Status</TableHead>
+ <TableHead>Tanggal Inisiasi</TableHead>
+ <TableHead>Hari Terakhir</TableHead>
+ <TableHead>Clearance</TableHead>
+ <TableHead>Aksi</TableHead>
+ </TableRow>
+ </TableHeader>
+ <TableBody>
  {records.map(r => {
  const cl = r.offboarding_checklist || [];
  const done = cl.filter(c => c.completed).length;
  const total = cl.length;
  return (
- <tr key={r.id}>
- <td style={{ fontWeight: 600 }}>{r.employees?.name || getEmpName(r.employee_id)}</td>
- <td>{r.employees?.division || getEmpDiv(r.employee_id)}</td>
- <td>
- <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: r.type === 'resign' ? '#FFF7ED' : '#EFF6FF', color: r.type === 'resign' ? '#EA580C' : '#0047AB' }}>
+ <TableRow key={r.id}>
+ <TableCell className="td-semibold">{r.employees?.name || getEmpName(r.employee_id)}</TableCell>
+ <TableCell>{r.employees?.division || getEmpDiv(r.employee_id)}</TableCell>
+ <TableCell>
+ <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: r.type === 'resign' ? '#FFF7ED' : '#F0EEFF', color: r.type === 'resign' ? '#EA580C' : '#635BFF' }}>
  {typeLabels[r.type] || r.type}
  </span>
- </td>
- <td>
+ </TableCell>
+ <TableCell>
  <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, color: '#fff', background: statusColors[r.status] || '#999' }}>
  {statusLabels[r.status] || r.status}
  </span>
- </td>
- <td style={{ fontSize: 13 }}>{r.initiated_date || new Date(r.created_at).toLocaleDateString('id-ID')}</td>
- <td style={{ fontSize: 13 }}>{r.last_working_day || '-'}</td>
- <td>
+ </TableCell>
+ <TableCell style={{ fontSize: 13 }}>{r.initiated_date || new Date(r.created_at).toLocaleDateString('id-ID')}</TableCell>
+ <TableCell style={{ fontSize: 13 }}>{r.last_working_day || '-'}</TableCell>
+ <TableCell>
  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
  <div className="progress-bar" style={{ width: 80 }}>
- <div className="progress-fill" style={{ width: `${total > 0 ? (done / total) * 100 : 0}%`, background: done === total && total > 0 ? '#16A34A' : '#0047AB' }} />
+ <div className="progress-fill" style={{ width: `${total > 0 ? (done / total) * 100 : 0}%`, background: done === total && total > 0 ? '#16A34A' : '#635BFF' }} />
  </div>
  <span style={{ fontSize: 12, fontWeight: 600 }}>{done}/{total}</span>
  </div>
- </td>
- <td>
- <button className="action-btn" title="Clearance" onClick={() => openClearance(r)}><FiCheckSquare /></button>
- </td>
- </tr>
+ </TableCell>
+ <TableCell>
+ <button className="action-btn" title="Clearance" onClick={() => openClearance(r)} aria-label="Clearance"><FiCheckSquare /></button>
+ </TableCell>
+ </TableRow>
  );
  })}
  {records.length === 0 && (
- <tr><td colSpan={8} className="empty-state">Belum ada data offboarding.</td></tr>
+ <TableRow><TableCell colSpan={8} className="empty-state">Belum ada data offboarding.</TableCell></TableRow>
  )}
- </tbody>
- </table>
+ </TableBody>
+ </Table>
  </div>
 
  {/* Initiate Offboarding Modal */}
  {modal === 'initiate' && (
- <div className="modal-overlay" onClick={closeModal}>
- <div className="modal-box" onClick={e => e.stopPropagation()}>
- <div className="modal-header">
- <h2><FiUserMinus style={{ marginRight: 8 }} /> Initiate Offboarding</h2>
- <button className="modal-close" onClick={closeModal}><FiX /></button>
- </div>
- <div className="modal-body">
+ <Dialog open={modal === 'initiate'} onOpenChange={(open) => !open && closeModal()}>
+ <DialogContent className="max-w-2xl">
+ <DialogHeader>
+ <DialogTitle><FiUserMinus style={{ marginRight: 8 }} /> Initiate Offboarding</DialogTitle>
+ </DialogHeader>
  <div className="form-grid">
  <div className="form-group">
- <label className="form-label">Karyawan</label>
+ <Label>Karyawan</Label>
  <select className="form-select" value={form.employeeId} onChange={e => setForm({ ...form, employeeId: e.target.value })}>
  <option value="">- Pilih Karyawan -</option>
  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name} - {emp.division}</option>)}
  </select>
  </div>
  <div className="form-group">
- <label className="form-label">Tipe</label>
+ <Label>Tipe</Label>
  <select className="form-select" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
  <option value="resign">Resign</option>
  <option value="contract-end">Habis Kontrak</option>
@@ -188,35 +192,31 @@ export default function Offboarding() {
  </select>
  </div>
  <div className="form-group full-width">
- <label className="form-label">Alasan</label>
- <textarea className="form-textarea" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Alasan resign / pemutusan kontrak" />
+ <Label>Alasan</Label>
+ <Textarea value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="Alasan resign / pemutusan kontrak" />
  </div>
  <div className="form-group">
- <label className="form-label">Hari Kerja Terakhir</label>
- <input type="date" className="form-input" value={form.lastWorkingDay} onChange={e => setForm({ ...form, lastWorkingDay: e.target.value })} />
+ <Label>Hari Kerja Terakhir</Label>
+ <Input type="date" value={form.lastWorkingDay} onChange={e => setForm({ ...form, lastWorkingDay: e.target.value })} />
  </div>
  </div>
- </div>
- <div className="modal-footer">
- <button className="btn-secondary" onClick={closeModal}>Batal</button>
- <button className="btn-danger" onClick={handleInitiate} disabled={!form.employeeId || !form.lastWorkingDay}>
+ <DialogFooter>
+ <Button variant="outline" onClick={closeModal}>Batal</Button>
+ <Button variant="destructive" onClick={handleInitiate} disabled={!form.employeeId || !form.lastWorkingDay}>
  <FiAlertTriangle /> Initiate Offboarding
- </button>
- </div>
- </div>
- </div>
+ </Button>
+ </DialogFooter>
+ </DialogContent>
+ </Dialog>
  )}
 
  {/* Clearance Checklist Modal */}
  {modal === 'clearance' && selected && (
- <div className="modal-overlay" onClick={closeModal}>
- <div className="modal-box large" onClick={e => e.stopPropagation()}>
- <div className="modal-header">
- <h2><FiCheckSquare style={{ marginRight: 8 }} /> Exit Clearance - {selected.employees?.name || getEmpName(selected.employee_id)}</h2>
- <button className="modal-close" onClick={closeModal}><FiX /></button>
- </div>
- <div className="modal-body">
- {/* Info */}
+ <Dialog open={modal === 'clearance'} onOpenChange={(open) => !open && closeModal()}>
+ <DialogContent className="max-w-3xl">
+ <DialogHeader>
+ <DialogTitle><FiCheckSquare style={{ marginRight: 8 }} /> Exit Clearance - {selected.employees?.name || getEmpName(selected.employee_id)}</DialogTitle>
+ </DialogHeader>
  <div className="form-grid" style={{ marginBottom: 20 }}>
  <div className="form-group">
  <label className="form-label" style={{ color: 'var(--muted)' }}>Tipe</label>
@@ -243,7 +243,7 @@ export default function Offboarding() {
  <span>{completedCount}/{totalCount}</span>
  </div>
  <div className="progress-bar" style={{ height: 10 }}>
- <div className="progress-fill" style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%`, background: completedCount === totalCount && totalCount > 0 ? '#16A34A' : '#0047AB' }} />
+ <div className="progress-fill" style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%`, background: completedCount === totalCount && totalCount > 0 ? '#16A34A' : '#635BFF' }} />
  </div>
  </div>
 
@@ -252,6 +252,7 @@ export default function Offboarding() {
  {checklist.map((c, idx) => (
  <div key={c.id || idx}
  onClick={() => toggleChecklist(idx)}
+ className={c.completed ? 'checklist-item checklist-item--done' : 'checklist-item'}
  style={{
  display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
  background: c.completed ? '#F0FDF4' : 'var(--bg)', borderRadius: 'var(--radius-sm)',
@@ -276,10 +277,11 @@ export default function Offboarding() {
  </div>
  ))}
  </div>
- </div>
- </div>
- </div>
+ </DialogContent>
+ </Dialog>
  )}
  </div>
  );
 }
+
+

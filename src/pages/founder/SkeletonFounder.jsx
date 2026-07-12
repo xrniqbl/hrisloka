@@ -1,5 +1,5 @@
 ﻿/**
- * SkeletonFounder — Shared skeleton components for Founder Portal pages
+ * SkeletonFounder - Shared skeleton components for Founder Portal pages
  */
 
 export function SkeletonBox({ w = '100%', h = 28, style = {} }) {
@@ -31,7 +31,7 @@ export function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
         </div>
       </div>
       {hasStats && (
-        <div className="fp-stats" style={{ marginBottom: 24 }}>
+        <div className="fp-stats mb">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="fp-stat">
               <SkeletonBox w={40} h={40} style={{ borderRadius: 10, marginBottom: 14 }} />

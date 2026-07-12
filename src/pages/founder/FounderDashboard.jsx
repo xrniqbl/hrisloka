@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FiUsers, FiCreditCard, FiAlertCircle, FiRefreshCw, FiBriefcase,
@@ -14,7 +14,7 @@ import './founder.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend);
 
-const chartFont = { family: 'Plus Jakarta Sans', weight: '500', size: 12 };
+const chartFont = { family: 'Inter Tight', weight: '500', size: 12 };
 
 const tooltipConfig = {
   backgroundColor: 'rgba(10, 15, 30, 0.92)',
@@ -65,15 +65,15 @@ function StatCard({ icon, label, value, change, changeType, iconBg, iconColor, l
 
 function EmptyChart({ text, sub }) {
   return (
-    <div style={{ height: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-      <FiTrendingUp size={32} style={{ color: 'var(--border)', strokeWidth: 1.5 }} />
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{text}</div>
-      {sub && <div style={{ fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7 }}>{sub}</div>}
+    <div className="ep-empty-wrap">
+      <div className="ep-empty-icon"><FiTrendingUp size={32} /></div>
+      <div className="ep-empty-title">{text}</div>
+      {sub && <div className="ep-empty-desc">{sub}</div>}
     </div>
   );
 }
 
-const PLAN_COLORS = { Free: '#94A3B8', Starter: '#3B82F6', Pro: '#8B5CF6', Enterprise: '#F59E0B' };
+const PLAN_COLORS = { Free: '#94A3B8', Starter: '#635BFF', Pro: '#8B5CF6', Enterprise: '#F59E0B' };
 
 export default function FounderDashboard() {
   const [stats, setStats] = useState(null);
@@ -234,7 +234,7 @@ export default function FounderDashboard() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="fp-grid-2" style={{ marginBottom: 20 }}>
+      <div className="fp-grid-2 mb-sm">
         <div className="fp-card">
           <div className="fp-card-header">
             <span className="fp-card-title">Tren Pendapatan</span>
@@ -290,7 +290,7 @@ export default function FounderDashboard() {
                     transform: 'translate(-50%, -50%)',
                     textAlign: 'center', pointerEvents: 'none',
                   }}>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>{totalSubs}</div>
+                    <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)' }}>{totalSubs}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Perusahaan</div>
                   </div>
                 </div>
@@ -339,3 +339,4 @@ export default function FounderDashboard() {
     </div>
   );
 }
+

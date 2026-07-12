@@ -124,6 +124,8 @@ const PublicJobDetail       = lazy(() => import('./pages/public/PublicJobDetail'
 const PublicApplyForm       = lazy(() => import('./pages/public/PublicApplyForm'));
 
 // ─── Lazy: Employee PWA Pages ─────────────────────────────────────────────
+const EmpSplash             = lazy(() => import('./pages/employee/EmpSplash'));
+const EmpWelcome            = lazy(() => import('./pages/employee/EmpWelcome'));
 const EmpLogin              = lazy(() => import('./pages/employee/EmpLogin'));
 const EmpRegister           = lazy(() => import('./pages/employee/EmpRegister'));
 const EmpResetPassword      = lazy(() => import('./pages/employee/EmpResetPassword'));
@@ -508,8 +510,10 @@ function App() {
                   {/* Maintenance page */}
                   <Route path="/maintenance" element={<MaintenancePage />} />
 
-                  {/* Employee PWA — public routes */}
-                  <Route path="/app/login"          element={<EmpLogin />} />
+                  {/* Employee PWA — public routes (splash → welcome → login/register) */}
+                  <Route path="/app/splash"          element={<EmpSplash />} />
+                  <Route path="/app/welcome"         element={<EmpWelcome />} />
+                  <Route path="/app/login"           element={<EmpLogin />} />
                   <Route path="/app/register"        element={<EmpRegister />} />
                   <Route path="/app/reset-password"  element={<EmpResetPassword />} />
                   <Route path="/app/pending"         element={<PendingVerificationScreen />} />

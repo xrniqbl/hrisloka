@@ -18,8 +18,8 @@ function Icon({ path, size = 18 }) {
 }
 
 const EMPLOYEE_OPTIONS = [
-  '1–10 karyawan', '11–50 karyawan', '51–100 karyawan',
-  '101–500 karyawan', '501–1000 karyawan', '1000+ karyawan',
+  '1-10 karyawan', '11-50 karyawan', '51-100 karyawan',
+  '101-500 karyawan', '501-1000 karyawan', '1000+ karyawan',
 ];
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ function validate(form) {
     errors.company_name = 'Nama perusahaan wajib diisi';
   const phoneClean = form.phone.replace(/\D/g, '');
   if (!phoneClean || phoneClean.length < 9 || phoneClean.length > 15)
-    errors.phone = 'Nomor HP tidak valid (9–15 digit)';
+    errors.phone = 'Nomor HP tidak valid (9-15 digit)';
   if (!form.province) errors.province = 'Pilih provinsi';
   if (!form.city) errors.city = 'Pilih kota/kabupaten';
   if (!form.gender) errors.gender = 'Pilih jenis kelamin';

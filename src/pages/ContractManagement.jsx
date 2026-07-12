@@ -16,13 +16,17 @@ import { DEFAULT_TEMPLATES } from '../data/contractTemplates';
 import { generateContractPDF } from '../lib/contractPDF';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import './ContractManagement.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 
 const CONTRACT_TYPES = {
-  pkwt: { label: 'PKWT', color: '#4F46E5', bg: '#EEF2FF' },
-  pkwtt: { label: 'PKWTT', color: '#0047AB', bg: '#EFF6FF' },
+  pkwt: { label: 'PKWT', color: '#4F46E5', bg: '#F0EEFF' },
+  pkwtt: { label: 'PKWTT', color: '#635BFF', bg: '#F0EEFF' },
   offering_letter: { label: 'Offering Letter', color: '#059669', bg: '#ECFDF5' },
   appointment: { label: 'SK Pengangkatan', color: '#D97706', bg: '#FFFBEB' },
   addendum: { label: 'Addendum', color: '#7C3AED', bg: '#F5F3FF' },
@@ -30,7 +34,7 @@ const CONTRACT_TYPES = {
 
 const STATUS_MAP = {
   draft: { label: 'Draft', color: '#6B7280', bg: '#F3F4F6', icon: <FiClock size={10}/> },
-  sent: { label: 'Terkirim', color: '#0047AB', bg: '#EFF6FF', icon: <FiSend size={10}/> },
+  sent: { label: 'Terkirim', color: '#635BFF', bg: '#F0EEFF', icon: <FiSend size={10}/> },
   signed: { label: 'Ditandatangani', color: '#16A34A', bg: '#F0FDF4', icon: <FiCheckCircle size={10}/> },
   expired: { label: 'Kadaluarsa', color: '#DC2626', bg: '#FEF2F2', icon: <FiAlertCircle size={10}/> },
 };
@@ -205,9 +209,8 @@ export default function ContractManagement() {
     <div className="animate-in">
       <div className="page-header">
         <h1>{t('nav.contracts')}</h1>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-primary" onClick={() => setShowWizard(true)}>
-            <FiPlus /> Buat Kontrak
+        <div className="page-header-actions">
+          <button className="btn-primary" onClick={() => setShowWizard(true)} aria-label="Buat kontrak"><FiPlus /> Buat Kontrak
           </button>
         </div>
       </div>
@@ -215,7 +218,7 @@ export default function ContractManagement() {
       {/* Stats */}
       <div className="cm-stats-row">
         {[
-          { label: 'Total Kontrak', value: stats.total, icon: <FiFileText />, color: '#0047AB', bg: '#EFF6FF', accent: '#0047AB' },
+          { label: 'Total Kontrak', value: stats.total, icon: <FiFileText />, color: '#635BFF', bg: '#F0EEFF', accent: '#635BFF' },
           { label: 'Draft', value: stats.draft, icon: <FiClock />, color: '#6B7280', bg: '#F3F4F6', accent: '#6B7280' },
           { label: 'Ditandatangani', value: stats.signed, icon: <FiCheckCircle />, color: '#16A34A', bg: '#F0FDF4', accent: '#16A34A' },
           { label: 'Kadaluarsa', value: stats.expired, icon: <FiAlertCircle />, color: '#DC2626', bg: '#FEF2F2', accent: '#DC2626' },
@@ -250,50 +253,50 @@ export default function ContractManagement() {
       {tab === 'contracts' && (
         <>
           <div className="cm-filter-bar">
-            <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-              <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)', pointerEvents: 'none' }} size={14} />
+            <div className="search-input-wrap">
+              <FiSearch className="search-input-icon" size={14} />
               <input
-                className="filter-search"
-                style={{ paddingLeft: 36, width: '100%' }}
+                className="filter-search search-input-padded"
                 placeholder="Cari nama karyawan atau nomor kontrak..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <select className="filter-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+            <NativeSelect className="filter-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
               <option value="">Semua Jenis</option>
               {Object.entries(CONTRACT_TYPES).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
               ))}
-            </select>
-            <select className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            </NativeSelect>
+            <NativeSelect className="filter-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option value="">Semua Status</option>
               {Object.entries(STATUS_MAP).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           <div className="data-table-card">
-            <table className="data-table">
-              <thead>
+            <div className="table-responsive">
+            <Table>
+              <TableHeader>
                 <tr>
                   <th>No. Kontrak</th>
-                  <th>Karyawan</th>
+                  <TableHead>Karyawan</TableHead>
                   <th>Jenis Kontrak</th>
-                  <th>Status</th>
+                  <TableHead>Status</TableHead>
                   <th>Dibuat</th>
-                  <th>Aksi</th>
+                  <TableHead>Aksi</TableHead>
                 </tr>
-              </thead>
-              <tbody>
+              </TableHeader>
+              <TableBody>
                 {loading ? (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Memuat data...</td></tr>
+                  <TableRow><TableCell colSpan={6} className="td-center-muted">Memuat data...</TableCell></TableRow>
                 ) : filteredContracts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: 48 }}>
-                      <div style={{ color: 'var(--muted)', fontSize: 14 }}>
-                        <FiFileText size={32} style={{ margin: '0 auto 8px', display: 'block', opacity: 0.3 }} />
+                    <td colSpan={6} className="td-empty">
+                      <div className="ep-empty-wrap">
+                        <FiFileText size={32} className="ep-empty-icon" />
                         Belum ada kontrak. Klik <strong>Buat Kontrak</strong> untuk memulai.
                       </div>
                     </td>
@@ -305,59 +308,61 @@ export default function ContractManagement() {
                   return (
                     <tr key={c.id}>
                       <td>
-                        <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--muted)' }}>
+                        <span className="td-mono-bold td-muted-sm">
                           {c.contract_number || `#${c.id}`}
                         </span>
                       </td>
                       <td>
                         <div className="employee-cell">
-                          <div className="employee-avatar" style={{ width: 32, height: 32, fontSize: 11 }}>
+                          <div className="employee-avatar sm">
                             {(c.employees?.name || '').split(' ').map(n => n[0]).join('').slice(0, 2)}
                           </div>
                           <div>
-                            <div className="employee-name" style={{ fontSize: 13 }}>{c.employees?.name || '-'}</div>
+                            <div className="employee-name td-sm">{c.employees?.name || '-'}</div>
                             <div className="employee-dept">{c.employees?.position || ''}</div>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: type.bg, color: type.color }}>
+                        <span className="badge-type" style={{ background: type.bg, color: type.color }}>
                           {type.label}
                         </span>
                       </td>
                       <td>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: status.bg, color: status.color }}>
+                        <span className="badge-status" style={{ background: status.bg, color: status.color }}>
                           {status.icon} {status.label}
                         </span>
                       </td>
-                      <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmt(c.created_at)}</td>
+                      <td className="td-muted-sm">{fmt(c.created_at)}</td>
                       <td>
                         <div className="actions-cell">
-                          <button className="action-btn" title="Edit & Preview" onClick={() => navigate(`/contracts/edit/${c.id}`)}>
-                            <FiEdit2 />
+                          <button className="action-btn" title="Edit & Preview" onClick={() => navigate(`/contracts/edit/${c.id}`)} aria-label="Edit dan preview kontrak"><FiEdit2 />
                           </button>
                           <button
                             className="action-btn"
                             title="Export PDF"
                             disabled={pdfLoading === c.id}
                             onClick={async () => {
+                              try {
                               setPdfLoading(c.id);
                               await generateContractPDF(c.html_content, c.contract_number);
-                              setPdfLoading(null);
+                              } catch (e) { console.error('[Contract] PDF error:', e); } finally {
+                                setPdfLoading(null);
+                              }
                             }}
                           >
                             {pdfLoading === c.id ? <FiRefreshCw style={{ animation: 'spin 0.8s linear infinite' }} /> : <FiDownload />}
                           </button>
-                          <button className="action-btn danger" title="Hapus" onClick={() => handleDeleteContract(c.id)}>
-                            <FiTrash2 />
+                          <button className="action-btn danger" title="Hapus" onClick={() => handleDeleteContract(c.id)} aria-label="Hapus kontrak"><FiTrash2 />
                           </button>
                         </div>
                       </td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
+            </div>
           </div>
         </>
       )}
@@ -373,31 +378,26 @@ export default function ContractManagement() {
                   <div className="cm-template-icon" style={{ background: type.bg, color: type.color }}>
                     <FiFileText size={22} />
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div className="cm-template-meta">
                     <div className="cm-template-name">{tpl.name}</div>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-                      <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: type.bg, color: type.color, border: `1px solid ${type.color}20` }}>
+                    <div className="cm-template-badges">
+                      <span className="badge-type" style={{ background: type.bg, color: type.color, border: `1px solid ${type.color}20` }}>
                         {type.label}
                       </span>
                       {tpl.is_default && (
-                        <span style={{ padding: '2px 9px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: '#FEF3C7', color: '#92400E', border: '1px solid #F59E0B30' }}>
-                          Default
-                        </span>
+                        <span className="badge-default">Default</span>
                       )}
                     </div>
                   </div>
                 </div>
                 <p className="cm-template-desc">{tpl.description || 'Template kontrak kerja'}</p>
                 <div className="cm-template-actions">
-                  <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => navigate(`/contracts/template/${tpl.id}`)}>
-                    <FiEdit2 size={12} /> Edit Template
+                  <button className="btn-secondary btn-sm" onClick={() => navigate(`/contracts/template/${tpl.id}`)} aria-label="Edit template"><FiEdit2 size={12} /> Edit Template
                   </button>
-                  <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => handleDuplicateTemplate(tpl)}>
-                    <FiCopy size={12} /> Duplikat
+                  <button className="btn-secondary btn-sm" onClick={() => handleDuplicateTemplate(tpl)} aria-label="Duplikat template"><FiCopy size={12} /> Duplikat
                   </button>
                   {!tpl.is_default && (
-                    <button className="action-btn danger" title="Hapus" onClick={() => handleDeleteTemplate(tpl.id)}>
-                      <FiTrash2 size={13} />
+                    <button className="action-btn danger" title="Hapus" onClick={() => handleDeleteTemplate(tpl.id)} aria-label="Hapus template"><FiTrash2 size={13} />
                     </button>
                   )}
                 </div>
@@ -423,29 +423,23 @@ export default function ContractManagement() {
       {/* --- CREATE WIZARD MODAL --- */}
       {showWizard && (
         <div className="modal-overlay" onClick={() => { setShowWizard(false); setWizardStep(1); }}>
-          <div className="modal-box" style={{ maxWidth: 560, width: '90%' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-box modal-md" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Buat Kontrak Baru</h2>
               <button className="modal-close" onClick={() => { setShowWizard(false); setWizardStep(1); }}>-</button>
             </div>
 
             {/* Step indicator */}
-            <div style={{ display: 'flex', gap: 8, padding: '0 24px 16px', alignItems: 'center' }}>
+            <div className="wizard-steps">
               {['Pilih Template', 'Pilih Karyawan', 'Konfirmasi'].map((s, i) => (
-                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: i < 2 ? '1 1 0' : undefined }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: wizardStep > i + 1 ? '#16A34A' : wizardStep === i + 1 ? '#0047AB' : 'var(--border)',
-                    color: wizardStep >= i + 1 ? '#fff' : 'var(--muted)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 700, flexShrink: 0,
-                  }}>
+                <div key={s} className={`wizard-step-item${i < 2 ? ' wizard-step-flex' : ''}`}>
+                  <div className={`wizard-step-dot${wizardStep > i + 1 ? ' done' : wizardStep === i + 1 ? ' active' : ''}`}>
                     {wizardStep > i + 1 ? '?' : i + 1}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: wizardStep === i + 1 ? 600 : 400, color: wizardStep === i + 1 ? 'var(--text)' : 'var(--muted)' }}>
+                  <span className={`wizard-step-label${wizardStep === i + 1 ? ' active' : ''}`}>
                     {s}
                   </span>
-                  {i < 2 && <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />}
+                  {i < 2 && <div className="wizard-step-line" />}
                 </div>
               ))}
             </div>
@@ -454,10 +448,10 @@ export default function ContractManagement() {
               {/* Step 1: Select Template */}
               {wizardStep === 1 && (
                 <div>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                  <p className="section-label mb-sm">
                     Pilih jenis kontrak yang ingin dibuat:
                   </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="wizard-template-list">
                     {templates.map(tpl => {
                       const type = CONTRACT_TYPES[tpl.type] || CONTRACT_TYPES.pkwt;
                       const isSelected = selectedTemplate?.id === tpl.id;
@@ -465,20 +459,18 @@ export default function ContractManagement() {
                         <div
                           key={tpl.id}
                           onClick={() => setSelectedTemplate(tpl)}
+                          className={`wizard-tpl-row${isSelected ? ' selected' : ''}`}
                           style={{
-                            padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
                             border: `2px solid ${isSelected ? type.color : 'var(--border)'}`,
                             background: isSelected ? type.bg : 'var(--surface)',
-                            display: 'flex', alignItems: 'center', gap: 14,
-                            transition: 'all 0.15s',
                           }}
                         >
-                          <div style={{ width: 36, height: 36, borderRadius: 8, background: type.bg, color: type.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <div className="wizard-tpl-icon" style={{ background: type.bg, color: type.color }}>
                             <FiFileText />
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>{tpl.name}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{tpl.description}</div>
+                          <div className="wizard-tpl-body">
+                            <div className="td-semibold td-sm">{tpl.name}</div>
+                            <div className="td-muted-sm">{tpl.description}</div>
                           </div>
                           {isSelected && <FiCheckCircle style={{ color: type.color }} />}
                         </div>
@@ -491,14 +483,13 @@ export default function ContractManagement() {
               {/* Step 2: Select Employee */}
               {wizardStep === 2 && (
                 <div>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+                  <p className="section-label mb">
                     Pilih karyawan yang akan mendapatkan kontrak ini:
                   </p>
-                  <div style={{ position: 'relative', marginBottom: 12 }}>
-                    <FiUsers style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+                  <div className="search-input-wrap mb-sm">
+                    <FiUsers className="search-input-icon" />
                     <select
-                      className="form-select"
-                      style={{ paddingLeft: 38 }}
+                      className="form-select search-input-padded"
                       value={selectedEmployee}
                       onChange={e => setSelectedEmployee(e.target.value)}
                     >
@@ -511,9 +502,9 @@ export default function ContractManagement() {
                   {selectedEmployee && (() => {
                     const emp = employees.find(e => String(e.id) === String(selectedEmployee));
                     return emp ? (
-                      <div style={{ background: '#F0F7FF', borderRadius: 10, padding: 16, border: '1px solid #BFDBFE' }}>
-                        <div style={{ fontWeight: 700, marginBottom: 8 }}>{emp.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                      <div className="wizard-emp-card">
+                        <div className="td-semibold mb-sm">{emp.name}</div>
+                        <div className="wizard-emp-grid">
                           <span>NIP: {emp.employee_id || emp.nip || '-'}</span>
                           <span>Jabatan: {emp.position || '-'}</span>
                           <span>Divisi: {emp.division || '-'}</span>
@@ -528,16 +519,16 @@ export default function ContractManagement() {
               {/* Step 3: Confirm */}
               {wizardStep === 3 && (
                 <div>
-                  <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: 20 }}>
-                    <FiCheckCircle style={{ color: '#16A34A', fontSize: 24, marginBottom: 12 }} />
-                    <p style={{ fontWeight: 700, marginBottom: 8 }}>Siap membuat kontrak!</p>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <span><FiFileText size={12} style={{ display: 'inline', marginRight: 6 }} />Template: <strong>{selectedTemplate?.name}</strong></span>
-                      <span><FiUsers size={12} style={{ display: 'inline', marginRight: 6 }} />Karyawan: <strong>{employees.find(e => String(e.id) === String(selectedEmployee))?.name}</strong></span>
-                      <span><FiEdit2 size={12} style={{ display: 'inline', marginRight: 6 }} />Status awal: <strong>Draft</strong> (dapat diedit sebelum dikirim)</span>
+                  <div className="wizard-confirm-card">
+                    <FiCheckCircle className="wizard-confirm-icon" />
+                    <p className="td-semibold mb-sm">Siap membuat kontrak!</p>
+                    <div className="wizard-confirm-list">
+                      <span><FiFileText size={12} className="inline-icon" />Template: <strong>{selectedTemplate?.name}</strong></span>
+                      <span><FiUsers size={12} className="inline-icon" />Karyawan: <strong>{employees.find(e => String(e.id) === String(selectedEmployee))?.name}</strong></span>
+                      <span><FiEdit2 size={12} className="inline-icon" />Status awal: <strong>Draft</strong> (dapat diedit sebelum dikirim)</span>
                     </div>
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12, textAlign: 'center' }}>
+                  <p className="td-muted-sm text-center mt-sm">
                     Data karyawan akan otomatis diisi. Anda dapat mengedit konten sebelum mengirim.
                   </p>
                 </div>
@@ -558,8 +549,7 @@ export default function ContractManagement() {
                   Lanjut ?
                 </button>
               ) : (
-                <button className="btn-primary" onClick={handleCreateContract}>
-                  <FiEdit2 /> Buat & Edit Kontrak
+                <button className="btn-primary" onClick={handleCreateContract} aria-label="Buat dan edit kontrak"><FiEdit2 /> Buat & Edit Kontrak
                 </button>
               )}
             </div>
@@ -569,3 +559,5 @@ export default function ContractManagement() {
     </div>
   );
 }
+
+

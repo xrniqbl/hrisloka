@@ -12,24 +12,46 @@ export async function submitTicket(employeeIdOrObj, ticketData) {
     employee_id = employeeIdOrObj;
     ({ subject, category, priority, message } = ticketData || {});
   }
+  if (!employee_id) return { data: null, error: { message: 'employee_id required' } };
+  if (!subject?.trim()) return { data: null, error: { message: 'Subjek tiket wajib diisi' } };
+  if (!message?.trim()) return { data: null, error: { message: 'Pesan tiket wajib diisi' } };
+
   const { data, error } = await supabase
     .from('tickets')
     .insert({
       employee_id,
-      subject,
+      subject: subject.trim(),
       category: category || 'other',
       priority: priority || 'medium',
-      message: message || '',
-      description: message || '',
+      message: message.trim(),
+      description: message.trim(),
       status: 'open',
     })
     .select()
     .single();
+
+  // Retry without description if older schema
+  if (error && /description|column/i.test(error.message || '')) {
+    const retry = await supabase
+      .from('tickets')
+      .insert({
+        employee_id,
+        subject: subject.trim(),
+        category: category || 'other',
+        priority: priority || 'medium',
+        message: message.trim(),
+        status: 'open',
+      })
+      .select()
+      .single();
+    return { data: retry.data, error: retry.error };
+  }
   return { data, error };
 }
 
 // Get my tickets (by employee id)
 export async function getMyTickets(employeeId) {
+  if (!employeeId) return { data: [], error: null };
   const { data, error } = await supabase
     .from('tickets')
     .select('*')
@@ -73,15 +95,30 @@ export async function updateTicket(id, updates, companyId) {
   // Auto-notify employee when ticket status changes
   if (!error && data && updates.status) {
     const emp = data.employees;
-    const statusLabel = updates.status === 'resolved' ? 'DISELESAIKAN ✅' : updates.status === 'in_progress' ? 'SEDANG DIPROSES 🔄' : updates.status === 'closed' ? 'DITUTUP' : updates.status.toUpperCase();
+    const st = updates.status === 'in-progress' ? 'in_progress' : updates.status;
+    const statusLabel = st === 'resolved' ? 'DISELESAIKAN ✅' : st === 'in_progress' ? 'SEDANG DIPROSES 🔄' : st === 'closed' ? 'DITUTUP' : String(st).toUpperCase();
     if (emp?.phone) {
       const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nTiket "${data.subject}" telah *${statusLabel}*.\n\n_HRIS Loka — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[ticketService] WA error:', e));
     }
-    if (emp?.auth_user_id) {
-      sendPushToEmployee(emp.auth_user_id, `HRIS Loka — Tiket ${statusLabel}`, `Tiket "${data.subject}" ${statusLabel}.`, '/app/helpdesk')
-        .catch(e => console.warn('[ticketService] push error:', e));
-    }
+    sendPushToEmployee(
+      data.employee_id || emp?.id,
+      `HRIS Loka — Tiket ${statusLabel}`,
+      `Tiket "${data.subject}" ${statusLabel}.`,
+      '/app/helpdesk',
+      companyId,
+    ).catch(e => console.warn('[ticketService] push error:', e));
+    try {
+      const { createNotification } = await import('./notificationService');
+      createNotification({
+        employeeId: data.employee_id,
+        companyId: companyId || emp?.company_id,
+        type: 'submission',
+        title: `Tiket ${statusLabel}`,
+        body: data.subject || 'Update tiket helpdesk',
+        data: { path: '/app/helpdesk', ticketId: data.id },
+      }).catch(() => {});
+    } catch { /* optional */ }
   }
 
   return { data, error };

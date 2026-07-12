@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+﻿import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranch } from '../context/BranchContext';
@@ -11,17 +11,22 @@ import * as billingService from '../services/billingService';
 import * as reimbursementService from '../services/reimbursementService';
 import * as jobService from '../services/jobService';
 import * as trainingService from '../services/trainingService';
+import * as projectService from '../services/projectService';
 import BranchFilter from '../components/BranchFilter';
 import {
   DashHeader, QuickActions, QuickActionsSkeleton, KPICards, ActivityTimeline,
   PendingApprovals, EmployeeDirectory, UpcomingEvents, EmployeeSlideOver,
   ChartsSection, BillingSection, RecentEmployeesTable, WidgetSettings, NotificationBoardV2,
 } from '../components/dashboard';
+import TimeOffCard from '../components/dashboard/TimeOffCard';
+import RunningProjectCard from '../components/dashboard/RunningProjectCard';
+import MeetingsCard from '../components/dashboard/MeetingsCard';
+import MyTaskCard from '../components/dashboard/MyTaskCard';
+import EmployeeCard from '../components/dashboard/EmployeeCard';
 import './DashboardV2.css';
 
-const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
-
 export default function Dashboard() {
+  const { employee: currentUser } = useAuth();
   const { user, employee } = useAuth();
   const { selectedBranchId } = useBranch();
   const navigate = useNavigate();
@@ -35,6 +40,7 @@ export default function Dashboard() {
   const [reimbursements, setReimbursements] = useState([]);
   const [jobPostings, setJobPostings] = useState([]);
   const [trainings, setTrainings] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPayment, setShowPayment] = useState(false);
@@ -64,7 +70,7 @@ export default function Dashboard() {
     if (!companyId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [empRes, attRes, leaveRes, otRes, reimbRes, jobRes, trainRes] = await Promise.all([
+      const [empRes, attRes, leaveRes, otRes, reimbRes, jobRes, trainRes, projRes] = await Promise.all([
         employeeService.getAllEmployees(selectedBranchId, companyId),
         attendanceService.getAllAttendanceToday(selectedBranchId, companyId),
         leaveService.getAllLeaves(selectedBranchId, companyId),
@@ -72,6 +78,7 @@ export default function Dashboard() {
         reimbursementService.getAllReimbursements(companyId),
         jobService.getOpenJobs(companyId),
         trainingService.getAllTrainings(companyId),
+        projectService.getAllProjects(companyId),
       ]);
       setEmployees(empRes.data || []);
       setTodayAttendance(attRes.data || []);
@@ -80,6 +87,7 @@ export default function Dashboard() {
       setReimbursements(reimbRes.data || []);
       setJobPostings(jobRes.data || []);
       setTrainings(trainRes.data || []);
+      setProjects(projRes.data || []);
     } catch (err) {
       console.error('[Dashboard] Fetch error:', err);
     }
@@ -89,7 +97,7 @@ export default function Dashboard() {
   // Billing fetch
   useEffect(() => {
     if (user?.id) {
-      billingService.getBillingInfo(user.id).then(({ data }) => setBilling(data)).catch(() => {});
+      billingService.getBillingInfo(user.id).then(({ data }) => setBilling(data)).catch((e) => console.warn('[Dashboard] billing fetch failed:', e?.message));
     }
   }, [user?.id]);
 
@@ -108,18 +116,18 @@ export default function Dashboard() {
           { label: 'Late', data: late, borderColor: '#F59E0B', backgroundColor: 'rgba(245,158,11,0.04)', tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2 },
         ],
       });
-    }).catch(() => {});
+    }).catch((e) => console.warn('[Dashboard] attendance trend fetch failed:', e?.message));
   }, [companyId, selectedBranchId]);
 
   // Initial fetch + realtime
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useRealtimeMultiple([
-    { table: 'employees', onRefresh: fetchData },
-    { table: 'attendance', onRefresh: fetchData },
-    { table: 'leave_requests', onRefresh: fetchData },
-    { table: 'overtime_requests', onRefresh: fetchData },
-    { table: 'reimbursements', onRefresh: fetchData },
+    { table: 'employees', onRefresh: fetchData , companyId: currentUser?.company_id },
+    { table: 'attendance', onRefresh: fetchData , companyId: currentUser?.company_id },
+    { table: 'leave_requests', onRefresh: fetchData , companyId: currentUser?.company_id },
+    { table: 'overtime_requests', onRefresh: fetchData , companyId: currentUser?.company_id },
+    { table: 'reimbursements', onRefresh: fetchData , companyId: currentUser?.company_id },
   ]);
 
   // Computed values
@@ -137,19 +145,23 @@ export default function Dashboard() {
 
   // Handlers
   const handleApprove = async (type, id) => {
+    const companyId = employee?.company_id;
+    if (!companyId) return;
     try {
-      if (type === 'leave') await leaveService.updateLeaveStatus(id, 'approved');
-      else if (type === 'overtime') await overtimeService.approveOvertime(id, employee?.id);
-      else if (type === 'reimbursement') await reimbursementService.updateReimbursement(id, { status: 'approved' });
+      if (type === 'leave') await leaveService.updateLeaveStatus(id, 'approved', employee?.id, companyId);
+      else if (type === 'overtime') await overtimeService.approveOvertime(id, employee?.id, companyId);
+      else if (type === 'reimbursement') await reimbursementService.updateReimbursement(id, { status: 'approved', approved_by: employee?.id }, companyId);
       fetchData();
     } catch (err) { console.error('Approve error:', err); }
   };
 
   const handleReject = async (type, id) => {
+    const companyId = employee?.company_id;
+    if (!companyId) return;
     try {
-      if (type === 'leave') await leaveService.updateLeaveStatus(id, 'rejected');
-      else if (type === 'overtime') await overtimeService.rejectOvertime(id);
-      else if (type === 'reimbursement') await reimbursementService.updateReimbursement(id, { status: 'rejected' });
+      if (type === 'leave') await leaveService.updateLeaveStatus(id, 'rejected', employee?.id, companyId);
+      else if (type === 'overtime') await overtimeService.rejectOvertime(id, companyId);
+      else if (type === 'reimbursement') await reimbursementService.updateReimbursement(id, { status: 'rejected', approved_by: employee?.id }, companyId);
       fetchData();
     } catch (err) { console.error('Reject error:', err); }
   };
@@ -195,6 +207,39 @@ export default function Dashboard() {
         loading={false}
       />
 
+      {/* Row 1: Time Off | Running Project - matches dbupdate.png */}
+      <div className="dash-section">
+        <div className="dash-grid-2col">
+          <TimeOffCard leaves={leaves} loading={false} />
+          <RunningProjectCard projects={projects} loading={false} />
+        </div>
+      </div>
+
+      {/* Row 2: My Task | New Join Employee - matches dbupdate.png */}
+      <div className="dash-section">
+        <div className="dash-grid-2">
+          <MyTaskCard
+            leaves={leaves}
+            overtimeRecords={overtimeRecords}
+            reimbursements={reimbursements}
+            onApprove={handleApprove}
+            onReject={handleReject}
+            loading={false}
+          />
+          <EmployeeCard
+            employees={employees}
+            todayAttendance={todayAttendance}
+            onSelectEmployee={handleSelectEmployee}
+            loading={false}
+          />
+        </div>
+      </div>
+
+      {/* Meetings */}
+      <div className="dash-section">
+        <MeetingsCard trainings={trainings} loading={false} />
+      </div>
+
       {/* Activity Timeline */}
       <ActivityTimeline employees={employees} todayAttendance={todayAttendance} loading={false} />
 
@@ -236,7 +281,7 @@ export default function Dashboard() {
       <BillingSection billing={billing} showPayment={showPayment} setShowPayment={setShowPayment} navigate={navigate} />
 
       {/* Recent Employees */}
-      <RecentEmployeesTable recentEmployees={recentEmployees} todayAttendance={todayAttendance} />
+      <RecentEmployeesTable recentEmployees={recentEmployees} todayAttendance={todayAttendance} onSelectEmployee={handleSelectEmployee} />
 
       {/* Notifications */}
       <NotificationBoardV2 />
@@ -251,3 +296,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import { FiUser, FiMail, FiPhone, FiX } from 'react-icons/fi';
 import * as jobService from '../services/jobService';
@@ -19,7 +20,7 @@ const stageLabels = {
 const stageColors = {
   applied: '#6D8196',
   screening: '#0891b2',
-  interview: '#0047AB',
+  interview: '#635BFF',
   offered: '#D97706',
   hired: '#16A34A',
   rejected: '#DC2626',
@@ -32,18 +33,18 @@ export default function CandidatePipeline() {
   const [selected, setSelected] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
 
-  useEffect(() => { fetchData(); }, []);
-
   const fetchData = async () => {
     setLoading(true);
-    const { data: candData } = await jobService.getAllCandidates();
-    const { data: jobData } = await jobService.getAllJobs();
+    const { data: candData } = await jobService.getAllCandidates(employee?.company_id);
+    const { data: jobData } = await jobService.getAllJobs(employee?.company_id);
     setCandidatesList(candData || []);
     setJobs(jobData || []);
     setLoading(false);
   };
 
-  useRealtimeTable('candidates', fetchData);
+  useEffect(() => { fetchData(); }, []);
+
+  useRealtimeTable('candidates', fetchData, { companyId: employee?.company_id });
 
   const handleDragStart = (id) => setDraggedId(id);
   const handleDragOver = (e) => e.preventDefault();
@@ -75,7 +76,7 @@ export default function CandidatePipeline() {
   const pipelineStages = stages.filter((s) => s !== 'rejected');
 
   return (
-    <div>
+    <div className="admin-page">
       <PageHeader titleKey="candidates.title" subtitleKey="candidates.subtitle" />
 
       {loading ? (
@@ -85,10 +86,10 @@ export default function CandidatePipeline() {
           <TableSkeleton rows={6} cols={5} />
         </>
       ) : candidatesList.length === 0 ? (
-        <div className="info-card" style={{ textAlign: 'center', padding: 40 }}>
-          <div className="empty-state-icon" style={{ fontSize: 22 }}></div>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Belum ada kandidat</div>
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Kandidat akan muncul saat ada lamaran masuk.</div>
+        <div className="info-card ep-empty-wrap">
+          <div className="ep-empty-icon"></div>
+          <div className="ep-empty-title">Belum ada kandidat</div>
+          <div className="ep-empty-desc">Kandidat akan muncul saat ada lamaran masuk.</div>
         </div>
       ) : (
         <>
@@ -101,15 +102,10 @@ export default function CandidatePipeline() {
                   key={stage}
                   onDragOver={handleDragOver}
                   onDrop={() => handleDrop(stage)}
-                  style={{
-                    flex: '0 0 260px',
-                    background: 'var(--bg)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: 16,
-                    minHeight: 400,
-                  }}
+                  className="chart-card"
+                  style={{ flex: '0 0 260px', minHeight: 400 }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div className="chart-card-header" style={{ marginBottom: 14 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: stageColors[stage] }}>{stageLabels[stage]}</span>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
@@ -127,30 +123,22 @@ export default function CandidatePipeline() {
                         draggable
                         onDragStart={() => handleDragStart(c.id)}
                         onClick={() => setSelected(c)}
-                        style={{
-                          background: 'var(--surface)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: 14,
-                          marginBottom: 10,
-                          border: '1px solid var(--border)',
-                          cursor: 'grab',
-                          boxShadow: 'var(--shadow-sm)',
-                          transition: 'box-shadow 0.15s ease',
-                        }}
+                        className="info-card"
+                        style={{ marginBottom: 10, cursor: 'grab' }}
                         onMouseOver={(e) => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
                         onMouseOut={(e) => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>{c.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>{job?.title || '-'}</div>
+                        <div className="td-semibold" style={{ marginBottom: 4 }}>{c.name}</div>
+                        <div className="td-muted-sm" style={{ marginBottom: 6 }}>{job?.title || '-'}</div>
                         {c.skills && c.skills.length > 0 && (
                           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
                             {c.skills.slice(0, 3).map((sk, i) => (
                               <span key={i} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>{sk}</span>
                             ))}
-                            {c.skills.length > 3 && <span style={{ fontSize: 10, color: 'var(--muted)' }}>+{c.skills.length - 3}</span>}
+                            {c.skills.length > 3 && <span className="td-muted-sm">+{c.skills.length - 3}</span>}
                           </div>
                         )}
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        <div className="td-muted-sm">
                           {new Date(c.applied_date || c.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                           {c.ref_number && <span style={{ marginLeft: 6, opacity: 0.6 }}>#{c.ref_number}</span>}
                         </div>
@@ -177,8 +165,8 @@ export default function CandidatePipeline() {
                 <div className="employee-avatar" style={{ width: 60, height: 60, fontSize: 20, margin: '0 auto' }}>
                   {selected.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, marginTop: 12 }}>{selected.name}</h3>
-                <p style={{ fontSize: 13, color: 'var(--muted)' }}>{(selected.job_postings || jobs.find(j => j.id === selected.job_id))?.title || '-'}</p>
+                <h3 className="chart-card-title" style={{ marginTop: 12 }}>{selected.name}</h3>
+                <p className="td-muted-sm">{(selected.job_postings || jobs.find(j => j.id === selected.job_id))?.title || '-'}</p>
               </div>
 
               <div className="form-grid">
@@ -196,31 +184,31 @@ export default function CandidatePipeline() {
                 </div>
               </div>
               {selected.education?.level && (
-                <div style={{ marginTop: 12, padding: 14, background: 'var(--bg)', borderRadius: 'var(--radius-sm)', fontSize: 13 }}>
+                <div className="info-card mb-sm" style={{ fontSize: 13 }}>
                   <strong>Pendidikan:</strong> {selected.education.level} - {selected.education.major || ''} {selected.education.university ? `@ ${selected.education.university}` : ''} {selected.education.year ? `(${selected.education.year})` : ''}
                 </div>
               )}
               {selected.skills && selected.skills.length > 0 && (
-                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div className="btn-icon-row mb-sm" style={{ flexWrap: 'wrap' }}>
                   {selected.skills.map((sk, i) => (
                     <span key={i} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: 'var(--primary-light)', color: 'var(--primary)' }}>{sk}</span>
                   ))}
                 </div>
               )}
               {selected.cover_letter && (
-                <div style={{ marginTop: 12, padding: 14, background: 'var(--bg)', borderRadius: 'var(--radius-sm)', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                <div className="info-card mb-sm" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   <strong>Cover Letter:</strong><br />{selected.cover_letter}
                 </div>
               )}
               {(selected.linkedin_url || selected.portfolio_url || selected.resume_url) && (
-                <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div className="btn-icon-row" style={{ flexWrap: 'wrap' }}>
                   {selected.resume_url && <a href={selected.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline' }}>Resume/CV</a>}
                   {selected.linkedin_url && <a href={selected.linkedin_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>LinkedIn</a>}
                   {selected.portfolio_url && <a href={selected.portfolio_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>Portfolio</a>}
                 </div>
               )}
               {selected.notes && (
-                <div style={{ marginTop: 16, padding: 14, background: 'var(--bg)', borderRadius: 'var(--radius-sm)', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                <div className="info-card" style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   <strong>Catatan:</strong> {selected.notes}
                 </div>
               )}

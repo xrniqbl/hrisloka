@@ -9,7 +9,8 @@ import { useBranch } from '../context/BranchContext';
 import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
-import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { PageSkeleton } from '../components/SkeletonLoader';
 
 export default function Attendance() {
@@ -19,29 +20,19 @@ export default function Attendance() {
   const [todayLogs, setTodayLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myTodayAttendance, setMyTodayAttendance] = useState(null);
-  // GPS state: 'idle' | 'loading' | 'ok' | 'denied'
   const [gpsStatus, setGpsStatus] = useState('idle');
   const [gpsCoords, setGpsCoords] = useState(null);
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
   const { selectedBranchId } = useBranch();
 
-  // Request GPS on mount
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setGpsStatus('denied');
-      return;
-    }
+    if (!navigator.geolocation) { setGpsStatus('denied'); return; }
     setGpsStatus('loading');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setGpsCoords({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        });
+        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
         setGpsStatus('ok');
       },
       () => setGpsStatus('denied'),
@@ -52,45 +43,26 @@ export default function Attendance() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Admin view: show all today attendance
       const { data: allAtt } = await attendanceService.getAllAttendanceToday(selectedBranchId, employee?.company_id);
-      if (allAtt && allAtt.length > 0) {
-        setTodayLogs(allAtt);
-      }
-      // My attendance
+      if (allAtt && allAtt.length > 0) setTodayLogs(allAtt);
       if (employee) {
         const { data: myAtt } = await attendanceService.getTodayAttendance(employee.id);
-        if (myAtt) {
-          setMyTodayAttendance(myAtt);
-          setClockedIn(!!myAtt.clock_in && !myAtt.clock_out);
-        }
+        if (myAtt) { setMyTodayAttendance(myAtt); setClockedIn(!!myAtt.clock_in && !myAtt.clock_out); }
       }
-    } catch (e) {
-      console.error('Attendance fetch error:', e);
-    }
+    } catch (e) { console.error('Attendance fetch error:', e); }
     setLoading(false);
   }, [employee, selectedBranchId]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Realtime: auto-refresh on attendance changes
-  useRealtimeTable('attendance', fetchData);
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useRealtimeTable('attendance', fetchData, { companyId: currentUser?.company_id });
 
   const handleClockToggle = async () => {
     if (!employee) return;
-
     if (!clockedIn && !myTodayAttendance?.clock_in) {
-      // Use real GPS if available, otherwise fall back gracefully
-      const lat = gpsCoords?.lat ?? null;
-      const lng = gpsCoords?.lng ?? null;
-      const inRadius = gpsStatus === 'ok'; // Only mark in-radius if GPS confirmed
-
       const { error } = await attendanceService.clockIn(employee.id, {
-        latitude: lat,
-        longitude: lng,
-        inRadius,
+        latitude: gpsCoords?.lat ?? null,
+        longitude: gpsCoords?.lng ?? null,
+        inRadius: gpsStatus === 'ok',
         locationId: employee?.branch_id || 1,
       });
       if (!error) fetchData();
@@ -100,69 +72,62 @@ export default function Attendance() {
     }
   };
 
-  // GPS status indicator config
   const gpsIndicator = {
-    idle:    { icon: <FiMapPin />,      color: 'var(--muted)',    label: 'GPS Menunggu' },
-    loading: { icon: <FiLoader />,      color: '#F59E0B',         label: 'GPS Loading...' },
-    ok:      { icon: <FiMapPin />,      color: 'var(--success)',  label: 'GPS Aktif' },
-    denied:  { icon: <FiAlertCircle />, color: 'var(--danger)',   label: 'GPS Tidak Aktif' },
+    idle:    { icon: <FiMapPin />,      color: 'var(--text-secondary)', label: 'GPS Menunggu' },
+    loading: { icon: <FiLoader />,      color: '#F59E0B',               label: 'GPS Loading...' },
+    ok:      { icon: <FiMapPin />,      color: 'var(--success)',        label: 'GPS Aktif' },
+    denied:  { icon: <FiAlertCircle />, color: 'var(--danger)',         label: 'GPS Tidak Aktif' },
   }[gpsStatus];
 
-  if (loading && !todayLogs.length) return <div style={{ padding: 20 }}>Loading...</div>;
+  if (loading && !todayLogs.length) return <div className="loading-fallback"><PageSkeleton tableRows={5} tableCols={5} /></div>;
 
   return (
-    <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h1 style={{ margin: 0 }}>{t('attendance.title')}</h1>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+    <div className="admin-page">
+      <div className="page-header">
+        <h1>{t('attendance.title')}</h1>
+        <div className="page-header-actions">
           <BranchFilter />
-          <button
-            className="btn-secondary"
-            style={{ padding: '6px 12px', fontSize: 12, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+          <Button
+            variant="outline"
             onClick={() => exportToExcel(formatAttendanceForExport(todayLogs), `Absensi_${new Date().toISOString().split('T')[0]}.xlsx`)}
           >
             <FiDownload /> Export Excel
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Clock In/Out Widget */}
-      <div className="info-card" style={{ display: 'flex', alignItems: 'center', gap: 32, marginBottom: 28, flexWrap: 'wrap' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)', lineHeight: 1.1 }}>{timeStr}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Waktu saat ini</div>
+      <div className="info-card attendance-widget">
+        <div className="attendance-time-col">
+          <div className="attendance-time">{timeStr}</div>
+          <div className="attendance-time-label">Waktu saat ini</div>
         </div>
-        <div style={{ flex: 1, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div className="attendance-actions-col">
           {!myTodayAttendance?.clock_out ? (
-            <button
-              className={clockedIn ? 'btn-danger' : 'btn-primary'}
-              style={{ padding: '14px 32px', fontSize: 14 }}
-              onClick={handleClockToggle}
-            >
+            <Button variant={clockedIn ? 'destructive' : 'default'} size="lg" onClick={handleClockToggle}>
               <FiClock /> {clockedIn ? 'Clock Out' : 'Clock In'}
-            </button>
+            </Button>
           ) : (
-            <div style={{ padding: '14px 32px', background: 'var(--bg-secondary)', borderRadius: 8, color: 'var(--muted)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="attendance-done-badge">
               <FiCheckCircle /> Absensi Selesai
             </div>
           )}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', fontSize: 13 }}>
-            {/* Real GPS status indicator */}
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: gpsIndicator.color }}>
+          <div className="attendance-indicators">
+            <span className="attendance-gps-indicator" style={{ color: gpsIndicator.color }}>
               {gpsIndicator.icon} {gpsIndicator.label}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+            <span className="attendance-indicator-item">
               <FiCamera /> Selfie Ready
             </span>
           </div>
           {gpsStatus === 'denied' && (
-            <div style={{ width: '100%', fontSize: 12, color: 'var(--danger)', background: 'rgba(239,68,68,0.06)', padding: '6px 10px', borderRadius: 6 }}>
+            <div className="attendance-gps-warning">
               GPS tidak tersedia. Clock-in akan dicatat tanpa validasi lokasi.
             </div>
           )}
         </div>
         {myTodayAttendance?.clock_in && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)', fontWeight: 600, fontSize: 14 }}>
+          <div className="attendance-checkin-notice">
             <FiCheckCircle /> Sudah Clock In pukul {myTodayAttendance.clock_in}
           </div>
         )}
@@ -170,51 +135,56 @@ export default function Attendance() {
 
       {/* Attendance Log */}
       <div className="data-table-card">
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 15, fontWeight: 600 }}>Log Kehadiran Hari Ini ({todayLogs.length} entries)</span>
+        <div className="data-table-header">
+          <span className="section-label">Log Kehadiran Hari Ini ({todayLogs.length} entries)</span>
         </div>
         <div className="table-responsive">
-          <table className="data-table">
-            <thead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+            
               <tr>
-                <th>Karyawan</th>
-                <th>Clock In</th>
-                <th>Clock Out</th>
-                <th>Status</th>
-                <th>Lokasi</th>
+                                <TableHead>Karyawan</TableHead>
+                                <TableHead>Clock In</TableHead>
+                                <TableHead>Clock Out</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Lokasi</TableHead>
               </tr>
-            </thead>
-            <tbody>
+            
+                          </TableRow>
+            </TableHeader>
+            <TableBody>
               {todayLogs.map((att) => {
-                const empName = att.employees?.name || employee?.name || '—';
-                const empDiv = att.employees?.division || employee?.division || '';
+                const empName = att.employees?.name || employee?.name || '-';
+                const empDiv  = att.employees?.division || employee?.division || '';
                 return (
-                  <tr key={att.id}>
-                    <td>
-                      <div className="employee-cell">
+              <TableRow key={att.id}>
+                <TableCell>
+                  <div className="employee-cell">
                         <div className="employee-avatar">{empName.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
                         <div>
                           <div className="employee-name">{empName}</div>
                           <div className="employee-dept">{empDiv}</div>
                         </div>
-                      </div>
-                    </td>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{att.clock_in || '-'}</td>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{att.clock_out || '-'}</td>
-                    <td>
-                      <span className={`status-badge ${att.status}`}>
+                  </div>
+                </TableCell>
+                <TableCell className="td-mono-bold">{att.clock_in || '-'}</TableCell>
+                <TableCell className="td-mono-bold">{att.clock_out || '-'}</TableCell>
+                <TableCell>
+                  <span className={`status-badge ${att.status}`}>
                         {att.status === 'present' ? 'Hadir' : att.status === 'late' ? 'Terlambat' : att.status === 'leave' ? 'Cuti' : 'Tidak Hadir'}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 12, color: 'var(--muted)' }}>{att.location || '-'}</td>
-                  </tr>
+                  </span>
+                </TableCell>
+                <TableCell className="td-muted-sm">{att.location || '-'}</TableCell>
+              </TableRow>
                 );
               })}
               {todayLogs.length === 0 && (
-                <tr><td colSpan={5} className="empty-state">Belum ada data kehadiran hari ini.</td></tr>
+                <TableRow><TableCell colSpan={5} className="empty-state">Belum ada data kehadiran hari ini.</TableCell></TableRow>
               )}
-            </tbody>
-          </table>
+                        </TableBody>
+          </Table>
+          
         </div>
       </div>
     </div>

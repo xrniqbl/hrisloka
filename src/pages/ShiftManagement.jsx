@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { FiPlus, FiX, FiTrash2 } from 'react-icons/fi';
 import * as shiftService from '../services/shiftService';
@@ -7,250 +7,227 @@ import { useAuth } from '../context/AuthContext';
 import BranchFilter from '../components/BranchFilter';
 import { useBranch } from '../context/BranchContext';
 import { useRealtimeTable } from '../hooks/useRealtime';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPanel, DialogFooter } from '@/components/ui/dialog';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import '../styles/shared.css';
 import '../styles/admin.css';
-import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 
 const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
 export default function ShiftManagement() {
-  const { t } = useTranslation();
+ const { t } = useTranslation();
  const { employee } = useAuth();
  const [shifts, setShifts] = useState([]);
  const [employees, setEmployees] = useState([]);
  const [assignments, setAssignments] = useState([]);
  const [loading, setLoading] = useState(true);
  const [showForm, setShowForm] = useState(false);
- const [form, setForm] = useState({ name: '', startTime: '', endTime: '', color: '#0047AB' });
- const [activeCell, setActiveCell] = useState(null); // { empId, day }
-
+ const [form, setForm] = useState({ name: '', startTime: '', endTime: '', color: '#635BFF' });
+ const [activeCell, setActiveCell] = useState(null);
  const { selectedBranchId } = useBranch();
 
- useEffect(() => { fetchData(); }, [selectedBranchId]);
+ const companyId = employee?.company_id;
 
  const fetchData = async () => {
- setLoading(true);
- const { data: shiftData } = await shiftService.getAllShifts(selectedBranchId, employee?.company_id);
- const { data: empData } = await employeeService.getAllEmployees(selectedBranchId, employee?.company_id);
- const { data: assignData } = await shiftService.getShiftAssignments();
- setShifts(shiftData || []);
- setEmployees(empData || []);
- setAssignments(assignData || []);
- setLoading(false);
+  if (!companyId) {
+   setShifts([]);
+   setEmployees([]);
+   setAssignments([]);
+   setLoading(false);
+   return;
+  }
+  setLoading(true);
+  const { data: shiftData } = await shiftService.getAllShifts(selectedBranchId, companyId);
+  const { data: empData } = await employeeService.getAllEmployees(selectedBranchId, companyId);
+  // Must pass companyId — tenant guard returns [] without it
+  const { data: assignData } = await shiftService.getShiftAssignments(companyId);
+  setShifts(shiftData || []);
+  setEmployees(empData || []);
+  setAssignments(assignData || []);
+  setLoading(false);
  };
 
- // Realtime: auto-refresh
- useRealtimeTable('shifts', fetchData);
+ useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selectedBranchId, companyId]);
+ useRealtimeTable('shifts', fetchData, { companyId, enabled: !!companyId });
 
  const handleAddShift = async () => {
- if (!form.name || !form.startTime || !form.endTime) return;
- await shiftService.createShift({ ...form, companyId: employee?.company_id });
- setShowForm(false);
- setForm({ name: '', startTime: '', endTime: '', color: '#0047AB' });
- fetchData();
+  if (!form.name || !form.startTime || !form.endTime || !companyId) return;
+  await shiftService.createShift({ ...form, companyId });
+  setShowForm(false);
+  setForm({ name: '', startTime: '', endTime: '', color: '#635BFF' });
+  fetchData();
  };
 
  const handleDeleteShift = async (id) => {
- if (!confirm('Hapus shift ini? Semua assignment terkait juga akan dihapus.')) return;
- await shiftService.deleteShift(id);
- fetchData();
+  if (!confirm('Hapus shift ini? Semua assignment terkait juga akan dihapus.')) return;
+  if (!companyId) return;
+  await shiftService.deleteShift(id, companyId);
+  fetchData();
  };
 
  const handleAssignShift = async (empId, day, shiftId) => {
- await shiftService.assignShift(empId, shiftId, day);
- setActiveCell(null);
- fetchData();
+  // Verify employee belongs to this company (list already company-scoped)
+  const target = employees.find((e) => e.id === empId);
+  if (!target || (target.company_id && target.company_id !== companyId)) return;
+  await shiftService.assignShift(empId, shiftId, day);
+  setActiveCell(null);
+  fetchData();
  };
 
  const handleRemoveAssignment = async (empId, day) => {
- const existing = assignments.find(a => a.employee_id === empId && a.day_of_week === day);
- if (existing) {
- await shiftService.removeShiftAssignment(existing.id);
- fetchData();
- }
- setActiveCell(null);
+  const existing = assignments.find(a => a.employee_id === empId && a.day_of_week === day);
+  if (existing && companyId) {
+   await shiftService.removeShiftAssignment(existing.id, companyId);
+   fetchData();
+  }
+  setActiveCell(null);
  };
 
- const getAssignment = (empId, day) => {
- return assignments.find(a => a.employee_id === empId && a.day_of_week === day);
- };
+ const getAssignment = (empId, day) => assignments.find(a => a.employee_id === empId && a.day_of_week === day);
+ const toggleCell = (empId, day) => setActiveCell(activeCell?.empId === empId && activeCell?.day === day ? null : { empId, day });
 
- const toggleCell = (empId, day) => {
- if (activeCell && activeCell.empId === empId && activeCell.day === day) {
- setActiveCell(null);
- } else {
- setActiveCell({ empId, day });
- }
- };
-
-  if (loading) return <PageSkeleton hasStats={false} tableRows={6} tableCols={5} />;
- return (
- <div>
- <div className="page-header">
- <h1>{t('shifts.title')}</h1>
- <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
- <BranchFilter />
- <button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Tambah Shift</button>
- </div>
- </div>
-
- {/* Shift Legend */}
- <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
- {shifts.map((s) => (
- <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, background: 'var(--surface)', padding: '6px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
- <div style={{ width: 12, height: 12, borderRadius: 3, background: s.color, flexShrink: 0 }} />
- <span style={{ fontWeight: 600 }}>{s.name}</span>
- <span style={{ color: 'var(--muted)', fontSize: 11 }}>({s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)})</span>
- <button onClick={() => handleDeleteShift(s.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 2, display: 'flex' }}><FiTrash2 size={13} /></button>
- </div>
- ))}
- <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '6px 14px' }}>
- <div style={{ width: 12, height: 12, borderRadius: 3, background: '#E5E7EB' }} />
- <span style={{ fontWeight: 600, color: 'var(--muted)' }}>OFF / Belum diatur</span>
- </div>
- </div>
-
- {shifts.length === 0 && (
- <div className="info-card" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
- Belum ada shift. Buat shift terlebih dahulu sebelum mengatur jadwal karyawan.
- </div>
- )}
-
- {/* Schedule Grid — Shows ALL employees */}
- {shifts.length > 0 && (
- <div className="data-table-card">
- <div className="table-responsive">
- <table className="data-table">
- <thead>
- <tr>
- <th style={{ minWidth: 180 }}>Karyawan</th>
- {dayNames.map((d) => <th key={d} style={{ textAlign: 'center', minWidth: 100 }}>{d}</th>)}
- </tr>
- </thead>
- <tbody>
- {employees.map((emp) => (
- <tr key={emp.id}>
- <td>
- <div className="employee-cell">
- <div className="employee-avatar" style={{ width: 30, height: 30, fontSize: 11 }}>
- {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
- </div>
- <div>
- <div className="employee-name">{emp.name}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{emp.division}</div>
- </div>
- </div>
- </td>
- {dayNames.map((_, dayIdx) => {
- const assignment = getAssignment(emp.id, dayIdx);
- const shift = assignment?.shifts;
- const isActive = activeCell?.empId === emp.id && activeCell?.day === dayIdx;
+ if (loading) return <PageSkeleton hasStats={false} tableRows={6} tableCols={5} />;
 
  return (
- <td key={dayIdx} style={{ textAlign: 'center', position: 'relative', padding: 4 }}>
- {/* Cell Button */}
- <div
- onClick={() => toggleCell(emp.id, dayIdx)}
- style={{
- padding: '8px 6px', borderRadius: 6, cursor: 'pointer',
- background: shift ? `${shift.color}18` : '#F3F4F6',
- border: isActive ? '2px solid var(--primary)' : '2px solid transparent',
- color: shift ? shift.color : '#9CA3AF',
- fontSize: 11, fontWeight: 600, transition: 'all 0.15s ease',
- minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
- }}
- >
- {shift ? shift.name : 'OFF'}
- </div>
+  <div className="admin-page">
+   <div className="page-header">
+    <h1>{t('shifts.title')}</h1>
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+     <BranchFilter />
+     <Button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Tambah Shift</Button>
+    </div>
+   </div>
 
- {/* Dropdown Picker */}
- {isActive && (
- <div style={{
- position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
- zIndex: 50, background: 'var(--surface)', border: '1px solid var(--border)',
- borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)',
- padding: 6, minWidth: 140, display: 'grid', gap: 4,
- }}>
- {shifts.map(s => (
- <button
- key={s.id}
- onClick={(e) => { e.stopPropagation(); handleAssignShift(emp.id, dayIdx, s.id); }}
- style={{
- padding: '6px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
- background: shift?.id === s.id ? `${s.color}30` : 'transparent',
- color: s.color, fontWeight: 600, fontSize: 12, textAlign: 'left',
- display: 'flex', alignItems: 'center', gap: 8,
- }}
- >
- <div style={{ width: 10, height: 10, borderRadius: 3, background: s.color, flexShrink: 0 }} />
- {s.name}
- </button>
- ))}
- {shift && (
- <button
- onClick={(e) => { e.stopPropagation(); handleRemoveAssignment(emp.id, dayIdx); }}
- style={{
- padding: '6px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
- background: '#FEF2F2', color: '#DC2626', fontWeight: 600, fontSize: 12,
- textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8,
- borderTop: '1px solid var(--border)', marginTop: 2, paddingTop: 8,
- }}
- >
- <FiX size={12} /> Hapus
- </button>
- )}
- </div>
- )}
- </td>
- );
- })}
- </tr>
- ))}
- {employees.length === 0 && (
- <tr><td colSpan={8} className="empty-state">Belum ada data karyawan.</td></tr>
- )}
- </tbody>
- </table>
- </div>
- </div>
- )}
+   <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+    {shifts.map((shift) => (
+     <div key={shift.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, background: 'var(--surface)', padding: '6px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+      <div style={{ width: 12, height: 12, borderRadius: 3, background: shift.color, flexShrink: 0 }} />
+      <span style={{ fontWeight: 600 }}>{shift.name}</span>
+      <span style={{ color: 'var(--muted)', fontSize: 11 }}>({shift.start_time?.slice(0, 5)} - {shift.end_time?.slice(0, 5)})</span>
+      <Button variant="ghost" size="icon" className="action-btn danger" onClick={() => handleDeleteShift(shift.id)}><FiTrash2 size={13} /></Button>
+     </div>
+    ))}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '6px 14px' }}>
+     <div style={{ width: 12, height: 12, borderRadius: 3, background: '#E5E7EB' }} />
+     <span style={{ fontWeight: 600, color: 'var(--muted)' }}>OFF / Belum diatur</span>
+    </div>
+   </div>
 
- {/* Add Shift Modal */}
- {showForm && (
- <div className="modal-overlay" onClick={() => setShowForm(false)}>
- <div className="modal-box" onClick={e => e.stopPropagation()}>
- <div className="modal-header">
- <h2>Tambah Shift Baru</h2>
- <button className="modal-close" onClick={() => setShowForm(false)}><FiX /></button>
- </div>
- <div className="modal-body">
- <div className="form-grid">
- <div className="form-group">
- <label className="form-label">Nama Shift</label>
- <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Shift Pagi" />
- </div>
- <div className="form-group">
- <label className="form-label">Warna</label>
- <input type="color" className="form-input" value={form.color} onChange={e => setForm({ ...form, color: e.target.value })} style={{ height: 40 }} />
- </div>
- <div className="form-group">
- <label className="form-label">Jam Mulai</label>
- <input className="form-input" type="time" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} />
- </div>
- <div className="form-group">
- <label className="form-label">Jam Selesai</label>
- <input className="form-input" type="time" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
- </div>
- </div>
- </div>
- <div className="modal-footer">
- <button className="btn-secondary" onClick={() => setShowForm(false)}>Batal</button>
- <button className="btn-primary" onClick={handleAddShift} disabled={!form.name || !form.startTime || !form.endTime}>Simpan</button>
- </div>
- </div>
- </div>
- )}
- </div>
+   {shifts.length === 0 && (
+    <div className="info-card" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>
+     Belum ada shift. Buat shift terlebih dahulu sebelum mengatur jadwal karyawan.
+    </div>
+   )}
+
+   {shifts.length > 0 && (
+    <div className="data-table-card">
+     <Table>
+      <TableHeader>
+       <TableRow>
+        <TableHead style={{ minWidth: 180 }}>Karyawan</TableHead>
+        {dayNames.map((day) => <TableHead key={day} style={{ textAlign: 'center', minWidth: 100 }}>{day}</TableHead>)}
+       </TableRow>
+      </TableHeader>
+      <TableBody>
+       {employees.map((emp) => (
+        <TableRow key={emp.id}>
+         <TableCell>
+          <div className="employee-cell">
+           <div className="employee-avatar" style={{ width: 30, height: 30, fontSize: 11 }}>
+            {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+           </div>
+           <div>
+            <div className="employee-name">{emp.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>{emp.division}</div>
+           </div>
+          </div>
+         </TableCell>
+         {dayNames.map((_, dayIdx) => {
+          const assignment = getAssignment(emp.id, dayIdx);
+          const shift = assignment?.shifts;
+          const isActive = activeCell?.empId === emp.id && activeCell?.day === dayIdx;
+
+          return (
+           <TableCell key={dayIdx} style={{ textAlign: 'center', position: 'relative', padding: 4 }}>
+            <div
+             onClick={() => toggleCell(emp.id, dayIdx)}
+             style={{
+              padding: '8px 6px', borderRadius: 6, cursor: 'pointer',
+              background: shift ? `${shift.color}18` : '#F3F4F6',
+              border: isActive ? '2px solid var(--primary)' : '2px solid transparent',
+              color: shift ? shift.color : '#9CA3AF',
+              fontSize: 11, fontWeight: 600, transition: 'all 0.15s ease',
+              minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+             }}
+            >
+             {shift ? shift.name : 'OFF'}
+            </div>
+
+            {isActive && (
+             <div style={{
+              position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+              zIndex: 50, background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)',
+              padding: 6, minWidth: 140, display: 'grid', gap: 4,
+             }}>
+              {shifts.map((item) => (
+               <Button key={item.id} variant="ghost" className="justify-start" onClick={(event) => { event.stopPropagation(); handleAssignShift(emp.id, dayIdx, item.id); }} style={{ color: item.color }}>
+                <div style={{ width: 10, height: 10, borderRadius: 3, background: item.color, flexShrink: 0 }} />
+                {item.name}
+               </Button>
+              ))}
+              {shift && (
+               <Button variant="ghost" className="justify-start text-red-600" onClick={(event) => { event.stopPropagation(); handleRemoveAssignment(emp.id, dayIdx); }}>
+                <FiX size={12} /> Hapus
+               </Button>
+              )}
+             </div>
+            )}
+           </TableCell>
+          );
+         })}
+        </TableRow>
+       ))}
+       {employees.length === 0 && <TableRow><TableCell colSpan={8} className="empty-state">Belum ada data karyawan.</TableCell></TableRow>}
+      </TableBody>
+     </Table>
+    </div>
+   )}
+
+   <Dialog open={showForm} onOpenChange={setShowForm}>
+    <DialogContent>
+     <DialogHeader>
+      <DialogTitle>Tambah Shift Baru</DialogTitle>
+     </DialogHeader>
+     <DialogPanel>
+      <div className="form-grid">
+       <div className="form-group">
+        <label className="form-label">Nama Shift</label>
+        <Input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Shift Pagi" />
+       </div>
+       <div className="form-group">
+        <label className="form-label">Warna</label>
+        <Input type="color" value={form.color} onChange={event => setForm({ ...form, color: event.target.value })} style={{ height: 40 }} />
+       </div>
+       <div className="form-group">
+        <label className="form-label">Jam Mulai</label>
+        <Input type="time" value={form.startTime} onChange={event => setForm({ ...form, startTime: event.target.value })} />
+       </div>
+       <div className="form-group">
+        <label className="form-label">Jam Selesai</label>
+        <Input type="time" value={form.endTime} onChange={event => setForm({ ...form, endTime: event.target.value })} />
+       </div>
+      </div>
+     </DialogPanel>
+     <DialogFooter>
+      <Button variant="outline" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</Button>
+      <Button className="btn-primary" onClick={handleAddShift} disabled={!form.name || !form.startTime || !form.endTime}>Simpan</Button>
+     </DialogFooter>
+    </DialogContent>
+   </Dialog>
+  </div>
  );
 }

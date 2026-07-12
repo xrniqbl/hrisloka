@@ -40,14 +40,20 @@ BEGIN
     (id_b, 'Employee B', 'emp-b-' || suffix || '@test.local', 'employee', 'active', 'active', 'NIP-B-' || suffix)
   RETURNING id INTO emp_b;
 
-  -- Sample leave rows if table exists
+  -- Sample leave rows if table exists (days is NOT NULL in leave_requests)
   BEGIN
-    INSERT INTO leave_requests (employee_id, type, start_date, end_date, status, reason)
+    INSERT INTO leave_requests (employee_id, type, start_date, end_date, days, status, reason)
     VALUES
-      (emp_a, 'annual', CURRENT_DATE, CURRENT_DATE + 1, 'pending', 'test A'),
-      (emp_b, 'annual', CURRENT_DATE, CURRENT_DATE + 1, 'pending', 'test B');
-  EXCEPTION WHEN undefined_table OR undefined_column THEN
-    RAISE NOTICE 'leave_requests skip: %', SQLERRM;
+      (emp_a, 'annual', CURRENT_DATE, CURRENT_DATE + 1, 2, 'pending', 'test A'),
+      (emp_b, 'annual', CURRENT_DATE, CURRENT_DATE + 1, 2, 'pending', 'test B');
+  EXCEPTION
+    WHEN undefined_table THEN
+      RAISE NOTICE 'leave_requests skip (no table): %', SQLERRM;
+    WHEN undefined_column THEN
+      RAISE NOTICE 'leave_requests skip (column mismatch): %', SQLERRM;
+    WHEN others THEN
+      -- Don't fail whole smoke test if leave seed fails
+      RAISE NOTICE 'leave_requests skip: %', SQLERRM;
   END;
 
   RAISE NOTICE 'Company A id=% emp=% | Company B id=% emp=%', id_a, emp_a, id_b, emp_b;

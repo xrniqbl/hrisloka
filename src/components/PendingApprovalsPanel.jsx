@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { getPendingRegistrations, acceptEmployeeRegistration, rejectEmployeeRegistration } from '../services/companyService';
 import { useAuth } from '../context/AuthContext';
 
@@ -12,37 +12,69 @@ export default function PendingApprovalsPanel() {
   const [processing, setProcessing] = useState(false);
   const [assignRole, setAssignRole] = useState('employee');
 
+  const [actionError, setActionError] = useState('');
+
   const fetchPending = async () => {
+    if (!employee?.company_id) {
+      setPending([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const { data } = await getPendingRegistrations();
-    setPending(data);
+    const { data, error } = await getPendingRegistrations(employee.company_id);
+    if (error) console.warn('[PendingApprovals]', error.message);
+    setPending(data || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetchPending(); }, []);
+  useEffect(() => {
+    if (!employee?.company_id) {
+      setLoading(!!employee === false); // still loading auth employee
+      if (employee && !employee.company_id) setLoading(false);
+      return;
+    }
+    fetchPending();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.company_id]);
 
   const handleAccept = async () => {
-    if (!selected || !employee) return;
+    if (!selected || !employee?.company_id) return;
     setProcessing(true);
-    const { error } = await acceptEmployeeRegistration(selected.id, employee.id, assignRole);
+    setActionError('');
+    const { error } = await acceptEmployeeRegistration(
+      selected.id,
+      employee.id,
+      assignRole,
+      employee.company_id,
+    );
     setProcessing(false);
-    if (!error) {
-      setPending(p => p.filter(x => x.id !== selected.id));
-      setSelected(null);
+    if (error) {
+      setActionError(error.message || 'Gagal mengaktifkan akun');
+      return;
     }
+    setPending((p) => p.filter((x) => x.id !== selected.id));
+    setSelected(null);
   };
 
   const handleReject = async () => {
-    if (!selected || !employee || !rejectReason.trim()) return;
+    if (!selected || !employee?.company_id || !rejectReason.trim()) return;
     setProcessing(true);
-    const { error } = await rejectEmployeeRegistration(selected.id, employee.id, rejectReason);
+    setActionError('');
+    const { error } = await rejectEmployeeRegistration(
+      selected.id,
+      employee.id,
+      rejectReason,
+      employee.company_id,
+    );
     setProcessing(false);
-    if (!error) {
-      setPending(p => p.filter(x => x.id !== selected.id));
-      setSelected(null);
-      setRejectMode(false);
-      setRejectReason('');
+    if (error) {
+      setActionError(error.message || 'Gagal menolak pendaftaran');
+      return;
     }
+    setPending((p) => p.filter((x) => x.id !== selected.id));
+    setSelected(null);
+    setRejectMode(false);
+    setRejectReason('');
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-';
@@ -81,13 +113,13 @@ export default function PendingApprovalsPanel() {
                 background: 'var(--surface)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 14,
                 transition: 'all 0.2s',
-                boxShadow: selected?.id === emp.id ? '0 0 0 2px #0047AB' : 'none',
+                boxShadow: selected?.id === emp.id ? '0 0 0 2px #635BFF' : 'none',
               }}
             >
               {emp.photo_url ? (
                 <img src={emp.photo_url} alt={emp.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
               ) : (
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg,#0047AB,#2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 18, flexShrink: 0 }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg,#635BFF,#4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: 18, flexShrink: 0 }}>
                   {emp.name?.[0] || '?'}
                 </div>
               )}
@@ -95,7 +127,7 @@ export default function PendingApprovalsPanel() {
                 <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{emp.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 2 }}>{emp.email}</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: 'rgba(0,71,171,0.08)', color: '#0047AB', fontWeight: 600 }}>{emp.position || '-'}</span>
+                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: 'rgba(99,91,255,0.08)', color: '#635BFF', fontWeight: 600 }}>{emp.position || '-'}</span>
                   <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: 'rgba(245,158,11,0.08)', color: '#d97706', fontWeight: 600 }}>{emp.division || '-'}</span>
                 </div>
               </div>
@@ -117,12 +149,12 @@ export default function PendingApprovalsPanel() {
               {selected.photo_url ? (
                 <img src={selected.photo_url} alt={selected.name} style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }} />
               ) : (
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#0047AB,#2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 24 }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#635BFF,#4F46E5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: 24 }}>
                   {selected.name?.[0]}
                 </div>
               )}
               <div>
-                <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{selected.name}</div>
+                <div style={{ fontWeight: 600, fontSize: 18, color: 'var(--text)' }}>{selected.name}</div>
                 <div style={{ fontSize: 13, color: 'var(--muted)' }}>{selected.email}</div>
                 <div style={{ fontSize: 12, color: '#d97706', fontWeight: 600, marginTop: 2 }}>Menunggu Verifikasi</div>
               </div>
@@ -182,6 +214,12 @@ export default function PendingApprovalsPanel() {
               </div>
             )}
 
+            {actionError && (
+              <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', color: '#DC2626', fontSize: 13, fontWeight: 600 }}>
+                {actionError}
+              </div>
+            )}
+
             {/* Action Buttons */}
             {!rejectMode ? (
               <div style={{ display: 'flex', gap: 10 }}>
@@ -190,7 +228,7 @@ export default function PendingApprovalsPanel() {
                   Tolak
                 </button>
                 <button onClick={handleAccept} disabled={processing}
-                  style={{ flex: 2, padding: '12px', borderRadius: 10, border: 'none', background: processing ? 'var(--border)' : 'linear-gradient(135deg,#22c55e,#16a34a)', color: processing ? 'var(--muted)' : '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14, cursor: processing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  style={{ flex: 2, padding: '12px', borderRadius: 10, border: 'none', background: processing ? 'var(--border)' : 'linear-gradient(135deg,#22c55e,#16a34a)', color: processing ? 'var(--muted)' : '#fff', fontFamily: 'inherit', fontWeight: 600, fontSize: 14, cursor: processing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   {processing ? <><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> Memproses...</> : 'Accept & Aktifkan'}
                 </button>
               </div>
@@ -201,7 +239,7 @@ export default function PendingApprovalsPanel() {
                   Batal
                 </button>
                 <button onClick={handleReject} disabled={processing || !rejectReason.trim()}
-                  style={{ flex: 2, padding: '12px', borderRadius: 10, border: 'none', background: !rejectReason.trim() ? 'var(--border)' : 'linear-gradient(135deg,#dc2626,#b91c1c)', color: !rejectReason.trim() ? 'var(--muted)' : '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14, cursor: !rejectReason.trim() ? 'not-allowed' : 'pointer' }}>
+                  style={{ flex: 2, padding: '12px', borderRadius: 10, border: 'none', background: !rejectReason.trim() ? 'var(--border)' : 'linear-gradient(135deg,#dc2626,#b91c1c)', color: !rejectReason.trim() ? 'var(--muted)' : '#fff', fontFamily: 'inherit', fontWeight: 600, fontSize: 14, cursor: !rejectReason.trim() ? 'not-allowed' : 'pointer' }}>
                   {processing ? 'Memproses...' : 'Konfirmasi Tolak'}
                 </button>
               </div>
@@ -214,3 +252,4 @@ export default function PendingApprovalsPanel() {
     </div>
   );
 }
+

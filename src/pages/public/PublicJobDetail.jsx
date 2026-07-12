@@ -2,17 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiMapPin, FiClock, FiBriefcase, FiCalendar, FiUsers, FiChevronRight } from 'react-icons/fi';
 import { supabase } from '../../lib/supabase';
+import { useFeatureFlags } from '../../context/FeatureFlagContext';
 import './PublicCareers.css';
 
 export default function PublicJobDetail() {
  const { slug, jobId } = useParams();
  const navigate = useNavigate();
+ const { isEnabled, loading: flagsLoading } = useFeatureFlags();
  const [job, setJob] = useState(null);
  const [loading, setLoading] = useState(true);
-
- useEffect(() => {
- fetchJob();
- }, [jobId]);
 
  const fetchJob = async () => {
  setLoading(true);
@@ -24,6 +22,26 @@ export default function PublicJobDetail() {
  setJob(data);
  setLoading(false);
  };
+
+ useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      await fetchJob();
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [jobId]);
+
+ if (!flagsLoading && !isEnabled('public_careers')) {
+ return (
+ <div className="career-page">
+ <div className="career-detail" style={{ textAlign: 'center', padding: '80px 24px' }}>
+ <h2 style={{ marginBottom: 8, fontSize: 20, fontWeight: 700 }}>Karir tidak tersedia</h2>
+ <p style={{ color: '#94A3B8', fontSize: 14 }}>Halaman lowongan publik dinonaktifkan.</p>
+ </div>
+ </div>
+ );
+ }
 
  if (loading) {
  return (

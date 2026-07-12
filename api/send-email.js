@@ -6,18 +6,13 @@
  *
  * type: 'leave_approval' | 'payslip' | 'reimbursement'
  */
+import { applyCors } from './_shared/cors.js';
+
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY; // Server-side env (no VITE_ prefix)
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@hrisloka.id';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const ALLOWED_ORIGINS = [
-  'https://hrisloka.id',
-  'https://www.hrisloka.id',
-  'https://hrisloka.com',
-  'https://www.hrisloka.com',
-];
 
 // Rate limit: max 10 email requests per IP per minute
 const rateLimitMap = new Map();
@@ -35,17 +30,24 @@ function checkRateLimit(ip) {
   return entry.count <= max;
 }
 
-// Verify Supabase JWT token
+// Verify Supabase JWT token — FAIL CLOSED.
+// If SUPABASE_URL or the service key is not configured, we reject rather than
+// allow, so a missing env var can never silently open the endpoint.
 async function verifyAuth(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
   const token = authHeader.split(' ')[1];
-  if (!SUPABASE_URL) return true; // Skip if not configured (dev mode)
+  if (!token) return false;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return false;
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_SERVICE_KEY || token },
+      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_SERVICE_KEY },
     });
-    return res.ok;
+    if (!res.ok) return false;
+    // Only confirmed users (email_confirmed) may send email on behalf of the app.
+    const user = await res.json();
+    if (user?.email_confirmed_at || user?.confirmed_at) return true;
+    return false;
   } catch {
     return false;
   }
@@ -162,16 +164,7 @@ function buildReimbursementEmail({ employeeName, status, amount, category }) {
 }
 
 export default async function handler(req, res) {
-  // CORS
-  const origin = req.headers.origin;
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Vary', 'Origin');
+  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

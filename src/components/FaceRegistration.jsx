@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import {
   HiArrowRight,
   HiCamera,
@@ -6,13 +6,14 @@ import {
   HiExclamationTriangle
 } from 'react-icons/hi2';
 import { supabase } from '../lib/supabase';
+import { isDemoMode } from '../lib/demoGuard';
 import FaceScanner from './FaceScanner';
 import './FaceRegistration.css';
 
 const REQUIRED_SAMPLES = 3;
 
 /**
- * FaceRegistration — Wizard to capture 3 face samples from the employee.
+ * FaceRegistration - Wizard to capture 3 face samples from the employee.
  * Creates entries in the employee_faces table.
  *
  * Props:
@@ -43,6 +44,64 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
     t('Slightly turn your face to the RIGHT', 'Miringkan sedikit ke KANAN'),
   ];
 
+  const saveToDatabase = useCallback(async (allCaptures) => {
+    setSaving(true);
+    setError('');
+    try {
+      // Demo mode: no DB write — complete locally for UI QA
+      if (isDemoMode() || String(employeeId || '').startsWith('demo')) {
+        setStep(4);
+        onComplete?.(allCaptures.map((c) => c.descriptor));
+        setSaving(false);
+        return;
+      }
+
+      if (!employeeId) throw new Error(t('Employee ID missing.', 'ID karyawan tidak ditemukan.'));
+
+      // Delete old registrations first
+      await supabase.from('employee_faces').delete().eq('employee_id', employeeId);
+
+      // Insert new descriptors (is_active required for hasRegisteredFace queries)
+      const rows = allCaptures.map((c, i) => {
+        const desc = Array.isArray(c.descriptor)
+          ? c.descriptor
+          : Array.from(c.descriptor || []);
+        return {
+          employee_id: employeeId,
+          descriptor: desc,
+          label: `photo_${i + 1}`,
+          quality_score: 85 + Math.round(Math.random() * 10),
+          is_active: true,
+        };
+      });
+
+      const { error: insertError } = await supabase.from('employee_faces').insert(rows);
+      if (insertError) {
+        // Retry without is_active for older schemas
+        if (/is_active|column/i.test(insertError.message || '')) {
+          const slim = rows.map((r) => ({
+            employee_id: r.employee_id,
+            descriptor: r.descriptor,
+            label: r.label,
+            quality_score: r.quality_score,
+          }));
+          const retry = await supabase.from('employee_faces').insert(slim);
+          if (retry.error) throw retry.error;
+        } else {
+          throw insertError;
+        }
+      }
+
+      setStep(4); // Complete
+      onComplete?.(allCaptures.map((c) => (
+        Array.isArray(c.descriptor) ? c.descriptor : Array.from(c.descriptor || [])
+      )));
+    } catch (err) {
+      setError(err.message || t('Failed to save face data.', 'Gagal menyimpan data wajah.'));
+    }
+    setSaving(false);
+  }, [employeeId, onComplete, locale]);
+
   const handleCapture = useCallback(async (descriptor, imageData) => {
     setShowScanner(false);
     const newCaptures = [...captures, { descriptor, imageData }];
@@ -55,43 +114,17 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
       if (nextStep < REQUIRED_SAMPLES) {
         setTimeout(() => setShowScanner(true), 800);
       } else {
-        // All captures done — save to DB
+        // All captures done - save to DB
         await saveToDatabase(newCaptures);
       }
     }
-  }, [captures, step]);
-
-  const saveToDatabase = async (allCaptures) => {
-    setSaving(true);
-    setError('');
-    try {
-      // Delete old registrations first
-      await supabase.from('employee_faces').delete().eq('employee_id', employeeId);
-
-      // Insert new descriptors
-      const rows = allCaptures.map((c, i) => ({
-        employee_id: employeeId,
-        descriptor: c.descriptor,
-        label: `photo_${i + 1}`,
-        quality_score: 85 + Math.round(Math.random() * 10), // Estimated quality
-      }));
-
-      const { error: insertError } = await supabase.from('employee_faces').insert(rows);
-      if (insertError) throw insertError;
-
-      setStep(4); // Complete
-      onComplete?.(allCaptures.map(c => c.descriptor));
-    } catch (err) {
-      setError(err.message || t('Failed to save face data.', 'Gagal menyimpan data wajah.'));
-    }
-    setSaving(false);
-  };
+  }, [captures, step, saveToDatabase]);
 
   const handleScanSuccess = useCallback(({ descriptor, imageData }) => {
     handleCapture(descriptor, imageData);
   }, [handleCapture]);
 
-  // ── Render ────────────────────────────────────────────────
+  // -- Render ------------------------------------------------
 
   // Step 0: Intro screen
   if (step === 0) {
@@ -129,15 +162,17 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
         </div>
 
         <button
+          type="button"
           onClick={() => { setStep(1); setShowScanner(true); }}
           style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '14px 24px', background: 'var(--primary)', color: '#fff',
-            border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
-            fontSize: 15, fontWeight: 700, fontFamily: 'inherit', width: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '10px 14px', minHeight: 40, background: 'var(--primary)', color: '#fff',
+            border: 'none', borderRadius: 10, cursor: 'pointer',
+            fontSize: 13, fontWeight: 700, fontFamily: 'inherit', width: '100%',
+            boxSizing: 'border-box',
           }}
         >
-          {t('Start Registration', 'Mulai Registrasi')} <HiArrowRight />
+          {t('Start Registration', 'Mulai Registrasi')} <HiArrowRight size={16} />
         </button>
       </div>
     );
@@ -149,12 +184,12 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
       <div className="face-reg">
         <div className="face-reg__complete">
           <div className="face-reg__complete-icon">
-            <HiCheck size={32} color="#fff" strokeWidth={3} />
+            <HiCheck size={18} color="#fff" strokeWidth={2.5} />
           </div>
-          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
             {t('Face Registered! ', 'Wajah Berhasil Didaftarkan! ')}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.4 }}>
             {t(
               'Your face data is saved securely. You can now use Face Attendance.',
               'Data wajah Anda tersimpan dengan aman. Anda sekarang dapat menggunakan Face Attendance.'
@@ -279,7 +314,7 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
       {/* Saving indicator */}
       {saving && (
         <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--muted)', padding: 12 }}>
-          <div style={{ marginBottom: 8 }}> {t('Saving face data…', 'Menyimpan data wajah…')}</div>
+          <div style={{ marginBottom: 8 }}> {t('Saving face data', 'Menyimpan data wajah')}</div>
           <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
             <div style={{ height: '100%', background: 'var(--primary)', width: '100%', animation: 'slideProgress 1.5s ease-in-out infinite' }} />
           </div>
@@ -288,3 +323,4 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
     </div>
   );
 }
+

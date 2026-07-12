@@ -75,7 +75,7 @@ export default function Appraisal() {
  const fetchData = async () => {
  setLoading(true);
  const [apRes, emRes] = await Promise.all([
- appraisalService.getAllAppraisals(),
+ appraisalService.getAllAppraisals(employee?.company_id),
  employeeService.getAllEmployees(undefined, employee?.company_id),
  ]);
  setAppraisals(apRes.data || []);
@@ -84,7 +84,7 @@ export default function Appraisal() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('appraisals', fetchData);
+ useRealtimeTable('appraisals', fetchData, { companyId: currentUser?.company_id });
 
  // Update reviewer groups when employee changes
  useEffect(() => {
@@ -153,36 +153,36 @@ export default function Appraisal() {
  const hasOtherDivision = reviewerGroups.otherDivision.length > 0;
 
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
- <h1><FiStar style={{ marginRight: 10 }} /> Appraisal & Review</h1>
+ <h1><FiStar className="icon-mr" /> Appraisal & Review</h1>
  <div className="page-header-actions">
- <button className="btn-primary" onClick={openCreate}><FiPlus /> Buat Appraisal</button>
+ <button className="btn-primary" onClick={openCreate} aria-label="Buat appraisal"><FiPlus /> Buat Appraisal</button>
  </div>
  </div>
 
  {/* Stats */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>Total Appraisal</div>
- <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--primary)' }}>{appraisals.length}</div>
+ <div className="stats-grid">
+ <div className="info-card">
+ <div className="info-card-label">Total Appraisal</div>
+ <div className="info-card-value primary">{appraisals.length}</div>
  </div>
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>Selesai</div>
- <div style={{ fontSize: 28, fontWeight: 700, color: '#16A34A' }}>{completed}</div>
+ <div className="info-card">
+ <div className="info-card-label">Selesai</div>
+ <div className="info-card-value success">{completed}</div>
  </div>
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>Berlangsung</div>
- <div style={{ fontSize: 28, fontWeight: 700, color: '#F59E0B' }}>{inProgress}</div>
+ <div className="info-card">
+ <div className="info-card-label">Berlangsung</div>
+ <div className="info-card-value warning">{inProgress}</div>
  </div>
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>Rata-rata Rating</div>
- <div style={{ fontSize: 28, fontWeight: 700, color: '#F59E0B' }}>{avgRating}/5</div>
+ <div className="info-card">
+ <div className="info-card-label">Rata-rata Rating</div>
+ <div className="info-card-value warning">{avgRating}/5</div>
  </div>
  </div>
 
  {loading ? (
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: 24 }}>
+ <div className="data-table-card" style={{ padding: 24 }}>
  <TableSkeleton rows={4} cols={6} />
  </div>
  ) : appraisals.length === 0 ? (
@@ -214,7 +214,7 @@ export default function Appraisal() {
  <tr key={ap.id}>
  <td>
  <div className="employee-cell">
- <div className="employee-avatar" style={{ width: 30, height: 30, fontSize: 11 }}>
+ <div className="employee-avatar sm">
  {(emp?.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}
  </div>
  <div>
@@ -223,35 +223,32 @@ export default function Appraisal() {
  </div>
  </div>
  </td>
- <td><span className="chart-card-badge">{ap.period}</span></td>
+ <td><span className="period-label">{ap.period}</span></td>
  <td style={{ textAlign: 'center' }}>
- <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+ <div className="btn-icon-row" style={{ justifyContent: 'center' }}>
  <FiStar style={{ color: '#F59E0B', fill: '#F59E0B' }} size={14} />
- <span style={{ fontSize: 14, fontWeight: 700 }}>{ap.rating}</span>
- <span style={{ fontSize: 11, color: 'var(--muted)' }}>/5</span>
+ <span className="td-semibold">{ap.rating}</span>
+ <span className="td-muted-sm">/5</span>
  </div>
  </td>
  <td>
- <div style={{ fontSize: 13 }}>
+ <div className="td-sm">
  {reviewer?.name || '-'}
  {emp?.manager_id && reviewer && emp.manager_id === reviewer.id ? (
- <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: '#DCFCE7', color: '#16A34A' }}>Atasan</span>
+ <span className="status-badge active" style={{ marginLeft: 6, fontSize: 9 }}>Atasan</span>
  ) : null}
  </div>
  </td>
- <td style={{ maxWidth: 220, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{ap.comments}</td>
+ <td className="td-truncate td-muted-sm" style={{ maxWidth: 220 }}>{ap.comments}</td>
  <td>
- <span style={{
- padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
- color: '#fff', background: statusColors[ap.status]
- }}>
+ <span className="status-badge" style={{ background: statusColors[ap.status], color: '#fff' }}>
  {statusLabels[ap.status]}
  </span>
  </td>
  <td>
- <div style={{ display: 'flex', gap: 6 }}>
- <button className="action-btn" onClick={() => openEdit(ap)} title="Edit"><FiEdit2 /></button>
- <button className="action-btn danger" onClick={() => handleDelete(ap.id)} title="Hapus"><FiTrash2 /></button>
+ <div className="actions-cell">
+ <button className="action-btn" onClick={() => openEdit(ap)} title="Edit" aria-label="Edit appraisal"><FiEdit2 /></button>
+ <button className="action-btn danger" onClick={() => handleDelete(ap.id)} title="Hapus" aria-label="Hapus appraisal"><FiTrash2 /></button>
  </div>
  </td>
  </tr>
@@ -335,7 +332,7 @@ export default function Appraisal() {
 
  {/* Reviewer info hint */}
  {form.employeeId && !form.reviewerId && (
- <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: '#FFF7ED', border: '1px solid #FED7AA', fontSize: 12, color: '#92400E', lineHeight: 1.5 }}>
+ <div className="info-card td-sm" style={{ marginTop: 8, background: '#FFF7ED', border: '1px solid #FED7AA', color: '#92400E', lineHeight: 1.5 }}>
  <strong>Pilih reviewer:</strong>
  <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
  {hasManager && <li><strong>Atasan Langsung</strong> (recommended) - review oleh manager/supervisor langsung</li>}
@@ -353,31 +350,20 @@ export default function Appraisal() {
  const isManager = selectedEmp?.manager_id && rv?.id === selectedEmp.manager_id;
 
  return rv ? (
- <div style={{
+ <div className="btn-icon-row info-card td-sm" style={{
  marginTop: 8,
- padding: '10px 14px',
- borderRadius: 'var(--radius-sm)',
- background: isManager ? '#F0FDF4' : '#EFF6FF',
- border: `1px solid ${isManager ? '#BBF7D0' : '#BFDBFE'}`,
- fontSize: 12,
- display: 'flex',
- alignItems: 'center',
- gap: 8,
+ background: isManager ? '#F0FDF4' : '#F0EEFF',
+ border: `1px solid ${isManager ? '#BBF7D0' : '#C7D2FE'}`,
  }}>
- <div style={{
- width: 32, height: 32, borderRadius: '50%',
- background: isManager ? '#16A34A' : 'var(--primary)',
- color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
- fontSize: 11, fontWeight: 700, flexShrink: 0,
- }}>
+ <div className="employee-avatar sm" style={{ background: isManager ? '#16A34A' : 'var(--primary)', color: '#fff' }}>
  {rv.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
  </div>
  <div>
- <div style={{ fontWeight: 700 }}>
+ <div className="td-semibold">
  {rv.name}
- {isManager && <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: '#DCFCE7', color: '#16A34A' }}>Atasan Langsung</span>}
+ {isManager && <span className="status-badge active" style={{ marginLeft: 6, fontSize: 9 }}>Atasan Langsung</span>}
  </div>
- <div style={{ color: 'var(--muted)', fontSize: 11 }}>{rv.position || rv.division || '-'}</div>
+ <div className="td-muted-sm">{rv.position || rv.division || '-'}</div>
  </div>
  </div>
  ) : null;
@@ -391,14 +377,14 @@ export default function Appraisal() {
  </select>
  </div>
  <div className="form-group">
- <label className="form-label">Rating (1-5): <strong style={{ color: '#F59E0B' }}>{form.rating}</strong></label>
+ <label className="form-label">Rating (1-5): <strong className="text-warning">{form.rating}</strong></label>
  <input
  type="range" min={1} max={5} step={0.5}
  value={form.rating}
  onChange={e => setForm({ ...form, rating: Number(e.target.value) })}
  style={{ width: '100%' }}
  />
- <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)' }}>
+ <div className="btn-icon-row td-muted-sm" style={{ justifyContent: 'space-between' }}>
  <span>Buruk</span><span>Cukup</span><span>Baik</span><span>Sangat Baik</span><span>Luar Biasa</span>
  </div>
  </div>
@@ -425,8 +411,7 @@ export default function Appraisal() {
  </div>
  <div className="modal-footer">
  <button className="btn-secondary" onClick={() => setModal(null)}>Batal</button>
- <button className="btn-primary" onClick={handleSubmit} disabled={!form.employeeId}>
- <FiCheck /> {editingId ? 'Update' : 'Simpan'}
+ <button className="btn-primary" onClick={handleSubmit} disabled={!form.employeeId} aria-label="Simpan appraisal"><FiCheck /> {editingId ? 'Update' : 'Simpan'}
  </button>
  </div>
  </div>
@@ -435,3 +420,6 @@ export default function Appraisal() {
  </div>
  );
 }
+
+
+

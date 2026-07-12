@@ -31,7 +31,7 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
         </div>
       </div>
       {hasStats && (
-        <div className="fp-stats" style={{ marginBottom: 24 }}>
+        <div className="fp-stats mb">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="fp-stat">
               <SkeletonBox w={40} h={40} style={{ borderRadius: 10, marginBottom: 14 }} />
@@ -61,11 +61,13 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
   );
 }
 
+const EMPTY_PLAN = { name: '', slug: '', price_monthly: 0, price_yearly: 0, max_employees: 10, features: [], is_active: true };
+const PLAN_COLORS = { free: '#6B7280', starter: '#635BFF', pro: '#8B5CF6', enterprise: '#F59E0B' };
+const formatIDR = (v) => v ? `Rp ${(v || 0).toLocaleString('id-ID')}` : '-';
+
 export default function FounderSubscriptions() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  if (loading) return <SkeletonPage cols={5} rows={4} hasStats={false} />;
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_PLAN);
@@ -83,6 +85,8 @@ export default function FounderSubscriptions() {
     }
   };
   useEffect(() => { fetchPlans(); }, []);
+
+  if (loading) return <SkeletonPage cols={5} rows={4} hasStats={false} />;
 
   const openCreate = () => {
     setEditing(null);
@@ -141,7 +145,7 @@ export default function FounderSubscriptions() {
       </div>
 
       {/* Plan cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20, marginBottom: 32 }}>
+      <div className="stats-grid">
         {plans.map(plan => (
           <div key={plan.id} className="fp-card" style={{
             opacity: plan.is_active ? 1 : 0.55,
@@ -150,7 +154,7 @@ export default function FounderSubscriptions() {
             <div className="fp-card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 2 }}>{plan.name}</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{plan.name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>/{plan.slug}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -169,11 +173,11 @@ export default function FounderSubscriptions() {
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 26, fontWeight: 800, color: PLAN_COLORS[plan.slug] || '#94A3B8', letterSpacing: '-1px' }}>
+                <div style={{ fontSize: 26, fontWeight: 600, color: PLAN_COLORS[plan.slug] || '#94A3B8', letterSpacing: '-1px' }}>
                   {plan.price_monthly ? `Rp ${(plan.price_monthly / 1000)}k` : plan.slug === 'enterprise' ? 'Custom' : 'Free'}
                 </div>
                 {plan.price_monthly > 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>/bulan · {plan.price_yearly ? `Rp ${(plan.price_yearly / 1000)}k/tahun` : ''}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>/bulan  {plan.price_yearly ? `Rp ${(plan.price_yearly / 1000)}k/tahun` : ''}</div>
                 )}
               </div>
 
@@ -220,7 +224,7 @@ export default function FounderSubscriptions() {
             <tbody>
               {plans.map(p => (
                 <tr key={p.id}>
-                  <td style={{ fontWeight: 600 }}>{p.name}</td>
+                  <td className="td-semibold">{p.name}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{p.slug}</td>
                   <td>{formatIDR(p.price_monthly)}</td>
                   <td>{formatIDR(p.price_yearly)}</td>
@@ -297,3 +301,4 @@ export default function FounderSubscriptions() {
     </div>
   );
 }
+

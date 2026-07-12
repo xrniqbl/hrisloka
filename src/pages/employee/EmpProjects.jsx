@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   HiArrowTrendingUp,
   HiBellAlert,
@@ -116,12 +116,12 @@ export default function EmpProjects() {
   const activeProjects = myProjects.filter(a => a.projects?.status === 'active');
 
   if (loading) return (
-    <div style={{ animation: 'fadeInUp 0.3s ease' }}>
-      <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-lg)', marginBottom: 20 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+    <div className="ep-loading-wrap">
+      <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-lg)', marginBottom: 14 }} />
+      <div className="stats-grid mb">
         {[1,2].map(i => <div key={i} className="emp-card"><div className="skeleton" style={{ height: 56, borderRadius: 8 }} /></div>)}
       </div>
-      {[1,2,3].map(i => <div key={i} className="emp-card" style={{ marginBottom: 8, height: 80 }}><div className="skeleton" style={{ height: '100%', borderRadius: 8 }} /></div>)}
+      {[1,2,3].map(i => <div key={i} className="emp-card mb-sm" style={{ height: 80 }}><div className="skeleton" style={{ height: '100%', borderRadius: 8 }} /></div>)}
     </div>
   );
 
@@ -130,29 +130,49 @@ export default function EmpProjects() {
       <h1 className="emp-page-title">{locale === 'en' ? 'My Projects' : 'Proyek Saya'}</h1>
 
       {/* Timer Section */}
-      <div style={{ background: activeTimer ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)' : 'linear-gradient(135deg, var(--primary) 0%, #1D4ED8 100%)', borderRadius: 'var(--radius-lg)', padding: 20, marginBottom: 20, color: '#fff' }}>
+      {/* background is a JS ternary — kept as inline */}
+      <div className="chart-card mb" style={{ background: activeTimer ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)' : 'linear-gradient(135deg, var(--primary) 0%, #4338CA 100%)', color: '#fff' }}>
         {activeTimer ? (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, opacity: 0.85, fontSize: 12 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'pulse 1.5s infinite' }} />
-              {locale === 'en' ? 'WORKING' : 'SEDANG BEKERJA'}
+            <div className="btn-icon-row mb-sm" style={{ opacity: 0.85 }}>
+              <span className="ep-pulse-dot" />
+              <span className="td-sm">{locale === 'en' ? 'WORKING' : 'SEDANG BEKERJA'}</span>
             </div>
-            <div style={{ fontSize: 13, marginBottom: 4, opacity: 0.9 }}><HiFolder size={12} /> {activeTimer.projects?.name}</div>
-            <div style={{ fontSize: 40, fontWeight: 800, fontFamily: 'monospace', letterSpacing: 3 }}>{fmtTimer(elapsed)}</div>
-            {activeTimer.description && <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>{activeTimer.description}</div>}
-            <button onClick={handleStop} disabled={starting} style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            <div className="td-sm mb-sm" style={{ opacity: 0.9 }}><HiFolder size={12} /> {activeTimer.projects?.name}</div>
+            <div className="td-mono-bold" style={{ fontSize: 40, letterSpacing: 3 }}>{fmtTimer(elapsed)}</div>
+            {activeTimer.description && <div className="td-sm" style={{ opacity: 0.8, marginTop: 4 }}>{activeTimer.description}</div>}
+            <button onClick={handleStop} disabled={starting} className="ep-timer-btn mb">
               <HiSquare2Stack size={16} /> {starting ? (locale === 'en' ? 'Stopping...' : 'Menghentikan...') : 'Stop Timer'}
             </button>
           </div>
         ) : (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, marginBottom: 12 }}><HiClock size={14} /> {locale === 'en' ? 'Start Working' : 'Mulai Kerja'}</div>
-            <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: 13, marginBottom: 10, appearance: 'auto' }}>
-              <option value="" style={{ color: '#333' }}>� {locale === 'en' ? 'Select Project' : 'Pilih Proyek'} �</option>
-              {activeProjects.map(a => (<option key={a.projects?.id} value={a.projects?.id} style={{ color: '#333' }}>{a.projects?.name}{a.projects?.client ? ` (${a.projects.client})` : ''}</option>))}
+            <div className="chart-card-title mb-sm btn-icon-row"><HiClock size={14} /> {locale === 'en' ? 'Start Working' : 'Mulai Kerja'}</div>
+            <select
+              value={selectedProject}
+              onChange={e => setSelectedProject(e.target.value)}
+              className="ep-timer-select mb-sm"
+            >
+              <option value="" className="ep-option-dark">— {locale === 'en' ? 'Select Project' : 'Pilih Proyek'} —</option>
+              {activeProjects.map(a => (
+                <option key={a.projects?.id} value={a.projects?.id} className="ep-option-dark">
+                  {a.projects?.name}{a.projects?.client ? ` (${a.projects.client})` : ''}
+                </option>
+              ))}
             </select>
-            <input placeholder={locale === 'en' ? 'Task description (optional)' : 'Deskripsi tugas (opsional)'} value={description} onChange={e => setDescription(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: 13, marginBottom: 12 }} />
-            <button onClick={handleStart} disabled={!selectedProject || starting} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px 0', background: selectedProject ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 'var(--radius-md)', color: '#fff', fontWeight: 700, fontSize: 15, cursor: selectedProject ? 'pointer' : 'not-allowed' }}>
+            <input
+              placeholder={locale === 'en' ? 'Task description (optional)' : 'Deskripsi tugas (opsional)'}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              className="ep-timer-input mb-sm"
+            />
+            {/* background depends on selectedProject (JS expression) — kept inline */}
+            <button
+              onClick={handleStart}
+              disabled={!selectedProject || starting}
+              className="ep-timer-start"
+              style={{ background: selectedProject ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)', cursor: selectedProject ? 'pointer' : 'not-allowed' }}
+            >
               <HiPlayCircle size={18} /> {starting ? (locale === 'en' ? 'Starting...' : 'Memulai...') : (locale === 'en' ? 'Start Work' : 'Mulai Kerja')}
             </button>
           </div>
@@ -160,42 +180,43 @@ export default function EmpProjects() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-        <div className="emp-card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{locale === 'en' ? 'This Week' : 'Minggu Ini'}</div>
-          <div className="emp-stat-number" style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>{fmtH(weeklyHours)}</div>
+      <div className="stats-grid mb">
+        <div className="emp-card ep-stat-center">
+          <div className="info-card-label">{locale === 'en' ? 'This Week' : 'Minggu Ini'}</div>
+          <div className="info-card-value primary">{fmtH(weeklyHours)}</div>
         </div>
-        <div className="emp-card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{locale === 'en' ? 'This Month' : 'Bulan Ini'}</div>
-          <div className="emp-stat-number" style={{ fontSize: 20, fontWeight: 800, color: 'var(--success)' }}>{fmtH(monthlyHours)}</div>
+        <div className="emp-card ep-stat-center">
+          <div className="info-card-label">{locale === 'en' ? 'This Month' : 'Bulan Ini'}</div>
+          <div className="info-card-value success">{fmtH(monthlyHours)}</div>
         </div>
       </div>
 
       {/* Today's Log */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="mb">
+        <div className="section-label mb-sm btn-icon-row">
           <HiCalendarDays size={14} /> {locale === 'en' ? "Today's Log" : 'Log Hari Ini'}
         </div>
         {todayLogs.length === 0 ? (
-          <div className="emp-card" style={{ textAlign: 'center', color: 'var(--muted)', padding: 20, fontSize: 13 }}>
-            {locale === 'en' ? 'No logs for today' : 'Belum ada log hari ini'}
+          <div className="emp-card ep-empty-center">
+            <span className="td-muted-sm">{locale === 'en' ? 'No logs for today' : 'Belum ada log hari ini'}</span>
           </div>
         ) : (
           todayLogs.map(t => (
-            <div className="emp-card" key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div className="emp-card mb-sm ep-log-row" key={t.id}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.projects?.color || '#2563EB' }} />
+                <div className="td-semibold btn-icon-row" style={{ fontSize: 13 }}>
+                  {/* color is a JS expression — kept inline */}
+                  <span className="ep-color-dot" style={{ background: t.projects?.color || '#4F46E5' }} />
                   {t.projects?.name}
                 </div>
-                {t.description && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{t.description}</div>}
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                {t.description && <div className="td-muted-sm" style={{ marginTop: 2 }}>{t.description}</div>}
+                <div className="td-muted-sm" style={{ marginTop: 2 }}>
                   {new Date(t.start_time).toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', { hour: '2-digit', minute: '2-digit' })}
-                  {' � '}
+                  {' – '}
                   {new Date(t.end_time).toLocaleTimeString(locale === 'en' ? 'en-US' : 'id-ID', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary)' }}>{fmtH(t.hours)}</div>
+              <div className="td-primary-bold">{fmtH(t.hours)}</div>
             </div>
           ))
         )}
@@ -203,7 +224,7 @@ export default function EmpProjects() {
 
       {/* My Projects List */}
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="section-label mb-sm btn-icon-row">
           <HiFolder size={14} /> {locale === 'en' ? `Projects (${myProjects.length})` : `Proyek (${myProjects.length})`}
         </div>
         {myProjects.length === 0 ? (
@@ -215,35 +236,53 @@ export default function EmpProjects() {
             const p = a.projects;
             if (!p) return null;
             return (
-              <div className="emp-card emp-card-stagger" key={a.id} style={{ marginBottom: 8, borderLeft: `3px solid ${p.color || '#2563EB'}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
-                    {p.client && <div style={{ fontSize: 11, color: 'var(--muted)' }}>{locale === 'en' ? 'Client' : 'Klien'}: {p.client}</div>}
-                    <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10, padding: '2px 8px', background: p.status === 'active' ? 'rgba(16,185,129,.1)' : 'rgba(107,114,128,.1)', color: p.status === 'active' ? 'var(--success)' : 'var(--muted)', borderRadius: 4, fontWeight: 600 }}>
+              /* borderLeft uses p.color (JS expression) — kept inline */
+              <div className="emp-card emp-card-stagger mb-sm" key={a.id} style={{ borderLeft: `3px solid ${p.color || '#4F46E5'}` }}>
+                <div className="ep-project-row">
+                  <div className="ep-project-main">
+                    <div className="td-semibold" style={{ fontSize: 14 }}>{p.name}</div>
+                    {p.client && <div className="td-muted-sm">{locale === 'en' ? 'Client' : 'Klien'}: {p.client}</div>}
+                    <div className="btn-icon-row ep-tags-row">
+                      {/* background and color depend on p.status (JS expression) — kept inline */}
+                      <span
+                        className="td-sm"
+                        style={{
+                          padding: '2px 8px',
+                          background: p.status === 'active' ? 'rgba(16,185,129,.1)' : 'rgba(107,114,128,.1)',
+                          color: p.status === 'active' ? 'var(--success)' : 'var(--muted)',
+                          borderRadius: 4,
+                          fontWeight: 600,
+                        }}
+                      >
                         {p.status === 'active' ? (locale === 'en' ? 'Active' : 'Aktif') : p.status === 'completed' ? (locale === 'en' ? 'Completed' : 'Selesai') : (locale === 'en' ? 'On Hold' : 'Ditunda')}
                       </span>
-                      <span style={{ fontSize: 10, padding: '2px 8px', background: 'rgba(59,130,246,.08)', color: 'var(--primary)', borderRadius: 4 }}>
-                        {a.role === 'lead' ? 'Lead' : 'Member'} � {a.allocation_pct}%
+                      <span className="ep-role-tag td-sm">
+                        {a.role === 'lead' ? 'Lead' : 'Member'}  {a.allocation_pct}%
                       </span>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
+                  <div className="ep-project-deadline">
                     {p.end_date && (() => {
                       const di = getDeadlineInfo(p.end_date, locale);
-                      return di ? (<div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>{di.urgent && <HiBellAlert size={12} style={{ color: di.color }} />}<span style={{ fontSize: 10, fontWeight: 700, color: di.color }}>{di.label}</span></div>) : null;
+                      return di ? (
+                        <div className="btn-icon-row ep-deadline-row">
+                          {/* color is di.color (JS expression) — kept inline */}
+                          {di.urgent && <HiBellAlert size={12} style={{ color: di.color }} />}
+                          <span className="td-semibold td-sm" style={{ color: di.color }}>{di.label}</span>
+                        </div>
+                      ) : null;
                     })()}
-                    <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{p.end_date}</div>
+                    <div className="td-muted-sm" style={{ marginTop: 4 }}>{p.end_date}</div>
                   </div>
                 </div>
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--muted)', marginBottom: 4 }}>
-                    <span>{locale === 'en' ? 'Time allocation' : 'Alokasi waktu'}</span>
-                    <span>{a.allocation_pct || 0}%</span>
+                <div className="ep-alloc-block">
+                  <div className="btn-icon-row ep-alloc-header">
+                    <span className="td-muted-sm">{locale === 'en' ? 'Time allocation' : 'Alokasi waktu'}</span>
+                    <span className="td-muted-sm">{a.allocation_pct || 0}%</span>
                   </div>
                   <div className="emp-progress-bar">
-                    <div className="emp-progress-fill" style={{ width: `${getProgress(a.allocation_pct)}%`, background: `linear-gradient(90deg, ${p.color || '#2563EB'}, ${p.color || '#3B82F6'}88)` }} />
+                    {/* width and background both use p.color (JS expressions) — kept inline */}
+                    <div className="emp-progress-fill" style={{ width: `${getProgress(a.allocation_pct)}%`, background: `linear-gradient(90deg, ${p.color || '#4F46E5'}, ${p.color || '#635BFF'}88)` }} />
                   </div>
                 </div>
               </div>

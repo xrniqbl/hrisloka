@@ -1,10 +1,16 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { FiUser, FiLock, FiGlobe, FiBell, FiMapPin, FiMoon, FiSun, FiSave, FiCheck, FiShield } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import '../styles/shared.css';
 import './Settings.css';
 import SubscriptionStatus from '../components/SubscriptionStatus';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const tabs = [
     { key: 'account', label: 'Profil Akun', icon: <FiUser /> },
@@ -20,6 +26,7 @@ export default function Settings() {
     const [activeTab, setActiveTab] = useState('account');
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [passwordError, setPasswordError] = useState('');
 
     // Account form
     const [accountForm, setAccountForm] = useState({
@@ -29,7 +36,7 @@ export default function Settings() {
         position: '',
     });
 
-    // Company form — persisted to localStorage
+    // Company form - persisted to localStorage
     const [companyForm, setCompanyForm] = useState(() => {
         try {
             const saved = localStorage.getItem('hrisync_company_settings');
@@ -42,7 +49,7 @@ export default function Settings() {
         } catch { return { name: 'PT HRISync Indonesia', address: 'Jl. Sudirman No. 123, Jakarta Selatan', phone: '(021) 555-0123', website: 'hrisync.id' }; }
     });
 
-    // Notification toggles — persisted to localStorage
+    // Notification toggles - persisted to localStorage
     const [notifications, setNotifications] = useState(() => {
         try {
             const saved = localStorage.getItem('hrisync_notifications');
@@ -64,7 +71,7 @@ export default function Settings() {
         confirmPassword: '',
     });
 
-    // Theme — synced with actual data-theme attribute
+    // Theme - synced with actual data-theme attribute
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('hrisync_theme') === 'dark');
 
     // Apply dark mode when toggled
@@ -107,33 +114,33 @@ export default function Settings() {
     };
 
     const handleChangePassword = async () => {
+        setPasswordError('');
         if (securityForm.newPassword !== securityForm.confirmPassword) {
-            alert('Password baru tidak cocok!');
+            setPasswordError('Password baru tidak cocok!');
             return;
         }
         if (securityForm.newPassword.length < 6) {
-            alert('Password minimal 6 karakter.');
+            setPasswordError('Password minimal 6 karakter.');
             return;
         }
         if (!securityForm.currentPassword) {
-            alert('Masukkan password saat ini terlebih dahulu.');
+            setPasswordError('Masukkan password saat ini terlebih dahulu.');
             return;
         }
         setSaving(true);
-        // Verify current password before allowing change
         const { error: verifyError } = await supabase.auth.signInWithPassword({
             email: user?.email,
             password: securityForm.currentPassword,
         });
         if (verifyError) {
             setSaving(false);
-            alert('Password saat ini salah.');
+            setPasswordError('Password saat ini salah.');
             return;
         }
         const { error } = await supabase.auth.updateUser({ password: securityForm.newPassword });
         setSaving(false);
         if (error) {
-            alert('Gagal mengubah password: ' + error.message);
+            setPasswordError('Gagal mengubah password: ' + error.message);
         } else {
             setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
             showSaved();
@@ -152,7 +159,7 @@ export default function Settings() {
     const descStyle = { fontSize: 12, color: 'var(--muted)', marginBottom: 4 };
 
     return (
-        <div>
+        <div className="admin-page">
             <div className="page-header">
                 <h1>Settings</h1>
                 {saved && (
@@ -160,24 +167,22 @@ export default function Settings() {
                         <FiCheck size={14} /> Tersimpan!
                     </div>
                 )}
-            </div>
+        </div>
 
             {/* Tab Navigation */}
-            <div className="settings-tabs">
-                {tabs.map(tab => (
-                    <button
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="settings-tabs">
+                    <TabsTrigger
                         key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`settings-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+                        value={tab.key}
+                        className="settings-tab-btn"
                     >
                         {tab.icon} {tab.label}
-                    </button>
-                ))}
-            </div>
+                    </TabsTrigger>
+            </TabsList>
 
-            {/* Account Tab */}
-            {activeTab === 'account' && (
-                <div style={cardStyle}>
+            <TabsContent value="account" className="mt-6">
+            <div style={cardStyle}>
                     <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Informasi Akun</h3>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
@@ -194,33 +199,32 @@ export default function Settings() {
                     <div className="form-grid">
                         <div className="form-group">
                             <label className="form-label">Nama Lengkap</label>
-                            <input className="form-input" value={accountForm.name} onChange={e => setAccountForm({ ...accountForm, name: e.target.value })} />
+                            <Input className="form-input" value={accountForm.name} onChange={e => setAccountForm({ ...accountForm, name: e.target.value })} />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Email</label>
-                            <input className="form-input" value={accountForm.email} disabled style={{ opacity: 0.6 }} />
+                            <Input className="form-input" value={accountForm.email} disabled style={{ opacity: 0.6 }} />
                             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>Email tidak dapat diubah dari sini.</div>
                         </div>
                         <div className="form-group">
                             <label className="form-label">No. Telepon</label>
-                            <input className="form-input" value={accountForm.phone} onChange={e => setAccountForm({ ...accountForm, phone: e.target.value })} placeholder="08xxx" />
+                            <Input className="form-input" value={accountForm.phone} onChange={e => setAccountForm({ ...accountForm, phone: e.target.value })} placeholder="08xxx" />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Jabatan</label>
-                            <input className="form-input" value={accountForm.position} onChange={e => setAccountForm({ ...accountForm, position: e.target.value })} />
+                            <Input className="form-input" value={accountForm.position} onChange={e => setAccountForm({ ...accountForm, position: e.target.value })} />
                         </div>
                     </div>
 
                     <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn-primary" onClick={handleSaveAccount} disabled={saving}>
+                        <Button className="btn-primary" onClick={handleSaveAccount} disabled={saving}>
                             <FiSave /> {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-                        </button>
+                        </Button>
                     </div>
                 </div>
-            )}
+            </TabsContent>
 
-            {/* Security Tab */}
-            {activeTab === 'security' && (
+            <TabsContent value="security" className="mt-6">
                 <div style={cardStyle}>
                     <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}><FiShield style={{ marginRight: 8 }} /> Keamanan Akun</h3>
 
@@ -257,10 +261,15 @@ export default function Settings() {
                         </div>
                     </div>
 
-                    <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn-primary" onClick={handleChangePassword} disabled={saving || !securityForm.newPassword}>
+                    <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-end' }}>
+                        {passwordError && (
+                            <div style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid rgba(220,38,38,0.2)', fontSize: 13, fontWeight: 500 }}>
+                                {passwordError}
+                            </div>
+                        )}
+                        <Button className="btn-primary" onClick={handleChangePassword} disabled={saving || !securityForm.newPassword}>
                             <FiLock /> {saving ? 'Menyimpan...' : 'Ubah Password'}
-                        </button>
+                        </Button>
                     </div>
 
                     <div style={{ marginTop: 32, padding: 20, background: '#FEFCE8', borderRadius: 'var(--radius-md)', border: '1px solid #FDE68A' }}>
@@ -270,45 +279,44 @@ export default function Settings() {
                         </div>
                     </div>
                 </div>
-            )}
+            </TabsContent>
 
-            {/* Company Tab */}
-            {activeTab === 'company' && (
+            <TabsContent value="company" className="mt-6">
                 <div style={cardStyle}>
                     <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Informasi Perusahaan</h3>
 
                     <div className="form-grid">
                         <div className="form-group">
                             <label className="form-label">Nama Perusahaan</label>
-                            <input className="form-input" value={companyForm.name} onChange={e => setCompanyForm({ ...companyForm, name: e.target.value })} />
+                            <Input className="form-input" value={companyForm.name} onChange={e => setCompanyForm({ ...companyForm, name: e.target.value })} />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Website</label>
-                            <input className="form-input" value={companyForm.website} onChange={e => setCompanyForm({ ...companyForm, website: e.target.value })} />
+                            <Input className="form-input" value={companyForm.website} onChange={e => setCompanyForm({ ...companyForm, website: e.target.value })} />
                         </div>
                         <div className="form-group full-width">
                             <label className="form-label">Alamat</label>
-                            <input className="form-input" value={companyForm.address} onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })} />
+                            <Input className="form-input" value={companyForm.address} onChange={e => setCompanyForm({ ...companyForm, address: e.target.value })} />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Telepon Kantor</label>
-                            <input className="form-input" value={companyForm.phone} onChange={e => setCompanyForm({ ...companyForm, phone: e.target.value })} />
+                            <Input className="form-input" value={companyForm.phone} onChange={e => setCompanyForm({ ...companyForm, phone: e.target.value })} />
                         </div>
                     </div>
 
                     <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn-primary" onClick={() => {
+                        <Button className="btn-primary" onClick={() => {
                             localStorage.setItem('hrisync_company_settings', JSON.stringify(companyForm));
                             showSaved();
                         }}>
                             <FiSave /> Simpan
-                        </button>
+                        </Button>
                     </div>
                 </div>
-            )}
+            </TabsContent>
 
             {/* Notifications Tab */}
-            {activeTab === 'notifications' && (
+            <TabsContent value="notifications" className="mt-6">
                 <div style={{ display: 'grid', gap: 20 }}>
                     <div style={cardStyle}>
                         <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Email Notifikasi</h3>
@@ -325,27 +333,10 @@ export default function Settings() {
                                     <div style={labelStyle}>{item.label}</div>
                                     <div style={descStyle}>{item.desc}</div>
                                 </div>
-                                <label style={{ position: 'relative', width: 44, height: 24, cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={notifications[item.key]}
-                                        onChange={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key] })}
-                                        style={{ display: 'none' }}
-                                    />
-                                    <div style={{
-                                        width: 44, height: 24, borderRadius: 12,
-                                        background: notifications[item.key] ? 'var(--primary)' : '#D1D5DB',
-                                        transition: 'background 0.2s ease',
-                                    }}>
-                                        <div style={{
-                                            width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                                            position: 'absolute', top: 3,
-                                            left: notifications[item.key] ? 23 : 3,
-                                            transition: 'left 0.2s ease',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                        }} />
-                                    </div>
-                                </label>
+                                <Switch
+                                    checked={notifications[item.key]}
+                                    onCheckedChange={(checked) => setNotifications({ ...notifications, [item.key]: checked })}
+                                />
                             </div>
                         ))}
                     </div>
@@ -365,35 +356,17 @@ export default function Settings() {
                                     <div style={labelStyle}>{item.label}</div>
                                     <div style={descStyle}>{item.desc}</div>
                                 </div>
-                                <label style={{ position: 'relative', width: 44, height: 24, cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={notifications[item.key]}
-                                        onChange={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key] })}
-                                        style={{ display: 'none' }}
-                                    />
-                                    <div style={{
-                                        width: 44, height: 24, borderRadius: 12,
-                                        background: notifications[item.key] ? 'var(--primary)' : '#D1D5DB',
-                                        transition: 'background 0.2s ease',
-                                    }}>
-                                        <div style={{
-                                            width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                                            position: 'absolute', top: 3,
-                                            left: notifications[item.key] ? 23 : 3,
-                                            transition: 'left 0.2s ease',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                                        }} />
-                                    </div>
-                                </label>
+                                <Switch
+                                    checked={notifications[item.key]}
+                                    onCheckedChange={(checked) => setNotifications({ ...notifications, [item.key]: checked })}
+                                />
                             </div>
                         ))}
                     </div>
                 </div>
-            )}
+            </TabsContent>
 
-            {/* Appearance Tab */}
-            {activeTab === 'appearance' && (
+            <TabsContent value="appearance" className="mt-6">
                 <div style={cardStyle}>
                     <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Tampilan</h3>
 
@@ -407,7 +380,7 @@ export default function Settings() {
                                 transition: 'all 0.2s ease',
                             }}
                         >
-                            <FiSun style={{ fontSize: 28, color: '#F59E0B', marginBottom: 8 }} />
+                            <FiSun style={{ fontSize: 20, color: '#F59E0B', marginBottom: 8 }} />
                             <div style={{ fontWeight: 700, fontSize: 14 }}>Light Mode</div>
                             <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>Tema terang default</div>
                         </div>
@@ -420,27 +393,26 @@ export default function Settings() {
                                 transition: 'all 0.2s ease',
                             }}
                         >
-                            <FiMoon style={{ fontSize: 28, color: '#818CF8', marginBottom: 8 }} />
+                            <FiMoon style={{ fontSize: 20, color: '#818CF8', marginBottom: 8 }} />
                             <div style={{ fontWeight: 700, fontSize: 14 }}>Dark Mode</div>
                             <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>Tema gelap untuk kenyamanan mata</div>
                         </div>
                     </div>
 
-                    <div style={{ marginTop: 24, padding: 16, background: '#EFF6FF', borderRadius: 'var(--radius-md)', border: '1px solid #BFDBFE' }}>
-                        <div style={{ fontSize: 13, color: '#1E40AF' }}>
+                    <div style={{ marginTop: 24, padding: 16, background: '#F0EEFF', borderRadius: 'var(--radius-md)', border: '1px solid #C7D2FE' }}>
+                        <div style={{ fontSize: 13, color: '#4338CA' }}>
                             <strong>Bahasa:</strong> Indonesia (default)
                         </div>
-                        <div style={{ fontSize: 12, color: '#3B82F6', marginTop: 4 }}>
+                        <div style={{ fontSize: 12, color: '#635BFF', marginTop: 4 }}>
                             Saat ini hanya mendukung Bahasa Indonesia.
                         </div>
                     </div>
                 </div>
-            )}
+            </TabsContent>
 
-            {/* ── Subscription Tab ─────────────────────────────────────────── */}
-            {activeTab === 'subscription' && (
+            <TabsContent value="subscription" className="mt-6">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Status Langganan</h3>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Status Langganan</h3>
                     <SubscriptionStatus />
 
                     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }}>
@@ -454,7 +426,7 @@ export default function Settings() {
                             ].map(item => (
                                 <div key={item.key} style={{ padding: '10px 14px', background: 'var(--bg)', borderRadius: 10 }}>
                                     <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 3 }}>{item.label}</div>
-                                    <div style={{ fontWeight: 700, color: 'var(--text)' }}>—</div>
+                                    <div style={{ fontWeight: 700, color: 'var(--text)' }}>-</div>
                                 </div>
                             ))}
                         </div>
@@ -463,7 +435,8 @@ export default function Settings() {
                         </p>
                     </div>
                 </div>
-            )}
+            </TabsContent>
+        </Tabs>
         </div>
     );
 }

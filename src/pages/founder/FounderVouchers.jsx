@@ -32,7 +32,7 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
         </div>
       </div>
       {hasStats && (
-        <div className="fp-stats" style={{ marginBottom: 24 }}>
+        <div className="fp-stats mb">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="fp-stat">
               <SkeletonBox w={40} h={40} style={{ borderRadius: 10, marginBottom: 14 }} />
@@ -62,12 +62,15 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
   );
 }
 
+const EMPTY_FORM = { code: '', description: '', discount_type: 'percent', discount_value: 0, max_uses: '', valid_from: '', valid_until: '', is_active: true };
+const generateCode = () => 'VC' + Math.random().toString(36).substring(2, 8).toUpperCase();
+const isExpired = (v) => v.valid_until && new Date(v.valid_until) < new Date();
+const isExhausted = (v) => v.max_uses && v.used_count >= v.max_uses;
+
 export default function FounderVouchers() {
   const { toast } = useToast();
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  if (loading) return <SkeletonPage cols={6} rows={6} hasStats={false} />;
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -87,6 +90,8 @@ export default function FounderVouchers() {
     }
   };
   useEffect(() => { fetchData(); }, []);
+
+  if (loading) return <SkeletonPage cols={6} rows={6} hasStats={false} />;
 
   const openCreate = () => {
     setEditing(null);
@@ -163,7 +168,7 @@ export default function FounderVouchers() {
       </div>
 
       {/* Stats */}
-      <div className="fp-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 24 }}>
+      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="fp-stat">
           <div className="fp-stat-value">{vouchers.filter(v => v.is_active).length}</div>
           <div className="fp-stat-label">Active Vouchers</div>
@@ -233,7 +238,7 @@ export default function FounderVouchers() {
                       </div>
                     </td>
                     <td style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 200 }}>
-                      {v.description || '—'}
+                      {v.description || '-'}
                     </td>
                     <td>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
@@ -251,7 +256,7 @@ export default function FounderVouchers() {
                         </div>
                       )}
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    <td className="td-muted-sm">
                       {v.valid_until ? new Date(v.valid_until).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No expiry'}
                     </td>
                     <td><span className={`fp-badge ${status.cls}`}>{status.label}</span></td>

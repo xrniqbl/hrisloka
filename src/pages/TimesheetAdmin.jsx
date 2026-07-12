@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { FiFilter, FiDownload, FiDollarSign, FiClock, FiTrendingUp } from 'react-icons/fi';
 import * as projectService from '../services/projectService';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +7,10 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import PageHeader from '../components/PageHeader';
-import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
+import { Button } from '@/components/ui/button';
+import { NativeSelect } from '@/components/ui/native-select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { PageSkeleton } from '../components/SkeletonLoader';
 
 const fmt = (v) => `Rp ${Number(v || 0).toLocaleString('id-ID')}`;
@@ -24,17 +27,23 @@ export default function TimesheetAdmin() {
  const [filterFrom, setFilterFrom] = useState('');
  const [filterTo, setFilterTo] = useState('');
 
+ const companyId = employee?.company_id;
+
  const fetchData = async () => {
  setLoading(true);
+ if (!companyId) {
+  setTimesheets([]); setProjects([]); setEmployees([]); setLoading(false);
+  return;
+ }
  const filters = {};
  if (filterProject) filters.projectId = filterProject;
  if (filterEmployee) filters.employeeId = filterEmployee;
  if (filterFrom) filters.dateFrom = filterFrom;
  if (filterTo) filters.dateTo = filterTo;
  const [t, p, e] = await Promise.all([
- projectService.getTimesheets(filters),
- projectService.getAllProjects(),
- employeeService.getAllEmployees(undefined, employee?.company_id),
+ projectService.getTimesheets(filters, companyId),
+ projectService.getAllProjects(companyId),
+ employeeService.getAllEmployees(undefined, companyId),
  ]);
  setTimesheets(t.data || []);
  setProjects(p.data || []);
@@ -42,10 +51,13 @@ export default function TimesheetAdmin() {
  setLoading(false);
  };
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => {
+  if (companyId) fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [companyId]);
 
  // Realtime: auto-refresh when new timesheet entries arrive
- useRealtimeTable('timesheets', fetchData);
+ useRealtimeTable('timesheets', fetchData, { companyId, enabled: !!companyId });
 
  const applyFilter = () => fetchData();
 
@@ -82,139 +94,123 @@ export default function TimesheetAdmin() {
 
   if (loading) return <PageSkeleton hasStats={true} tableRows={6} tableCols={6} />;
  return (
- <div>
+ <div className="admin-page">
  <PageHeader titleKey="timesheets.title" subtitleKey="timesheets.subtitle" />
   <div className="page-header-actions">
- <button className="btn-primary" onClick={exportCSV}><FiDownload /> Export CSV</button>
+ <Button className="btn-primary" onClick={exportCSV}><FiDownload /> Export CSV</Button>
  </div>
 
  {/* Summary Cards */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
- <div className="info-card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
- <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'rgba(59,130,246,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}><FiClock size={22} /></div>
+ <div className="stats-grid">
+ <div className="info-card info-card--flex">
+ <div className="info-card-icon info-card-icon--primary"><FiClock size={22} /></div>
  <div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>Total Jam</div>
- <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtH(summary.totalHours)}</div>
+ <div className="info-card-label">Total Jam</div>
+ <div className="info-card-value">{fmtH(summary.totalHours)}</div>
  </div>
  </div>
- <div className="info-card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
- <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'rgba(16,185,129,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)' }}><FiTrendingUp size={22} /></div>
+ <div className="info-card info-card--flex">
+ <div className="info-card-icon info-card-icon--success"><FiTrendingUp size={22} /></div>
  <div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>Billable Hours</div>
- <div style={{ fontSize: 22, fontWeight: 800 }}>{fmtH(summary.billableHours)}</div>
+ <div className="info-card-label">Billable Hours</div>
+ <div className="info-card-value">{fmtH(summary.billableHours)}</div>
  </div>
  </div>
- <div className="info-card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
- <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'rgba(245,158,11,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}><FiDollarSign size={22} /></div>
+ <div className="info-card info-card--flex">
+ <div className="info-card-icon info-card-icon--warning"><FiDollarSign size={22} /></div>
  <div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>Revenue</div>
- <div style={{ fontSize: 22, fontWeight: 800 }}>{fmt(summary.revenue)}</div>
+ <div className="info-card-label">Revenue</div>
+ <div className="info-card-value">{fmt(summary.revenue)}</div>
  </div>
  </div>
  </div>
 
  {/* Filters */}
- <div className="info-card" style={{ marginBottom: 20 }}>
- <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'end' }}>
- <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
- <label style={{ fontSize: 11 }}>Proyek</label>
- <select className="form-input" value={filterProject} onChange={e => setFilterProject(e.target.value)} style={{ fontSize: 12 }}>
+ <div className="info-card mb-sm">
+ <div className="filter-row">
+ <div className="form-group filter-field">
+ <label className="section-label">Proyek</label>
+ <NativeSelect size="sm" value={filterProject} onChange={e => setFilterProject(e.target.value)}>
  <option value="">Semua</option>
  {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
- </select>
+ </NativeSelect>
  </div>
- <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
- <label style={{ fontSize: 11 }}>Karyawan</label>
- <select className="form-input" value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)} style={{ fontSize: 12 }}>
+ <div className="form-group filter-field">
+ <label className="section-label">Karyawan</label>
+ <NativeSelect size="sm" value={filterEmployee} onChange={e => setFilterEmployee(e.target.value)}>
  <option value="">Semua</option>
  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
- </select>
+ </NativeSelect>
  </div>
- <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
- <label style={{ fontSize: 11 }}>Dari</label>
- <input type="date" className="form-input" value={filterFrom} onChange={e => setFilterFrom(e.target.value)} style={{ fontSize: 12 }} />
+ <div className="form-group filter-field-sm">
+ <label className="section-label">Dari</label>
+ <DatePicker value={filterFrom} onChange={setFilterFrom} placeholder="Dari tanggal" buttonClassName="td-sm" />
  </div>
- <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
- <label style={{ fontSize: 11 }}>Sampai</label>
- <input type="date" className="form-input" value={filterTo} onChange={e => setFilterTo(e.target.value)} style={{ fontSize: 12 }} />
+ <div className="form-group filter-field-sm">
+ <label className="section-label">Sampai</label>
+ <DatePicker value={filterTo} onChange={setFilterTo} placeholder="Sampai tanggal" buttonClassName="td-sm" />
  </div>
- <button className="btn-primary" onClick={applyFilter} style={{ height: 38 }}><FiFilter size={14} /> Filter</button>
+ <Button className="btn-primary btn-filter" onClick={applyFilter}><FiFilter size={14} /> Filter</Button>
  </div>
  </div>
 
  {/* Timesheet Table */}
  {loading ? (
- <div style={{ padding: 30, textAlign: 'center', color: 'var(--muted)' }}>Memuat...</div>
+ <div className="ep-loading-wrap"><div className="ep-loading-inner"><div className="ep-loading-text">Memuat...</div></div></div>
  ) : (
- <div className="table-container" style={{ marginBottom: 24 }}>
- <table className="data-table">
- <thead>
- <tr>
- <th>Tanggal</th>
- <th>Karyawan</th>
- <th>Proyek</th>
- <th>Klien</th>
- <th>Mulai</th>
- <th>Selesai</th>
- <th>Jam</th>
- <th>Billable</th>
- <th>Revenue</th>
- <th>Deskripsi</th>
- </tr>
- </thead>
- <tbody>
+ <div className="data-table-card mb">
+ <Table>
+ <TableHeader><TableRow>
+ {['Tanggal','Karyawan','Proyek','Klien','Mulai','Selesai','Jam','Billable','Revenue','Deskripsi'].map(h => <TableHead key={h}>{h}</TableHead>)}
+ </TableRow></TableHeader>
+ <TableBody>
  {timesheets.length === 0 ? (
- <tr><td colSpan={10} style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>Belum ada data timesheet</td></tr>
+ <TableRow><TableCell colSpan={10} className="td-muted-sm" style={{ textAlign: 'center', padding: 30 }}>Belum ada data timesheet</TableCell></TableRow>
  ) : timesheets.map(t => (
- <tr key={t.id}>
- <td style={{ whiteSpace: 'nowrap' }}>{t.date}</td>
- <td style={{ fontWeight: 600 }}>{t.employees?.name || '—'}</td>
- <td>
- <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
- <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.projects?.color || '#999' }} />
- {t.projects?.name || '—'}
- </span>
- </td>
- <td>{t.projects?.client || '—'}</td>
- <td style={{ fontSize: 12 }}>{t.start_time ? new Date(t.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
- <td style={{ fontSize: 12 }}>{t.end_time ? new Date(t.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : <span className="badge" style={{ background: 'rgba(16,185,129,.1)', color: 'var(--success)' }}>Berjalan</span>}</td>
- <td style={{ fontWeight: 600 }}>{t.hours ? fmtH(t.hours) : '—'}</td>
- <td>{t.billable ? '' : '—'}</td>
- <td style={{ fontWeight: 600 }}>{t.billable && t.hours ? fmt((t.hours || 0) * (t.projects?.hourly_rate || 0)) : '—'}</td>
- <td style={{ fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.description || ''}</td>
- </tr>
+ <TableRow key={t.id}>
+ <TableCell className="td-truncate">{t.date}</TableCell>
+ <TableCell className="td-semibold">{t.employees?.name || '-'}</TableCell>
+ <TableCell><span className="td-project-cell"><span style={{ width: 8, height: 8, borderRadius: '50%', background: t.projects?.color || '#999' }} />{t.projects?.name || '-'}</span></TableCell>
+ <TableCell>{t.projects?.client || '-'}</TableCell>
+ <TableCell className="td-sm">{t.start_time ? new Date(t.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</TableCell>
+ <TableCell className="td-sm">{t.end_time ? new Date(t.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : <span className="badge badge--success">Berjalan</span>}</TableCell>
+ <TableCell className="td-semibold">{t.hours ? fmtH(t.hours) : '-'}</TableCell>
+ <TableCell>{t.billable ? '' : '-'}</TableCell>
+ <TableCell className="td-semibold">{t.billable && t.hours ? fmt((t.hours || 0) * (t.projects?.hourly_rate || 0)) : '-'}</TableCell>
+ <TableCell className="td-sm td-truncate">{t.description || ''}</TableCell>
+ </TableRow>
  ))}
- </tbody>
- </table>
+ </TableBody>
+ </Table>
  </div>
  )}
 
  {/* Invoice by Client */}
  {invoiceData.length > 0 && (
  <div>
- <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Ringkasan Tagihan per Klien</h2>
+ <h2 className="chart-card-title mb">Ringkasan Tagihan per Klien</h2>
  <div className="cards-grid">
  {invoiceData.map(inv => (
  <div className="info-card" key={inv.client}>
- <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+ <div className="invoice-card-header">
  <div>
- <div style={{ fontSize: 15, fontWeight: 700 }}>{inv.client}</div>
- <div style={{ fontSize: 12, color: 'var(--muted)' }}>{inv.entries.length} entri</div>
+ <div className="td-semibold">{inv.client}</div>
+ <div className="td-muted-sm">{inv.entries.length} entri</div>
  </div>
- <div style={{ textAlign: 'right' }}>
- <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--success)' }}>{fmt(inv.totalRevenue)}</div>
- <div style={{ fontSize: 11, color: 'var(--muted)' }}>{fmtH(inv.totalHours)} billable</div>
+ <div className="text-right">
+ <div className="info-card-value success">{fmt(inv.totalRevenue)}</div>
+ <div className="td-muted-sm">{fmtH(inv.totalHours)} billable</div>
  </div>
  </div>
- <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+ <div className="invoice-card-breakdown">
  {[...new Set(inv.entries.map(e => e.projects?.name))].map((pName, i) => {
  const pEntries = inv.entries.filter(e => e.projects?.name === pName);
  const pHours = pEntries.reduce((s, e) => s + (e.hours || 0), 0);
  const pRev = pEntries.reduce((s, e) => s + (e.hours || 0) * (e.projects?.hourly_rate || 0), 0);
  return (
- <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0' }}>
+ <div key={i} className="invoice-project-row">
  <span>{pName}</span>
- <span style={{ fontWeight: 600 }}>{fmtH(pHours)} → {fmt(pRev)}</span>
+ <span className="td-semibold">{fmtH(pHours)} &rarr; {fmt(pRev)}</span>
  </div>
  );
  })}
@@ -227,3 +223,5 @@ export default function TimesheetAdmin() {
  </div>
  );
 }
+
+

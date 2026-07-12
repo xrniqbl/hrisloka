@@ -11,7 +11,7 @@ import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 
 const fmt = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
-const statusColors = { pending: '#F59E0B', active: '#3B82F6', paid: '#16A34A', rejected: '#DC2626' };
+const statusColors = { pending: '#F59E0B', active: '#635BFF', paid: '#16A34A', rejected: '#DC2626' };
 const statusLabels = { pending: 'Menunggu', active: 'Aktif', paid: 'Lunas', rejected: 'Ditolak' };
 
 export default function LoanManagement() {
@@ -24,18 +24,18 @@ export default function LoanManagement() {
  const [form, setForm] = useState({ employeeId: '', amount: '', monthlyDeduction: '', reason: '' });
  const [paymentAmount, setPaymentAmount] = useState('');
 
- useEffect(() => { fetchData(); }, []);
-
  const fetchData = async () => {
  setLoading(true);
- const [lRes, eRes] = await Promise.all([loanService.getAllLoans(), employeeService.getAllEmployees(undefined, employee?.company_id)]);
+ const [lRes, eRes] = await Promise.all([loanService.getAllLoans(employee?.company_id), employeeService.getAllEmployees(undefined, employee?.company_id)]);
  setLoans(lRes.data || []);
  setEmployees(eRes.data || []);
  setLoading(false);
  };
 
+ useEffect(() => { fetchData(); }, []);
+
  // Realtime: auto-refresh
- useRealtimeTable('loans', fetchData);
+ useRealtimeTable('loans', fetchData, { companyId: currentUser?.company_id });
 
  const openCreate = () => { setForm({ employeeId: '', amount: '', monthlyDeduction: '', reason: '' }); setModal('create'); };
 
@@ -74,28 +74,28 @@ export default function LoanManagement() {
 
   if (loading) return <PageSkeleton hasStats={true} tableRows={6} tableCols={6} />;
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
- <h1><FiDollarSign style={{ marginRight: 10 }} /> Pinjaman / Kasbon</h1>
- <div className="page-header-actions" style={{ display: 'flex', gap: 10 }}>
- <button className="btn-secondary" onClick={handleExport}><FiDownload /> Export</button>
- <button className="btn-primary" onClick={openCreate}><FiPlus /> Ajukan Pinjaman</button>
+ <h1><FiDollarSign className="icon-mr" /> Pinjaman / Kasbon</h1>
+ <div className="page-header-actions">
+ <button className="btn-secondary" onClick={handleExport} aria-label="Export"><FiDownload /> Export</button>
+ <button className="btn-primary" onClick={openCreate} aria-label="Ajukan pinjaman"><FiPlus /> Ajukan Pinjaman</button>
  </div>
  </div>
 
  {/* Stats */}
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+ <div className="stats-grid">
  <div className="info-card">
- <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Total Pinjaman</div>
- <div style={{ fontSize: 28, fontWeight: 800 }}>{loans.length}</div>
+ <div className="info-card-label">Total Pinjaman</div>
+ <div className="info-card-value">{loans.length}</div>
  </div>
  <div className="info-card">
- <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Sisa Pinjaman Aktif</div>
- <div style={{ fontSize: 20, fontWeight: 800, color: '#3B82F6' }}>{fmt(totalActive)}</div>
+ <div className="info-card-label">Sisa Pinjaman Aktif</div>
+ <div className="info-card-value info">{fmt(totalActive)}</div>
  </div>
  <div className="info-card">
- <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>Menunggu Approval</div>
- <div style={{ fontSize: 28, fontWeight: 800, color: '#F59E0B' }}>{totalPending}</div>
+ <div className="info-card-label">Menunggu Approval</div>
+ <div className="info-card-value warning">{totalPending}</div>
  </div>
  </div>
 
@@ -115,31 +115,31 @@ export default function LoanManagement() {
  </thead>
  <tbody>
  {loading ? (
- <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Memuat...</td></tr>
+ <tr><td colSpan={7} className="empty-state">Memuat...</td></tr>
  ) : loans.length === 0 ? (
- <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Belum ada data pinjaman.</td></tr>
+ <tr><td colSpan={7} className="empty-state">Belum ada data pinjaman.</td></tr>
  ) : loans.map(l => (
  <tr key={l.id}>
- <td style={{ fontWeight: 600 }}>{l.employees?.name || '-'}</td>
- <td style={{ fontWeight: 600 }}>{fmt(l.amount)}</td>
+ <td className="td-semibold">{l.employees?.name || '-'}</td>
+ <td className="td-semibold">{fmt(l.amount)}</td>
  <td style={{ fontWeight: 600, color: l.remaining > 0 ? '#DC2626' : 'var(--success)' }}>{fmt(l.remaining)}</td>
  <td>{fmt(l.monthly_deduction)}</td>
- <td style={{ fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--muted)' }}>{l.reason || '-'}</td>
+ <td className="td-truncate td-muted-sm">{l.reason || '-'}</td>
  <td>
  <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, color: '#fff', background: statusColors[l.status] }}>
  {statusLabels[l.status]}
  </span>
  </td>
  <td>
- <div style={{ display: 'flex', gap: 6 }}>
+ <div className="actions-cell">
  {l.status === 'pending' && (
  <>
- <button className="action-btn" style={{ color: 'var(--success)' }} onClick={() => handleApprove(l.id)} title="Approve"><FiCheckCircle /></button>
- <button className="action-btn danger" onClick={() => handleReject(l.id)} title="Reject"><FiXCircle /></button>
+ <button className="action-btn success" onClick={() => handleApprove(l.id)} title="Approve" aria-label="Approve loan"><FiCheckCircle /></button>
+ <button className="action-btn danger" onClick={() => handleReject(l.id)} title="Reject" aria-label="Reject loan"><FiXCircle /></button>
  </>
  )}
  {l.status === 'active' && l.remaining > 0 && (
- <button className="action-btn" onClick={() => openPayment(l)} title="Catat Pembayaran"><FiDollarSign /></button>
+ <button className="action-btn" onClick={() => openPayment(l)} title="Catat Pembayaran" aria-label="Catat pembayaran"><FiDollarSign /></button>
  )}
  </div>
  </td>
@@ -167,7 +167,7 @@ export default function LoanManagement() {
  <div className="form-group full-width"><label className="form-label">Alasan</label><textarea className="form-textarea" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} /></div>
  </div>
  </div>
- <div className="modal-footer"><button className="btn-secondary" onClick={() => setModal(null)}>Batal</button><button className="btn-primary" onClick={handleCreate} disabled={!form.employeeId || !form.amount}><FiCheck /> Ajukan</button></div>
+ <div className="modal-footer"><button className="btn-secondary" onClick={() => setModal(null)}>Batal</button><button className="btn-primary" onClick={handleCreate} disabled={!form.employeeId || !form.amount} aria-label="Ajukan"><FiCheck /> Ajukan</button></div>
  </div>
  </div>
  )}
@@ -178,8 +178,8 @@ export default function LoanManagement() {
  <div className="modal-box" onClick={e => e.stopPropagation()}>
  <div className="modal-header"><h2>Catat Pembayaran</h2><button className="modal-close" onClick={() => setModal(null)}><FiX /></button></div>
  <div className="modal-body">
- <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 16, fontSize: 13 }}>
- <div>Sisa pinjaman: <strong style={{ color: '#DC2626' }}>{fmt(selected.remaining)}</strong></div>
+ <div className="payment-summary-box">
+ <div>Sisa pinjaman: <strong className="text-danger">{fmt(selected.remaining)}</strong></div>
  <div>Cicilan bulanan: <strong>{fmt(selected.monthly_deduction)}</strong></div>
  </div>
  <div className="form-group">
@@ -187,10 +187,13 @@ export default function LoanManagement() {
  <input className="form-input" type="number" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} />
  </div>
  </div>
- <div className="modal-footer"><button className="btn-secondary" onClick={() => setModal(null)}>Batal</button><button className="btn-primary" onClick={handlePayment} disabled={!paymentAmount}><FiCheck /> Bayar</button></div>
+ <div className="modal-footer"><button className="btn-secondary" onClick={() => setModal(null)}>Batal</button><button className="btn-primary" onClick={handlePayment} disabled={!paymentAmount} aria-label="Bayar"><FiCheck /> Bayar</button></div>
  </div>
  </div>
  )}
  </div>
  );
 }
+
+
+

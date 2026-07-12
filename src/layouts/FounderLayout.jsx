@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 import './FounderLayout.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECURITY: Hardcoded founder email — the ONLY email allowed in this layout.
+// SECURITY: Hardcoded founder email - the ONLY email allowed in this layout.
 // This is checked both client-side AND against the live Supabase session.
 // ─────────────────────────────────────────────────────────────────────────────
 const ALLOWED_FOUNDER_EMAIL = FOUNDER_EMAIL; // 'hrisloka@gmail.com'
@@ -27,14 +27,14 @@ function useFounderAuth() {
     const runCheck = async () => {
       setVerifying(true);
       try {
-        // Layer 1 — must have an active session at all
+        // Layer 1 - must have an active session at all
         if (!user || !session) {
           setVerified(false);
           setVerifying(false);
           return;
         }
 
-        // Layer 2 — re-fetch the live session directly from Supabase
+        // Layer 2 - re-fetch the live session directly from Supabase
         // (protects against stale in-memory state being tampered with)
         const { data: { user: liveUser }, error: sessionError } = await supabase.auth.getUser();
         if (sessionError || !liveUser) {
@@ -44,7 +44,7 @@ function useFounderAuth() {
           return;
         }
 
-        // Layer 3 — email must be EXACTLY the founder email (case-insensitive)
+        // Layer 3 - email must be EXACTLY the founder email (case-insensitive)
         const emailMatch =
           liveUser.email?.toLowerCase().trim() === ALLOWED_FOUNDER_EMAIL.toLowerCase().trim();
 
@@ -55,10 +55,10 @@ function useFounderAuth() {
           return;
         }
 
-        // Layer 4 — cross-check with AuthContext state (defence-in-depth)
+        // Layer 4 - cross-check with AuthContext state (defence-in-depth)
         const contextEmailMatch = isFounder(user, employee);
         if (!contextEmailMatch) {
-          console.warn('[FounderLayout] Context email mismatch — possible session tampering.');
+          console.warn('[FounderLayout] Context email mismatch - possible session tampering.');
           setVerified(false);
           setVerifying(false);
           return;
@@ -82,7 +82,7 @@ function useFounderAuth() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function FounderLayout() {
-  const { user, loading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { verifying, verified } = useFounderAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -126,18 +126,18 @@ export default function FounderLayout() {
           animation: 'spin 0.8s linear infinite',
         }} />
         <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, letterSpacing: 1 }}>
-          VERIFYING IDENTITY…
+          VERIFYING IDENTITY...
         </span>
       </div>
     );
   }
 
-  // ── Not logged in → go to login page (never expose founder UI) ───────────
+  // ── Not logged in &rarr; go to login page (never expose founder UI) ───────────
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // ── Wrong account → show hardened denial screen ──────────────────────────
+  // ── Wrong account &rarr; show hardened denial screen ──────────────────────────
   if (!verified) {
     return <FounderAccessDenied onSignOut={async () => {
       await signOut();
@@ -145,7 +145,7 @@ export default function FounderLayout() {
     }} />;
   }
 
-  // ── All checks passed → render founder portal ────────────────────────────
+  // ── All checks passed &rarr; render founder portal ────────────────────────────
   return (
     <div className="founder-layout-wrapper">
       <FounderSidebar openComplaints={openComplaints} />
@@ -154,7 +154,7 @@ export default function FounderLayout() {
         {/* Top Bar */}
         <div className="founder-topbar">
           <div className="founder-topbar-left">
-            {/* Left slot — pages can inject breadcrumbs */}
+            {/* Left slot - pages can inject breadcrumbs */}
           </div>
           <div className="founder-topbar-right">
             <LanguageToggle />
@@ -180,7 +180,7 @@ export default function FounderLayout() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hardened Access Denied screen — shown to any non-founder who tries /founder/*
+// Hardened Access Denied screen - shown to any non-founder who tries /founder/*
 // ─────────────────────────────────────────────────────────────────────────────
 function FounderAccessDenied({ onSignOut }) {
   return (

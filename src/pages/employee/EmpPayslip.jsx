@@ -11,12 +11,13 @@ import { useTranslation } from '../../lib/i18n';
 import { supabase } from '../../lib/supabase';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
+import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function EmpPayslip() {
-  const { user } = useAuth();
+  const { user, employee: authEmployee } = useAuth();
   const { locale } = useTranslation();
   const [emp, setEmp] = useState(null);
   const [payrollRecord, setPayrollRecord] = useState(null);
@@ -27,60 +28,113 @@ export default function EmpPayslip() {
 
   useEffect(() => {
     async function load() {
-      const email = user?.email || user?.user_metadata?.email;
-      const { data: empData } = await getEmployeeByEmail(email);
+      if (isDemoMode()) {
+        const demoEmp = {
+          ...DEMO_EMPLOYEE,
+          base_salary: 8000000,
+          allowance: 1500000,
+          bpjs_rate: 0.04,
+          tax_rate: 0.05,
+        };
+        setEmp(demoEmp);
+        setPayrollHistory([...(DEMO_PROFILE_DATA.payslips || [])]);
+        setLoading(false);
+        return;
+      }
+      let empData = authEmployee;
+      if (!empData?.id) {
+        const email = user?.email || user?.user_metadata?.email;
+        const res = await getEmployeeByEmail(email);
+        empData = res.data;
+      }
       if (empData) {
         setEmp(empData);
-        // Load payroll history for this employee
-        const { data: history } = await supabase
+        // Schema uses `period` (YYYY-MM); older code used `month`
+        let history = [];
+        const h1 = await supabase
           .from('payroll_records')
           .select('*')
           .eq('employee_id', empData.id)
-          .order('month', { ascending: false })
+          .order('period', { ascending: false })
           .limit(12);
-        setPayrollHistory(history || []);
+        if (!h1.error) {
+          history = h1.data || [];
+        } else {
+          const h2 = await supabase
+            .from('payroll_records')
+            .select('*')
+            .eq('employee_id', empData.id)
+            .order('created_at', { ascending: false })
+            .limit(12);
+          history = h2.data || [];
+        }
+        setPayrollHistory(history);
       }
       setLoading(false);
     }
     load();
-  }, [user]);
+  }, [user, authEmployee?.id]);
 
   // Load specific month payroll record
   useEffect(() => {
     if (!emp) return;
     async function loadMonth() {
+      if (isDemoMode()) {
+        const now = new Date();
+        now.setMonth(now.getMonth() + monthOffset);
+        const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const match = (DEMO_PROFILE_DATA.payslips || []).find((p) => String(p.month || p.period || '').startsWith(monthStr));
+        if (match) {
+          setPayrollRecord(match);
+        } else if (monthOffset === 0 && DEMO_PROFILE_DATA.payslips?.[0]) {
+          setPayrollRecord(DEMO_PROFILE_DATA.payslips[0]);
+        } else {
+          setPayrollRecord(null);
+        }
+        return;
+      }
       const now = new Date();
       now.setMonth(now.getMonth() + monthOffset);
-      const yr = now.getFullYear();
-      const mo = now.getMonth() + 1;
-      const monthStr = `${yr}-${String(mo).padStart(2, '0')}`;
-      const { data } = await supabase
+      const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      // Prefer period = YYYY-MM (schema), fallback month column / period text match
+      let row = null;
+      const q1 = await supabase
         .from('payroll_records')
         .select('*')
         .eq('employee_id', emp.id)
-        .like('month', `${monthStr}%`)
+        .eq('period', monthStr)
         .maybeSingle();
-      setPayrollRecord(data || null);
+      if (!q1.error && q1.data) row = q1.data;
+      if (!row) {
+        const q2 = await supabase
+          .from('payroll_records')
+          .select('*')
+          .eq('employee_id', emp.id)
+          .or(`period.ilike.%${monthStr}%,month.ilike.%${monthStr}%`)
+          .maybeSingle();
+        if (!q2.error) row = q2.data;
+      }
+      setPayrollRecord(row);
     }
     loadMonth();
   }, [emp, monthOffset]);
 
   if (loading) {
     return (
-      <div style={{ animation: 'fadeInUp 0.3s ease' }}>
-        <div className="skeleton" style={{ width: 120, height: 26, borderRadius: 8, marginBottom: 20 }} />
-        <div className="skeleton" style={{ height: 50, borderRadius: 14, marginBottom: 20 }} />
-        <div className="skeleton" style={{ height: 240, borderRadius: 22, marginBottom: 16 }} />
-        <div className="skeleton" style={{ height: 180, borderRadius: 18, marginBottom: 10 }} />
+      <div className="ep-loading-wrap">
+        <div className="ep-loading-inner">
+          <div className="ep-spinner" />
+          <div className="ep-loading-text">{locale === 'en' ? 'Loading...' : 'Memuat...'}</div>
+        </div>
       </div>
     );
   }
 
   if (!emp) {
     return (
-      <div className="emp-card" style={{ textAlign: 'center', padding: '48px 20px' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{locale === 'en' ? 'No payslip data' : 'Data tidak tersedia'}</div>
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>{locale === 'en' ? 'Contact HR for assistance.' : 'Hubungi HRD untuk bantuan.'}</div>
+      <div className="ep-empty-wrap">
+        <div className="ep-empty-title">{locale === 'en' ? 'No payslip data' : 'Data tidak tersedia'}</div>
+        <div className="ep-empty-desc">{locale === 'en' ? 'Contact HR for assistance.' : 'Hubungi HRD untuk bantuan.'}</div>
       </div>
     );
   }
@@ -89,14 +143,25 @@ export default function EmpPayslip() {
   now.setMonth(now.getMonth() + monthOffset);
   const monthLabel = now.toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { month: 'long', year: 'numeric' });
 
-  // Use payroll_records data if available, else fallback to employee salary fields
-  const base = payrollRecord?.basic_salary ?? emp.base_salary ?? 0;
-  const allow = payrollRecord?.allowances ?? emp.allowance ?? 0;
-  const gross = base + allow;
-  const bpjsFallback = Math.round(gross * (parseFloat(emp.bpjs_rate) || 0.04));
-  const taxFallback  = Math.round(gross * (parseFloat(emp.tax_rate)  || 0.15));
-  const totalDeductions = payrollRecord?.deductions ?? (bpjsFallback + taxFallback);
-  const net = payrollRecord?.net_salary ?? (gross - totalDeductions);
+  // Map both production schema (base_salary/period/take_home_pay) and legacy aliases
+  const base = payrollRecord?.base_salary
+    ?? payrollRecord?.basic_salary
+    ?? emp.base_salary
+    ?? 0;
+  const allow = payrollRecord?.allowance
+    ?? payrollRecord?.allowances
+    ?? emp.allowance
+    ?? 0;
+  const otPay = payrollRecord?.overtime_pay ?? 0;
+  const gross = payrollRecord?.gross_income ?? (base + allow + otPay);
+  const bpjsFallback = Math.round(base * (parseFloat(emp.bpjs_rate) || 0.04));
+  const taxFallback = Math.round(gross * (parseFloat(emp.tax_rate) || 0.05));
+  const totalDeductions = payrollRecord?.total_deductions
+    ?? payrollRecord?.deductions
+    ?? (bpjsFallback + taxFallback);
+  const net = payrollRecord?.take_home_pay
+    ?? payrollRecord?.net_salary
+    ?? (gross - totalDeductions);
   const takeHomePercent = gross > 0 ? Math.round((net / gross) * 100) : 0;
   const isPaid = payrollRecord?.status === 'paid';
   const isProcessed = !!payrollRecord;
@@ -121,25 +186,26 @@ export default function EmpPayslip() {
     { label: 'PPh 21', val: Math.round(totalDeductions * 0.5), type: 'deduct' },
   ];
 
+  // KEEP: runtime dynamic - changes based on payroll status
   const cardGradient = isPaid
     ? 'linear-gradient(135deg, #059669 0%, #10B981 55%, #34D399 100%)'
-    : 'linear-gradient(135deg, #0047AB 0%, #1D6AE5 55%, #3B82F6 100%)';
+    : 'linear-gradient(135deg, #635BFF 0%, #5449FF 55%, #635BFF 100%)';
   const cardShadow = isPaid
     ? '0 12px 36px rgba(5,150,105,0.28)'
-    : '0 12px 36px rgba(0,71,171,0.28)';
+    : '0 12px 36px rgba(99,91,255,0.28)';
 
   return (
     <div className="emp-page">
       <h1 className="emp-page-title">{locale === 'en' ? 'Payslip' : 'Slip Gaji'}</h1>
 
       {/* Month Selector */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, background:'var(--surface)', padding:'10px 16px', borderRadius:16, border:'1px solid var(--border)', boxShadow:'var(--shadow-sm)' }}>
-        <button onClick={() => setMonthOffset(m => m - 1)} style={{ background:'var(--bg)', border:'none', cursor:'pointer', color:'var(--primary)', width:34, height:34, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div className="emp-month-selector">
+        <button className="emp-month-btn" onClick={() => setMonthOffset(m => m - 1)}>
           <HiChevronLeft size={20} />
         </button>
-        <div style={{ textAlign:'center' }}>
-          <span style={{ fontWeight:800, fontSize:15 }}>{monthLabel}</span>
-          <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center', marginTop:3 }}>
+        <div className="emp-month-center">
+          <span className="emp-month-label">{monthLabel}</span>
+          <div className="emp-month-status">
             {isProcessed ? (
               isPaid
                 ? <><HiCheckCircle size={12} color="var(--success)" /><span style={{ fontSize:11, color:'var(--success)', fontWeight:600 }}>{locale==='en'?'Paid':'Sudah Dibayar'}</span></>
@@ -149,57 +215,67 @@ export default function EmpPayslip() {
             )}
           </div>
         </div>
-        <button onClick={() => setMonthOffset(m => Math.min(m+1, 0))} disabled={monthOffset>=0} style={{ background:'var(--bg)', border:'none', cursor:'pointer', color:monthOffset>=0?'var(--border)':'var(--primary)', width:34, height:34, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {/* KEEP: runtime - color depends on disabled state (monthOffset) */}
+        <button
+          className="emp-month-btn"
+          onClick={() => setMonthOffset(m => Math.min(m+1, 0))}
+          disabled={monthOffset>=0}
+          style={{ color: monthOffset>=0 ? 'var(--border)' : 'var(--primary)' }}
+        >
           <HiChevronRight size={20} />
         </button>
       </div>
 
-      {/* Hero Card */}
-      <div style={{ borderRadius:24, overflow:'hidden', marginBottom:16, background:cardGradient, boxShadow:cardShadow, position:'relative' }}>
-        <div style={{ position:'absolute', top:-40, right:-40, width:160, height:160, borderRadius:'50%', background:'rgba(255,255,255,0.06)' }} />
-        <div style={{ position:'relative', padding:'22px 20px 18px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+      {/* Hero Card - KEEP all styles: runtime cardGradient/cardShadow + custom decorative layout */}
+      <div style={{ borderRadius: 14, overflow:'hidden', marginBottom: 12, background:cardGradient, boxShadow:cardShadow, position:'relative' }}>
+        <div className="emp-hero-orb" />
+        <div className="emp-hero-body">
+          <div className="emp-hero-top">
             <div>
-              <div style={{ fontSize:11, fontWeight:700, opacity:0.75, textTransform:'uppercase', letterSpacing:1.5, color:'#fff', marginBottom:6 }}>{locale==='en'?'Net Salary':'Total Diterima'}</div>
-              <div style={{ fontSize:30, fontWeight:900, color:'#fff', letterSpacing:'-1px', lineHeight:1 }}>{formatCurrency(net)}</div>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.7)', marginTop:6 }}>{takeHomePercent}% {locale==='en'?'take home from gross':'dari gaji bruto'}</div>
+              <div className="emp-hero-label">{locale==='en'?'Net Salary':'Total Diterima'}</div>
+              <div className="emp-hero-amount">{formatCurrency(net)}</div>
+              <div className="emp-hero-sub">{takeHomePercent}% {locale==='en'?'take home from gross':'dari gaji bruto'}</div>
             </div>
-            <button onClick={handleDownload} disabled={downloading} style={{ background:'rgba(255,255,255,0.2)', backdropFilter:'blur(10px)', border:'1.5px solid rgba(255,255,255,0.35)', borderRadius:14, color:'#fff', padding:'10px 16px', cursor:'pointer', display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, fontFamily:'inherit', flexShrink:0 }}>
+            <button onClick={handleDownload} disabled={downloading} className="emp-hero-dl-btn">
               {downloading ? <HiArrowPath size={14} style={{ animation:'spin 0.8s linear infinite' }} /> : <HiArrowDownTray size={14} />} PDF
             </button>
           </div>
-          <div style={{ marginTop:16, background:'rgba(255,255,255,0.15)', borderRadius:4, height:4, overflow:'hidden' }}>
+          {/* KEEP: runtime width from takeHomePercent */}
+          <div className="emp-hero-progress-track">
             <div style={{ width:`${takeHomePercent}%`, height:'100%', background:'#fff', borderRadius:4, transition:'width 0.8s ease' }} />
           </div>
         </div>
-        <div style={{ background:'rgba(255,255,255,0.1)', padding:'12px 20px', display:'flex', justifyContent:'space-between' }}>
+        <div className="emp-hero-footer">
           {[
             { label:locale==='en'?'Gross':'Bruto', val:gross, color:'#fff' },
             { label:locale==='en'?'Deductions':'Potongan', val:totalDeductions, color:'#FECACA', prefix:'-' },
             { label:locale==='en'?'Net':'Bersih', val:net, color:'#BBF7D0' },
           ].map((item, i) => (
-            <div key={i} style={{ textAlign:'center' }}>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.7)', fontWeight:600, textTransform:'uppercase', letterSpacing:0.5, marginBottom:3 }}>{item.label}</div>
-              <div style={{ fontSize:14, fontWeight:800, color:item.color }}>{item.prefix || ''}{formatCurrency(item.val)}</div>
+            <div key={i} className="emp-hero-footer-item">
+              <div className="emp-hero-footer-label">{item.label}</div>
+              {/* KEEP: runtime item.color per column */}
+              <div style={{ fontSize:14, fontWeight:600, color:item.color }}>{item.prefix || ''}{formatCurrency(item.val)}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Breakdown */}
-      <div className="emp-card" style={{ marginBottom:16, padding:'18px 16px' }}>
-        <div style={{ fontSize:13, fontWeight:800, marginBottom:14 }}>{locale==='en'?'Salary Breakdown':'Rincian Gaji'}</div>
-        <div style={{ display:'flex', gap:16, alignItems:'center' }}>
-          <div style={{ width:90, height:90, flexShrink:0 }}>
-            <Doughnut data={{ datasets:[{ data:[base, allow, totalDeductions], backgroundColor:['#0047AB','#3B82F6','#F87171'], borderWidth:0, cutout:'72%' }] }} options={{ plugins:{ legend:{ display:false }, tooltip:{ enabled:false } }, maintainAspectRatio:false }} />
+      <div className="emp-card mb">
+        <div className="section-label mb-sm">{locale==='en'?'Salary Breakdown':'Rincian Gaji'}</div>
+        <div className="emp-breakdown-row">
+          <div className="emp-chart-wrap">
+            <Doughnut data={{ datasets:[{ data:[base, allow, totalDeductions], backgroundColor:['#635BFF','#635BFF','#F87171'], borderWidth:0, cutout:'72%' }] }} options={{ plugins:{ legend:{ display:false }, tooltip:{ enabled:false } }, maintainAspectRatio:false }} />
           </div>
-          <div style={{ flex:1 }}>
+          <div className="emp-breakdown-list">
             {rows.map(r => (
-              <div key={r.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom:'1px solid var(--border-light)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div key={r.label} className="emp-breakdown-item">
+                <div className="emp-breakdown-left">
+                  {/* KEEP: runtime - dot color depends on row type */}
                   <div style={{ width:8, height:8, borderRadius:'50%', background:r.type==='income'?'var(--primary)':'#F87171', flexShrink:0 }} />
-                  <span style={{ fontSize:12, color:'var(--muted)' }}>{r.label}</span>
+                  <span className="td-muted-sm">{r.label}</span>
                 </div>
+                {/* KEEP: runtime - text color depends on row type */}
                 <span style={{ fontSize:12, fontWeight:700, color:r.type==='deduct'?'var(--danger)':'var(--text)' }}>{r.type==='deduct'?'-':''}{formatCurrency(r.val)}</span>
               </div>
             ))}
@@ -209,8 +285,8 @@ export default function EmpPayslip() {
 
       {/* History */}
       {payrollHistory.length > 0 && (
-        <div className="emp-card" style={{ padding:'18px 16px' }}>
-          <div style={{ fontSize:13, fontWeight:800, marginBottom:14 }}>{locale==='en'?'Salary History':'Riwayat Gaji'}</div>
+        <div className="emp-card">
+          <div className="section-label mb-sm">{locale==='en'?'Salary History':'Riwayat Gaji'}</div>
           {payrollHistory.slice(0, 6).map((pr, idx) => {
             const d = new Date(pr.month);
             const label = d.toLocaleDateString(locale==='en'?'en-US':'id-ID', { month:'short', year:'numeric' });
@@ -218,16 +294,18 @@ export default function EmpPayslip() {
             const prevNet = payrollHistory[idx+1]?.net_salary ?? netAmt;
             const diff = netAmt - prevNet;
             return (
-              <div key={pr.id ?? idx} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom:'1px solid var(--border-light)' }}>
+              <div key={pr.id ?? idx} className="emp-history-row">
                 <div>
-                  <div style={{ fontSize:13, fontWeight:700 }}>{label}</div>
+                  <div className="td-semibold">{label}</div>
+                  {/* KEEP: runtime - color depends on pr.status */}
                   <div style={{ fontSize:11, color:pr.status==='paid'?'var(--success)':'var(--warning)', fontWeight:600, marginTop:2 }}>
                     {pr.status==='paid'?(locale==='en'?'Paid':'Dibayar'):(locale==='en'?'Processing':'Diproses')}
                   </div>
                 </div>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontSize:14, fontWeight:800 }}>{formatCurrency(netAmt)}</div>
+                <div className="emp-history-right">
+                  <div className="td-semibold">{formatCurrency(netAmt)}</div>
                   {idx < payrollHistory.length-1 && diff !== 0 && (
+                    // KEEP: runtime - color depends on diff direction
                     <div style={{ display:'flex', alignItems:'center', gap:3, justifyContent:'flex-end', fontSize:11, color:diff>0?'var(--success)':'var(--danger)' }}>
                       {diff > 0 ? <HiArrowTrendingUp size={11} /> : <HiArrowTrendingDown size={11} />}
                       {diff>0?'+':''}{formatCurrency(Math.abs(diff))}

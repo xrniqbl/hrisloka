@@ -18,6 +18,10 @@ import { useAuth } from '../context/AuthContext';
 import { getRole } from '../lib/rbac';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 
 export default function Employees() {
   const [search, setSearch] = useState('');
@@ -51,7 +55,7 @@ export default function Employees() {
   
 
   // Realtime: auto-refresh when employees table changes
-  useRealtimeTable('employees', fetchEmployees);
+  useRealtimeTable('employees', fetchEmployees, { companyId: currentUser?.company_id });
 
   const divisions = useMemo(() => getDivisions(employeeList), [employeeList]);
 
@@ -136,12 +140,10 @@ export default function Employees() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <BranchFilter />
           {activeView === 'all' && (
-            <button className="btn-secondary" onClick={handleExportExcel} disabled={filtered.length === 0}>
-              <FiDownload /> Export Excel
+            <button className="btn-secondary" onClick={handleExportExcel} disabled={filtered.length === 0} aria-label="Export Excel"><FiDownload /> Export Excel
             </button>
           )}
-          <button className="btn-primary" onClick={() => { setEditEmp(null); setModalOpen(true); }}>
-            <FiPlus /> Tambah Karyawan
+          <button className="btn-primary" onClick={() => { setEditEmp(null); setModalOpen(true); }} aria-label="Tambah karyawan"><FiPlus /> Tambah Karyawan
           </button>
         </div>
       </div>
@@ -173,13 +175,12 @@ export default function Employees() {
             border: activeView === 'pending' ? 'none' : '1px solid var(--border)',
             transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8,
           }}
-        >
-          <FiUserCheck size={14} /> Menunggu Verifikasi
+        ><FiUserCheck size={14} /> Menunggu Verifikasi
           {pendingCount > 0 && (
             <span style={{
               padding: '1px 7px', borderRadius: 100,
               background: activeView === 'pending' ? 'rgba(255,255,255,0.3)' : '#DC2626',
-              color: '#fff', fontSize: 11, fontWeight: 800,
+              color: '#fff', fontSize: 11, fontWeight: 600,
             }}>
               {pendingCount}
             </span>
@@ -200,7 +201,7 @@ export default function Employees() {
           <div className="filters-bar">
             <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
               <FiSearch style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-              <input
+              <Input
                 className="filter-search"
                 style={{ paddingLeft: 38 }}
                 placeholder="Cari nama, NIP, atau jabatan..."
@@ -208,15 +209,15 @@ export default function Employees() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <select className="filter-select" value={divFilter} onChange={(e) => setDivFilter(e.target.value)}>
+            <NativeSelect className="filter-select" value={divFilter} onChange={(e) => setDivFilter(e.target.value)}>
               <option value="">Semua Divisi</option>
               {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            </NativeSelect>
+            <NativeSelect className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="">Semua Status</option>
               <option value="permanent">Karyawan Tetap</option>
               <option value="contract">Karyawan Kontrak</option>
-            </select>
+            </NativeSelect>
           </div>
 
           {loading ? (
@@ -228,33 +229,37 @@ export default function Employees() {
                 title="Belum ada data karyawan"
                 description="Mulai dengan menambahkan karyawan pertama ke dalam sistem."
               >
-                <button className="btn-primary" onClick={() => { setEditEmp(null); setModalOpen(true); }}>
+                <Button onClick={() => { setEditEmp(null); setModalOpen(true); }}>
                   <FiPlus /> Tambah Karyawan
-                </button>
+                </Button>
               </EmptyState>
             </div>
           ) : (
             <div className="data-table-card">
               <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                  
                     <tr>
-                      <th>NIP</th>
-                      <th>Karyawan</th>
-                      <th>Divisi</th>
-                      <th>Jabatan</th>
-                      <th>Cabang</th>
-                      <th>Status</th>
-                      {isSuperAdmin && <th>Role</th>}
-                      <th>Gaji Pokok</th>
-                      <th>Aksi</th>
+                                  <TableHead>NIP</TableHead>
+                                  <TableHead>Karyawan</TableHead>
+                                  <TableHead>Divisi</TableHead>
+                                  <TableHead>Jabatan</TableHead>
+                                  <TableHead>Cabang</TableHead>
+                                  <TableHead>Status</TableHead>
+                      {isSuperAdmin && <TableHead>Role</TableHead>}
+                                  <TableHead>Gaji Pokok</TableHead>
+                                  <TableHead>Aksi</TableHead>
                     </tr>
-                  </thead>
-                  <tbody>
+                  
+                                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filtered.map((emp) => (
-                      <tr key={emp.id}>
-                        <td><span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--muted)' }}>{emp.employee_id || emp.nip || '-'}</span></td>
-                        <td>
+                      <TableRow key={emp.id}>
+                        <TableCell><span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--muted)' }}>{emp.employee_id || emp.nip || '-'}</span></TableCell>
+                        <TableCell>
                           <div className="employee-cell">
                             <div className="employee-avatar">{(emp.name || '').split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
                             <div>
@@ -262,34 +267,34 @@ export default function Employees() {
                               <div className="employee-dept">{emp.email}</div>
                             </div>
                           </div>
-                        </td>
-                        <td>{emp.division}</td>
-                        <td>{emp.position}</td>
-                        <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{emp.branches?.name || '-'}</td>
-                        <td><ContractBadge status={emp.status} contractEnd={emp.contract_end || emp.contractEnd} /></td>
+                        </TableCell>
+                        <TableCell>{emp.division}</TableCell>
+                        <TableCell>{emp.position}</TableCell>
+                        <TableCell className="td-muted-sm">{emp.branches?.name || '-'}</TableCell>
+                        <TableCell><ContractBadge status={emp.status} contractEnd={emp.contract_end || emp.contractEnd} /></TableCell>
                         {isSuperAdmin && (
-                          <td>
+                          <TableCell>
                             {emp.role && emp.role !== 'employee' ? (
-                              <span style={{ fontSize: 10, fontWeight: 800, color: ROLE_COLORS[emp.role], background: `${ROLE_COLORS[emp.role]}15`, padding: '2px 8px', borderRadius: 20 }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: ROLE_COLORS[emp.role], background: `${ROLE_COLORS[emp.role]}15`, padding: '2px 8px', borderRadius: 20 }}>
                                 {ROLE_LABELS[emp.role]}
                               </span>
                             ) : (
                               <span style={{ fontSize: 10, color: 'var(--muted)' }}>Employee</span>
                             )}
-                          </td>
+                          </TableCell>
                         )}
-                        <td style={{ fontWeight: 600 }}>{formatCurrency(emp.base_salary || emp.baseSalary)}</td>
-                        <td>
+                        <TableCell className="td-semibold">{formatCurrency(emp.base_salary || emp.baseSalary)}</TableCell>
+                        <TableCell>
                           <div className="actions-cell">
-                            <button className="action-btn" title="Lihat Detail" onClick={() => navigate(`/employees/${emp.id}`)}><FiEye /></button>
-                            <button className="action-btn" title="Edit" onClick={() => { setEditEmp(emp); setModalOpen(true); }}><FiEdit2 /></button>
-                            <button className="action-btn danger" title="Hapus" onClick={() => handleDelete(emp.id)}><FiTrash2 /></button>
+                            <Button variant="ghost" size="icon" onClick={() => navigate(`/employees/${emp.id}`)}><FiEye /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditEmp(emp); setModalOpen(true); }}><FiEdit2 /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(emp.id)}><FiTrash2 /></Button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                                    </TableBody>
+                </Table>
               </div>
             </div>
           )}
@@ -306,3 +311,5 @@ export default function Employees() {
     </div>
   );
 }
+
+

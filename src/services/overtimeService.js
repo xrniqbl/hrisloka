@@ -18,6 +18,7 @@ export async function getAllOvertime(branchId, companyId) {
 
 // Get overtime for specific employee
 export async function getMyOvertime(employeeId) {
+  if (!employeeId) return { data: [], error: null };
   const { data, error } = await supabase
     .from('overtime_requests')
     .select('*')
@@ -28,14 +29,23 @@ export async function getMyOvertime(employeeId) {
 
 // Submit overtime request
 export async function submitOvertime(employeeId, overtimeData) {
+  if (!employeeId) return { data: null, error: { message: 'employeeId required' } };
+  if (!overtimeData?.date) {
+    return { data: null, error: { message: 'Tanggal lembur wajib diisi' } };
+  }
+  const hours = parseFloat(overtimeData.hours);
+  if (!hours || hours <= 0 || hours > 24) {
+    return { data: null, error: { message: 'Jumlah jam lembur tidak valid (0.5–24)' } };
+  }
+
   const { data, error } = await supabase
     .from('overtime_requests')
     .insert({
       employee_id: employeeId,
       date: overtimeData.date,
-      hours: overtimeData.hours,
+      hours,
       rate: overtimeData.rate || 1.5,
-      reason: overtimeData.reason,
+      reason: overtimeData.reason || null,
       project_id: overtimeData.projectId || null,
       status: 'pending',
     })
@@ -71,10 +81,20 @@ export async function approveOvertime(id, approverId, companyId) {
       const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} (${otHours} jam) telah *DISETUJUI*.\n\n_HRIS Loka — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[overtimeService] WA error:', e));
     }
-    if (emp?.auth_user_id) {
-      sendPushToEmployee(emp.auth_user_id, 'HRIS Loka — Lembur Disetujui ✅', `Lembur ${otDate} (${otHours} jam) telah disetujui.`, '/app/overtime')
-        .catch(e => console.warn('[overtimeService] push error:', e));
-    }
+    // pushService expects employees.id (not auth_user_id)
+    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Lembur Disetujui ✅', `Lembur ${otDate} (${otHours} jam) telah disetujui.`, '/app/overtime', companyId)
+      .catch(e => console.warn('[overtimeService] push error:', e));
+    try {
+      const { createNotification } = await import('./notificationService');
+      createNotification({
+        employeeId: data.employee_id,
+        companyId: companyId || emp?.company_id,
+        type: 'approval',
+        title: 'Lembur disetujui',
+        body: `Lembur ${otDate} (${otHours} jam) telah disetujui.`,
+        data: { path: '/app/submissions' },
+      }).catch(() => {});
+    } catch { /* optional */ }
   }
 
   return { data, error };
@@ -106,10 +126,19 @@ export async function rejectOvertime(id, companyId) {
       const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} telah *DITOLAK*.\n\n_HRIS Loka — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[overtimeService] WA error:', e));
     }
-    if (emp?.auth_user_id) {
-      sendPushToEmployee(emp.auth_user_id, 'HRIS Loka — Lembur Ditolak ❌', `Lembur ${otDate} ditolak.`, '/app/overtime')
-        .catch(e => console.warn('[overtimeService] push error:', e));
-    }
+    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Lembur Ditolak ❌', `Lembur ${otDate} ditolak.`, '/app/overtime', companyId)
+      .catch(e => console.warn('[overtimeService] push error:', e));
+    try {
+      const { createNotification } = await import('./notificationService');
+      createNotification({
+        employeeId: data.employee_id,
+        companyId: companyId || emp?.company_id,
+        type: 'approval',
+        title: 'Lembur ditolak',
+        body: `Lembur ${otDate} ditolak.`,
+        data: { path: '/app/submissions' },
+      }).catch(() => {});
+    } catch { /* optional */ }
   }
 
   return { data, error };

@@ -113,7 +113,7 @@ export default function EmpProfileSetup({ employeeId, employeeName, onComplete }
             <div className="eps-logo-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <rect x="2" y="7" width="20" height="15" rx="2" fill="white" fillOpacity="0.9"/>
-                <rect x="9" y="12" width="6" height="10" rx="1" fill="#1565C0"/>
+                <rect x="9" y="12" width="6" height="10" rx="1" fill="#5449FF"/>
                 <rect x="4" y="2" width="16" height="8" rx="1" fill="white" fillOpacity="0.6"/>
               </svg>
             </div>
@@ -391,7 +391,7 @@ export default function EmpProfileSetup({ employeeId, employeeName, onComplete }
                   <div className="eps-face-done-icon">
                     <HiCheck size={36} color="#fff" />
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Wajah Berhasil Didaftarkan!</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 6 }}>Wajah Berhasil Didaftarkan!</div>
                   <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 24 }}>
                     Data wajah tersimpan aman. Absensi Anda kini terlindungi Face ID.
                   </div>

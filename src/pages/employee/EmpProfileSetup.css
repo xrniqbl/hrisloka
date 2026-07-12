@@ -3,12 +3,12 @@
 .eps-overlay {
   position: fixed;
   inset: 0;
-  background: var(--bg, #f0f4ff);
+  background: var(--bg, #F0EEFF);
   z-index: 9999;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 20px 16px 60px;
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  padding: 16px 14px 48px;
+  font-family: 'Inter Tight', system-ui, sans-serif;
 }
 
 .eps-container {
@@ -34,22 +34,22 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #1565C0, #1976D2);
+  background: linear-gradient(135deg, #5449FF, #1976D2);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .eps-logo-text {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text);
   letter-spacing: -0.3px;
 }
 
 .eps-header-title {
-  font-size: 22px;
-  font-weight: 900;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--text);
   margin-bottom: 8px;
   letter-spacing: -0.5px;
@@ -65,9 +65,9 @@
 /* Card */
 .eps-card {
   background: var(--surface, #fff);
-  border-radius: 20px;
-  padding: 22px 18px;
-  box-shadow: 0 8px 32px rgba(0, 71, 171, 0.08), 0 2px 8px rgba(0,0,0,0.04);
+  border-radius: 12px;
+  padding: 14px 14px;
+  box-shadow: 0 8px 32px rgba(99, 91, 255, 0.08), 0 2px 8px rgba(0,0,0,0.04);
   border: 1px solid var(--border, #e5e7eb);
   margin-bottom: 16px;
   animation: fadeInUp 0.3s ease;
@@ -84,8 +84,8 @@
   align-items: center;
   gap: 8px;
   font-size: 15px;
-  font-weight: 800;
-  color: var(--primary, #0047AB);
+  font-weight: 700;
+  color: var(--primary, #635BFF);
   margin-bottom: 10px;
 }
 
@@ -129,7 +129,7 @@
   padding: 13px 14px;
   border-radius: 12px;
   border: 1.5px solid var(--border);
-  background: rgba(0, 71, 171, 0.03);
+  background: rgba(99, 91, 255, 0.03);
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
@@ -142,7 +142,7 @@
   color: #16a34a;
   background: rgba(22, 163, 74, 0.1);
   border: 1px solid rgba(22, 163, 74, 0.2);
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 2px 8px;
 }
 
@@ -212,7 +212,7 @@
   height: 18px;
   flex-shrink: 0;
   margin-top: 1px;
-  accent-color: var(--primary, #0047AB);
+  accent-color: var(--primary, #635BFF);
   cursor: pointer;
 }
 
@@ -240,19 +240,19 @@
   padding: 14px;
   border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, #0047AB, #2563eb);
+  background: linear-gradient(135deg, #635BFF, #4F46E5);
   color: #fff;
   font-family: inherit;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 71, 171, 0.3);
+  box-shadow: 0 4px 14px rgba(99, 91, 255, 0.3);
   transition: all 0.2s;
 }
 
 .eps-btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0, 71, 171, 0.4);
+  box-shadow: 0 6px 20px rgba(99, 91, 255, 0.4);
 }
 
 .eps-btn-primary:disabled {
@@ -292,7 +292,7 @@
   background: linear-gradient(135deg, #16a34a, #22c55e);
   color: #fff;
   font-family: inherit;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(22, 163, 74, 0.3);
@@ -324,9 +324,9 @@
   align-items: center;
   gap: 12px;
   padding: 18px 18px 14px;
-  background: linear-gradient(135deg, #0047AB, #1976D2);
+  background: linear-gradient(135deg, #635BFF, #1976D2);
   color: #fff;
-  border-radius: 20px 20px 0 0;
+  border-radius: 12px 20px 0 0;
 }
 
 .eps-face-tips {
@@ -334,7 +334,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 14px 16px;
-  background: rgba(0, 71, 171, 0.03);
+  background: rgba(99, 91, 255, 0.03);
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
 }
@@ -351,7 +351,7 @@
 /* Face done */
 .eps-face-done {
   text-align: center;
-  padding: 24px 0 8px;
+  padding: 16px 0 8px;
 }
 
 .eps-face-done-icon {
@@ -374,8 +374,8 @@
 
 /* Input focus states */
 input:focus, select:focus, textarea:focus {
-  border-color: var(--primary, #0047AB) !important;
-  box-shadow: 0 0 0 3px rgba(0, 71, 171, 0.1);
+  border-color: var(--primary, #635BFF) !important;
+  box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
 }
 
 * { box-sizing: border-box; }

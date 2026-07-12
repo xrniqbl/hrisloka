@@ -237,13 +237,21 @@ CREATE POLICY "ed_insert" ON employee_documents FOR INSERT WITH CHECK (
 DROP POLICY IF EXISTS "notif_select" ON notifications;
 CREATE POLICY "notif_select" ON notifications FOR SELECT USING (
   employee_id IN (SELECT id FROM employees WHERE auth_user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM employees WHERE auth_user_id = auth.uid() AND role IN ('super_admin','hr_admin','manager','founder'))
 );
 DROP POLICY IF EXISTS "notif_update" ON notifications;
 CREATE POLICY "notif_update" ON notifications FOR UPDATE USING (
   employee_id IN (SELECT id FROM employees WHERE auth_user_id = auth.uid())
 );
+-- INSERT: a user may only create notifications for themselves; admins/staff
+-- (HR/manager/founder) may insert for any employee (system-generated notices
+-- on leave approvals, payslips, etc.). Previously WITH CHECK (true) let any
+-- authenticated user forge notifications to arbitrary employees.
 DROP POLICY IF EXISTS "notif_insert" ON notifications;
-CREATE POLICY "notif_insert" ON notifications FOR INSERT WITH CHECK (true);
+CREATE POLICY "notif_insert" ON notifications FOR INSERT WITH CHECK (
+  employee_id IN (SELECT id FROM employees WHERE auth_user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM employees WHERE auth_user_id = auth.uid() AND role IN ('super_admin','hr_admin','manager','founder'))
+);
 
 -- Push subscriptions: karyawan manage milik sendiri
 DROP POLICY IF EXISTS "ps_all" ON push_subscriptions;
@@ -266,3 +274,83 @@ WHERE table_schema = 'public'
     'notifications','push_subscriptions','onboarding_checklist'
   )
 ORDER BY table_name;
+
+-- ── 10. TIMESHEETS (PWA EmpTimesheet + EmpProjects timer + TimesheetAdmin) ─
+CREATE TABLE IF NOT EXISTS timesheets (
+  id           BIGSERIAL PRIMARY KEY,
+  employee_id  BIGINT REFERENCES employees(id) ON DELETE CASCADE,
+  project_id   BIGINT,
+  date         DATE NOT NULL DEFAULT CURRENT_DATE,
+  hours        NUMERIC(6,2) DEFAULT 0,
+  task         TEXT,
+  project      TEXT,
+  notes        TEXT,
+  description  TEXT,
+  start_time   TIMESTAMPTZ,
+  end_time     TIMESTAMPTZ,
+  billable     BOOLEAN DEFAULT TRUE,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_timesheets_employee ON timesheets(employee_id);
+CREATE INDEX IF NOT EXISTS idx_timesheets_date ON timesheets(date);
+
+ALTER TABLE timesheets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "timesheets_own" ON timesheets;
+CREATE POLICY "timesheets_own" ON timesheets FOR ALL USING (
+  employee_id IN (SELECT id FROM employees WHERE auth_user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM employees WHERE auth_user_id = auth.uid() AND role IN ('super_admin','hr_admin','manager','founder'))
+);
+
+-- ── 11. EMPLOYEE_FACES (Face ID absensi) ──────────────────────────
+CREATE TABLE IF NOT EXISTS employee_faces (
+  id            BIGSERIAL PRIMARY KEY,
+  employee_id   BIGINT REFERENCES employees(id) ON DELETE CASCADE,
+  descriptor    JSONB NOT NULL,
+  label         TEXT,
+  quality_score NUMERIC(5,2),
+  is_active     BOOLEAN DEFAULT TRUE,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_employee_faces_employee ON employee_faces(employee_id);
+
+ALTER TABLE employee_faces ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "faces_own" ON employee_faces;
+CREATE POLICY "faces_own" ON employee_faces FOR ALL USING (
+  employee_id IN (SELECT id FROM employees WHERE auth_user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM employees WHERE auth_user_id = auth.uid() AND role IN ('super_admin','hr_admin','manager','founder'))
+);
+
+-- ── 12. NOTIFICATIONS.message (optional alias for body) ──────────
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='notifications')
+     AND NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_name='notifications' AND column_name='message'
+     ) THEN
+    ALTER TABLE notifications ADD COLUMN message TEXT;
+  END IF;
+END $$;
+
+-- ── 13. OFFICE_LOCATIONS company_id ──────────────────────────────
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='office_locations')
+     AND NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_name='office_locations' AND column_name='company_id'
+     ) THEN
+    ALTER TABLE office_locations ADD COLUMN company_id UUID;
+  END IF;
+END $$;
+
+-- ── 14. PAYROLL_RECORDS month alias (optional) ────────────────────
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='payroll_records')
+     AND NOT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_name='payroll_records' AND column_name='month'
+     ) THEN
+    -- period is canonical (YYYY-MM); month kept as generated view helper if needed
+    NULL;
+  END IF;
+END $$;

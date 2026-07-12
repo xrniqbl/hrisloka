@@ -10,10 +10,11 @@ import { getTicketsByEmployee, submitTicket } from '../../services/ticketService
 import BottomSheet from '../../components/BottomSheet';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
+import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 
 export default function EmpHelpdesk() {
-  const { user } = useAuth();
+  const { user, employee: authEmployee } = useAuth();
   const { locale } = useTranslation();
   const toast = useToast();
   const [emp, setEmp] = useState(null);
@@ -21,9 +22,10 @@ export default function EmpHelpdesk() {
   const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
   const [form, setForm] = useState({ subject: '', category: 'it', priority: 'medium', message: '' });
 
-  const STATUS_COLORS = { open: '#F59E0B', in_progress: '#3B82F6', resolved: '#16A34A', closed: '#6B7280' };
+  const STATUS_COLORS = { open: '#F59E0B', in_progress: '#635BFF', resolved: '#16A34A', closed: '#6B7280' };
   const STATUS_LABELS = {
     open: locale === 'en' ? 'Open' : 'Terbuka',
     in_progress: locale === 'en' ? 'In Progress' : 'Diproses',
@@ -47,15 +49,25 @@ export default function EmpHelpdesk() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const email = user?.email || user?.user_metadata?.email;
-    const { data: empData } = await getEmployeeByEmail(email);
+    if (isDemoMode()) {
+      setEmp({ ...DEMO_EMPLOYEE });
+      setTickets([...(DEMO_PROFILE_DATA.tickets || [])]);
+      setLoading(false);
+      return;
+    }
+    let empData = authEmployee;
+    if (!empData?.id) {
+      const email = user?.email || user?.user_metadata?.email;
+      const res = await getEmployeeByEmail(email);
+      empData = res.data;
+    }
     if (empData) {
       setEmp(empData);
       const { data: ticketData } = await getTicketsByEmployee(empData.id);
       setTickets(ticketData || []);
     }
     setLoading(false);
-  }, [user]);
+  }, [user, authEmployee?.id]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -65,32 +77,59 @@ export default function EmpHelpdesk() {
   }, [loadData]);
 
   const handleSubmit = async () => {
-    if (!emp || !form.subject || !form.message) return;
+    setFormError('');
+    if (!emp || !form.subject?.trim() || !form.message?.trim()) {
+      setFormError(locale === 'en' ? 'Subject and message are required.' : 'Subjek dan pesan wajib diisi.');
+      return;
+    }
     setSubmitting(true);
-    await submitTicket({
+
+    if (isDemoMode()) {
+      setTickets((prev) => [{
+        id: `demo-ticket-${Date.now()}`,
+        subject: form.subject.trim(),
+        category: form.category,
+        priority: form.priority,
+        message: form.message.trim(),
+        status: 'open',
+        created_at: new Date().toISOString(),
+      }, ...prev]);
+      setForm({ subject: '', category: 'it', priority: 'medium', message: '' });
+      setSubmitting(false);
+      setSheetOpen(false);
+      toast.success(locale === 'en' ? 'Demo ticket created!' : 'Tiket demo dibuat!');
+      return;
+    }
+
+    const { error } = await submitTicket({
       employee_id: emp.id,
       subject: form.subject,
       category: form.category,
       priority: form.priority,
       message: form.message,
     });
+    setSubmitting(false);
+    if (error) {
+      setFormError(error.message || (locale === 'en' ? 'Failed to submit ticket' : 'Gagal mengirim tiket'));
+      toast?.error?.(error.message);
+      return;
+    }
     setForm({ subject: '', category: 'it', priority: 'medium', message: '' });
     await loadData();
-    setSubmitting(false);
     setSheetOpen(false);
     toast.success(locale === 'en' ? 'Ticket submitted successfully!' : 'Tiket berhasil dikirim!');
   };
 
   if (loading) return (
-    <div style={{ animation: "fadeInUp 0.3s ease" }}>
-      <div style={{ marginBottom: 16 }}>
+    <div className="ep-loading-wrap">
+      <div style={{ marginBottom: 12 }}>
         <div className="skeleton skeleton-text" style={{ width: 120, height: 22, marginBottom: 8 }} />
         <div className="skeleton skeleton-text-sm" style={{ width: 200 }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
         {[1, 2].map(i => <div key={i} className="emp-card" style={{ padding: 14, textAlign: 'center' }}><div className="skeleton" style={{ height: 48, borderRadius: 8 }} /></div>)}
       </div>
-      <div className="skeleton" style={{ height: 52, borderRadius: 'var(--radius-md)', marginBottom: 20 }} />
+      <div className="skeleton" style={{ height: 52, borderRadius: 'var(--radius-md)', marginBottom: 14 }} />
       <div style={{ display: 'grid', gap: 10 }}>
         {[1, 2, 3].map(i => <div key={i} className="emp-card" style={{ height: 88 }}><div className="skeleton" style={{ height: '100%', borderRadius: 8 }} /></div>)}
       </div>
@@ -101,7 +140,7 @@ export default function EmpHelpdesk() {
 
   return (
     <div className="emp-page">
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <h1 className="emp-page-title">{locale === 'en' ? 'Helpdesk' : 'Helpdesk'}</h1>
         <p className="emp-page-subtitle">
           {locale === 'en' ? 'Create and track support tickets' : 'Buat dan pantau tiket bantuan'}
@@ -109,39 +148,28 @@ export default function EmpHelpdesk() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
         <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>
+          <div className="td-muted-sm mb-sm">
             {locale === 'en' ? 'Active Tickets' : 'Tiket Aktif'}
           </div>
-          <div className="emp-stat-number" style={{ fontSize: 22, fontWeight: 800, color: '#F59E0B' }}>{openTickets.length}</div>
+          <div className="info-card-value warning">{openTickets.length}</div>
         </div>
         <div className="emp-card" style={{ padding: 14, textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>
+          <div className="td-muted-sm mb-sm">
             {locale === 'en' ? 'Total Tickets' : 'Total Tiket'}
           </div>
-          <div className="emp-stat-number" style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{tickets.length}</div>
+          <div className="info-card-value primary">{tickets.length}</div>
         </div>
       </div>
 
       {/* New Ticket Button */}
-      <button
-        onClick={() => setSheetOpen(true)}
-        style={{
-          width: '100%', padding: '14px', marginBottom: 20,
-          background: 'linear-gradient(135deg, var(--primary), #1D4ED8)',
-          color: '#fff', border: 'none', borderRadius: 'var(--radius-md)',
-          fontWeight: 700, fontSize: 14, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: '0 4px 14px rgba(0,71,171,0.25)',
-          fontFamily: 'inherit', transition: 'opacity 0.2s',
-        }}
-      >
+      <button className="btn-primary mb" onClick={() => setSheetOpen(true)}>
         <HiPlus size={18} /> {locale === 'en' ? 'Create New Ticket' : 'Buat Tiket Baru'}
       </button>
 
       {/* Ticket List */}
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
+      <div className="section-label mb-sm">
         {locale === 'en' ? `Ticket History (${tickets.length})` : `Riwayat Tiket (${tickets.length})`}
       </div>
       {tickets.length === 0 ? (
@@ -154,11 +182,11 @@ export default function EmpHelpdesk() {
         <div style={{ display: 'grid', gap: 10 }}>
           {tickets.map(t => (
             <div key={t.id} className="emp-card emp-card-stagger" style={{ padding: 16, borderLeft: `4px solid ${STATUS_COLORS[t.status] || '#6B7280'}` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div className="btn-icon-row" style={{ alignItems: 'flex-start', marginBottom: 8 }}>
                 <div style={{ flex: 1, marginRight: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{t.subject}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                    {CATEGORIES.find(c => c.value === t.category)?.label || t.category} � {new Date(t.created_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID')}
+                  <div className="td-semibold mb-sm">{t.subject}</div>
+                  <div className="td-muted-sm">
+                    {CATEGORIES.find(c => c.value === t.category)?.label || t.category} · {new Date(t.created_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID')}
                   </div>
                 </div>
                 <span className={`status-badge ${t.status === 'in_progress' ? 'active' : t.status === 'resolved' ? 'approved' : t.status}`}>
@@ -166,14 +194,14 @@ export default function EmpHelpdesk() {
                 </span>
               </div>
               {t.message && (
-                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5, fontStyle: 'italic' }}>"{t.message.slice(0, 80)}{t.message.length > 80 ? '...' : ''}"</div>
+                <div className="td-muted-sm" style={{ lineHeight: 1.5, fontStyle: 'italic' }}>"{t.message.slice(0, 80)}{t.message.length > 80 ? '...' : ''}"</div>
               )}
               {t.admin_reply && (
-                <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(0,71,171,0.06)', borderRadius: 8, borderLeft: '3px solid var(--primary)' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)', marginBottom: 2 }}>
+                <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(99,91,255,0.06)', borderRadius: 8, borderLeft: '3px solid var(--primary)' }}>
+                  <div className="td-muted-sm" style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: 2 }}>
                     {locale === 'en' ? 'HR/ADMIN REPLY' : 'BALASAN HR/ADMIN'}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t.admin_reply}</div>
+                  <div className="td-muted-sm" style={{ color: 'var(--text-secondary)' }}>{t.admin_reply}</div>
                 </div>
               )}
             </div>
@@ -195,32 +223,37 @@ export default function EmpHelpdesk() {
           </>
         }
       >
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div>
-            <label className="emp-label">{locale === 'en' ? 'Subject *' : 'Subjek *'}</label>
+        <div className="form-grid" style={{ gap: 14 }}>
+          {formError && (
+            <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', color: '#DC2626', fontSize: 12, fontWeight: 600 }}>
+              {formError}
+            </div>
+          )}
+          <div className="form-group">
+            <label className="form-label">{locale === 'en' ? 'Subject *' : 'Subjek *'}</label>
             <input
               className="emp-input"
               placeholder={locale === 'en' ? 'Briefly describe the issue...' : 'Deskripsikan masalah secara singkat...'}
               value={form.subject}
-              onChange={e => setForm({ ...form, subject: e.target.value })}
+              onChange={e => { setForm({ ...form, subject: e.target.value }); setFormError(''); }}
             />
           </div>
-          <div>
-            <label className="emp-label">{locale === 'en' ? 'Category' : 'Kategori'}</label>
+          <div className="form-group">
+            <label className="form-label">{locale === 'en' ? 'Category' : 'Kategori'}</label>
             <select
+              className="form-select"
               value={form.category}
               onChange={e => setForm({ ...form, category: e.target.value })}
-              style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 13 }}
             >
               {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
-          <div>
-            <label className="emp-label">{locale === 'en' ? 'Priority' : 'Prioritas'}</label>
+          <div className="form-group">
+            <label className="form-label">{locale === 'en' ? 'Priority' : 'Prioritas'}</label>
             <select
+              className="form-select"
               value={form.priority}
               onChange={e => setForm({ ...form, priority: e.target.value })}
-              style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'inherit', fontSize: 13 }}
             >
               <option value="low">{locale === 'en' ? 'Low' : 'Rendah'}</option>
               <option value="medium">{locale === 'en' ? 'Medium' : 'Sedang'}</option>
@@ -228,14 +261,13 @@ export default function EmpHelpdesk() {
               <option value="urgent">{locale === 'en' ? 'Urgent' : 'Mendesak'}</option>
             </select>
           </div>
-          <div>
-            <label className="emp-label">{locale === 'en' ? 'Issue Description *' : 'Deskripsi Masalah *'}</label>
+          <div className="form-group">
+            <label className="form-label">{locale === 'en' ? 'Issue Description *' : 'Deskripsi Masalah *'}</label>
             <textarea
-              className="emp-input"
+              className="form-textarea"
               placeholder={locale === 'en' ? 'Explain your issue or request in detail...' : 'Jelaskan masalah atau permintaan Anda secara detail...'}
               value={form.message}
               onChange={e => setForm({ ...form, message: e.target.value })}
-              style={{ minHeight: 100, resize: 'vertical' }}
             />
           </div>
         </div>
@@ -243,3 +275,4 @@ export default function EmpHelpdesk() {
     </div>
   );
 }
+

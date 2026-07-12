@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { updateSEOTags, injectSchema } from '../lib/seo';
 
@@ -16,19 +16,19 @@ const PRIVACY_SCHEMA = {
 const s = {
   page: { maxWidth: 800, margin: '0 auto', padding: '40px 24px 80px', fontFamily: 'Inter, system-ui, sans-serif', color: '#1E293B', lineHeight: 1.8 },
   nav: { padding: '16px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', background: '#fff', marginBottom: 0 },
-  h1: { fontSize: 36, fontWeight: 900, marginBottom: 8, color: '#0F172A' },
+  h1: { fontSize: 20, fontWeight: 600, marginBottom: 8, color: '#0F172A' },
   date: { fontSize: 13, color: '#94A3B8', marginBottom: 40, display: 'block' },
-  h2: { fontSize: 20, fontWeight: 800, marginTop: 40, marginBottom: 12, color: '#0F172A' },
+  h2: { fontSize: 20, fontWeight: 600, marginTop: 40, marginBottom: 12, color: '#0F172A' },
   p: { fontSize: 15, color: '#374151', marginBottom: 16 },
   ul: { paddingLeft: 20, marginBottom: 16 },
   li: { fontSize: 15, color: '#374151', marginBottom: 8 },
-  a: { color: '#0047AB' },
+  a: { color: '#635BFF' },
 };
 
 export default function PrivacyPolicy() {
   useEffect(() => {
     updateSEOTags({
-      title: 'Kebijakan Privasi — HRIS Loka',
+      title: 'Kebijakan Privasi - HRIS Loka',
       description: 'Kebijakan privasi HRIS Loka menjelaskan cara kami mengumpulkan, menggunakan, dan melindungi data personal pengguna sesuai regulasi perlindungan data Indonesia.',
       canonical: 'https://hrisloka.com/privacy',
       keywords: 'kebijakan privasi HRIS Loka, perlindungan data, privacy policy HR software',
@@ -39,8 +39,8 @@ export default function PrivacyPolicy() {
   return (
     <>
       <nav style={s.nav}>
-        <Link to="/" style={{ fontSize: 20, fontWeight: 900, color: '#0047AB', textDecoration: 'none' }}>HRIS Loka</Link>
-        <Link to="/landing" style={{ fontSize: 14, color: '#64748B', textDecoration: 'none', fontWeight: 600 }}>← Kembali</Link>
+        <Link to="/" style={{ fontSize: 20, fontWeight: 600, color: '#635BFF', textDecoration: 'none' }}>HRIS Loka</Link>
+        <Link to="/landing" style={{ fontSize: 14, color: '#64748B', textDecoration: 'none', fontWeight: 600 }}>† Kembali</Link>
       </nav>
       <main style={s.page}>
         <h1 style={s.h1}>Kebijakan Privasi</h1>
@@ -72,8 +72,8 @@ export default function PrivacyPolicy() {
         <p style={s.p}>Kami menerapkan standar keamanan tinggi untuk melindungi data Anda:</p>
         <ul style={s.ul}>
           <li style={s.li}>Enkripsi data saat transit (HTTPS/TLS 1.3) dan saat penyimpanan</li>
-          <li style={s.li}>Row-Level Security (RLS) — data perusahaan terisolasi penuh antar tenant</li>
-          <li style={s.li}>Role-Based Access Control (RBAC) — akses hanya sesuai jabatan</li>
+          <li style={s.li}>Row-Level Security (RLS) - data perusahaan terisolasi penuh antar tenant</li>
+          <li style={s.li}>Role-Based Access Control (RBAC) - akses hanya sesuai jabatan</li>
           <li style={s.li}>Audit log lengkap setiap perubahan data sensitif</li>
           <li style={s.li}>Infrastruktur cloud tier-1 (Supabase/Vercel) dengan SLA 99.9%</li>
         </ul>
@@ -95,8 +95,9 @@ export default function PrivacyPolicy() {
 
         <h2 style={s.h2}>7. Kontak</h2>
         <p style={s.p}>Untuk pertanyaan atau permintaan terkait privasi data, hubungi kami di: <a href="mailto:hrisloka@gmail.com" style={s.a}>hrisloka@gmail.com</a></p>
-        <p style={s.p}>HRIS Loka · Bandung, Jawa Barat, Indonesia</p>
+        <p style={s.p}>HRIS Loka  Bandung, Jawa Barat, Indonesia</p>
       </main>
     </>
   );
 }
+

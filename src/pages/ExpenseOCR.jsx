@@ -11,7 +11,7 @@ import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 
 const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
-const statusColors = { pending: '#F59E0B', approved: '#0047AB', paid: '#16A34A', rejected: '#DC2626' };
+const statusColors = { pending: '#F59E0B', approved: '#635BFF', paid: '#16A34A', rejected: '#DC2626' };
 const statusLabels = { pending: 'Pending', approved: 'Approved', paid: 'Paid', rejected: 'Rejected' };
 
 // -- OCR Helpers -------------------------------------------------------------
@@ -111,7 +111,7 @@ export default function ExpenseOCR() {
   const totalApproved = expenses.filter(e => e.status === 'approved' || e.status === 'paid').reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const stats = [
-    { label: 'Total Expense', value: expenses.length, color: '#0047AB', icon: <FiDollarSign /> },
+    { label: 'Total Expense', value: expenses.length, color: '#635BFF', icon: <FiDollarSign /> },
     { label: 'Pending Review', value: formatCurrency(totalPending), color: '#F59E0B', icon: <FiAlertTriangle />, isText: true },
     { label: 'Approved/Paid', value: formatCurrency(totalApproved), color: '#16A34A', icon: <FiCheck />, isText: true },
     { label: 'Rejected', value: expenses.filter(e => e.status === 'rejected').length, color: '#DC2626', icon: <FiX /> },
@@ -222,16 +222,16 @@ export default function ExpenseOCR() {
     <div>
       <div className="page-header">
         <h1>
-          <FiCpu style={{ marginRight: 8, color: '#7C3AED' }} />
-          Expense & Reimbursement <span style={{ fontSize: 12, fontWeight: 600, color: '#7C3AED', background: 'rgba(124,58,237,0.1)', padding: '2px 8px', borderRadius: 20, marginLeft: 8 }}>OCR Smart Scan</span>
+          <FiCpu className="icon-purple" />
+          Expense & Reimbursement <span className="badge-ocr">OCR Smart Scan</span>
         </h1>
         <div className="page-header-actions">
-          <button className="btn-primary" onClick={openSubmit}><FiPlus /> Submit Expense</button>
+          <button className="btn-primary" onClick={openSubmit} aria-label="Submit expense"><FiPlus /> Submit Expense</button>
         </div>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
+      <div className="stats-grid">
         {stats.map(s => (
           <div key={s.label} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -245,6 +245,7 @@ export default function ExpenseOCR() {
 
       {/* Table */}
       <div className="data-table-card">
+        <div className="table-responsive">
         <table className="data-table">
           <thead>
             <tr>
@@ -257,10 +258,10 @@ export default function ExpenseOCR() {
               return (
                 <tr key={e.id}>
                   <td style={{ fontWeight: 600, fontFamily: 'monospace' }}>EXP-{String(e.id).padStart(3, '0')}</td>
-                  <td style={{ fontWeight: 600 }}>{empName}</td>
+                  <td className="td-semibold">{empName}</td>
                   <td>{e.type || e.category || '-'}</td>
                   <td style={{ fontSize: 13 }}>{new Date(e.created_at).toLocaleDateString('id-ID')}</td>
-                  <td style={{ fontWeight: 600 }}>{formatCurrency(e.amount)}</td>
+                  <td className="td-semibold">{formatCurrency(e.amount)}</td>
                   <td>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, color: '#fff', background: statusColors[e.status] }}>
                       {statusLabels[e.status]}
@@ -268,10 +269,10 @@ export default function ExpenseOCR() {
                   </td>
                   <td>
                     <div className="actions-cell">
-                      <button className="action-btn" onClick={() => openView(e)}><FiEye /></button>
+                      <button className="action-btn" onClick={() => openView(e)} aria-label="Lihat expense"><FiEye /></button>
                       {e.status === 'pending' && (
                         <>
-                          <button className="action-btn" style={{ color: '#16A34A', borderColor: '#16A34A' }} onClick={() => handleApprove(e.id)}><FiCheck /></button>
+                          <button className="action-btn" style={{ color: '#16A34A', borderColor: '#16A34A' }} onClick={() => handleApprove(e.id)} aria-label="Approve expense"><FiCheck /></button>
                           <button className="action-btn danger" onClick={() => handleReject(e.id)}><FiX /></button>
                         </>
                       )}
@@ -285,6 +286,7 @@ export default function ExpenseOCR() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* View Modal */}
@@ -307,7 +309,7 @@ export default function ExpenseOCR() {
                 </div>
                 <div className="form-group">
                   <label className="form-label" style={{ color: 'var(--muted)' }}>Jumlah</label>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0047AB' }}>{formatCurrency(selected.amount)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#635BFF' }}>{formatCurrency(selected.amount)}</div>
                 </div>
                 <div className="form-group">
                   <label className="form-label" style={{ color: 'var(--muted)' }}>Status</label>
@@ -352,8 +354,7 @@ export default function ExpenseOCR() {
                     className="btn-secondary btn-sm"
                     style={{ borderColor: '#7C3AED', color: '#7C3AED' }}
                     onClick={() => fileInputRef.current?.click()}
-                  >
-                    <FiCamera /> Foto Struk
+                  ><FiCamera /> Foto Struk
                   </button>
                   <button
                     className="btn-secondary btn-sm"
@@ -363,8 +364,7 @@ export default function ExpenseOCR() {
                         fileInputRef.current.click();
                       }
                     }}
-                  >
-                    <FiImage /> Pilih dari Galeri
+                  ><FiImage /> Pilih dari Galeri
                   </button>
                 </div>
 
@@ -393,7 +393,7 @@ export default function ExpenseOCR() {
                           {ocrResult.amount && (
                             <div style={{ padding: '6px 10px', background: '#fff', borderRadius: 8, border: '1px solid rgba(22,163,74,0.2)' }}>
                               <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>JUMLAH</div>
-                              <div style={{ fontWeight: 700, color: '#0047AB' }}>{formatCurrency(ocrResult.amount)}</div>
+                              <div style={{ fontWeight: 700, color: '#635BFF' }}>{formatCurrency(ocrResult.amount)}</div>
                             </div>
                           )}
                           {ocrResult.date && (
@@ -489,3 +489,5 @@ export default function ExpenseOCR() {
     </div>
   );
 }
+
+

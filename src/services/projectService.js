@@ -47,7 +47,7 @@ export async function createProject(project) {
       start_date: project.startDate,
       end_date: project.endDate || null,
       hourly_rate: project.hourlyRate || 0,
-      color: project.color || '#2563EB',
+      color: project.color || '#4F46E5',
       company_id: project.companyId || null,
     })
     .select()
@@ -55,8 +55,9 @@ export async function createProject(project) {
   return { data, error };
 }
 
-// Update project — verify company ownership
+// Update project — MANDATORY company ownership
 export async function updateProject(id, project, companyId) {
+  if (!guardCompanyId(companyId, 'updateProject')) return { data: null, error: { message: 'company_id required' } };
   const payload = {};
   if (project.name !== undefined) payload.name = project.name;
   if (project.client !== undefined) payload.client = project.client;
@@ -68,20 +69,19 @@ export async function updateProject(id, project, companyId) {
   if (project.hourlyRate !== undefined) payload.hourly_rate = project.hourlyRate;
   if (project.color !== undefined) payload.color = project.color;
 
-  let query = supabase
+  const { data, error } = await supabase
     .from('projects')
     .update(payload)
-    .eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { data, error } = await query.select().single();
+    .eq('id', id)
+    .eq('company_id', companyId)
+    .select().single();
   return { data, error };
 }
 
-// Delete project — verify company ownership
+// Delete project — MANDATORY company ownership
 export async function deleteProject(id, companyId) {
-  let query = supabase.from('projects').delete().eq('id', id);
-  if (companyId) query = query.eq('company_id', companyId);
-  const { error } = await query;
+  if (!guardCompanyId(companyId, 'deleteProject')) return { error: { message: 'company_id required' } };
+  const { error } = await supabase.from('projects').delete().eq('id', id).eq('company_id', companyId);
   return { error };
 }
 
@@ -137,11 +137,18 @@ export async function removeAssignment(id) {
 
 // ─── Timesheets ───
 
-export async function getTimesheets(filters = {}) {
-  let query = supabase
-    .from('timesheets')
-    .select('*, employees(id, name, division), projects(id, name, client, hourly_rate, color)')
-    .order('date', { ascending: false });
+export async function getTimesheets(filters = {}, companyId = null) {
+  // Prefer company scope via employees join (multi-tenant)
+  let query = companyId
+    ? supabase
+      .from('timesheets')
+      .select('*, employees!inner(id, name, division, company_id), projects(id, name, client, hourly_rate, color)')
+      .eq('employees.company_id', companyId)
+      .order('date', { ascending: false })
+    : supabase
+      .from('timesheets')
+      .select('*, employees(id, name, division), projects(id, name, client, hourly_rate, color)')
+      .order('date', { ascending: false });
 
   if (filters.projectId) query = query.eq('project_id', filters.projectId);
   if (filters.employeeId) query = query.eq('employee_id', filters.employeeId);

@@ -1,0 +1,553 @@
+/**
+ * emp-density.css
+ * Global layout density for Employee PWA (.emp-layout + .emp-page)
+ * Keeps spacing, type, cards, and lists consistent across all modules.
+ */
+
+/* ── Tokens (shell) ─────────────────────────────────────── */
+.emp-layout {
+  --emp-header-h: 56px;
+  --emp-nav-h: 56px;
+  --emp-pad-x: 14px;
+  --emp-max-w: 480px;
+  --emp-title: 16px;
+  --emp-subtitle: 12px;
+  --emp-body: 13px;
+  --emp-meta: 11px;
+  --emp-card-pad: 12px 14px;
+  --emp-radius: 12px;
+  --emp-gap: 10px;
+}
+
+/* Content area: tighter, never cut off by nav */
+.emp-layout main.emp-content,
+.emp-layout .emp-content {
+  padding: 12px var(--emp-pad-x) !important;
+  padding-bottom: calc(var(--emp-nav-h) + env(safe-area-inset-bottom, 0px) + 16px) !important;
+  box-sizing: border-box;
+  overflow-x: hidden !important;
+}
+
+@media (max-width: 360px) {
+  .emp-layout {
+    --emp-pad-x: 12px;
+    --emp-title: 15px;
+  }
+}
+
+/* Header compact */
+.emp-layout .emp-header {
+  min-height: calc(var(--emp-header-h) + env(safe-area-inset-top, 0px));
+  padding: 8px var(--emp-pad-x);
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+.emp-layout .emp-header-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  box-shadow: 0 2px 8px rgba(99, 91, 255, 0.22), 0 0 0 2px rgba(255, 255, 255, 0.85) !important;
+}
+
+.emp-layout .emp-header-name {
+  font-size: 13px !important;
+  max-width: min(48vw, 180px) !important;
+}
+
+.emp-layout .emp-header-greeting-text {
+  font-size: 10px !important;
+}
+
+.emp-layout .emp-header-dept {
+  font-size: 10px !important;
+  max-width: min(48vw, 180px) !important;
+}
+
+.emp-layout .emp-header-icon-btn {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+/* Bottom nav compact */
+.emp-layout .emp-bottom-nav {
+  height: calc(var(--emp-nav-h) + env(safe-area-inset-bottom, 0px));
+}
+
+.emp-layout .emp-nav-icon {
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 20px !important;
+}
+
+.emp-layout .emp-nav-label {
+  font-size: 9px !important;
+}
+
+.emp-layout .emp-menu-drawer {
+  bottom: calc(var(--emp-nav-h) + env(safe-area-inset-bottom, 0px));
+  border-radius: 18px 18px 0 0;
+}
+
+.emp-layout .emp-menu-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  font-size: 20px !important;
+}
+
+.emp-layout .emp-menu-label {
+  font-size: 10px !important;
+}
+
+/* ── Page chrome ────────────────────────────────────────── */
+.emp-layout .emp-page,
+.emp-page {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.emp-layout .emp-page-title,
+.emp-page .emp-page-title {
+  font-size: var(--emp-title) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.emp-layout .emp-page-subtitle,
+.emp-page .emp-page-subtitle {
+  font-size: var(--emp-subtitle) !important;
+  margin-top: 2px !important;
+  line-height: 1.35;
+}
+
+.emp-layout .emp-page-header,
+.emp-page .emp-page-header {
+  margin-bottom: 12px !important;
+}
+
+.emp-layout .section-label,
+.emp-page .section-label {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.emp-layout .btn-link-primary,
+.emp-page .btn-link-primary {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* Cards */
+.emp-layout .emp-card,
+.emp-page .emp-card {
+  border-radius: var(--emp-radius) !important;
+  padding: var(--emp-card-pad) !important;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.03) !important;
+  border-width: 1px !important;
+}
+
+.emp-layout .emp-card-padded,
+.emp-page .emp-card-padded {
+  padding: 12px 14px !important;
+}
+
+.emp-layout .emp-card-gradient,
+.emp-page .emp-card-gradient {
+  padding: 14px 14px !important;
+  border-radius: var(--emp-radius) !important;
+}
+
+/* Lists & rows */
+.emp-layout .emp-list-grid,
+.emp-page .emp-list-grid {
+  gap: 8px !important;
+}
+
+.emp-layout .emp-ann-row,
+.emp-layout .emp-task-row,
+.emp-layout .emp-pending-row,
+.emp-page .emp-ann-row,
+.emp-page .emp-task-row,
+.emp-page .emp-pending-row {
+  padding: 10px 12px !important;
+  gap: 10px !important;
+}
+
+.emp-layout .emp-ann-row-icon,
+.emp-layout .emp-task-row-icon,
+.emp-page .emp-ann-row-icon,
+.emp-page .emp-task-row-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+}
+
+.emp-layout .td-semibold,
+.emp-page .td-semibold {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.3;
+}
+
+.emp-layout .td-muted-sm,
+.emp-page .td-muted-sm {
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+.emp-layout .info-card-value,
+.emp-page .info-card-value {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.emp-layout .info-card-label,
+.emp-page .info-card-label {
+  font-size: 11px !important;
+}
+
+/* Stats / actions */
+.emp-layout .emp-stat-grid,
+.emp-page .emp-stat-grid {
+  gap: 8px !important;
+}
+
+.emp-layout .emp-actions-grid,
+.emp-page .emp-actions-grid {
+  gap: 8px !important;
+}
+
+.emp-layout .emp-action-btn,
+.emp-page .emp-action-btn {
+  min-height: 70px !important;
+  padding: 10px 6px !important;
+  border-radius: 12px !important;
+}
+
+.emp-layout .emp-action-icon,
+.emp-page .emp-action-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 10px !important;
+}
+
+.emp-layout .emp-action-label,
+.emp-page .emp-action-label {
+  font-size: 10px !important;
+}
+
+.emp-layout .emp-icon-box,
+.emp-page .emp-icon-box {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 10px !important;
+}
+
+/* Forms denser */
+.emp-layout .emp-field-input,
+.emp-layout .emp-field-select,
+.emp-layout .emp-field-textarea,
+.emp-layout .emp-input,
+.emp-page .emp-field-input,
+.emp-page .emp-field-select,
+.emp-page .emp-field-textarea,
+.emp-page .emp-input {
+  padding: 11px 12px !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+  border-width: 1px !important;
+}
+
+.emp-layout .emp-field-label,
+.emp-layout .emp-label,
+.emp-page .emp-field-label,
+.emp-page .emp-label {
+  font-size: 11px !important;
+  margin-bottom: 5px !important;
+}
+
+.emp-layout .emp-field-textarea,
+.emp-page .emp-field-textarea {
+  min-height: 72px !important;
+}
+
+/* Buttons — compact across PWA */
+.emp-layout .btn-primary,
+.emp-layout .btn-secondary,
+.emp-page .btn-primary,
+.emp-page .btn-secondary {
+  min-height: 38px !important;
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+}
+
+/* Generic full-width CTA buttons with large padding (inline survivors) */
+.emp-layout .emp-page button[style*="padding: '14"],
+.emp-layout .emp-page button[style*='padding: "14'],
+.emp-layout .emp-page button[style*="padding: 14"] {
+  min-height: 38px;
+}
+
+/* File upload dropzones should never look like huge boxes */
+.emp-layout .emp-file-uploader,
+.emp-page .emp-file-uploader {
+  margin-bottom: 0;
+}
+
+/* Badges */
+.emp-layout .badge,
+.emp-page .badge {
+  font-size: 10px !important;
+  padding: 2px 8px !important;
+}
+
+/* Spacing utilities slightly tighter inside PWA */
+.emp-layout .mb,
+.emp-page .mb {
+  margin-bottom: 14px !important;
+}
+
+.emp-layout .mb-sm,
+.emp-page .mb-sm {
+  margin-bottom: 8px !important;
+}
+
+/* Empty / loading states */
+.emp-layout .ep-empty-wrap,
+.emp-layout .ep-loading-wrap,
+.emp-page .ep-empty-wrap,
+.emp-page .ep-loading-wrap {
+  padding: 28px 16px !important;
+  text-align: center;
+}
+
+.emp-layout .ep-empty-desc,
+.emp-layout .ep-loading-text,
+.emp-page .ep-empty-desc,
+.emp-page .ep-loading-text {
+  font-size: 13px !important;
+  color: var(--muted);
+}
+
+/* Bottom sheet denser */
+.emp-layout .bottom-sheet {
+  border-radius: 18px 18px 0 0 !important;
+}
+
+.emp-layout .bottom-sheet-header h3 {
+  font-size: 15px !important;
+}
+
+.emp-layout .bottom-sheet-body {
+  padding: 12px 16px !important;
+}
+
+.emp-layout .bottom-sheet-footer {
+  padding: 10px 16px !important;
+}
+
+/* Prevent wide children from blowing layout */
+.emp-layout .emp-page img,
+.emp-layout .emp-page video,
+.emp-layout .emp-page canvas,
+.emp-layout .emp-page table,
+.emp-layout .emp-page pre {
+  max-width: 100%;
+}
+
+.emp-layout .emp-page .emp-card,
+.emp-layout .emp-page .emp-list-grid,
+.emp-layout .emp-page .emp-stat-grid,
+.emp-layout .emp-page .emp-actions-grid {
+  min-width: 0;
+}
+
+/* Generic list item cards used across modules */
+.emp-layout .emp-page [class*="status"],
+.emp-page .status-badge {
+  font-size: 10px !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ANTI CUT-OFF — buttons, flex rows, long labels
+   ══════════════════════════════════════════════════════════ */
+
+.emp-layout .emp-page,
+.emp-layout .emp-page * {
+  box-sizing: border-box;
+}
+
+/* Buttons never spill outside card/viewport */
+.emp-layout button,
+.emp-layout .btn-primary,
+.emp-layout .btn-secondary,
+.emp-layout a.btn-primary,
+.emp-layout a.btn-secondary,
+.emp-layout .ep-hero-btn,
+.emp-layout .ep-face-cta,
+.emp-layout .emp-hero-btn,
+.emp-layout .emp-doc-upload-btn,
+.emp-layout .emp-file-uploader__btn,
+.emp-layout .emp-settings__logout,
+.emp-layout .emp-settings__sheet-submit,
+.emp-page button,
+.emp-page .btn-primary,
+.emp-page .btn-secondary {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Prefer wrapping label over horizontal overflow */
+.emp-layout button,
+.emp-page button {
+  white-space: normal;
+  line-height: 1.25;
+  text-align: center;
+  word-break: break-word;
+}
+
+.emp-layout .badge,
+.emp-layout .ep-tab,
+.emp-page .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Flex rows always allowed to shrink */
+.emp-layout .ep-lock-row,
+.emp-layout .ep-quick-row,
+.emp-layout .ep-face-status,
+.emp-layout .emp-ann-row,
+.emp-layout .emp-task-row,
+.emp-layout .emp-pending-row,
+.emp-layout .emp-doc-row,
+.emp-layout .emp-settings__row,
+.emp-layout .page-header-actions,
+.emp-layout .emp-hero-row,
+.emp-layout .ep-hero-actions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.emp-layout .ep-lock-row > *,
+.emp-layout .ep-quick-row > *,
+.emp-layout .emp-ann-row > *,
+.emp-layout .emp-task-row > *,
+.emp-layout .emp-pending-row > *,
+.emp-layout .emp-doc-row > *,
+.emp-layout .emp-settings__row > * {
+  min-width: 0;
+}
+
+.emp-layout .emp-ann-row-body,
+.emp-layout .emp-task-row-body,
+.emp-layout .ep-lock-label,
+.emp-layout .ep-lock-value,
+.emp-layout .ep-quick-row-label,
+.emp-layout .emp-settings__text,
+.emp-layout .td-semibold {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emp-layout .td-truncate,
+.emp-layout .ep-hero-name,
+.emp-layout .ep-lock-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dual CTAs stack on tiny phones */
+@media (max-width: 380px) {
+  .emp-layout .ep-hero-actions,
+  .emp-layout .emp-hero-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .emp-layout .emp-hero-btn,
+  .emp-layout .ep-hero-btn {
+    width: 100% !important;
+    white-space: normal !important;
+  }
+
+  .emp-layout .emp-hero-clock {
+    font-size: 22px !important;
+  }
+}
+
+/* Bottom sheet footer buttons share space fairly */
+.emp-layout .bottom-sheet-footer {
+  display: flex !important;
+  gap: 8px !important;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.emp-layout .bottom-sheet-footer > * {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Cards never wider than viewport */
+.emp-layout .emp-card,
+.emp-layout .ep-hero,
+.emp-layout .emp-hero-card {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow: hidden;
+}
+
+/* Inputs never overflow */
+.emp-layout input,
+.emp-layout select,
+.emp-layout textarea,
+.emp-page input,
+.emp-page select,
+.emp-page textarea {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* No horizontal page scroll inside shell */
+.emp-layout,
+.emp-layout main.emp-content {
+  overflow-x: hidden !important;
+}
+
+.emp-layout .emp-nav-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+.emp-layout .emp-menu-item {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.emp-layout .emp-menu-grid {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Filter chip rows: scroll instead of cut */
+.emp-layout .ep-tabs {
+  max-width: 100%;
+}

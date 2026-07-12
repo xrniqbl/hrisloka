@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { computeExpiresAt } from './subscriptionService';
 
 // ── Subscription Plans ───────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ export async function deletePlan(id) {
 export async function getAllSubscriptions() {
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('*, companies(name, company_code, logo_url), subscription_plans(name, slug)')
+    .select('*, companies(name, company_code, logo_url), subscription_plans(name, slug), onboarding_profiles(employee_count)')
     .order('created_at', { ascending: false });
   return { data: data || [], error };
 }
@@ -72,10 +73,11 @@ export async function updateSubscription(id, payload) {
   return { data, error };
 }
 
-export async function cancelSubscription(id, reason) {
+export async function cancelSubscription(id, _reason) {
+  // `_reason` reserved for future audit notes column; schema currently has no notes field
   const { data, error } = await supabase
     .from('subscriptions')
-    .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), notes: reason, updated_at: new Date().toISOString() })
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single();
@@ -207,13 +209,17 @@ export async function createCompanyWithPlan(payload) {
   if (companyErr) return { data: null, error: companyErr };
 
   if (payload.plan_id) {
-    await supabase.from('subscriptions').insert({
+    const billingCycle = payload.billing_cycle || 'monthly';
+    const startDate = new Date().toISOString();
+    const { error: subErr } = await supabase.from('subscriptions').insert({
       company_id: company.id,
       plan_id: payload.plan_id,
       status: 'active',
-      billing_cycle: 'monthly',
-      start_date: new Date().toISOString().split('T')[0],
+      billing_cycle: billingCycle,
+      start_date: startDate.split('T')[0],
+      expires_at: computeExpiresAt(startDate, billingCycle),
     });
+    if (subErr) console.error('[founderService] subscription insert failed:', subErr);
   }
   return { data: company, error: null };
 }
@@ -235,13 +241,15 @@ export async function sendBroadcast(payload) {
     .select()
     .single();
 
-  // Realtime broadcast via Supabase channel
+  // Realtime broadcast via Supabase channel. channel.send() returns a
+  // promise — catch to avoid an unhandled rejection if no client is
+  // subscribed yet.
   if (!error) {
     supabase.channel('founder_broadcast').send({
       type: 'broadcast',
       event: 'new_broadcast',
       payload: data,
-    });
+    }).catch((e) => console.warn('[founderService] realtime send failed:', e?.message));
   }
   return { data, error };
 }
@@ -377,12 +385,10 @@ export async function getFounderDashboardStats() {
       { data: companies },
       { data: subscriptions },
       { data: complaints },
-      { data: broadcasts },
     ] = await Promise.all([
       supabase.from('companies').select('id, is_active, created_at'),
       supabase.from('subscriptions').select('status, amount, billing_cycle, subscription_plans(name, slug)'),
       supabase.from('client_complaints').select('status'),
-      supabase.from('founder_broadcasts').select('id').limit(1),
     ]);
 
     const totalCompanies = companies?.length || 0;

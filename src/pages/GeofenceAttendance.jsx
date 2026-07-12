@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { FiEye, FiX, FiMapPin, FiSettings, FiCheck, FiAlertTriangle, FiShield, FiAlertCircle, FiNavigation } from 'react-icons/fi';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -7,6 +7,7 @@ import * as attendanceService from '../services/attendanceService';
 import { supabase } from '../lib/supabase';
 import BranchFilter from '../components/BranchFilter';
 import { useBranch } from '../context/BranchContext';
+import { useAuth } from '../context/AuthContext';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
@@ -27,14 +28,13 @@ function MapClickHandler({ onMapClick }) {
 }
 
 function TrustScoreBadge({ score, level }) {
-  if (score === undefined || score === null) return <span style={{ color: 'var(--muted)', fontSize: 11 }}>—</span>;
+  if (score === undefined || score === null) return <span style={{ color: 'var(--muted)', fontSize: 11 }}>-</span>;
   const colors = {
     trusted: { bg: '#F0FDF4', color: '#16A34A' },
     warning: { bg: '#FFFBEB', color: '#D97706' },
     rejected: { bg: '#FEF2F2', color: '#DC2626' },
   };
   const s = colors[level] || colors.trusted;
-  if (loading) return <PageSkeleton hasStats={false} tableRows={6} tableCols={4} />;
   return (
     <span style={{ padding: '3px 8px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, whiteSpace: 'nowrap' }}>
       <FiShield style={{ marginRight: 3, verticalAlign: 'middle' }} size={10} />{score}
@@ -45,24 +45,25 @@ function TrustScoreBadge({ score, level }) {
 export default function GeofenceAttendance() {
  const [logs, setLogs] = useState([]);
  const [locations, setLocations] = useState([]);
- const [loading, setLoading] = useState(true);
+ const [, setLoading] = useState(true);
  const [modal, setModal] = useState(null);
  const [selected, setSelected] = useState(null);
  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
  const [locationForm, setLocationForm] = useState({ name: '', latitude: '', longitude: '', radiusMeters: 100 });
 
- const { selectedBranchId, branches } = useBranch();
-
- useEffect(() => { fetchData(); }, [filterDate, selectedBranchId]);
+ const { selectedBranchId } = useBranch();
+  const { employee } = useAuth();
 
  const fetchData = async () => {
  setLoading(true);
  const { data: attData } = await attendanceService.getAttendanceByDate(filterDate, selectedBranchId);
- const { data: locData } = await attendanceService.getOfficeLocations();
+ const { data: locData } = await attendanceService.getOfficeLocations(employee?.company_id);
  setLogs(attData || []);
  setLocations(locData || []);
  setLoading(false);
  };
+
+ useEffect(() => { fetchData(); }, [filterDate, selectedBranchId, employee?.company_id, fetchData]);
 
  const inRadius = logs.filter(l => l.in_radius).length;
  const outRadius = logs.filter(l => !l.in_radius).length;
@@ -70,7 +71,7 @@ export default function GeofenceAttendance() {
  const suspiciousCount = logs.filter(l => l.trust_level === 'warning' || l.trust_level === 'rejected').length;
 
  const stats = [
- { label: 'Total Clock-In', value: logs.length, color: '#0047AB', icon: <FiMapPin /> },
+ { label: 'Total Clock-In', value: logs.length, color: '#635BFF', icon: <FiMapPin /> },
  { label: 'Dalam Radius', value: inRadius, color: '#16A34A', icon: <FiCheck /> },
  { label: 'Di Luar Radius', value: outRadius, color: '#DC2626', icon: <FiAlertTriangle /> },
  { label: 'Face Verified', value: faceVerifiedCount, color: '#7C3AED', icon: <FiShield /> },
@@ -93,44 +94,44 @@ export default function GeofenceAttendance() {
  radius_meters: parseInt(locationForm.radiusMeters),
  };
  if (locations[0]?.id) {
- await supabase.from('office_locations').update(payload).eq('id', locations[0].id);
+ await supabase.from('office_locations').update(payload).eq('id', locations[0].id).eq('company_id', employee?.company_id);
  } else {
- await supabase.from('office_locations').insert(payload);
+ await supabase.from('office_locations').insert({ ...payload, company_id: employee?.company_id });
  }
  fetchData();
  closeModal();
  };
 
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
  <h1>Geofencing & Liveness Detection</h1>
- <div className="page-header-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+ <div className="page-header-actions">
  <BranchFilter />
- <button className="btn-secondary" onClick={openSettings}><FiSettings /> Office Location</button>
+ <button className="btn-secondary" onClick={openSettings} aria-label="Office location"><FiSettings /> Office Location</button>
  </div>
  </div>
 
- <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+ <div className="stats-grid">
  {stats.map(s => (
- <div key={s.label} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+ <div key={s.label} className="info-card">
+ <div className="btn-icon-row mb-sm">
  <span style={{ color: s.color, fontSize: 20 }}>{s.icon}</span>
- <span style={{ fontSize: 13, color: 'var(--muted)' }}>{s.label}</span>
+ <span className="info-card-label">{s.label}</span>
  </div>
- <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+ <div className="info-card-value" style={{ color: s.color }}>{s.value}</div>
  </div>
  ))}
  </div>
 
  {/* Geo Radius Visualization */}
- <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', padding: 24, marginBottom: 24, boxShadow: 'var(--shadow-sm)' }}>
- <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Office Radius Zone</div>
- <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+ <div className="chart-card mb">
+ <div className="chart-card-title">Office Radius Zone</div>
+ <div className="btn-icon-row" style={{ flexWrap: 'wrap' }}>
  <div style={{ position: 'relative', width: 180, height: 180 }}>
- <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0, 71, 171, 0.08)', border: '2px dashed rgba(0, 71, 171, 0.3)' }} />
- <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', background: 'rgba(0, 71, 171, 0.12)' }} />
- <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 16, height: 16, borderRadius: '50%', background: '#0047AB', boxShadow: '0 0 0 4px rgba(0, 71, 171, 0.2)' }} />
+ <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(99,91,255, 0.08)', border: '2px dashed rgba(99,91,255, 0.3)' }} />
+ <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', background: 'rgba(99,91,255, 0.12)' }} />
+ <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 16, height: 16, borderRadius: '50%', background: '#635BFF', boxShadow: '0 0 0 4px rgba(99,91,255, 0.2)' }} />
  {logs.slice(0, 7).map((l, i) => {
  const angle = (i / 7) * Math.PI * 2;
  // Deterministic positioning based on id to avoid flickering on re-render
@@ -145,7 +146,7 @@ export default function GeofenceAttendance() {
  background: l.in_radius ? '#16A34A' : '#DC2626',
  border: '2px solid #fff', boxShadow: 'var(--shadow-sm)',
  cursor: 'pointer', zIndex: 1
- }} title={l.employees?.name || '—'} />
+ }} title={l.employees?.name || '-'} />
  );
  })}
  </div>
@@ -172,6 +173,7 @@ export default function GeofenceAttendance() {
 
  {/* Table */}
  <div className="data-table-card">
+ <div className="table-responsive">
  <table className="data-table">
  <thead>
  <tr>
@@ -187,23 +189,23 @@ export default function GeofenceAttendance() {
  <tbody>
  {logs.map(l => (
  <tr key={l.id}>
- <td style={{ fontWeight: 600 }}>{l.employees?.name || '—'}</td>
- <td>{l.clock_in || '—'}</td>
- <td style={{ fontSize: 12, fontFamily: 'monospace' }}>
- {l.latitude ? `${Number(l.latitude).toFixed(4)}, ${Number(l.longitude).toFixed(4)}` : '—'}
+ <td className="td-semibold">{l.employees?.name || '-'}</td>
+ <td>{l.clock_in || '-'}</td>
+ <td className="td-mono-bold" style={{ fontSize: 12 }}>
+ {l.latitude ? `${Number(l.latitude).toFixed(4)}, ${Number(l.longitude).toFixed(4)}` : '�'}
  </td>
  <td>
- <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, color: '#fff', background: l.in_radius ? '#16A34A' : '#DC2626' }}>
+ <span className={`status-badge ${l.in_radius ? 'active' : 'inactive'}`}>
  {l.in_radius ? 'In Zone' : 'Out of Zone'}
  </span>
  </td>
  <td>
- <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, color: l.face_verified ? '#7C3AED' : '#F59E0B', background: l.face_verified ? '#F5F3FF' : '#FFFBEB' }}>
+ <span className={`status-badge ${l.face_verified ? 'approved' : 'pending'}`}>
  {l.face_verified ? 'Verified' : 'Selfie'}
  </span>
  </td>
  <td><TrustScoreBadge score={l.trust_score} level={l.trust_level} /></td>
- <td><button className="action-btn" onClick={() => openDetail(l)}><FiEye /></button></td>
+ <td><button className="action-btn" onClick={() => openDetail(l)} aria-label="Lihat detail"><FiEye /></button></td>
  </tr>
  ))}
  {logs.length === 0 && (
@@ -211,6 +213,7 @@ export default function GeofenceAttendance() {
  )}
  </tbody>
  </table>
+ </div>
  </div>
 
  {/* Detail Modal */}
@@ -224,31 +227,31 @@ export default function GeofenceAttendance() {
  <div className="modal-body">
  <div className="form-grid">
  <div className="form-group">
- <label className="form-label" style={{ color: 'var(--muted)' }}>Karyawan</label>
- <div style={{ fontSize: 14, fontWeight: 600 }}>{selected.employees?.name || '—'}</div>
+ <label className="form-label">Karyawan</label>
+ <div className="td-semibold">{selected.employees?.name || '�'}</div>
  </div>
  <div className="form-group">
- <label className="form-label" style={{ color: 'var(--muted)' }}>Clock-In</label>
- <div style={{ fontSize: 14, fontWeight: 600 }}>{selected.clock_in}</div>
+ <label className="form-label">Clock-In</label>
+ <div className="td-semibold">{selected.clock_in}</div>
  </div>
  <div className="form-group">
- <label className="form-label" style={{ color: 'var(--muted)' }}>Latitude</label>
- <div style={{ fontSize: 14, fontFamily: 'monospace' }}>{selected.latitude}</div>
+ <label className="form-label">Latitude</label>
+ <div className="td-mono-bold">{selected.latitude}</div>
  </div>
  <div className="form-group">
- <label className="form-label" style={{ color: 'var(--muted)' }}>Longitude</label>
- <div style={{ fontSize: 14, fontFamily: 'monospace' }}>{selected.longitude}</div>
+ <label className="form-label">Longitude</label>
+ <div className="td-mono-bold">{selected.longitude}</div>
  </div>
  <div className="form-group">
- <label className="form-label" style={{ color: 'var(--muted)' }}>Dalam Radius?</label>
- <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, color: '#fff', background: selected.in_radius ? '#16A34A' : '#DC2626', display: 'inline-block' }}>
+ <label className="form-label">Dalam Radius?</label>
+ <span className={`status-badge ${selected.in_radius ? 'active' : 'inactive'}`}>
  {selected.in_radius ? 'Dalam zona kantor' : 'Di luar zona kantor'}
  </span>
  </div>
  <div className="form-group">
  <label className="form-label" style={{ color: 'var(--muted)' }}>Face ID</label>
  <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, color: selected.face_verified ? '#7C3AED' : '#F59E0B', background: selected.face_verified ? '#F5F3FF' : '#FFFBEB', display: 'inline-block' }}>
- {selected.face_verified ? `Face Verified (${selected.face_confidence ? Math.round(selected.face_confidence) + '%' : '—'})` : 'Selfie Only'}
+ {selected.face_verified ? `Face Verified (${selected.face_confidence ? Math.round(selected.face_confidence) + '%' : '-'})` : 'Selfie Only'}
  </span>
  </div>
  <div className="form-group">
@@ -283,7 +286,7 @@ export default function GeofenceAttendance() {
  </div>
  )}
 
- {/* Office Location Settings Modal — with Interactive Mini-Map */}
+ {/* Office Location Settings Modal - with Interactive Mini-Map */}
  {modal === 'settings' && (
  <div className="modal-overlay" onClick={closeModal}>
  <div className="modal-box modal-lg" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
@@ -330,7 +333,7 @@ export default function GeofenceAttendance() {
            <Circle
              center={[parseFloat(locationForm.latitude), parseFloat(locationForm.longitude)]}
              radius={parseInt(locationForm.radiusMeters) || 100}
-             pathOptions={{ color: '#0047AB', fillColor: '#0047AB', fillOpacity: 0.12, weight: 2, dashArray: '6 4' }}
+             pathOptions={{ color: '#635BFF', fillColor: '#635BFF', fillOpacity: 0.12, weight: 2, dashArray: '6 4' }}
            />
          </>
        )}
@@ -356,7 +359,7 @@ export default function GeofenceAttendance() {
                latitude: pos.coords.latitude.toFixed(6),
                longitude: pos.coords.longitude.toFixed(6),
              }));
-           }, () => alert('Tidak dapat mengakses lokasi. Pastikan izin lokasi aktif.'));
+           }, () => { console.error('[Geofence] Location access denied'); });
          }
        }}
        style={{
@@ -384,7 +387,7 @@ export default function GeofenceAttendance() {
        />
      </div>
 
-     {/* Koordinat — read from map, editable manual */}
+     {/* Koordinat - read from map, editable manual */}
      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
        <div className="form-group" style={{ marginBottom: 0 }}>
          <label className="form-label">Latitude</label>
@@ -410,7 +413,7 @@ export default function GeofenceAttendance() {
      <div className="form-group" style={{ marginBottom: 0 }}>
        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
          <span>Radius Geofence</span>
-         <span style={{ color: 'var(--primary)', fontWeight: 800 }}>{locationForm.radiusMeters} meter</span>
+         <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{locationForm.radiusMeters} meter</span>
        </label>
        <input
          type="range" min="50" max="1000" step="10"
@@ -428,8 +431,7 @@ export default function GeofenceAttendance() {
  </div>
  <div className="modal-footer">
  <button className="btn-secondary" onClick={closeModal}>Batal</button>
- <button className="btn-primary" onClick={saveSettings}>
-   <FiMapPin size={14} /> Simpan Lokasi
+ <button className="btn-primary" onClick={saveSettings} aria-label="Simpan lokasi"><FiMapPin size={14} /> Simpan Lokasi
  </button>
  </div>
  </div>
@@ -438,3 +440,5 @@ export default function GeofenceAttendance() {
  </div>
  );
 }
+
+

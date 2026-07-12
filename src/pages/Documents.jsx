@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../lib/i18n';
-import { FiUpload, FiDownload, FiTrash2, FiFile, FiSearch, FiFilter, FiExternalLink } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiTrash2, FiFile, FiSearch, FiFilter, FiExternalLink, FiX } from 'react-icons/fi';
 import * as documentService from '../services/documentService';
 import { useAuth } from '../context/AuthContext';
 import * as employeeService from '../services/employeeService';
@@ -10,6 +10,14 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import DocLink from '../components/DocLink';
 
 const docTypes = ['KTP', 'Ijazah', 'Kontrak Kerja', 'Sertifikat', 'NPWP', 'Lainnya'];
 
@@ -27,19 +35,19 @@ export default function Documents() {
  const [uploading, setUploading] = useState(false);
  const fileRef = useRef(null);
 
- useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
-
  const fetchData = async () => {
  setLoading(true);
- const { data: docData } = await documentService.getAllDocuments();
+ const { data: docData } = await documentService.getAllDocuments(employee?.company_id);
  const { data: empData } = await employeeService.getAllEmployees(undefined, employee?.company_id);
  setDocuments(docData || []);
  setEmployees(empData || []);
  setLoading(false);
  };
 
+ useEffect(() => { if (employee?.company_id) fetchData(); }, [employee?.company_id]);
+
  // Realtime: auto-refresh
- useRealtimeTable('documents', fetchData);
+ useRealtimeTable('documents', fetchData, { companyId: currentUser?.company_id });
 
  const filtered = documents.filter((doc) => {
  const empName = doc.employees?.name || '';
@@ -61,7 +69,7 @@ export default function Documents() {
  setUploadForm({ employeeId: '', type: '', file: null });
  fetchData();
  } else {
- alert('Upload gagal: ' + error.message);
+ console.error('[Documents] Upload error:', error.message);
  }
  };
 
@@ -76,16 +84,16 @@ export default function Documents() {
 
   if (loading) return <PageSkeleton hasStats={false} tableRows={6} tableCols={4} />;
  return (
- <div>
+ <div className="admin-page">
  <div className="page-header">
  <h1>{t('documents.title')}</h1>
- <button className="btn-primary" onClick={() => setShowUpload(true)}><FiUpload /> Upload Dokumen</button>
+ <Button onClick={() => setShowUpload(true)}><FiUpload /> Upload Dokumen</Button>
  </div>
 
  <div className="filters-bar">
  <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
  <FiSearch style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
- <input className="filter-search" style={{ paddingLeft: 38 }} placeholder="Cari dokumen..." value={search} onChange={(e) => setSearch(e.target.value)} />
+ <Input className="filter-search" style={{ paddingLeft: 38 }} placeholder="Cari dokumen..." value={search} onChange={(e) => setSearch(e.target.value)} />
  </div>
  <select className="filter-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
  <option value="">Semua Jenis</option>
@@ -98,79 +106,65 @@ export default function Documents() {
  </div>
 
  {/* Type Quick Filters */}
- <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+ <div className="filters-bar mb-sm" style={{ flexWrap: 'wrap' }}>
  <button
  onClick={() => setTypeFilter('')}
- style={{
- padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
- border: !typeFilter ? '2px solid var(--primary)' : '1px solid var(--border)',
- background: !typeFilter ? 'var(--primary)' : 'var(--surface)',
- color: !typeFilter ? '#fff' : 'var(--text)',
- }}
+ className={!typeFilter ? 'btn-primary' : 'btn-secondary'}
  >Semua</button>
  {docTypes.map(t => (
  <button
  key={t}
  onClick={() => setTypeFilter(typeFilter === t ? '' : t)}
- style={{
- padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
- border: typeFilter === t ? '2px solid var(--primary)' : '1px solid var(--border)',
- background: typeFilter === t ? 'var(--primary)' : 'var(--surface)',
- color: typeFilter === t ? '#fff' : 'var(--text)',
- }}
+ className={typeFilter === t ? 'btn-primary' : 'btn-secondary'}
  >{t}</button>
  ))}
  </div>
 
  <div className="data-table-card">
- <table className="data-table">
- <thead>
- <tr>
- <th>Dokumen</th>
- <th>Jenis</th>
- <th>Karyawan</th>
- <th>Status</th>
- <th>Tanggal Upload</th>
- <th>Aksi</th>
- </tr>
- </thead>
- <tbody>
+ <div className="table-responsive">
+ <Table>
+ <TableHeader>
+ <TableRow>
+ <TableHead>Dokumen</TableHead>
+ <TableHead>Jenis</TableHead>
+ <TableHead>Karyawan</TableHead>
+ <TableHead>Status</TableHead>
+ <TableHead>Tanggal Upload</TableHead>
+ <TableHead>Aksi</TableHead>
+ </TableRow>
+ </TableHeader>
+ <TableBody>
  {loading ? (
- <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Memuat data...</td></tr>
+ <TableRow><TableCell colSpan="6" className="empty-state">Memuat data...</TableCell></TableRow>
  ) : filtered.length === 0 ? (
- <tr><td colSpan="6" style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>Tidak ada dokumen ditemukan.</td></tr>
+ <TableRow><TableCell colSpan="6" className="empty-state">Tidak ada dokumen ditemukan.</TableCell></TableRow>
  ) : filtered.map((doc) => (
  <tr key={doc.id}>
- <td>
- <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
- <FiFile style={{ color: 'var(--primary)', fontSize: 18 }} />
- <span style={{ fontWeight: 600 }}>{doc.name}</span>
+ <TableCell>
+ <div className="employee-cell">
+ <FiFile className="td-primary-bold" />
+ <span className="td-semibold">{doc.name}</span>
  </div>
- </td>
- <td>
- <span style={{
- padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
- background: '#EFF6FF', color: '#0047AB',
- }}>{doc.type}</span>
- </td>
- <td>{doc.employees?.name || '-'}</td>
- <td>
- <span style={{
- padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600,
- color: '#fff', background: statusColors[doc.status] || '#999',
- }}>{doc.status}</span>
- </td>
- <td>{formatDate(doc.created_at)}</td>
- <td>
+ </TableCell>
+ <TableCell>
+ <span className="status-badge info">{doc.type}</span>
+ </TableCell>
+ <TableCell>{doc.employees?.name || '-'}</TableCell>
+ <TableCell>
+ <span className="status-badge" style={{ background: statusColors[doc.status] || '#999', color: '#fff' }}>{doc.status}</span>
+ </TableCell>
+ <TableCell>{formatDate(doc.created_at)}</TableCell>
+ <TableCell>
  <div className="actions-cell">
- {doc.url && <a href={doc.url} target="_blank" rel="noopener noreferrer" className="action-btn" title="Lihat"><FiExternalLink /></a>}
- {doc.url && <a href={doc.url} download className="action-btn" title="Download"><FiDownload /></a>}
+ {doc.url && <DocLink docRef={doc.url} title="Lihat"><FiExternalLink /></DocLink>}
+ {doc.url && <DocLink docRef={doc.url} title="Download" download><FiDownload /></DocLink>}
  </div>
- </td>
+ </TableCell>
  </tr>
  ))}
- </tbody>
- </table>
+ </TableBody>
+ </Table>
+ </div>
  </div>
 
  {/* Upload Modal */}
@@ -179,7 +173,7 @@ export default function Documents() {
  <div className="modal-box" onClick={(e) => e.stopPropagation()}>
  <div className="modal-header">
  <h2>Upload Dokumen</h2>
- <button className="modal-close" onClick={() => setShowUpload(false)}><FiUpload style={{ transform: 'rotate(180deg)' }} /></button>
+ <button className="modal-close" onClick={() => setShowUpload(false)} aria-label="Tutup upload"><FiX /></button>
  </div>
  <div className="modal-body">
  <div className="form-grid">
@@ -202,19 +196,16 @@ export default function Documents() {
  <input type="file" ref={fileRef} accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={handleFileChange} />
  <div
  onClick={() => fileRef.current?.click()}
- style={{
- border: '2px dashed var(--border)', borderRadius: 'var(--radius-md)', padding: 30,
- textAlign: 'center', color: 'var(--muted)', fontSize: 13, cursor: 'pointer',
- transition: 'border-color 0.2s', background: uploadForm.file ? '#F0FDF4' : 'transparent',
- }}
+ className="upload-drop-zone"
+ style={{ background: uploadForm.file ? '#F0FDF4' : 'transparent' }}
  >
- <FiUpload style={{ fontSize: 24, marginBottom: 8 }} />
+ <FiUpload className="upload-drop-icon" />
  {uploadForm.file ? (
- <div style={{ color: '#16A34A', fontWeight: 600 }}>{uploadForm.file.name}</div>
+ <div className="td-primary-bold" style={{ color: '#16A34A' }}>{uploadForm.file.name}</div>
  ) : (
  <>
  <div>Klik atau drag file ke sini</div>
- <div style={{ fontSize: 11, marginTop: 4 }}>PDF, JPG, PNG (maks. 5MB)</div>
+ <div className="td-muted-sm" style={{ marginTop: 4 }}>PDF, JPG, PNG (maks. 5MB)</div>
  </>
  )}
  </div>
@@ -233,3 +224,6 @@ export default function Documents() {
  </div>
  );
 }
+
+
+
