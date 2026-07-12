@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiVideo, FiChevronLeft, FiChevronRight, FiCalendar } from 'react-icons/fi';
 import CardHeader from './CardHeader';
+import DashEmpty from './DashEmpty';
 
 /**
  * Meetings / upcoming events card.
@@ -119,17 +120,13 @@ export default function MeetingsCard({ trainings = [], events = [], loading }) {
         </div>
 
         {meetings.length === 0 ? (
-          <div style={{ padding: '20px 8px', textAlign: 'center', color: 'var(--dash-text-muted, #9CA3AF)', fontSize: 13 }}>
-            <FiCalendar size={24} style={{ marginBottom: 8, opacity: 0.45 }} />
-            <div>Tidak ada agenda mendatang</div>
-            <button
-              type="button"
-              onClick={() => navigate('/calendar')}
-              style={{ marginTop: 8, background: 'none', border: 'none', color: '#635BFF', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-            >
-              Buka kalender
-            </button>
-          </div>
+          <DashEmpty
+            icon={<FiCalendar size={18} />}
+            title="Tidak ada agenda mendatang"
+            description="Libur, cuti, dan event akan muncul di sini."
+            ctaLabel="Buka kalender"
+            onCta={() => navigate('/calendar')}
+          />
         ) : meetings.map((m) => (
           <div
             key={m.id}

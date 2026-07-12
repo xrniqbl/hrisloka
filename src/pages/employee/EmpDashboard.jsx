@@ -440,11 +440,13 @@ export default function EmpDashboard() {
             })}
           </div>
         ) : (
-          <div className="emp-card emp-card-padded">
-            <div className="td-muted-sm" style={{ textAlign: 'center' }}>
-              {locale === 'en' ? 'No announcements yet' : 'Belum ada pengumuman'}
-            </div>
-          </div>
+          <EmpEmptyState
+            type="nodata"
+            title={locale === 'en' ? 'No announcements yet' : 'Belum ada pengumuman'}
+            subtitle={locale === 'en' ? 'Company news from HR will show here.' : 'Pengumuman dari HR akan muncul di sini.'}
+            cta={locale === 'en' ? 'View all' : 'Lihat semua'}
+            ctaHref="/app/announcements"
+          />
         )}
       </div>
 
@@ -496,15 +498,15 @@ export default function EmpDashboard() {
             ))}
           </div>
         ) : (
-          <div className="emp-card emp-card-padded emp-task-empty">
-            <HiCheckCircle size={22} style={{ color: 'var(--success)', marginBottom: 6 }} />
-            <div className="td-semibold" style={{ marginBottom: 2 }}>
-              {locale === 'en' ? 'You’re all caught up' : 'Semua tugas selesai'}
-            </div>
-            <div className="td-muted-sm">
-              {locale === 'en' ? 'No pending tasks right now' : 'Tidak ada tugas yang menunggu'}
-            </div>
-          </div>
+          <EmpEmptyState
+            type="success"
+            title={locale === 'en' ? "You're all caught up" : 'Semua tugas selesai'}
+            subtitle={locale === 'en' ? 'No pending tasks right now.' : 'Tidak ada tugas yang menunggu.'}
+            cta={locale === 'en' ? 'Open submissions' : 'Buka pengajuan'}
+            ctaHref="/app/submissions"
+            secondaryCta={locale === 'en' ? 'Onboarding' : 'Onboarding'}
+            secondaryHref="/app/onboarding"
+          />
         )}
       </div>
 

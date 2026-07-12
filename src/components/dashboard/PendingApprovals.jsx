@@ -1,4 +1,6 @@
 import { FiCheck, FiX } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import DashEmpty from './DashEmpty';
 
 const typeConfig = {
   leave: { label: 'Leave', bg: 'rgba(99,91,255,0.08)', color: '#635BFF' },
@@ -18,6 +20,7 @@ function getAvatarColor(name) {
 }
 
 export default function PendingApprovals({ leaves, overtimeRecords, reimbursements, onApprove, onReject, loading }) {
+  const navigate = useNavigate();
   if (loading) return <PendingApprovalsSkeleton />;
 
   const pendingLeaves = (leaves || []).filter(l => l.status === 'pending').map(l => ({
@@ -45,10 +48,15 @@ export default function PendingApprovals({ leaves, overtimeRecords, reimbursemen
         {allPending.length > 0 && <span className="dash-chart-badge">{allPending.length}</span>}
       </div>
       {allPending.length === 0 ? (
-        <div className="dash-empty">
-          <div className="dash-empty-icon">✓</div>
-          <div className="dash-empty-text">All caught up! No pending items.</div>
-        </div>
+        <DashEmpty
+          icon={<FiCheck size={18} />}
+          title="Semua sudah diproses"
+          description="Tidak ada pengajuan menunggu. Item baru dari PWA muncul di sini."
+          ctaLabel="Pusat persetujuan"
+          onCta={() => navigate('/approvals')}
+          secondaryLabel="Lihat cuti"
+          secondaryTo="/leave"
+        />
       ) : allPending.map(item => {
         const cfg = typeConfig[item.type] || typeConfig.leave;
         return (

@@ -1,4 +1,6 @@
 ﻿import { useNavigate } from 'react-router-dom';
+import { FiUsers } from 'react-icons/fi';
+import DashEmpty from './DashEmpty';
 
 export default function ActivityTimeline({ employees = [], todayAttendance = [], loading }) {
   const navigate = useNavigate();
@@ -29,9 +31,15 @@ export default function ActivityTimeline({ employees = [], todayAttendance = [],
           <div className="dash-chart-header">
             <span className="dash-chart-title">Activity Today</span>
           </div>
-          <div className="dash-empty">
-            <div className="dash-empty-text">No employee data available</div>
-          </div>
+          <DashEmpty
+            icon={<FiUsers size={18} />}
+            title="Belum ada data karyawan"
+            description="Tambah karyawan aktif agar aktivitas absensi tampil di sini."
+            ctaLabel="Kelola karyawan"
+            onCta={() => navigate('/employees')}
+            secondaryLabel="Lihat absensi"
+            onSecondary={() => navigate('/attendance')}
+          />
         </div>
       </div>
     );

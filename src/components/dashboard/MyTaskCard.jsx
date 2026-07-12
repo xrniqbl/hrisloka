@@ -1,8 +1,11 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiCheckSquare, FiCalendar, FiClock, FiCheckCircle } from 'react-icons/fi';
 import CardHeader from './CardHeader';
+import DashEmpty from './DashEmpty';
 
 export default function MyTaskCard({ leaves = [], overtimeRecords = [], reimbursements = [], onApprove, onReject: _onReject, loading }) {
+  const navigate = useNavigate();
   const tasks = useMemo(() => {
     const items = [];
 
@@ -63,11 +66,13 @@ export default function MyTaskCard({ leaves = [], overtimeRecords = [], reimburs
 
       <div className="dash-task">
         {tasks.length === 0 ? (
-          <div style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--dash-text-muted, #9CA3AF)', fontSize: 13 }}>
-            <FiCheckCircle size={28} style={{ marginBottom: 8, opacity: 0.5 }} />
-            <div>Tidak ada tugas pending</div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>Semua pengajuan sudah diproses</div>
-          </div>
+          <DashEmpty
+            icon={<FiCheckCircle size={18} />}
+            title="Tidak ada tugas pending"
+            description="Semua pengajuan sudah diproses."
+            ctaLabel="Pusat persetujuan"
+            onCta={() => navigate('/approvals')}
+          />
         ) : tasks.map((task, i) => (
           <div key={task.id || i} className="dash-task-item">
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, flexShrink: 0, paddingTop: 2 }}>

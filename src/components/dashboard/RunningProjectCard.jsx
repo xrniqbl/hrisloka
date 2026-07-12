@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiFolder, FiChevronRight, FiUsers } from 'react-icons/fi';
 import CardHeader from './CardHeader';
+import DashEmpty from './DashEmpty';
 
 export default function RunningProjectCard({ projects = [], loading }) {
   const navigate = useNavigate();
@@ -69,16 +70,13 @@ export default function RunningProjectCard({ projects = [], loading }) {
       />
       <div className="dash-project">
         {items.length === 0 ? (
-          <div style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--dash-text-muted, #9CA3AF)', fontSize: 13 }}>
-            Belum ada project aktif
-            <button
-              type="button"
-              onClick={() => navigate('/projects')}
-              style={{ display: 'block', margin: '10px auto 0', background: 'none', border: 'none', color: '#8B5CF6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-            >
-              Kelola project <FiChevronRight style={{ verticalAlign: 'middle' }} />
-            </button>
-          </div>
+          <DashEmpty
+            icon={<FiFolder size={18} />}
+            title="Belum ada project aktif"
+            description="Buat project untuk assign tim dan pantau progress."
+            ctaLabel="Kelola project"
+            onCta={() => navigate('/projects')}
+          />
         ) : items.map((p, i) => (
           <div
             key={p.id || i}

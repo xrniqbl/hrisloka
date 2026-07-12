@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
 import { supabase } from '../../lib/supabase';
+import DashEmpty from './DashEmpty';
 
 const tabs = ['Personal', 'Employment', 'Attendance', 'Payroll', 'Performance', 'Documents'];
 
@@ -100,7 +101,12 @@ export default function EmployeeSlideOver({ employee, isOpen, onClose, todayAtte
             </div>
             <div className="dash-slideover-section-title" style={{ marginTop: 16 }}>Recent History</div>
             {attendanceHistory.length === 0 ? (
-              <div className="dash-empty"><div className="dash-empty-text">No attendance records</div></div>
+              <DashEmpty
+                title="Belum ada riwayat absensi"
+                description="Clock-in karyawan akan muncul di sini."
+                ctaLabel="Buka absensi"
+                ctaTo="/attendance"
+              />
             ) : attendanceHistory.map(a => (
               <div key={a.id} className="dash-slideover-field">
                 <span className="dash-slideover-field-label">{a.date}</span>
@@ -131,18 +137,24 @@ export default function EmployeeSlideOver({ employee, isOpen, onClose, todayAtte
         return (
           <div className="dash-slideover-section">
             <div className="dash-slideover-section-title">Performance Overview</div>
-            <div className="dash-empty">
-              <div className="dash-empty-text">Performance data will appear here</div>
-            </div>
+            <DashEmpty
+              title="Belum ada data performance"
+              description="Hasil appraisal akan muncul setelah review."
+              ctaLabel="Buka appraisal"
+              ctaTo="/appraisal"
+            />
           </div>
         );
       case 'Documents':
         return (
           <div className="dash-slideover-section">
             <div className="dash-slideover-section-title">Documents</div>
-            <div className="dash-empty">
-              <div className="dash-empty-text">No documents uploaded</div>
-            </div>
+            <DashEmpty
+              title="Belum ada dokumen"
+              description="Dokumen karyawan dari PWA muncul setelah diunggah."
+              ctaLabel="Buka dokumen"
+              ctaTo="/documents"
+            />
           </div>
         );
       default:

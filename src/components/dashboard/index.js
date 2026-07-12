@@ -1,4 +1,5 @@
 export { default as DashHeader } from './DashHeader';
+export { default as DashEmpty } from './DashEmpty';
 export { default as QuickActions, QuickActionsSkeleton } from './QuickActions';
 export { default as KPICards, KPICardsSkeleton } from './KPICards';
 export { default as ActivityTimeline } from './ActivityTimeline';

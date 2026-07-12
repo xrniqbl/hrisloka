@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiUsers } from 'react-icons/fi';
 import CardHeader from './CardHeader';
+import DashEmpty from './DashEmpty';
 
 const AVATAR_COLORS = ['#635BFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1'];
 
@@ -30,6 +32,7 @@ function getInitials(name) {
 }
 
 export default function EmployeeCard({ employees = [], todayAttendance: _todayAttendance = [], onSelectEmployee, loading }) {
+  const navigate = useNavigate();
   const teams = useMemo(() => {
     if (employees.length === 0) return [];
     const groups = {};
@@ -65,9 +68,13 @@ export default function EmployeeCard({ employees = [], todayAttendance: _todayAt
 
       <div className="dash-emp-card">
         {teams.length === 0 ? (
-          <div style={{ padding: '28px 8px', textAlign: 'center', color: 'var(--dash-text-muted, #9CA3AF)', fontSize: 13 }}>
-            Belum ada data karyawan
-          </div>
+          <DashEmpty
+            icon={<FiUsers size={18} />}
+            title="Belum ada data karyawan"
+            description="Tambah karyawan untuk melihat ringkasan per divisi."
+            ctaLabel="Kelola karyawan"
+            onCta={() => navigate('/employees')}
+          />
         ) : teams.map((team, i) => {
           const badge = getTeamBadge(team.name);
           return (

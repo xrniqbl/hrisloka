@@ -1,4 +1,5 @@
-import { FiChevronRight } from 'react-icons/fi';
+import { FiChevronRight, FiUsers } from 'react-icons/fi';
+import DashEmpty from './DashEmpty';
 
 const avatarColors = ['#635BFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1'];
 function getAvatarColor(name) {
@@ -25,7 +26,13 @@ export default function EmployeeDirectory({ employees = [], todayAttendance = []
         </button>
       </div>
       {shown.length === 0 ? (
-        <div className="dash-empty"><div className="dash-empty-text">No employees found</div></div>
+        <DashEmpty
+          icon={<FiUsers size={18} />}
+          title="Belum ada anggota tim"
+          description="Karyawan aktif akan muncul di daftar ini."
+          ctaLabel="Kelola karyawan"
+          onCta={onViewAll}
+        />
       ) : (
         <div className="dash-directory-grid">
           {shown.map(emp => {

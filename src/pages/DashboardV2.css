@@ -758,17 +758,82 @@
 /* â"â" Empty State â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â" */
 .dash-empty {
   text-align: center;
-  padding: 32px 16px;
+  padding: 28px 16px;
   color: var(--dash-text-muted);
 }
+.dash-empty--cta {
+  padding: 28px 16px 24px;
+}
 .dash-empty-icon {
-  font-size: 28px;
-  opacity: 0.3;
-  margin-bottom: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  margin: 0 auto 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--primary, #635BFF);
+  background: color-mix(in srgb, var(--primary, #635BFF) 10%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--primary, #635BFF) 14%, transparent);
+  opacity: 1;
+}
+.dash-empty-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dash-text, var(--text));
+  margin-bottom: 4px;
+  letter-spacing: -0.2px;
 }
 .dash-empty-text {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
+  line-height: 1.45;
+  max-width: 220px;
+  margin: 0 auto;
+  color: var(--dash-text-muted);
+}
+.dash-empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  max-width: 200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.dash-empty-btn-primary {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary, #635BFF);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.dash-empty-btn-primary:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+.dash-empty-btn-ghost {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--dash-card-border, var(--border));
+  background: transparent;
+  color: var(--dash-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.dash-empty-btn-ghost:hover {
+  color: var(--primary, #635BFF);
+  border-color: color-mix(in srgb, var(--primary, #635BFF) 35%, transparent);
 }
 
 /* â"â" Widget Settings â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â"â" */

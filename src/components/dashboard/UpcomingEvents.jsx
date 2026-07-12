@@ -1,5 +1,6 @@
 ﻿import { useNavigate } from 'react-router-dom';
 import { FiCalendar, FiBook, FiUserCheck, FiClock, FiChevronRight } from 'react-icons/fi';
+import DashEmpty from './DashEmpty';
 
 export default function UpcomingEvents({ trainings, employees, loading }) {
   const navigate = useNavigate();
@@ -42,26 +43,23 @@ export default function UpcomingEvents({ trainings, employees, loading }) {
       }
     });
 
-  if (events.length === 0) {
-    events.push({
-      id: 'no-events',
-      title: 'Tidak ada acara mendatang',
-      date: 'Semua aman',
-      icon: <FiCalendar />,
-      color: '#9CA3AF',
-      bg: 'rgba(156,163,175,0.08)',
-      path: null,
-      tag: null,
-    });
-  }
-
   return (
     <div className="dash-card dash-events-card" style={{ marginTop: 16 }}>
       <div className="dash-chart-header">
         <span className="dash-chart-title">Upcoming Events</span>
         <FiClock size={14} style={{ color: 'var(--dash-text-muted)' }} />
       </div>
-      {events.slice(0, 5).map(ev => (
+      {events.length === 0 ? (
+        <DashEmpty
+          icon={<FiCalendar size={18} />}
+          title="Tidak ada acara mendatang"
+          description="Training, kontrak habis, dan event HR akan tampil di sini."
+          ctaLabel="Kelola libur"
+          onCta={() => navigate('/holidays')}
+          secondaryLabel="Training"
+          onSecondary={() => navigate('/training')}
+        />
+      ) : events.slice(0, 5).map(ev => (
         <div
           key={ev.id}
           className="dash-event-item"
