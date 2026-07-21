@@ -48,6 +48,7 @@ import UpdatePrompt from '../components/UpdatePrompt';
 import EmpProfileSetup from '../pages/employee/EmpProfileSetup';
 import './EmployeeLayout.css';
 import { isDemoMode, DEMO_EMPLOYEE } from '../lib/demoGuard';
+import { markNoIndex } from '../lib/seo';
 
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch { /* intentionally empty */ } };
 
@@ -300,7 +301,7 @@ export default function EmployeeLayout() {
   const [menuSearch, setMenuSearch] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [empData, setEmpData] = useState(null);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('hrisync_dark_mode') === 'true');
+  const [darkMode] = useState(() => localStorage.getItem('hrisync_dark_mode') === 'true');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [setupDone, setSetupDone] = useState(true); // optimistic: assume done
 
@@ -309,6 +310,11 @@ export default function EmployeeLayout() {
   const contentRef = useRef(null);
   const startY = useRef(0);
   const isPulling = useRef(false);
+
+  // Private employee PWA — no search indexing
+  useEffect(() => {
+    markNoIndex('HRIS Loka — Employee');
+  }, []);
 
   // Dark mode sync
   useEffect(() => {
@@ -454,9 +460,15 @@ export default function EmployeeLayout() {
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
     el.addEventListener('touchmove', handleTouchMove, { passive: false });
-    return () => el.removeEventListener('touchmove', handleTouchMove);
-  }, [handleTouchMove]);
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
   const menuCategories = getMenuCategories();
   const empRole = empData?.role || '';
@@ -482,7 +494,9 @@ export default function EmployeeLayout() {
   // Header user display
   const userName = empData?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Karyawan';
   const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const avatarUrl = empData?.photo_url || user?.user_metadata?.avatar_url || null;
+  useEffect(() => { setAvatarBroken(false); }, [avatarUrl]);
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -592,8 +606,8 @@ export default function EmployeeLayout() {
       <header className="emp-header" style={isOffline ? { marginTop: 32 } : {}}>
         <div className="emp-header-left">
           <div className="emp-header-avatar" onClick={() => navigate('/app/profile')}>
-            {avatarUrl
-              ? <img src={avatarUrl} alt={userName} />
+            {avatarUrl && !avatarBroken
+              ? <img src={avatarUrl} alt={userName} onError={() => setAvatarBroken(true)} />
               : <span>{userInitials}</span>}
           </div>
           <div className="emp-header-greeting">

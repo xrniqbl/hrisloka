@@ -126,7 +126,7 @@ export default function Payslips() {
  <tr><td class="label">BPJS</td><td class="value deduction">- ${formatCurrency(slip.bpjs?.total || 0)}</td></tr>
  <tr><td class="label">PPh 21</td><td class="value deduction">- ${formatCurrency(slip.pph21 || 0)}</td></tr></table>
  <div class="total"><span>Take Home Pay</span><span>${formatCurrency(slip.takeHomePay || slip.total)}</span></div>
- <script>window.onload=function(){window.print();}<\/script></body></html>`);
+ <script>window.onload=function(){window.print();}</script></body></html>`);
  printWindow.document.close();
  };
 
@@ -141,7 +141,20 @@ export default function Payslips() {
     try {
       // Email
       if (emp.email) {
-        sendPayslipEmail({ employeeName: emp.name, employeeEmail: emp.email, month, year, netSalary: slip.takeHomePay }).catch((e) => console.warn('[Action failed]', e?.message || e));
+        (async () => {
+          try {
+            const { shouldNotifyEmployee } = await import('../services/companySettingsService');
+            const allow = await shouldNotifyEmployee(emp.id, 'emailPayroll');
+            if (!allow) return;
+          } catch { /* send anyway */ }
+          return sendPayslipEmail({
+            employeeName: emp.name,
+            employeeEmail: emp.email,
+            month,
+            year,
+            netSalary: slip.takeHomePay,
+          });
+        })().catch((e) => console.warn('[Action failed]', e?.message || e));
       }
       // WhatsApp
       if (emp.phone) {

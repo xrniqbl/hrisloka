@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { HiBolt, HiArrowPath, HiExclamationTriangle, HiCheckCircle, HiXCircle, HiClock, HiCalendarDays, HiCreditCard, HiChevronRight } from 'react-icons/hi2';
 import { useNavigate } from 'react-router-dom';
 import {
-  getMySubscription,
   checkAndExpireSubscription,
   getDaysRemaining,
   getExpiryWarning,
@@ -14,7 +13,7 @@ import './SubscriptionStatus.css';
 const STATUS_META = {
   active:     { color: '#10B981', bg: '#D1FAE5', icon: HiCheckCircle,       label: 'Aktif' },
   free:       { color: '#64748B', bg: '#F1F5F9', icon: HiCheckCircle,       label: 'Gratis' },
-  warning_7:  { color: '#3B82F6', bg: '#DBEAFE', icon: HiClock,             label: 'Aktif' },
+  warning_7:  { color: '#635BFF', bg: '#E8E6FF', icon: HiClock,             label: 'Aktif' },
   warning_3:  { color: '#F59E0B', bg: '#FEF3C7', icon: HiExclamationTriangle, label: 'Segera Habis' },
   critical:   { color: '#EF4444', bg: '#FEE2E2', icon: HiExclamationTriangle, label: 'Kritis' },
   expired:    { color: '#DC2626', bg: '#FEE2E2', icon: HiXCircle,           label: 'Kadaluarsa' },
@@ -23,21 +22,24 @@ const STATUS_META = {
 };
 
 const PLAN_COLORS = {
-  free:       '#64748B',
-  starter:    '#3B82F6',
-  pro:        '#7C3AED',
-  enterprise: '#D97706',
+  free:       '#6B7280',
+  starter:    '#5654D4',
+  pro:        '#7C75FF',
+  enterprise: '#3730A3',
 };
 
 export default function SubscriptionStatus({ compact = false }) {
   const [sub, setSub] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Clock tick stored in state so render stays pure (no Date.now() during render)
+  const [nowTs, setNowTs] = useState(0);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
     setLoading(true);
     const enriched = await checkAndExpireSubscription();
     setSub(enriched);
+    setNowTs(Date.now());
     setLoading(false);
   }, []);
 
@@ -45,43 +47,51 @@ export default function SubscriptionStatus({ compact = false }) {
 
   // Refresh every hour to keep days_remaining accurate
   useEffect(() => {
-    const id = setInterval(load, 60 * 60 * 1000);
+    const id = setInterval(() => {
+      setNowTs(Date.now());
+      load();
+    }, 60 * 60 * 1000);
     return () => clearInterval(id);
   }, [load]);
 
-  if (loading) return (
-    <div className="sub-status-skeleton">
-      <div className="sub-skeleton-bar" style={{ width: 120 }} />
-      <div className="sub-skeleton-bar" style={{ width: 80, marginTop: 6 }} />
-    </div>
-  );
+  // Hooks MUST run before any early return (react-hooks/rules-of-hooks)
+  const progressPct = useMemo(() => {
+    if (!sub || sub.plan_slug === 'free' || !sub.starts_at || !sub.expires_at || !nowTs) return 100;
+    const totalMs = new Date(sub.expires_at) - new Date(sub.starts_at);
+    if (!totalMs || totalMs <= 0) return 100;
+    const usedMs = nowTs - new Date(sub.starts_at).getTime();
+    const remainPct = Math.max(0, Math.min(100, ((totalMs - usedMs) / totalMs) * 100));
+    return Math.round(remainPct);
+  }, [sub, nowTs]);
 
-  if (!sub) return (
-    <div className="sub-status-none" onClick={() => navigate('/checkout')}>
-      <HiBolt size={16} />
-      <span>Mulai Berlangganan</span>
-      <HiChevronRight size={14} />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="sub-status-skeleton">
+        <div className="sub-skeleton-bar" style={{ width: 120 }} />
+        <div className="sub-skeleton-bar" style={{ width: 80, marginTop: 6 }} />
+      </div>
+    );
+  }
 
-  const status   = sub.computed_status || getSubscriptionStatus(sub);
-  const meta     = STATUS_META[status] || STATUS_META.active;
-  const days     = sub.days_remaining ?? getDaysRemaining(sub.expires_at);
-  const warning  = getExpiryWarning(sub);
-  const planColor = PLAN_COLORS[sub.plan_slug] || '#3B82F6';
+  if (!sub) {
+    return (
+      <div className="sub-status-none" onClick={() => navigate('/checkout')}>
+        <HiBolt size={16} />
+        <span>Mulai Berlangganan</span>
+        <HiChevronRight size={14} />
+      </div>
+    );
+  }
+
+  const status = sub.computed_status || getSubscriptionStatus(sub);
+  const meta = STATUS_META[status] || STATUS_META.active;
+  const days = sub.days_remaining ?? getDaysRemaining(sub.expires_at);
+  const warning = getExpiryWarning(sub);
+  const planColor = PLAN_COLORS[sub.plan_slug] || '#5654D4';
 
   const expiryDate = sub.expires_at
     ? new Date(sub.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
-
-  // Compute progress bar width (days used / total days)
-  let progressPct = 100;
-  if (sub.plan_slug !== 'free' && sub.starts_at && sub.expires_at) {
-    const totalMs = new Date(sub.expires_at) - new Date(sub.starts_at);
-    const usedMs  = Date.now() - new Date(sub.starts_at).getTime();
-    const remainPct = Math.max(0, Math.min(100, ((totalMs - usedMs) / totalMs) * 100));
-    progressPct = Math.round(remainPct);
-  }
 
   if (compact) {
     return (
@@ -91,7 +101,7 @@ export default function SubscriptionStatus({ compact = false }) {
           {sub.plan_label || sub.plan_slug}
         </span>
         {days !== Infinity && (
-          <span style={{ fontSize: 11, color: '#64748B' }}>· {days} hari</span>
+          <span style={{ fontSize: 11, color: '#64748B' }}> {days} hari</span>
         )}
       </div>
     );

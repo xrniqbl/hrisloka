@@ -37,11 +37,15 @@ $$;
 -- ── notifications ────────────────────────────────────────────
 ALTER TABLE IF EXISTS notifications ENABLE ROW LEVEL SECURITY;
 
--- Drop overly-permissive policies
+-- Drop old / target policies so re-run is idempotent (SQL Editor safe)
 DROP POLICY IF EXISTS "auth_full_notifications" ON notifications;
 DROP POLICY IF EXISTS "notifications_access" ON notifications;
 DROP POLICY IF EXISTS "notifications_own" ON notifications;
 DROP POLICY IF EXISTS "notifications_company" ON notifications;
+DROP POLICY IF EXISTS "notifications_select_own_or_company_admin" ON notifications;
+DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
+DROP POLICY IF EXISTS "notifications_insert_company" ON notifications;
+DROP POLICY IF EXISTS "notifications_delete_own_or_admin" ON notifications;
 
 -- Employee: only own rows
 -- Admin (same company): can insert for employees in their company + read those
@@ -106,6 +110,8 @@ DROP POLICY IF EXISTS "company_settings_read" ON company_settings;
 DROP POLICY IF EXISTS "company_settings_write" ON company_settings;
 DROP POLICY IF EXISTS "company_settings_write_v2" ON company_settings;
 DROP POLICY IF EXISTS "company_settings_tenant" ON company_settings;
+DROP POLICY IF EXISTS "company_settings_tenant_select" ON company_settings;
+DROP POLICY IF EXISTS "company_settings_tenant_write" ON company_settings;
 
 CREATE POLICY "company_settings_tenant_select" ON company_settings
   FOR SELECT

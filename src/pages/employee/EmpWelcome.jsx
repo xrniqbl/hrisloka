@@ -4,14 +4,21 @@ import { isDemoMode, activateDemo } from '../../lib/demoGuard';
 import { SPLASH_KEY } from './EmpSplash';
 import './EmpOnboard.css';
 
+function shouldShowSplash(user) {
+  try {
+    return !sessionStorage.getItem(SPLASH_KEY) && !isDemoMode() && !user;
+  } catch {
+    return false;
+  }
+}
+
 export default function EmpWelcome() {
   const { user, employee, loading, setIsDemo } = useAuth();
 
-  try {
-    if (!sessionStorage.getItem(SPLASH_KEY) && !isDemoMode() && !user) {
-      return <Navigate to="/app/splash" replace />;
-    }
-  } catch { /* ignore */ }
+  // Avoid constructing JSX inside try/catch (react-hooks/error-boundaries)
+  if (shouldShowSplash(user)) {
+    return <Navigate to="/app/splash" replace />;
+  }
 
   if (!loading && (user || isDemoMode())) {
     const status = employee?.account_status;

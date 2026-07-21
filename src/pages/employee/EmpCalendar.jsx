@@ -28,19 +28,6 @@ const EVENT_COLORS = {
  shift: '#635BFF',
  training: '#8B5CF6',
 };
-function parseDate(value) {
- if (!value) return undefined;
- const [year, month, day] = String(value).split('-').map(Number);
- return new Date(year, month - 1, day);
-}
-
-function toDateString(date) {
- const year = date.getFullYear();
- const month = String(date.getMonth() + 1).padStart(2, '0');
- const day = String(date.getDate()).padStart(2, '0');
- return `${year}-${month}-${day}`;
-}
-
 export default function EmpCalendar() {
   const { user } = useAuth();
   const { locale } = useTranslation();
@@ -185,6 +172,22 @@ export default function EmpCalendar() {
   }
   return datesByType;
  }, [year, month, holidays, leaves, shifts, trainings]);
+
+  // Build agenda: all events for the whole month, sorted.
+  // NOTE: must be declared BEFORE any early return — hooks cannot be called
+  // conditionally (Rules of Hooks). Previously this useMemo sat after the
+  // `if (loading) return ...` block, which broke the hook order.
+  const agendaEvents = useMemo(() => {
+    const result = [];
+    for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
+      const evts = getDateEvents(d);
+      if (evts.length > 0) {
+        result.push({ day: d, date: getDateStr(d), events: evts });
+      }
+    }
+    return result;
+  }, [month, year, holidays, leaves, shifts, trainings]);
+
  const todayStr = today.toISOString().split('T')[0];
  const upcomingHolidays = holidays.filter(h => h.date >= todayStr).slice(0, 5);
 
@@ -202,18 +205,6 @@ export default function EmpCalendar() {
       </div>
     );
   }
-
-  // Build agenda: all events for the whole month, sorted
-  const agendaEvents = useMemo(() => {
-    const result = [];
-    for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
-      const evts = getDateEvents(d);
-      if (evts.length > 0) {
-        result.push({ day: d, date: getDateStr(d), events: evts });
-      }
-    }
-    return result;
-  }, [month, year, holidays, leaves, shifts, trainings]);
 
   return (
     <div style={{ paddingBottom: 16, animation: 'fadeInUp 0.35s ease' }}>

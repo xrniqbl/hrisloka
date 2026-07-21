@@ -324,11 +324,11 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
           <div className="co-summary-title">Ringkasan Pesanan</div>
           <div className="co-summary-row highlight">
             <span>Paket {plan?.name}</span>
-            <span style={{ color: PLAN_COLORS[plan?.slug] || '#635BFF' }}>{plan?.badge === 'Paling Populer' ? '? Terpopuler' : ''}</span>
+            <span style={{ color: PLAN_COLORS[plan?.slug] || '#635BFF' }}>{plan?.badge === 'Paling Populer' ? 'Terpopuler' : ''}</span>
           </div>
           <div className="co-summary-row">
             <span>Siklus tagihan</span>
-            <span>{billingCycle === 'yearly' ? '?? Tahunan' : '?? Bulanan'}</span>
+            <span>{billingCycle === 'yearly' ? 'Tahunan' : 'Bulanan'}</span>
           </div>
           <div className="co-summary-row">
             <span>{billingCycle === 'yearly' ? 'Harga per tahun' : 'Harga per bulan'}</span>
@@ -412,9 +412,10 @@ function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
     };
   }, [isActive, orderId, onPaid]);
 
+  // After activation → owner setup wizard (creates company / invite code)
   useEffect(() => {
     if (isActive) {
-      const timer = setTimeout(() => navigate('/dashboard'), 3000);
+      const timer = setTimeout(() => navigate('/setup', { replace: true }), 2500);
       return () => clearTimeout(timer);
     }
   }, [isActive, navigate]);
@@ -429,7 +430,7 @@ function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
       </h2>
       <p className="co-step3-sub">
         {isActive
-          ? 'Selamat! Akun Anda sudah aktif. Diarahkan ke dashboard dalam 3 detik...'
+          ? 'Selamat! Akun Anda sudah aktif. Lanjut setup perusahaan (~5 menit)…'
           : checking ? 'Sedang memeriksa status pembayaran...' : 'Pembayaran sedang diverifikasi oleh Midtrans. Akun akan aktif otomatis setelah pembayaran dikonfirmasi.'}
       </p>
       <div className="co-step3-info">
@@ -446,8 +447,8 @@ function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
         ))}
       </div>
       {isActive ? (
-        <button className="co-pay-btn success-green" onClick={() => navigate('/dashboard')} aria-label="Masuk ke dashboard">
-          <FiArrowRight size={16} /> Masuk ke Dashboard
+        <button className="co-pay-btn success-green" onClick={() => navigate('/setup', { replace: true })} aria-label="Lanjut setup perusahaan">
+          <FiArrowRight size={16} /> Lanjut Setup Perusahaan
         </button>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -475,6 +476,7 @@ export default function CheckoutPage() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [activating, setActivating] = useState(false);
+  const [payError, setPayError] = useState('');
   const [confirmData, setConfirmData] = useState({ status: null, pricePaid: 0, orderId: null });
 
   // Load Midtrans Snap on mount
@@ -554,6 +556,7 @@ export default function CheckoutPage() {
   // Free / full-voucher activation
   const handleActivate = async ({ pricePaid, discountAmount, voucherCode, paymentMethod }) => {
     setActivating(true);
+    setPayError('');
     const { error } = await activateSubscription({
       planSlug:     selectedPlan.slug,
       planName:     selectedPlan.name,
@@ -561,7 +564,12 @@ export default function CheckoutPage() {
       pricePaid, discountAmount, voucherCode, paymentMethod,
       billingCycle,
     });
-    if (error) console.warn('[Checkout] activation warning:', error.message);
+    if (error) {
+      console.warn('[Checkout] activation warning:', error.message);
+      setPayError(error.message || 'Gagal mengaktifkan langganan. Coba lagi atau hubungi support.');
+      setActivating(false);
+      return;
+    }
     await refreshEmployee?.();
     if (fetchSubscription) await fetchSubscription(user?.id);
     if (refreshOnboarding) await refreshOnboarding();
@@ -573,8 +581,30 @@ export default function CheckoutPage() {
   // Midtrans Snap payment
   const handleMidtransPay = useCallback(async ({ finalPrice, discountAmount, voucherCode, billingCycle: bc }) => {
     setActivating(true);
+    setPayError('');
     try {
+      if (!import.meta.env.VITE_MIDTRANS_CLIENT_KEY) {
+        setPayError('Pembayaran belum dikonfigurasi (VITE_MIDTRANS_CLIENT_KEY). Hubungi administrator.');
+        setActivating(false);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setPayError('Sesi login berakhir. Silakan masuk kembali.');
+        setActivating(false);
+        return;
+      }
+
+      if (!window.snap) {
+        try {
+          await loadSnapScript();
+        } catch {
+          setPayError('Gagal memuat Midtrans Snap. Periksa koneksi atau nonaktifkan ad-blocker.');
+          setActivating(false);
+          return;
+        }
+      }
 
       const res = await supabase.functions.invoke('create-payment', {
         body: {
@@ -585,17 +615,21 @@ export default function CheckoutPage() {
           discount_amount: discountAmount || 0,
           billing_cycle:   bc || billingCycle,
         },
-        headers: { Authorization: `Bearer ${session?.access_token}` },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (res.error || !res.data?.snap_token) {
         console.error('[Checkout] create-payment error:', res.error || res.data);
+        const msg =
+          res.data?.error ||
+          res.error?.message ||
+          'Gagal membuat transaksi pembayaran. Pastikan Edge Function create-payment sudah di-deploy.';
+        setPayError(typeof msg === 'string' ? msg : 'Gagal membuat transaksi pembayaran.');
         setActivating(false);
         return;
       }
 
       const { snap_token } = res.data;
-
       const orderId = res.data?.order_id;
 
       window.snap.pay(snap_token, {
@@ -613,6 +647,7 @@ export default function CheckoutPage() {
         },
         onError: () => {
           setConfirmData({ status: 'failed', pricePaid: finalPrice, orderId });
+          setPayError('Pembayaran gagal diproses Midtrans. Silakan coba lagi.');
           setStep(3);
           setActivating(false);
         },
@@ -620,6 +655,7 @@ export default function CheckoutPage() {
       });
     } catch (err) {
       console.error('[Checkout] Snap error:', err.message);
+      setPayError(err.message || 'Terjadi kesalahan saat membuka pembayaran.');
       setActivating(false);
     }
   }, [selectedPlan, billingCycle]);
@@ -666,6 +702,37 @@ export default function CheckoutPage() {
       <StepBar step={step} />
 
       <div className="co-main">
+        {payError && step !== 3 && (
+          <div
+            role="alert"
+            style={{
+              width: '100%',
+              maxWidth: 860,
+              margin: '0 auto 16px',
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: 'rgba(239,68,68,0.12)',
+              border: '1px solid rgba(239,68,68,0.35)',
+              color: '#FCA5A5',
+              fontSize: 13,
+              lineHeight: 1.5,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+            }}
+          >
+            <FiAlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span style={{ flex: 1 }}>{payError}</span>
+            <button
+              type="button"
+              onClick={() => setPayError('')}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}
+              aria-label="Tutup"
+            >
+              ×
+            </button>
+          </div>
+        )}
         {plansLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, marginTop: 60 }}>
             <div className="co-spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
@@ -686,7 +753,7 @@ export default function CheckoutPage() {
             {step === 2 && selectedPlan && (
               <StepPayment
                 plan={selectedPlan}
-                onBack={() => setStep(1)}
+                onBack={() => { setPayError(''); setStep(1); }}
                 onActivate={handleActivate}
                 onMidtransPay={handleMidtransPay}
                 loading={activating}
@@ -694,13 +761,34 @@ export default function CheckoutPage() {
               />
             )}
             {step === 3 && (
-              <StepConfirmation
-                plan={selectedPlan}
-                pricePaid={confirmData.pricePaid}
-                status={confirmData.status}
-                orderId={confirmData.orderId}
-                onPaid={handlePaidRefresh}
-              />
+              <>
+                {payError && (
+                  <div
+                    role="alert"
+                    style={{
+                      width: '100%',
+                      maxWidth: 480,
+                      margin: '0 auto 16px',
+                      padding: '12px 16px',
+                      borderRadius: 12,
+                      background: 'rgba(239,68,68,0.12)',
+                      border: '1px solid rgba(239,68,68,0.35)',
+                      color: '#FCA5A5',
+                      fontSize: 13,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {payError}
+                  </div>
+                )}
+                <StepConfirmation
+                  plan={selectedPlan}
+                  pricePaid={confirmData.pricePaid}
+                  status={confirmData.status}
+                  orderId={confirmData.orderId}
+                  onPaid={handlePaidRefresh}
+                />
+              </>
             )}
           </>
         )}

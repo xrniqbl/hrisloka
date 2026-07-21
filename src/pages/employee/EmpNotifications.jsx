@@ -174,7 +174,7 @@ export default function EmpNotifications() {
       setSubmissions(deduped);
     }
     setLoading(false);
-  }, [user, locale, authEmployee?.id]);
+  }, [user, locale, authEmployee]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -292,12 +292,7 @@ export default function EmpNotifications() {
         <div className="emp-card emp-empty" style={{ padding: '48px 24px' }}>
           <div
             className="emp-empty-icon"
-            style={{
-              opacity: 1,
-              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
-              color: 'var(--primary, #635BFF)',
-              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
-            }}
+            style={{ color: '#9CA3AF' }}
           >
             <HiBell size={24} />
           </div>

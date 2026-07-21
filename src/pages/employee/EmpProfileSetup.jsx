@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   HiArrowRight, HiCalendarDays, HiCamera, HiCheck,
   HiCreditCard, HiExclamationTriangle, HiIdentification,
@@ -27,14 +27,12 @@ const sel = { ...inp, cursor: 'pointer', appearance: 'none' };
 const lbl = { fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 };
 
 export default function EmpProfileSetup({ employeeId, employeeName, onComplete }) {
-  const { user } = useAuth();
+  useAuth(); // keep auth context warm for child FaceRegistration / session
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [faceRegistered, setFaceRegistered] = useState(false);
   const [error, setError] = useState('');
-  const photoRef = useRef(null);
 
   // Step 1 — Data Diri
   const [nik, setNik] = useState('');

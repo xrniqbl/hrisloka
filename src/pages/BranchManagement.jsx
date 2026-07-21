@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import * as branchService from '../services/branchService';
 import { getAllEmployees } from '../services/employeeService';
+import { useAuth } from '../context/AuthContext';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
@@ -25,6 +26,7 @@ const locationLabel = (v) => LOCATION_TYPES.find(t => t.value === v)?.label || v
 const locationIcon = (v) => LOCATION_TYPES.find(t => t.value === v)?.icon || '"';
 
 export default function BranchManagement() {
+    const { employee } = useAuth();
     const [branches, setBranches] = useState([]);
     const [empCounts, setEmpCounts] = useState({});
     const [employees, setEmployees] = useState([]);
@@ -56,7 +58,12 @@ export default function BranchManagement() {
         setLoading(false);
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        // Don't fetch until the tenant (employee.company_id) is known, otherwise
+        // getAllEmployees would return cross-company records while employee is null.
+        if (!employee?.company_id) return;
+        fetchData();
+    }, [employee?.company_id]);
 
     const openAdd = () => {
         setEditBranch(null);
@@ -550,20 +557,6 @@ const inputStyle = {
     outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box',
 };
 
-const cancelBtn = {
-    padding: '9px 20px', fontSize: 13, fontWeight: 600,
-    border: '1.5px solid var(--border)', borderRadius: 10,
-    background: 'transparent', color: 'var(--text-secondary)',
-    cursor: 'pointer', fontFamily: 'inherit',
-};
-
-const saveBtn = {
-    padding: '9px 20px', fontSize: 13, fontWeight: 600,
-    border: 'none', borderRadius: 10,
-    background: 'var(--primary)', color: '#fff',
-    cursor: 'pointer', fontFamily: 'inherit',
-    display: 'flex', alignItems: 'center', gap: 6,
-};
 
 
 

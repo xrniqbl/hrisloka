@@ -6,9 +6,6 @@ import * as reimbursementService from '../services/reimbursementService';
 import * as employeeService from '../services/employeeService';
 import { formatCurrency } from '../lib/utils';
 import { useRealtimeTable } from '../hooks/useRealtime';
-import { sendReimbursementPush } from '../services/pushService';
-import { sendWhatsApp, buildReimbursementMessage } from '../services/whatsappService';
-import { sendReimbursementEmail } from '../services/emailService';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -20,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import FormDateField from '../components/FormDateField';
 
 export default function Reimbursement() {
   const { t } = useTranslation();
@@ -249,7 +247,7 @@ export default function Reimbursement() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Tanggal</label>
-                  <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                  <FormDateField value={form.date} onChange={(v) => setForm({ ...form, date: v })} placeholder="Tanggal" />
                 </div>
                 <div className="form-group full-width">
                   <label className="form-label">Deskripsi</label>

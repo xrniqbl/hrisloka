@@ -272,6 +272,7 @@ export async function createSubscription({
 }
 
 // ─── Activate subscription + upgrade role to super_admin ─────────────────────
+// Used for free / 100% voucher only. Paid Midtrans flows activate via webhook.
 export async function activateSubscription({
   planSlug, planName, priceMonthly, pricePaid, discountAmount,
   voucherCode, paymentMethod, billingCycle = 'monthly',
@@ -279,15 +280,98 @@ export async function activateSubscription({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { data: null, error: new Error('Not authenticated') };
 
+  // Prefer name from onboarding profile when present
+  let companyName = null;
+  let profileFullName = null;
+  try {
+    const { data: ob } = await supabase
+      .from('onboarding_profiles')
+      .select('full_name, company_name, phone')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (ob?.full_name) profileFullName = ob.full_name;
+    if (ob?.company_name) companyName = String(ob.company_name).trim();
+  } catch { /* optional */ }
+
+  const fullName =
+    profileFullName ||
+    user.user_metadata?.full_name ||
+    user.email?.split('@')[0] ||
+    'User';
+
+  // Resolve existing company_id if employee already exists
+  let existingCompanyId = null;
+  try {
+    const { data: existingEmp } = await supabase
+      .from('employees')
+      .select('id, company_id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    if (existingEmp?.company_id) existingCompanyId = existingEmp.company_id;
+  } catch { /* optional */ }
+
+  // Ensure employee row exists BEFORE ensureOwnerCompany (needs resolveMyEmployee)
+  const empPayload = {
+    email: user.email,
+    name: fullName,
+    role: 'super_admin',
+    auth_user_id: user.id,
+    status: 'active',
+    account_status: 'active',
+    join_date: new Date().toISOString().split('T')[0],
+  };
+  if (existingCompanyId) empPayload.company_id = existingCompanyId;
+
+  const { error: empError } = await supabase
+    .from('employees')
+    .upsert(empPayload, { onConflict: 'email' });
+
+  if (empError) {
+    console.error('[subscriptionService] employee upsert failed:', empError.message);
+    return { data: null, error: empError };
+  }
+
+  // Create / attach company shell so tenant isolation is not left with null company_id
+  let resolvedCompanyId = existingCompanyId;
+  const shellName = companyName || `${fullName}'s Company`;
+  try {
+    const { ensureOwnerCompany } = await import('./ownerSetupService');
+    const { data: company, error: coErr } = await ensureOwnerCompany({ name: shellName });
+    if (coErr) {
+      console.warn('[subscriptionService] ensureOwnerCompany:', coErr.message || coErr);
+    } else if (company?.id) {
+      resolvedCompanyId = company.id;
+    }
+  } catch (e) {
+    console.warn('[subscriptionService] ensureOwnerCompany skipped:', e?.message);
+  }
+
+  // Re-read company_id if ensureOwnerCompany linked employee
+  if (!resolvedCompanyId) {
+    try {
+      const { data: linked } = await supabase
+        .from('employees')
+        .select('company_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+      resolvedCompanyId = linked?.company_id || null;
+    } catch { /* optional */ }
+  }
+
   const { error: subError } = await createSubscription({
     planSlug, planName, priceMonthly, pricePaid, discountAmount, voucherCode,
     paymentMethod: paymentMethod || (pricePaid === 0 ? 'free' : 'pending'),
     status: 'active',
     billingCycle,
+    companyId: resolvedCompanyId,
   });
 
   if (subError) {
-    console.warn('[subscriptionService] subscription table not ready:', subError.message);
+    console.error('[subscriptionService] subscription upsert failed:', subError.message);
+    return {
+      data: null,
+      error: subError,
+    };
   }
 
   if (voucherCode) {
@@ -312,19 +396,14 @@ export async function activateSubscription({
     } catch (e) { console.warn('[subscriptionService] voucher usage increment failed:', e?.message); }
   }
 
-  const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-  const { error: empError } = await supabase
-    .from('employees')
-    .upsert({
-      email: user.email,
-      name: fullName,
-      role: 'super_admin',
-      auth_user_id: user.id,
-      status: 'active',
-      join_date: new Date().toISOString().split('T')[0],
-    }, { onConflict: 'email' });
-
-  return { data: { success: true }, error: empError };
+  return {
+    data: {
+      success: true,
+      company_id: resolvedCompanyId,
+      needs_setup: !resolvedCompanyId,
+    },
+    error: null,
+  };
 }
 
 // ─── Check and auto-expire subscriptions (run on app load) ───────────────────

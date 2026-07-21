@@ -290,16 +290,19 @@ export default function ContractEditor({ isTemplate = false }) {
               { align: 'center', Icon: FiAlignCenter },
               { align: 'right', Icon: FiAlignRight },
               { align: 'justify', Icon: FiAlignJustify },
-            ].map(({ align, Icon }) => (
+            ].map((item) => {
+              const AlignIcon = item.Icon;
+              return (
               <button
-                key={align}
-                className={`ce-toolbar-btn ${editor?.isActive({ textAlign: align }) ? 'is-active' : ''}`}
-                onMouseDown={e => { e.preventDefault(); editor?.chain().focus().setTextAlign(align).run(); }}
-                title={`Rata ${align}`}
+                key={item.align}
+                className={`ce-toolbar-btn ${editor?.isActive({ textAlign: item.align }) ? 'is-active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); editor?.chain().focus().setTextAlign(item.align).run(); }}
+                title={`Rata ${item.align}`}
               >
-                <Icon />
+                <AlignIcon />
               </button>
-            ))}
+              );
+            })}
             <div className="ce-toolbar-divider" />
 
             {/* Lists */}

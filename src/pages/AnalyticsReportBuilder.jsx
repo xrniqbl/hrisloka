@@ -34,10 +34,18 @@ export default function AnalyticsReportBuilder() {
 
  const fetchData = async () => {
  setLoading(true);
+ const companyId = employee?.company_id;
+ if (!companyId) {
+ setEmployees([]);
+ setAttendance([]);
+ setLeaves([]);
+ setLoading(false);
+ return;
+ }
  const [empRes, attRes, leaveRes] = await Promise.all([
- employeeService.getAllEmployees(undefined, employee?.company_id),
- attendanceService.getAllAttendanceToday(undefined, employee?.company_id),
- leaveService.getAllLeaves(undefined, employee?.company_id),
+ employeeService.getAllEmployees(undefined, companyId),
+ attendanceService.getAllAttendanceToday(undefined, companyId),
+ leaveService.getAllLeaves(undefined, companyId),
  ]);
  setEmployees(empRes.data || []);
  setAttendance(attRes.data || []);
@@ -45,7 +53,7 @@ export default function AnalyticsReportBuilder() {
  setLoading(false);
  };
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => { fetchData(); }, [employee?.company_id]);
 
  const divisions = [...new Set(employees.map(e => e.division).filter(Boolean))].sort();
 

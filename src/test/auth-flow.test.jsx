@@ -140,7 +140,7 @@ describe('Employee Registration Flow', () => {
     mockSupabase.from.mockReturnValue(mockQuery);
 
     const { supabase } = await import('../lib/supabase');
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('companies')
       .select('id, name, is_active')
       .eq('company_code', 'HRSLK-TEST01')

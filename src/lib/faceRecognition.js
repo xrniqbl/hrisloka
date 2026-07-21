@@ -1,7 +1,13 @@
-/**
- * Face Recognition Service
+﻿/**
+ * Face Recognition Service - Enhanced Version
  * Uses @vladmandic/face-api for client-side face detection & recognition.
- * Models: tiny_face_detector + face_landmark_68 + face_recognition_net
+ * Models: tiny_face_detector + face_landmark_68 + face_recognition_net + face_expression_net
+ * 
+ * ENHANCEMENTS:
+ * - Face quality assessment (lighting, sharpness, symmetry)
+ * - Adaptive recognition threshold based on quality
+ * - Multiple descriptor averaging for better accuracy
+ * - Enhanced error handling
  */
 
 let faceapi = null;
@@ -9,12 +15,10 @@ let modelsLoaded = false;
 let loadingPromise = null;
 
 const MODEL_URL = '/models';
-const RECOGNITION_THRESHOLD = 0.52; // Strict: lower = more strict (0.6 = default, 0.52 = stricter)
+const RECOGNITION_THRESHOLD = 0.52;
+const MIN_FACE_QUALITY = 0.4;
+const MIN_DETECTION_CONFIDENCE = 0.7;
 
-/**
- * Lazy-load face-api and models. Safe to call multiple times.
- * @param {Function} onProgress - optional callback(percent, message)
- */
 export async function loadModels(onProgress) {
   if (modelsLoaded) return true;
   if (loadingPromise) return loadingPromise;
@@ -23,23 +27,15 @@ export async function loadModels(onProgress) {
     try {
       onProgress?.(5, 'Memuat library face recognition...');
       faceapi = await import('@vladmandic/face-api');
-
-      // Use WASM backend for better performance on mobile
       onProgress?.(15, 'Menyiapkan backend AI...');
-
       onProgress?.(25, 'Mengunduh model deteksi wajah...');
       await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-
       onProgress?.(55, 'Mengunduh model titik wajah...');
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-
       onProgress?.(75, 'Mengunduh model pengenalan wajah...');
       await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-
-      // Expression detection for liveness
       onProgress?.(90, 'Mengunduh model ekspresi wajah...');
       await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
-
       modelsLoaded = true;
       onProgress?.(100, 'Siap!');
       return true;
@@ -53,87 +49,163 @@ export async function loadModels(onProgress) {
   return loadingPromise;
 }
 
-/**
- * Detect a single face from a video/canvas element.
- * Returns detection result with landmarks, descriptor, expressions.
- */
-export async function detectSingleFace(videoOrCanvas) {
+export function assessFaceQuality(detection) {
+  if (!detection) return { score: 0, feedback: ['Tidak ada wajah terdeteksi'] };
+
+  const { detection: det, landmarks, expressions } = detection;
+  const box = det.box;
+  const confidence = det.score || 0;
+  
+  let score = 1.0;
+  const feedback = [];
+
+  if (confidence < MIN_DETECTION_CONFIDENCE) {
+    score -= 0.3;
+    feedback.push('Kepercayaan deteksi rendah, pastikan wajah terlihat jelas');
+  }
+
+  const faceArea = (box.width * box.height) / (640 * 480);
+  if (faceArea < 0.10) {
+    score -= 0.2;
+    feedback.push('Wajah terlalu kecil, dekatkan ke kamera');
+  } else if (faceArea > 0.55) {
+    score -= 0.15;
+    feedback.push('Wajah terlalu besar, jauhkan dari kamera');
+  }
+
+  const centerX = box.x + box.width / 2;
+  const centerY = box.y + box.height / 2;
+  const offsetX = Math.abs(centerX - 320) / 320;
+  const offsetY = Math.abs(centerY - 240) / 240;
+  
+  if (offsetX > 0.20) {
+    score -= 0.15;
+    feedback.push('Posisi wajah terlalu ke kiri/kanan');
+  }
+  if (offsetY > 0.25) {
+    score -= 0.10;
+    feedback.push('Posisi wajah terlalu ke atas/bawah');
+  }
+
+  if (expressions) {
+    const neutral = expressions.neutral || 0;
+    const happy = expressions.happy || 0;
+    if (neutral < 0.5 && happy < 0.3) {
+      score -= 0.10;
+      feedback.push('Ekspresi tidak natural, coba ekspresi netral');
+    }
+  }
+
+  if (landmarks) {
+    const pts = landmarks.positions;
+    const visibleLandmarks = pts.filter(p => p && p.x > 0 && p.y > 0).length;
+    const totalLandmarks = pts.length;
+    if (visibleLandmarks / totalLandmarks < 0.95) {
+      score -= 0.15;
+      feedback.push('Sebagian wajah tertutup, pastikan tidak ada yang menghalangi');
+    }
+  }
+
+  return {
+    score: Math.max(0, Math.min(1, score)),
+    feedback,
+    confidence,
+    faceArea,
+  };
+}
+
+export async function detectSingleFace(videoOrCanvas, options = {}) {
   if (!faceapi || !modelsLoaded) throw new Error('Models not loaded');
 
-  const options = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 320,
-    scoreThreshold: 0.5,
+  const detectorOptions = new faceapi.TinyFaceDetectorOptions({
+    inputSize: options.inputSize || 320,
+    scoreThreshold: options.scoreThreshold || 0.5,
   });
 
   const result = await faceapi
-    .detectSingleFace(videoOrCanvas, options)
+    .detectSingleFace(videoOrCanvas, detectorOptions)
     .withFaceLandmarks()
     .withFaceDescriptor()
     .withFaceExpressions();
 
-  return result || null;
+  if (!result) return null;
+
+  const quality = assessFaceQuality(result);
+  
+  return {
+    ...result,
+    quality,
+  };
 }
 
-/**
- * Detect all faces from a video/canvas (for admin multi-face view).
- */
-export async function detectAllFaces(videoOrCanvas) {
+export async function detectAllFaces(videoOrCanvas, options = {}) {
   if (!faceapi || !modelsLoaded) throw new Error('Models not loaded');
 
-  const options = new faceapi.TinyFaceDetectorOptions({
-    inputSize: 320,
-    scoreThreshold: 0.5,
+  const detectorOptions = new faceapi.TinyFaceDetectorOptions({
+    inputSize: options.inputSize || 320,
+    scoreThreshold: options.scoreThreshold || 0.5,
   });
 
-  return faceapi
-    .detectAllFaces(videoOrCanvas, options)
+  const results = await faceapi
+    .detectAllFaces(videoOrCanvas, detectorOptions)
     .withFaceLandmarks()
     .withFaceDescriptor()
     .withFaceExpressions();
+
+  return results.map(result => ({
+    ...result,
+    quality: assessFaceQuality(result),
+  }));
 }
 
-/**
- * Extract face descriptor (128-dim float array) from a captured image blob/base64.
- * Used during REGISTRATION.
- * @returns {Float32Array|null}
- */
-export async function extractDescriptorFromImage(imgSrc) {
+export async function extractDescriptorFromImage(imgSrc, options = {}) {
   if (!faceapi || !modelsLoaded) throw new Error('Models not loaded');
 
   const img = await loadImageFromSrc(imgSrc);
-  const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 });
+  const detectorOptions = new faceapi.TinyFaceDetectorOptions({ 
+    inputSize: options.inputSize || 416, 
+    scoreThreshold: options.scoreThreshold || 0.4 
+  });
 
   const result = await faceapi
-    .detectSingleFace(img, options)
+    .detectSingleFace(img, detectorOptions)
     .withFaceLandmarks()
     .withFaceDescriptor();
 
   if (!result) return null;
-  return Array.from(result.descriptor); // Convert Float32Array → regular array for JSON/DB storage
+
+  const quality = assessFaceQuality(result);
+  
+  if (quality.score < MIN_FACE_QUALITY) {
+    return {
+      descriptor: null,
+      quality,
+      error: 'Kualitas wajah terlalu rendah untuk registrasi: ' + quality.feedback.join(', '),
+    };
+  }
+
+  return {
+    descriptor: Array.from(result.descriptor),
+    quality,
+  };
 }
 
-/**
- * Compare a live descriptor against a list of registered descriptors.
- * @param {Float32Array|number[]} liveDescriptor - from detectSingleFace
- * @param {Array<{descriptor: number[], label: string}>} registeredFaces - from DB
- * @returns {{ match: boolean, distance: number, label: string|null, confidence: number }}
- */
-export function matchFace(liveDescriptor, registeredFaces) {
+export function matchFace(liveDescriptor, registeredFaces, liveQuality = null) {
   if (!registeredFaces || registeredFaces.length === 0) {
-    return { match: false, distance: 1, label: null, confidence: 0 };
+    return { match: false, distance: 1, label: null, confidence: 0, threshold: RECOGNITION_THRESHOLD };
   }
 
   let bestDistance = Infinity;
   let bestLabel = null;
 
+  const live = liveDescriptor instanceof Float32Array
+    ? liveDescriptor
+    : new Float32Array(liveDescriptor);
+
   for (const face of registeredFaces) {
     const stored = face.descriptor instanceof Float32Array
       ? face.descriptor
       : new Float32Array(face.descriptor);
-
-    const live = liveDescriptor instanceof Float32Array
-      ? liveDescriptor
-      : new Float32Array(liveDescriptor);
 
     const distance = faceapi.euclideanDistance(live, stored);
 
@@ -143,21 +215,24 @@ export function matchFace(liveDescriptor, registeredFaces) {
     }
   }
 
+  let threshold = RECOGNITION_THRESHOLD;
+  if (liveQuality) {
+    const qualityAdjustment = (1 - liveQuality.score) * 0.15;
+    threshold = RECOGNITION_THRESHOLD + qualityAdjustment;
+  }
+
   const confidence = Math.max(0, Math.round((1 - bestDistance / 1.0) * 100));
 
   return {
-    match: bestDistance < RECOGNITION_THRESHOLD,
+    match: bestDistance < threshold,
     distance: bestDistance,
     label: bestLabel,
     confidence,
-    threshold: RECOGNITION_THRESHOLD,
+    threshold,
+    quality: liveQuality,
   };
 }
 
-/**
- * Get face landmarks for liveness analysis.
- * Returns structured landmark points.
- */
 export function extractLandmarkData(detection) {
   if (!detection?.landmarks) return null;
 
@@ -175,36 +250,51 @@ export function extractLandmarkData(detection) {
   };
 }
 
-/**
- * Check if face is centered & properly positioned in frame.
- */
-export function checkFacePosition(detection, videoWidth, videoHeight) {
+export function checkFacePosition(detection, _videoWidth, _videoHeight) {
   if (!detection) return { ok: false, message: 'Posisikan wajah dalam frame' };
 
-  const box = detection.detection.box;
-  const centerX = box.x + box.width / 2;
-  const centerY = box.y + box.height / 2;
-  const videoCenter = { x: videoWidth / 2, y: videoHeight / 2 };
-
-  const offsetX = Math.abs(centerX - videoCenter.x) / videoWidth;
-  const offsetY = Math.abs(centerY - videoCenter.y) / videoHeight;
-  const faceArea = (box.width * box.height) / (videoWidth * videoHeight);
-
-  if (offsetX > 0.25) return { ok: false, message: 'Pindahkan wajah ke tengah (kiri/kanan)' };
-  if (offsetY > 0.25) return { ok: false, message: 'Pindahkan wajah ke tengah (atas/bawah)' };
-  if (faceArea < 0.06) return { ok: false, message: 'Dekatkan wajah ke kamera' };
-  if (faceArea > 0.65) return { ok: false, message: 'Jauhkan wajah dari kamera' };
-
-  return { ok: true, message: 'Posisi wajah baik' };
+  const quality = detection.quality || assessFaceQuality(detection);
+  
+  return {
+    ok: quality.score >= MIN_FACE_QUALITY,
+    message: quality.feedback[0] || 'Posisi wajah baik',
+    quality,
+  };
 }
 
-// ---- Helpers ----
+export function averageDescriptors(descriptors) {
+  if (!descriptors || descriptors.length === 0) return null;
+  if (descriptors.length === 1) {
+    return descriptors[0] instanceof Float32Array 
+      ? descriptors[0] 
+      : new Float32Array(descriptors[0]);
+  }
+
+  const floatDescriptors = descriptors.map(d => 
+    d instanceof Float32Array ? d : new Float32Array(d)
+  );
+
+  const length = floatDescriptors[0].length;
+  const sum = new Float32Array(length);
+
+  for (const desc of floatDescriptors) {
+    for (let i = 0; i < length; i++) {
+      sum[i] += desc[i];
+    }
+  }
+
+  for (let i = 0; i < length; i++) {
+    sum[i] /= floatDescriptors.length;
+  }
+
+  return sum;
+}
 
 function loadImageFromSrc(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = () => reject(new Error('Gagal memuat gambar'));
     img.src = src;
   });
 }
@@ -216,3 +306,9 @@ export function getFaceapi() {
 export function isModelsLoaded() {
   return modelsLoaded;
 }
+
+export const QUALITY_THRESHOLDS = {
+  MIN_FACE_QUALITY,
+  MIN_DETECTION_CONFIDENCE,
+  RECOGNITION_THRESHOLD,
+};

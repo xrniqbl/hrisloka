@@ -38,7 +38,7 @@ export default function EmpTimesheet() {
       setEntries(t || []);
     }
     setLoading(false);
-  }, [user, authEmployee?.id]);
+  }, [user, authEmployee]);
 
   useEffect(() => { load(); }, [load]);
 

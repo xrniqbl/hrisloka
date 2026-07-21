@@ -339,7 +339,6 @@ export default function EmpSubmissions() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
         {tabs.map(tab => {
           const isActive = activeTab === tab.key;
-          const pendingCount = currentList.filter(i => i.status === 'pending').length;
           return (
             <button
               key={tab.key}

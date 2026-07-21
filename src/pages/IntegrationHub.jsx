@@ -1,68 +1,69 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FiLink, FiMail, FiMessageSquare, FiSend, FiCheck, FiX, FiSettings, FiToggleLeft, FiToggleRight, FiChevronRight, FiAlertCircle, FiSave, FiClock } from 'react-icons/fi';
+import {
+  FiLink,
+  FiMail,
+  FiMessageSquare,
+  FiSend,
+  FiCheck,
+  FiX,
+  FiSettings,
+  FiToggleLeft,
+  FiToggleRight,
+  FiChevronRight,
+  FiSave,
+} from 'react-icons/fi';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { testWhatsAppConnection } from '../services/whatsappService';
 import { isEmailConfigured } from '../services/emailService';
+import { BRAND } from '../lib/brandPalette';
 
+/** Production-ready integrations only (100% kesiapan) */
 const INTEGRATIONS = [
   {
     id: 'email',
-    name: 'Email (Resend)',
-    description: 'Notifikasi cuti, payslip, dan reimbursement dikirim via Resend (dikonfigurasi di server platform)',
+    name: 'Email (Brevo)',
+    description: 'Notifikasi cuti, payslip, dan reimbursement via Brevo Transactional API (API key di server)',
     icon: <FiMail />,
-    color: '#635BFF',
+    color: BRAND.primary,
     serverManaged: true,
     fields: [
-      { key: 'notify_from_name', label: 'Nama Pengirim (opsional)', type: 'text', placeholder: 'HRIS Loka Notifications' },
-      { key: 'notify_reply_to', label: 'Reply-To (opsional)', type: 'text', placeholder: 'hr@company.com' },
+      {
+        key: 'notify_from_name',
+        label: 'Nama Pengirim (opsional)',
+        type: 'text',
+        placeholder: 'HRIS Loka Notifications',
+      },
+      {
+        key: 'notify_reply_to',
+        label: 'Reply-To (opsional)',
+        type: 'text',
+        placeholder: 'hr@company.com',
+      },
     ],
-    helpText: 'API key Resend dikelola di Vercel (RESEND_API_KEY). Tenant cukup mengaktifkan notifikasi di sini.',
+    helpText:
+      'BREVO_API_KEY + FROM_EMAIL dikelola di Vercel/server. Verifikasi sender domain di dashboard Brevo. Tenant cukup mengaktifkan notifikasi.',
   },
   {
     id: 'whatsapp',
     name: 'WhatsApp API',
-    description: 'Kirim reminder absensi, approval, dan notifikasi via WhatsApp (Fonnte di server)',
+    description: 'Reminder absensi, approval, dan notifikasi via WhatsApp (Fonnte di server)',
     icon: <FiMessageSquare />,
     color: '#25D366',
     fields: [
-      { key: 'wa_sender', label: 'Nomor penguji (untuk Test)', type: 'text', placeholder: '628xxxxx' },
+      {
+        key: 'wa_sender',
+        label: 'Nomor penguji (untuk Test)',
+        type: 'text',
+        placeholder: '628xxxxx',
+      },
     ],
-    helpText: 'Token Fonnte dikelola di server (FONNTE_TOKEN). Isi nomor untuk uji koneksi.',
-  },
-  {
-    id: 'slack',
-    name: 'Slack Webhook',
-    description: 'Post notifikasi HR ke channel Slack perusahaan',
-    icon: <FiSend />,
-    color: '#4A154B',
-    comingSoon: true,
-    fields: [
-      { key: 'slack_webhook', label: 'Webhook URL', type: 'text', placeholder: 'https://hooks.slack.com/services/...' },
-      { key: 'slack_channel', label: 'Default Channel', type: 'text', placeholder: '#hr-notifications' },
-    ],
-  },
-  {
-    id: 'accounting',
-    name: 'Accounting Software',
-    description: 'Sync data payroll ke software akuntansi (Jurnal.id, Accurate, dll)',
-    icon: <FiLink />,
-    color: '#F59E0B',
-    comingSoon: true,
-    fields: [
-      { key: 'acc_provider', label: 'Provider', type: 'select', options: ['Jurnal.id', 'Accurate', 'Zahir', 'Custom API'] },
-      { key: 'acc_api_url', label: 'API URL', type: 'text', placeholder: 'https://api.jurnal.id/...' },
-      { key: 'acc_api_key', label: 'API Key', type: 'password', placeholder: 'your-api-key' },
-    ],
+    helpText: 'Token Fonnte di server (FONNTE_TOKEN). Isi nomor untuk uji koneksi.',
   },
 ];
 
-// Filter out coming soon integrations for display`nconst ACTIVE_INTEGRATIONS = INTEGRATIONS.filter(int => !int.comingSoon);
-
-// Persist integration configs to Supabase company_settings table.
-// Falls back to localStorage if Supabase is unavailable.
 const STORAGE_KEY = 'hrisync_integrations';
 
 export default function IntegrationHub() {
@@ -73,58 +74,105 @@ export default function IntegrationHub() {
   const [saving, setSaving] = useState(false);
   const [loadingConfigs, setLoadingConfigs] = useState(true);
   const [testResults, setTestResults] = useState({});
+  const [saveError, setSaveError] = useState('');
 
-  // -- Load from Supabase (company_settings) ------------------------------
   const loadConfigs = useCallback(async () => {
     setLoadingConfigs(true);
     try {
       if (employee?.company_id) {
-        const { data } = await supabase
+        // Schema A: key/value rows
+        const { data: kv } = await supabase
           .from('company_settings')
           .select('value')
           .eq('company_id', employee.company_id)
           .eq('key', 'integration_configs')
           .maybeSingle();
-        if (data?.value) {
-          setConfigs(typeof data.value === 'string' ? JSON.parse(data.value) : data.value);
+        if (kv?.value) {
+          setConfigs(typeof kv.value === 'string' ? JSON.parse(kv.value) : kv.value);
+          setLoadingConfigs(false);
+          return;
+        }
+        // Schema B: wide row with integrations jsonb
+        const { data: wide } = await supabase
+          .from('company_settings')
+          .select('integrations, value')
+          .eq('company_id', employee.company_id)
+          .maybeSingle();
+        if (wide?.integrations) {
+          setConfigs(
+            typeof wide.integrations === 'string'
+              ? JSON.parse(wide.integrations)
+              : wide.integrations,
+          );
           setLoadingConfigs(false);
           return;
         }
       }
-    } catch { /* fall through to localStorage */ }
-    // Fallback: localStorage
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try { setConfigs(JSON.parse(saved)); } catch { /* ignore */ }
+    } catch {
+      /* fall through */
+    }
+    try {
+      const local = localStorage.getItem(STORAGE_KEY);
+      if (local) setConfigs(JSON.parse(local));
+    } catch {
+      /* ignore */
     }
     setLoadingConfigs(false);
-  }, [employee?.company_id]);
+  }, [employee]);
 
-  useEffect(() => { loadConfigs(); }, [loadConfigs]);
+  useEffect(() => {
+    loadConfigs();
+  }, [loadConfigs]);
 
-  const isEnabled = (id) => configs[id]?.enabled || false;
+  const isEnabled = (id) => Boolean(configs[id]?.enabled);
 
   const toggleEnabled = (id) => {
-    setConfigs(prev => ({ ...prev, [id]: { ...prev[id], enabled: !prev[id]?.enabled } }));
+    setConfigs((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], enabled: !prev[id]?.enabled },
+    }));
   };
 
   const updateField = (intId, fieldKey, value) => {
-    setConfigs(prev => ({ ...prev, [intId]: { ...prev[intId], [fieldKey]: value } }));
+    setConfigs((prev) => ({
+      ...prev,
+      [intId]: { ...prev[intId], [fieldKey]: value },
+    }));
   };
 
-  // -- Save to Supabase + localStorage fallback ---------------------------
   const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
     try {
       if (employee?.company_id) {
-        const { error } = await supabase
-          .from('company_settings')
-          .upsert({
+        // Prefer key/value upsert
+        let error = null;
+        const kv = await supabase.from('company_settings').upsert(
+          {
             company_id: employee.company_id,
             key: 'integration_configs',
             value: configs,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'company_id,key' });
+          },
+          { onConflict: 'company_id,key' },
+        );
+        error = kv.error;
+
+        if (error) {
+          // Fallback: store as integrations column on company row
+          const wide = await supabase
+            .from('company_settings')
+            .upsert(
+              {
+                company_id: employee.company_id,
+                integrations: configs,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'company_id' },
+            );
+          error = wide.error;
+        }
+
         if (!error) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
           setSaved(true);
@@ -132,170 +180,266 @@ export default function IntegrationHub() {
           setSaving(false);
           return;
         }
+        setSaveError(error.message || 'Gagal simpan ke database — fallback lokal dipakai.');
       }
-    } catch { /* fall through */ }
-    // Fallback: localStorage only
+    } catch (e) {
+      setSaveError(e?.message || 'Gagal simpan');
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     setSaving(false);
   };
 
-  // -- Test connections ---------------------------------------------------
   const handleTest = async (id) => {
-    setTestResults(prev => ({ ...prev, [id]: 'testing' }));
+    setTestResults((prev) => ({ ...prev, [id]: 'testing' }));
     try {
       if (id === 'whatsapp') {
         const phone = configs.whatsapp?.wa_sender || '';
         if (!phone) {
-          setTestResults(prev => ({ ...prev, [id]: 'error' }));
+          setTestResults((prev) => ({ ...prev, [id]: 'error' }));
           return;
         }
         const result = await testWhatsAppConnection(phone);
-        setTestResults(prev => ({ ...prev, [id]: result.success ? 'success' : 'error' }));
+        setTestResults((prev) => ({ ...prev, [id]: result.success ? 'success' : 'error' }));
       } else if (id === 'email') {
         const ok = await isEmailConfigured();
-        setTestResults(prev => ({ ...prev, [id]: ok ? 'success' : 'error' }));
-      } else {
-        // For slack/accounting: just mark as "configured"
-        const hasConfig = Object.keys(configs[id] || {}).filter(k => k !== 'enabled').length > 0;
-        setTestResults(prev => ({ ...prev, [id]: hasConfig ? 'success' : 'error' }));
+        setTestResults((prev) => ({ ...prev, [id]: ok ? 'success' : 'error' }));
       }
     } catch {
-      setTestResults(prev => ({ ...prev, [id]: 'error' }));
+      setTestResults((prev) => ({ ...prev, [id]: 'error' }));
     }
-    setTimeout(() => setTestResults(prev => ({ ...prev, [id]: null })), 5000);
+    setTimeout(() => setTestResults((prev) => ({ ...prev, [id]: null })), 5000);
   };
 
   return (
     <div className="admin-page">
       <div className="page-header">
-        <h1><FiLink style={{ marginRight: 10 }} /> Integration Hub</h1>
+        <h1>
+          <FiLink style={{ marginRight: 10 }} /> Integration Hub
+        </h1>
         <div className="page-header-actions">
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saved
-              ? <><FiCheck /> Tersimpan!</>
-              : saving
-              ? <><FiSettings className="spin" /> Menyimpan...</>
-              : <><FiSave /> Simpan Konfigurasi</>}
+          <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
+            {saved ? (
+              <>
+                <FiCheck /> Tersimpan
+              </>
+            ) : saving ? (
+              <>
+                <FiSettings className="spin" /> Menyimpan…
+              </>
+            ) : (
+              <>
+                <FiSave /> Simpan Konfigurasi
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Info banner */}
-      <div style={{ padding: 14, marginBottom: 24, background: 'var(--success-light)', borderRadius: 'var(--radius-md)', border: '1px solid var(--success)', display: 'flex', gap: 10, alignItems: 'center' }}>
-        <FiCheck style={{ color: 'var(--success)', fontSize: 18, flexShrink: 0 }} />
-        <div style={{ fontSize: 13, color: 'var(--success)' }}>
-          <strong>Konfigurasi disimpan ke database.</strong> Pengaturan integrasi Anda tersimpan per-perusahaan dan aktif di semua perangkat.
-        </div>
+      <div
+        style={{
+          padding: 12,
+          marginBottom: 16,
+          background: 'color-mix(in srgb, var(--primary, #5654D4) 7%, transparent)',
+          borderRadius: 10,
+          border: '1px solid color-mix(in srgb, var(--primary, #5654D4) 16%, transparent)',
+          fontSize: 13,
+          color: 'var(--text)',
+          lineHeight: 1.45,
+        }}
+      >
+        <strong>Integrasi production-ready:</strong> Email (Brevo) dan WhatsApp (Fonnte).
+        Konfigurasi per perusahaan; secret API hanya di server.
       </div>
 
+      {saveError && (
+        <div
+          style={{
+            padding: 10,
+            marginBottom: 12,
+            borderRadius: 10,
+            background: 'rgba(239,68,68,0.08)',
+            color: '#DC2626',
+            fontSize: 12.5,
+          }}
+        >
+          {saveError}
+        </div>
+      )}
+
       {loadingConfigs ? (
-        <div style={{ display: 'grid', gap: 16 }}>
-          {[1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 80, borderRadius: 12 }} />)}
+        <div style={{ display: 'grid', gap: 12 }}>
+          {[1, 2].map((i) => (
+            <div key={i} className="skeleton" style={{ height: 72, borderRadius: 12 }} />
+          ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
-          {ACTIVE_INTEGRATIONS.map(int => {
+        <div style={{ display: 'grid', gap: 12 }}>
+          {INTEGRATIONS.map((int) => {
             const enabled = isEnabled(int.id);
             const isOpen = activePanel === int.id;
             const testResult = testResults[int.id];
 
             return (
-              <div key={int.id} style={{
-                background: 'var(--surface)', borderRadius: 'var(--radius-lg)',
-                border: `1px solid ${enabled ? int.color : 'var(--border)'}`,
-                boxShadow: 'var(--shadow-card)', overflow: 'hidden',
-                transition: 'border-color 0.2s',
-              }}>
-                {/* Header */}
+              <div
+                key={int.id}
+                style={{
+                  background: 'var(--surface)',
+                  borderRadius: 12,
+                  border: `1px solid ${enabled ? int.color : 'var(--border)'}`,
+                  overflow: 'hidden',
+                }}
+              >
                 <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setActivePanel(isOpen ? null : int.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '20px 24px', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onKeyDown={(e) => e.key === 'Enter' && setActivePanel(isOpen ? null : int.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                  }}
                 >
-                  <div style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: `${int.color}15`, color: int.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 10,
+                      background: `${int.color}18`,
+                      color: int.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 18,
+                      flexShrink: 0,
+                    }}
+                  >
                     {int.icon}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>{int.name}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{int.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{int.description}</div>
                   </div>
 
-                  {/* Status badge */}
-                  {int.comingSoon ? (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B', background: 'rgba(245,158,11,0.12)', padding: '3px 10px', borderRadius: 99, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <FiClock style={{ fontSize: 10 }} /> Segera Hadir
-                    </span>
-                  ) : enabled ? (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: int.color, background: `${int.color}15`, padding: '3px 10px', borderRadius: 99 }}>
+                  {enabled && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: int.color,
+                        background: `${int.color}15`,
+                        padding: '3px 10px',
+                        borderRadius: 99,
+                      }}
+                    >
                       Aktif
                     </span>
-                  ) : null}
-
-                  {/* Toggle */}
-                  {int.comingSoon ? (
-                    <span style={{ fontSize: 20, color: 'var(--border)', cursor: 'not-allowed', display: 'flex' }}>
-                      <FiToggleLeft />
-                    </span>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleEnabled(int.id); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: enabled ? int.color : 'var(--muted)', fontSize: 20, display: 'flex', transition: 'color 0.15s' }}
-                      title={enabled ? 'Nonaktifkan' : 'Aktifkan'}
-                    >
-                      {enabled ? <FiToggleRight /> : <FiToggleLeft />}
-                    </button>
                   )}
 
-                  <FiChevronRight style={{ color: 'var(--muted)', fontSize: 18, transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleEnabled(int.id);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: enabled ? int.color : 'var(--muted)',
+                      fontSize: 22,
+                      display: 'flex',
+                    }}
+                    title={enabled ? 'Nonaktifkan' : 'Aktifkan'}
+                  >
+                    {enabled ? <FiToggleRight /> : <FiToggleLeft />}
+                  </button>
+
+                  <FiChevronRight
+                    style={{
+                      color: 'var(--muted)',
+                      fontSize: 18,
+                      transform: isOpen ? 'rotate(90deg)' : 'none',
+                      transition: 'transform 0.15s',
+                    }}
+                  />
                 </div>
 
-                {/* Config Panel */}
                 {isOpen && (
-                  <div style={{ padding: '0 24px 24px', borderTop: '1px solid var(--border-light)', animation: 'modalFadeIn 0.15s ease' }}>
-                    <div style={{ paddingTop: 20 }}>
-                      {int.comingSoon ? (
-                        <div style={{ padding: 20, background: 'var(--warning-light, rgba(245,158,11,0.08))', borderRadius: 'var(--radius-md, 8px)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', gap: 10, alignItems: 'center' }}>
-                          <FiAlertCircle style={{ color: '#F59E0B', fontSize: 18, flexShrink: 0 }} />
-                          <div style={{ fontSize: 13, color: '#92400E' }}>
-                            <strong>Fitur ini sedang dalam pengembangan.</strong> Integrasi {int.name} akan tersedia di update mendatang. Konfigurasi yang Anda simpan saat ini tidak akan aktif sampai fitur ini diluncurkan.
-                          </div>
+                  <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
+                    <div style={{ paddingTop: 14 }}>
+                      {int.helpText && (
+                        <div
+                          style={{
+                            padding: 10,
+                            marginBottom: 12,
+                            background: 'var(--bg)',
+                            borderRadius: 8,
+                            border: '1px solid var(--border)',
+                            fontSize: 12,
+                            color: 'var(--muted)',
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {int.helpText}
                         </div>
-                      ) : (
-                        <>
-                          {int.helpText && (
-                            <div style={{ padding: 12, marginBottom: 16, background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
-                              {int.helpText}
-                            </div>
-                          )}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                            {int.fields.map(field => (
-                              <div key={field.key} className="form-group" style={field.key.includes('url') || field.key.includes('webhook') || field.key.includes('reply') ? { gridColumn: '1/-1' } : {}}>
-                                <label className="form-label">{field.label}</label>
-                                {field.type === 'select' ? (
-                                  <select className="form-select" value={configs[int.id]?.[field.key] || ''} onChange={e => updateField(int.id, field.key, e.target.value)}>
-                                    <option value="">- Pilih -</option>
-                                    {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-                                  </select>
-                                ) : (
-                                  <input className="form-input" type={field.type} placeholder={field.placeholder} value={configs[int.id]?.[field.key] || ''} onChange={e => updateField(int.id, field.key, e.target.value)} />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <div style={{ display: 'flex', gap: 10, marginTop: 16, alignItems: 'center' }}>
-                            <button
-                              className="btn-secondary"
-                              onClick={() => handleTest(int.id)}
-                              disabled={testResult === 'testing'}
-                              style={{ fontSize: 13 }}
-                            ><FiSend /> {testResult === 'testing' ? 'Testing...' : 'Test Connection'}
-                            </button>
-                            {testResult === 'success' && <span className="td-semibold" style={{ fontSize: 12, color: 'var(--success)' }}><FiCheck /> Berhasil terhubung!</span>}
-                            {testResult === 'error' && <span className="td-semibold text-danger" style={{ fontSize: 12 }}><FiX /> Gagal terhubung. Cek konfigurasi.</span>}
-                          </div>
-                        </>
                       )}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: 12,
+                        }}
+                      >
+                        {int.fields.map((field) => (
+                          <div
+                            key={field.key}
+                            className="form-group"
+                            style={
+                              field.key.includes('url') ||
+                              field.key.includes('webhook') ||
+                              field.key.includes('reply')
+                                ? { gridColumn: '1/-1' }
+                                : {}
+                            }
+                          >
+                            <label className="form-label">{field.label}</label>
+                            <input
+                              className="form-input"
+                              type={field.type}
+                              placeholder={field.placeholder}
+                              value={configs[int.id]?.[field.key] || ''}
+                              onChange={(e) => updateField(int.id, field.key, e.target.value)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => handleTest(int.id)}
+                          disabled={testResult === 'testing'}
+                          style={{ fontSize: 13 }}
+                        >
+                          <FiSend />{' '}
+                          {testResult === 'testing' ? 'Testing…' : 'Test Connection'}
+                        </button>
+                        {testResult === 'success' && (
+                          <span style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>
+                            <FiCheck /> Berhasil
+                          </span>
+                        )}
+                        {testResult === 'error' && (
+                          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>
+                            <FiX /> Gagal — cek env server / nomor
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -307,6 +451,3 @@ export default function IntegrationHub() {
     </div>
   );
 }
-
-
-

@@ -78,7 +78,7 @@ export default function EmpAnnouncements() {
     const { data, error } = await query;
     if (!error) setAnnouncements(data || []);
     setLoading(false);
-  }, [employee?.company_id]);
+  }, [employee]);
 
   useEffect(() => {
     loadData();

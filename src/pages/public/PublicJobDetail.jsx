@@ -26,6 +26,7 @@ export default function PublicJobDetail() {
  useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      if (cancelled) return;
       await fetchJob();
     };
     load();

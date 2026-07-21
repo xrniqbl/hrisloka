@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 
 describe('Midtrans Webhook Logic', () => {
   // Simulate webhook signature verification
@@ -106,7 +106,7 @@ describe('Midtrans Webhook Logic', () => {
   it('should NOT activate subscription on frontend onSuccess', () => {
     // This is the critical security test
     // Frontend should only show pending status, not activate
-    const frontendOnSuccess = (status) => {
+    const frontendOnSuccess = (_status) => {
       // Frontend should set status to pending, NOT active
       return { status: 'pending', showConfirmation: true };
     };

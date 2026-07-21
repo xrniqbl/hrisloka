@@ -1,66 +1,40 @@
 /**
- * @env IS_DEV, FONNTE_TOKEN_DEV, FONNTE_TOKEN
- */
-
-const IS_DEV = import.meta.env.DEV;
-const FONNTE_TOKEN_DEV = import.meta.env.VITE_FONNTE_TOKEN_DEV || "";
-
-/**
  * WhatsApp Notification Service
  *
- * Calls /api/send-whatsapp Vercel serverless function — token stays on server.
- * Fallback: direct Fonnte call in dev mode (VITE_FONNTE_TOKEN must be set).
+ * Calls /api/send-whatsapp — FONNTE_TOKEN stays on server.
+ * Requires authenticated Supabase session (Bearer JWT).
  *
  * Setup:
- * 1. Set FONNTE_TOKEN (no VITE_ prefix) in Vercel environment variables
- * 2. Alternatively set VITE_FONNTE_TOKEN for local dev only
+ * 1. Set FONNTE_TOKEN (no VITE_ prefix) on the server / VPS
+ * 2. Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY on the server for JWT verify
  */
 
-// Token is only on the server (/api/send-whatsapp). No client-side fallback.
+import { supabase } from '../lib/supabase';
 
-/**
- * Send WhatsApp — routes through /api/send-whatsapp in production.
- */
-
-/**
- * Dev-only: Direct Fonnte API call (bypasses serverless function).
- * Only used when IS_DEV && FONNTE_TOKEN_DEV are set.
- */
-async function sendDirectFonnte(to, message) {
-  try {
-    const res = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': FONNTE_TOKEN_DEV,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ target: to, message, countryCode: '62' }),
-    });
-    const data = await res.json();
-    return { success: data.status === true, error: data.reason || null };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+/** Get the current user's access token (for authenticating serverless calls). */
+async function getAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = { 'Content-Type': 'application/json' };
+  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+  return headers;
 }
 
+/**
+ * Send WhatsApp — routes through /api/send-whatsapp (auth required).
+ */
 export async function sendWhatsApp(to, message) {
   if (!to) return { success: false, error: 'No phone number' };
 
   try {
     const res = await fetch('/api/send-whatsapp', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await getAuthHeaders(),
       body: JSON.stringify({ to, message }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success) throw new Error(data.error || 'Server WA error');
     return { success: true };
   } catch (err) {
-    // Dev fallback: call Fonnte directly
-    if (IS_DEV && FONNTE_TOKEN_DEV) {
-      console.warn('[WhatsApp] Using dev fallback (direct Fonnte)');
-      return sendDirectFonnte(to, message);
-    }
     console.error('[WhatsApp] Send failed:', err);
     return { success: false, error: err.message };
   }
@@ -148,14 +122,19 @@ _HRIS Loka — Smart HR Platform_`;
 }
 
 /**
- * Check if WhatsApp service is configured.
+ * Probe WhatsApp backend. True if route is live (does not prove FONNTE_TOKEN is set).
  */
-export function isWhatsAppConfigured() {
-  return true; // Server handles WhatsApp sending
+export async function isWhatsAppConfigured() {
+  try {
+    const res = await fetch('/api/send-whatsapp', { method: 'OPTIONS' });
+    return res.status < 500;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Test connection — send a test message.
+ * Test connection — send a test message (requires logged-in session).
  */
 export async function testWhatsAppConnection(phoneNumber) {
   const message = `✅ *Test Berhasil!*\n\nKoneksi WhatsApp HRIS Loka berhasil dikonfigurasi.\n\n_Pesan ini dikirim dari HRIS Loka Integration Hub._`;

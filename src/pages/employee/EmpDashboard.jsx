@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiArrowPath,
@@ -39,7 +39,6 @@ import '../../styles/shared.css';
 ChartJS.register(ArcElement, Tooltip);
 
 export default function EmpDashboard() {
-  const { employee: currentUser } = useAuth();
   const navigate = useNavigate();
   const { user, isDemo } = useAuth();
   const toast = useToast();
@@ -56,6 +55,15 @@ export default function EmpDashboard() {
   const [pendingLeaves, setPendingLeaves] = useState([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
+
+  // "New" announcement cutoff (7 days). Refresh when list identity changes.
+  // Date.now() is impure — only recompute when announcements change.
+  const announcementKey = recentAnnouncements.map((a) => a.id).join(',');
+  const newAnnouncementCutoff = useMemo(
+    () => Date.now() - 7 * 24 * 3600 * 1000,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: recompute when list ids change
+    [announcementKey],
+  );
 
   const load = useCallback(async () => {
     // Demo mode: skip Supabase, use full demo profile
@@ -410,7 +418,7 @@ export default function EmpDashboard() {
         {recentAnnouncements.length > 0 ? (
           <div className="emp-list-grid">
             {recentAnnouncements.slice(0, 3).map((a, i) => {
-              const isNew = (Date.now() - new Date(a.created_at).getTime()) < 7 * 24 * 3600 * 1000;
+              const isNew = new Date(a.created_at).getTime() > newAnnouncementCutoff;
               return (
                 <div
                   key={a.id || i}

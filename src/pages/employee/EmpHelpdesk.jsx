@@ -68,7 +68,7 @@ export default function EmpHelpdesk() {
       setTickets(ticketData || []);
     }
     setLoading(false);
-  }, [user, authEmployee?.id]);
+  }, [user, authEmployee]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

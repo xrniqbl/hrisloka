@@ -153,7 +153,7 @@ export default function EmpKPI() {
       {/* KPI List */}
       {kpis.length > 0 && (
         <div style={{ display: 'grid', gap: 12 }}>
-          {kpis.map((kpi, idx) => {
+          {kpis.map((kpi) => {
             const metrics = kpi.kpi_metrics || [];
             const overall = calcOverallScore(metrics);
             const isExpanded = expandedId === kpi.id;

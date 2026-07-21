@@ -29,13 +29,13 @@ import {
   collectGPSSamples, analyzeGPSAccuracy, analyzeGPSSamples,
   getIPLocation, analyzeIPvsGPS, checkImpossibleTravel,
   analyzeDeviceMotion, calculateTrustScore, startMotionCollection,
-  stopMotionCollection, haversineDistance
+  stopMotionCollection
 } from '../../lib/antiSpoofing';
 import FaceScanner from '../../components/FaceScanner';
 import FaceRegistration from '../../components/FaceRegistration';
 import { isBackgroundSyncSupported, queueRequest } from '../../lib/backgroundSync';
 import { useFeatureFlags } from '../../context/FeatureFlagContext';
-import { isDemoMode, DEMO_EMPLOYEE, showDemoToast } from '../../lib/demoGuard';
+import { isDemoMode, DEMO_EMPLOYEE } from '../../lib/demoGuard';
 import { useToast } from '../../components/Toast';
 import './EmpAbsen.css';
 import '../../styles/shared.css';
@@ -97,7 +97,7 @@ export default function EmpAbsen() {
   // GPS state
   const [location, setLocation] = useState(null);
   const [locError, setLocError] = useState('');
-  const [gpsSamples, setGpsSamples] = useState([]);
+  const [, setGpsSamples] = useState([]);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [trustResult, setTrustResult] = useState(null);
   const [antiSpoofRunning, setAntiSpoofRunning] = useState(false);

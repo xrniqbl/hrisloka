@@ -7,7 +7,7 @@ import {
 } from 'react-icons/hi2';
 import {
   loadModels, detectSingleFace, extractLandmarkData,
-  checkFacePosition, matchFace, isModelsLoaded, assessFaceQuality
+  checkFacePosition, matchFace, isModelsLoaded
 } from '../lib/faceRecognition';
 import {
   generateChallenges, evaluateChallenge, checkMicroMovement,

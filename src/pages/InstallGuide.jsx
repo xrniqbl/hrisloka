@@ -1,6 +1,6 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { updateSEOTags, injectSchema } from '../lib/seo';
 import './LandingPage.css';
 import './InstallGuide.css';
@@ -312,30 +312,30 @@ export default function InstallGuide() {
             <div className="ig-hero-orb ig-orb1" />
             <div className="ig-hero-orb ig-orb2" />
           </div>
-          <motion.div
+          <Motion.div
             className="lp-container ig-hero-inner"
             variants={stagger(0.12)}
             initial="hidden"
             animate="show"
           >
             {/* Badge */}
-            <motion.div className="ig-badge" variants={fadeUp}>
+            <Motion.div className="ig-badge" variants={fadeUp}>
               <span className="badge-dot" />
               Khusus Karyawan
-            </motion.div>
+            </Motion.div>
 
-            <motion.h1 className="ig-hero-title" variants={fadeUp}>
+            <Motion.h1 className="ig-hero-title" variants={fadeUp}>
               Install Aplikasi<br />
               <span className="lp-hero-gradient">HRIS Loka</span> di HP Kamu
-            </motion.h1>
+            </Motion.h1>
 
-            <motion.p className="ig-hero-sub" variants={fadeUp}>
+            <Motion.p className="ig-hero-sub" variants={fadeUp}>
               Akses slip gaji, absensi, pengajuan cuti, dan semua fitur HR kapan saja<br />
               langsung dari layar utama HP - tanpa perlu download dari toko aplikasi.
-            </motion.p>
+            </Motion.p>
 
             {/* Phone mockup preview */}
-            <motion.div className="ig-phone-preview" variants={fadeUp}>
+            <Motion.div className="ig-phone-preview" variants={fadeUp}>
               <div className="ig-phone-frame">
                 <div className="ig-phone-notch" />
                 <div className="ig-phone-screen">
@@ -366,11 +366,11 @@ export default function InstallGuide() {
                 </svg>
                 {isAlreadyInstalled ? 'Sudah Terinstall! œ"' : 'Siap Diinstall'}
               </div>
-            </motion.div>
+            </Motion.div>
 
             {/* -- INSTALL BUTTON - always visible -- */}
             {!isAlreadyInstalled && (
-              <motion.div variants={fadeUp} style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <Motion.div variants={fadeUp} style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                 {installState === 'installed' ? (
                   <div style={{
                     display: 'inline-flex', alignItems: 'center', gap: 10,
@@ -426,11 +426,11 @@ export default function InstallGuide() {
                     )}
                   </>
                 )}
-              </motion.div>
+              </Motion.div>
             )}
 
             {isAlreadyInstalled && (
-              <motion.div variants={fadeUp}>
+              <Motion.div variants={fadeUp}>
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 10,
                   padding: '14px 28px', borderRadius: 100,
@@ -440,9 +440,9 @@ export default function InstallGuide() {
                 }}>
                   Aplikasi Sudah Terinstall di HP Kamu!
                 </div>
-              </motion.div>
+              </Motion.div>
             )}
-          </motion.div>
+          </Motion.div>
         </section>
 
         {/* -- MANUAL INSTALL MODAL -- */}
@@ -507,7 +507,7 @@ export default function InstallGuide() {
               <h2 className="lp-section-title">Pengalaman Lebih Baik<br /><span style={{ color: 'var(--primary, #635BFF)' }}>Seperti Aplikasi Asli</span></h2>
               <p className="lp-section-desc">Nikmati fitur yang sama persis dengan aplikasi mobile asli, tanpa harus pergi ke Play Store atau App Store.</p>
             </div>
-            <motion.div
+            <Motion.div
               className="ig-benefits-grid"
               variants={stagger(0.08)}
               initial="hidden"
@@ -515,7 +515,7 @@ export default function InstallGuide() {
               viewport={{ once: true, margin: '-80px' }}
             >
               {BENEFITS.map((b, i) => (
-                <motion.div key={i} className="ig-benefit-card" variants={fadeUp}>
+                <Motion.div key={i} className="ig-benefit-card" variants={fadeUp}>
                   <div className="ig-benefit-icon" style={{ color: b.color, background: `${b.color}15` }}>
                     {b.icon}
                   </div>
@@ -523,9 +523,9 @@ export default function InstallGuide() {
                     <h3 className="ig-benefit-title">{b.title}</h3>
                     <p className="ig-benefit-desc">{b.desc}</p>
                   </div>
-                </motion.div>
+                </Motion.div>
               ))}
-            </motion.div>
+            </Motion.div>
           </div>
         </section>
 
@@ -560,7 +560,7 @@ export default function InstallGuide() {
             </div>
 
             {/* Steps */}
-            <motion.div
+            <Motion.div
               className="ig-steps"
               key={activeTab}
               initial={{ opacity: 0, y: 20 }}
@@ -580,7 +580,7 @@ export default function InstallGuide() {
                   </div>
                 </div>
               ))}
-            </motion.div>
+            </Motion.div>
 
             {/* Note box */}
             <div className="ig-note">
@@ -635,7 +635,7 @@ export default function InstallGuide() {
           <div className="ig-cta-bg">
             <div className="ig-cta-orb" />
           </div>
-          <motion.div
+          <Motion.div
             className="lp-container ig-cta-inner"
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -670,7 +670,7 @@ export default function InstallGuide() {
                 Baca Panduan Lagi
               </a>
             </div>
-          </motion.div>
+          </Motion.div>
         </section>
       </main>
 

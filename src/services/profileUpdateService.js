@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { guardCompanyId, assertEmployeeInCompany, resolveMyEmployee } from '../lib/tenantGuard';
+import { guardCompanyId, resolveMyEmployee } from '../lib/tenantGuard';
 
 // Get all profile update requests (admin) — MANDATORY company scope
 export async function getAllUpdateRequests(statusFilter, companyId) {

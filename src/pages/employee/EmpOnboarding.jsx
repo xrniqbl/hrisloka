@@ -43,7 +43,7 @@ export default function EmpOnboarding() {
       setChecklist(data || []);
     }
     setLoading(false);
-  }, [user, authEmployee?.id]);
+  }, [user, authEmployee]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

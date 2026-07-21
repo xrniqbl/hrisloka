@@ -10,7 +10,9 @@ async function getTranslateFn() {
     try {
       const mod = await import('./autoTranslate.js');
       _translateDOM = mod.translateDOM;
-    } catch {}
+    } catch {
+      /* optional autoTranslate */
+    }
   }
   return _translateDOM;
 }
@@ -44,7 +46,7 @@ const translations = {
  'nav.loans': 'Pinjaman / Kasbon',
  'nav.projects': 'Proyek',
  'nav.project_management': 'Manajemen Proyek',
- 'nav.timesheets': 'Timesheet',
+ 'nav.timesheets': 'Pencatatan Jam',
  'nav.performance': 'Performa',
  'nav.kpi': 'KPI Tracking',
  'nav.appraisal': 'Appraisal',
@@ -54,6 +56,8 @@ const translations = {
  'nav.it_support': 'IT & Support',
  'nav.assets': 'Aset IT',
  'nav.helpdesk': 'Helpdesk',
+ 'nav.need_help': 'Butuh Bantuan?',
+ 'nav.open_help_center': 'Buka pusat bantuan kami',
  'nav.ai_capability': 'AI & Dev',
  'nav.training': 'Pelatihan',
  'nav.holidays': 'Hari Libur',
@@ -73,6 +77,8 @@ const translations = {
  'common.delete': 'Hapus',
  'common.edit': 'Edit',
  'common.add': 'Tambah',
+ 'common.create_new': 'Buat Baru',
+ 'common.profile': 'Profil',
  'common.search': 'Cari',
  'common.filter': 'Filter',
  'common.export': 'Ekspor',
@@ -120,6 +126,10 @@ const translations = {
 
  // Dashboard
  'dashboard.title': 'Dashboard',
+ 'dashboard.good_morning': 'Selamat Pagi',
+ 'dashboard.good_afternoon': 'Selamat Siang',
+ 'dashboard.good_evening': 'Selamat Malam',
+ 'dashboard.greeting_fallback': 'Pengguna',
  'dashboard.welcome': 'Selamat Datang',
  'dashboard.total_employees': 'Total Karyawan',
  'dashboard.present_today': 'Hadir Hari Ini',
@@ -281,8 +291,40 @@ const translations = {
  'projects.tab_resource': 'Resource',
 
  // Timesheets
- 'timesheets.title': 'Timesheet',
- 'timesheets.subtitle': 'Kelola pencatatan waktu kerja',
+ 'timesheets.title': 'Pencatatan Jam Kerja',
+ 'timesheets.subtitle': 'Kelola pencatatan waktu kerja karyawan',
+ 'timesheets.export_csv': 'Ekspor CSV',
+ 'timesheets.total_hours': 'Total Jam',
+ 'timesheets.billable_hours': 'Jam Tertagih',
+ 'timesheets.revenue': 'Pendapatan',
+ 'timesheets.filter_project': 'Proyek',
+ 'timesheets.filter_employee': 'Karyawan',
+ 'timesheets.filter_from': 'Dari',
+ 'timesheets.filter_to': 'Sampai',
+ 'timesheets.filter_from_ph': 'Dari tanggal',
+ 'timesheets.filter_to_ph': 'Sampai tanggal',
+ 'timesheets.filter_all': 'Semua',
+ 'timesheets.apply_filter': 'Terapkan Filter',
+ 'timesheets.col_date': 'Tanggal',
+ 'timesheets.col_employee': 'Karyawan',
+ 'timesheets.col_project': 'Proyek',
+ 'timesheets.col_client': 'Klien',
+ 'timesheets.col_start': 'Mulai',
+ 'timesheets.col_end': 'Selesai',
+ 'timesheets.col_hours': 'Jam',
+ 'timesheets.col_billable': 'Tertagih',
+ 'timesheets.col_revenue': 'Pendapatan',
+ 'timesheets.col_description': 'Deskripsi',
+ 'timesheets.running': 'Berjalan',
+ 'timesheets.empty_title': 'Belum ada data timesheet',
+ 'timesheets.empty_desc': 'Catatan jam kerja karyawan dari aplikasi akan muncul di sini.',
+ 'timesheets.reload': 'Muat ulang',
+ 'timesheets.invoice_title': 'Ringkasan Tagihan per Klien',
+ 'timesheets.entries': 'entri',
+ 'timesheets.billable_suffix': 'tertagih',
+ 'timesheets.hours_unit': 'j',
+ 'timesheets.minutes_unit': 'm',
+ 'timesheets.csv_header': 'Tanggal,Karyawan,Proyek,Klien,Jam,Tertagih,Tarif,Pendapatan,Deskripsi',
 
  // KPI
  'kpi.title': 'KPI Tracking',
@@ -416,6 +458,8 @@ const translations = {
  'nav.it_support': 'IT & Support',
  'nav.assets': 'IT Assets',
  'nav.helpdesk': 'Helpdesk',
+ 'nav.need_help': 'Need Help?',
+ 'nav.open_help_center': 'Open our help center',
  'nav.ai_capability': 'AI & Dev',
  'nav.training': 'Training',
  'nav.holidays': 'Holidays',
@@ -435,6 +479,8 @@ const translations = {
  'common.delete': 'Delete',
  'common.edit': 'Edit',
  'common.add': 'Add',
+ 'common.create_new': 'Create New',
+ 'common.profile': 'Profile',
  'common.search': 'Search',
  'common.filter': 'Filter',
  'common.export': 'Export',
@@ -482,6 +528,10 @@ const translations = {
 
  // Dashboard
  'dashboard.title': 'Dashboard',
+ 'dashboard.good_morning': 'Good Morning',
+ 'dashboard.good_afternoon': 'Good Afternoon',
+ 'dashboard.good_evening': 'Good Evening',
+ 'dashboard.greeting_fallback': 'there',
  'dashboard.welcome': 'Welcome',
  'dashboard.total_employees': 'Total Employees',
  'dashboard.present_today': 'Present Today',
@@ -643,8 +693,40 @@ const translations = {
  'projects.tab_resource': 'Resource',
 
  // Timesheets
- 'timesheets.title': 'Timesheet',
+ 'timesheets.title': 'Timesheets',
  'timesheets.subtitle': 'Manage work time tracking',
+ 'timesheets.export_csv': 'Export CSV',
+ 'timesheets.total_hours': 'Total Hours',
+ 'timesheets.billable_hours': 'Billable Hours',
+ 'timesheets.revenue': 'Revenue',
+ 'timesheets.filter_project': 'Project',
+ 'timesheets.filter_employee': 'Employee',
+ 'timesheets.filter_from': 'From',
+ 'timesheets.filter_to': 'To',
+ 'timesheets.filter_from_ph': 'Start date',
+ 'timesheets.filter_to_ph': 'End date',
+ 'timesheets.filter_all': 'All',
+ 'timesheets.apply_filter': 'Apply Filter',
+ 'timesheets.col_date': 'Date',
+ 'timesheets.col_employee': 'Employee',
+ 'timesheets.col_project': 'Project',
+ 'timesheets.col_client': 'Client',
+ 'timesheets.col_start': 'Start',
+ 'timesheets.col_end': 'End',
+ 'timesheets.col_hours': 'Hours',
+ 'timesheets.col_billable': 'Billable',
+ 'timesheets.col_revenue': 'Revenue',
+ 'timesheets.col_description': 'Description',
+ 'timesheets.running': 'Running',
+ 'timesheets.empty_title': 'No timesheet data yet',
+ 'timesheets.empty_desc': 'Employee work hour logs from the app will appear here.',
+ 'timesheets.reload': 'Reload',
+ 'timesheets.invoice_title': 'Invoice Summary by Client',
+ 'timesheets.entries': 'entries',
+ 'timesheets.billable_suffix': 'billable',
+ 'timesheets.hours_unit': 'h',
+ 'timesheets.minutes_unit': 'm',
+ 'timesheets.csv_header': 'Date,Employee,Project,Client,Hours,Billable,Rate,Revenue,Description',
 
  // KPI
  'kpi.title': 'KPI Tracking',
@@ -756,13 +838,22 @@ export function I18nProvider({ children }) {
   document.documentElement.setAttribute('lang', locale);
   document.documentElement.setAttribute('data-lang', locale);
 
-  // Trigger DOM-level translation for all hardcoded text in pages
-  // Small delay to let React re-render first
-  const timer = setTimeout(async () => {
+  // Trigger DOM-level translation for hardcoded UI text on all pages
+  // Multiple delays: React re-render + lazy routes
+  let cancelled = false;
+  const run = async () => {
     const fn = await getTranslateFn();
-    if (fn) fn(document.body, locale);
-  }, 100);
-  return () => clearTimeout(timer);
+    if (!cancelled && fn) fn(document.body, locale);
+  };
+  const t1 = setTimeout(run, 50);
+  const t2 = setTimeout(run, 300);
+  const t3 = setTimeout(run, 900);
+  return () => {
+    cancelled = true;
+    clearTimeout(t1);
+    clearTimeout(t2);
+    clearTimeout(t3);
+  };
  }, [locale]);
 
  const t = useCallback((key, params) => {

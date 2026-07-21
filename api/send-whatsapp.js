@@ -1,16 +1,18 @@
 /**
- * /api/send-whatsapp.js — Vercel Serverless Function
+ * /api/send-whatsapp.js — Serverless / VPS API handler
  *
  * Mengirim pesan WhatsApp via Fonnte API dari sisi server.
  * API key Fonnte tidak terekspos ke browser.
  *
  * POST /api/send-whatsapp
+ * Headers: Authorization: Bearer <supabase_access_token>
  * Body: { to: "628xxx", message: "..." }
  */
 import { applyCors } from './_shared/cors.js';
 
-
 const FONNTE_TOKEN = process.env.FONNTE_TOKEN; // Server-side (no VITE_ prefix)
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Rate limit: max 10 WA requests per IP per minute
 const rateLimitMap = new Map();
@@ -28,6 +30,26 @@ function checkRateLimit(ip) {
   return entry.count <= max;
 }
 
+// Verify Supabase JWT — FAIL CLOSED (same pattern as send-email / ai-review).
+async function verifyAuth(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
+  const token = authHeader.split(' ')[1];
+  if (!token) return false;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_SERVICE_KEY },
+    });
+    if (!res.ok) return false;
+    const user = await res.json();
+    if (user?.email_confirmed_at || user?.confirmed_at) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // Validate Indonesian/international phone number
 function isValidPhone(phone) {
   if (typeof phone !== 'string') return false;
@@ -36,10 +58,18 @@ function isValidPhone(phone) {
 }
 
 export default async function handler(req, res) {
-  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type' });
-
+  const originOk = applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.headers.origin && !originOk) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Authentication check — verify Supabase JWT
+  const isAuthed = await verifyAuth(req);
+  if (!isAuthed) {
+    return res.status(401).json({ error: 'Unauthorized — valid session required' });
+  }
 
   // Rate limiting
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
@@ -86,4 +116,3 @@ export default async function handler(req, res) {
     res.status(500).json({ success: false, error: 'Failed to send WhatsApp message' });
   }
 }
-
