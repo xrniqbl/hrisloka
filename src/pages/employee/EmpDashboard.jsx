@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiArrowPath,
@@ -65,7 +65,7 @@ export default function EmpDashboard() {
     [announcementKey],
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async  () => {
     // Demo mode: skip Supabase, use full demo profile
     if (isDemoMode()) {
       setEmp({ ...DEMO_EMPLOYEE });

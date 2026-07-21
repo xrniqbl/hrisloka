@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { FiEdit2, FiX, FiCheck, FiUsers, FiChevronDown, FiChevronRight, FiSearch } from 'react-icons/fi';
 import * as employeeService from '../services/employeeService';
@@ -26,7 +26,7 @@ export default function OrgChart() {
  const role = getRole(currentEmp);
  const isSuperAdmin = role === 'super_admin' || isFounder(user, currentEmp);
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const [empRes, deptRes] = await Promise.all([
  employeeService.getAllEmployees(undefined, employee?.company_id),
@@ -38,9 +38,9 @@ export default function OrgChart() {
  (empRes.data || []).forEach(e => { divs[e.division || 'Unassigned'] = true; });
  setExpandedDivs(divs);
  setLoading(false);
- };
+ }, [employee?.company_id]);
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  // Realtime updates
  useRealtimeTable('employees', fetchData, { companyId: employee?.company_id });

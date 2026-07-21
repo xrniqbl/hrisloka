@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiDollarSign, FiPlus, FiX, FiCheck, FiClock, FiCheckCircle, FiXCircle, FiDownload } from 'react-icons/fi';
 import * as loanService from '../services/loanService';
 import * as employeeService from '../services/employeeService';
@@ -10,6 +10,8 @@ import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import MetricStatCards from '../components/MetricStatCards';
+import { Landmark, Wallet, Hourglass } from 'lucide-react';
 
 const fmt = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 const statusColors = { pending: '#F59E0B', active: '#635BFF', paid: '#16A34A', rejected: '#DC2626' };
@@ -25,18 +27,18 @@ export default function LoanManagement() {
  const [form, setForm] = useState({ employeeId: '', amount: '', monthlyDeduction: '', reason: '' });
  const [paymentAmount, setPaymentAmount] = useState('');
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const [lRes, eRes] = await Promise.all([loanService.getAllLoans(employee?.company_id), employeeService.getAllEmployees(undefined, employee?.company_id)]);
  setLoans(lRes.data || []);
  setEmployees(eRes.data || []);
  setLoading(false);
- };
+ }, [employee?.company_id]);
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  // Realtime: auto-refresh
- useRealtimeTable('loans', fetchData, { companyId: currentUser?.company_id });
+ useRealtimeTable('loans', fetchData, { companyId: employee?.company_id });
 
  const openCreate = () => { setForm({ employeeId: '', amount: '', monthlyDeduction: '', reason: '' }); setModal('create'); };
 
@@ -85,20 +87,11 @@ export default function LoanManagement() {
  </div>
 
  {/* Stats */}
- <div className="stats-grid">
- <div className="info-card">
- <div className="info-card-label">Total Pinjaman</div>
- <div className="info-card-value">{loans.length}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Sisa Pinjaman Aktif</div>
- <div className="info-card-value info">{fmt(totalActive)}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Menunggu Approval</div>
- <div className="info-card-value warning">{totalPending}</div>
- </div>
- </div>
+ <MetricStatCards items={[
+ { key: 'total', label: 'Total Pinjaman', value: loans.length, icon: Landmark },
+ { key: 'active', label: 'Sisa Aktif', value: fmt(totalActive), icon: Wallet },
+ { key: 'pending', label: 'Menunggu Approval', value: totalPending, icon: Hourglass },
+ ]} />
 
  <div className="data-table-card">
  <div className="table-responsive">

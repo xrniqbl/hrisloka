@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FiPlus, FiMapPin, FiClock, FiUsers, FiX } from 'react-icons/fi';
 import * as jobService from '../services/jobService';
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import FormDateField from '../components/FormDateField';
 
 export default function JobPosting() {
   const { employee } = useAuth();
@@ -22,14 +23,14 @@ export default function JobPosting() {
  const [showForm, setShowForm] = useState(false);
  const [form, setForm] = useState({ title: '', department: '', location: '', type: 'full-time', deadline: '', description: '', requirements: '' });
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const { data } = await jobService.getAllJobs(employee?.company_id);
  setJobs(data || []);
  setLoading(false);
- };
+ }, [employee?.company_id]);
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  // Realtime: auto-refresh
  useRealtimeTable('job_postings', fetchData, { companyId: employee?.company_id });
@@ -141,7 +142,7 @@ export default function JobPosting() {
  </div>
  <div className="form-group">
  <Label>Deadline</Label>
- <Input type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} />
+ <FormDateField value={form.deadline} onChange={(v) => setForm({ ...form, deadline: v })} placeholder="Deadline" />
  </div>
  <div className="form-group full-width">
  <Label>Deskripsi</Label>

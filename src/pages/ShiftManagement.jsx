@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { FiPlus, FiX, FiTrash2 } from 'react-icons/fi';
 import * as shiftService from '../services/shiftService';
@@ -32,7 +32,7 @@ export default function ShiftManagement() {
 
  const companyId = employee?.company_id;
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
   if (!companyId) {
    setShifts([]);
    setEmployees([]);
@@ -49,7 +49,7 @@ export default function ShiftManagement() {
   setEmployees(empData || []);
   setAssignments(assignData || []);
   setLoading(false);
- };
+ }, [employee?.company_id]);
 
  useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selectedBranchId, companyId]);
  useRealtimeTable('shifts', fetchData, { companyId, enabled: !!companyId });
@@ -98,7 +98,7 @@ export default function ShiftManagement() {
     <h1>{t('shifts.title')}</h1>
     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
      <BranchFilter />
-     <Button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Tambah Shift</Button>
+     <button type="button" className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Tambah Shift</button>
     </div>
    </div>
 
@@ -239,8 +239,8 @@ export default function ShiftManagement() {
       </div>
      </DialogPanel>
      <DialogFooter>
-      <Button variant="outline" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</Button>
-      <Button className="btn-primary" onClick={handleAddShift} disabled={!form.name || !form.startTime || !form.endTime}>Simpan</Button>
+      <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</button>
+      <button type="button" className="btn-primary" onClick={handleAddShift} disabled={!form.name || !form.startTime || !form.endTime}>Simpan</button>
      </DialogFooter>
     </DialogContent>
    </Dialog>

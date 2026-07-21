@@ -1,12 +1,16 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { FiMonitor, FiSmartphone, FiTablet, FiTrendingUp, FiBarChart2, FiRefreshCw } from 'react-icons/fi';
+import { Eye, LogIn, UserPlus, Smartphone } from 'lucide-react';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   ArcElement, PointElement, LineElement, Filler, Tooltip, Legend,
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import MetricStatCards from '../../components/MetricStatCards';
 import * as founderService from '../../services/founderService';
 import './founder.css';
+
+const BRAND = '#5654D4';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend);
 
@@ -48,7 +52,7 @@ export default function FounderAnalytics() {
   const [period, setPeriod] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async  () => {
     try {
       setError(null);
       const { data, error: err } = await founderService.getAnalyticsSummary(period);
@@ -62,9 +66,9 @@ export default function FounderAnalytics() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, [period]);
+  useEffect(() => { fetchData(); }, [fetchData]);
   const handleRefresh = () => { setRefreshing(true); fetchData(); };
 
   // Real data (zero when no events tracked yet)
@@ -87,12 +91,12 @@ export default function FounderAnalytics() {
     datasets: [{
       label: 'Page Views',
       data: dailyValues,
-      borderColor: '#6366F1',
-      backgroundColor: 'rgba(99, 102, 241, 0.08)',
+      borderColor: BRAND,
+      backgroundColor: 'rgba(86, 84, 212, 0.08)',
       tension: 0.4, fill: true,
       pointRadius: dailyLabels.length > 20 ? 0 : 3,
-      pointBackgroundColor: '#6366F1',
-      pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5,
+      pointBackgroundColor: BRAND,
+      pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2,
     }],
   };
 
@@ -118,8 +122,8 @@ export default function FounderAnalytics() {
     labels: ['Desktop', 'Mobile', 'Tablet'],
     datasets: [{
       data: [desktopCount, mobileCount, tabletCount],
-      backgroundColor: ['#6366F1', '#F59E0B', '#10B981'],
-      borderWidth: 0, hoverOffset: 6,
+      backgroundColor: [BRAND, '#7C75FF', '#A5A3E8'],
+      borderWidth: 0, hoverOffset: 4,
     }],
   };
   const deviceOptions = {
@@ -138,7 +142,7 @@ export default function FounderAnalytics() {
     datasets: [{
       label: 'Views',
       data: topPages.map(p => p[1]),
-      backgroundColor: '#6366F1',
+      backgroundColor: BRAND,
       borderRadius: 5,
       barPercentage: 0.6,
     }],
@@ -152,69 +156,62 @@ export default function FounderAnalytics() {
     },
   };
 
+  const kpiItems = useMemo(
+    () => [
+      { key: 'views', label: 'Page Views', value: loading ? '…' : pageViews.toLocaleString('id-ID'), icon: Eye },
+      { key: 'logins', label: 'Total Logins', value: loading ? '…' : logins.toLocaleString('id-ID'), icon: LogIn },
+      { key: 'signups', label: 'New Sign-ups', value: loading ? '…' : signups.toString(), icon: UserPlus },
+      { key: 'mobile', label: 'Mobile Usage', value: loading ? '…' : `${mobilePercent}%`, icon: Smartphone },
+    ],
+    [loading, pageViews, logins, signups, mobilePercent],
+  );
+
   return (
-    <div>
+    <div className="fp-page">
       <div className="fp-header">
         <div className="fp-header-top">
           <div>
             <h1 className="fp-title">Website Analytics</h1>
-            <p className="fp-subtitle">Track platform usage and user engagement - data real dari Supabase</p>
+            <p className="fp-subtitle">Usage & engagement platform · data real-time</p>
           </div>
           <div className="fp-actions">
-            <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 9, padding: 3 }}>
-              {PERIOD_OPTIONS.map(opt => (
+            <div className="fp-seg">
+              {PERIOD_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
-                  className="fp-btn fp-btn-sm"
-                  style={{
-                    background: period === opt.value ? '#6366F1' : 'none',
-                    color: period === opt.value ? '#fff' : 'var(--text-secondary)',
-                    border: 'none', padding: '5px 12px',
-                  }}
+                  type="button"
+                  className={`fp-seg-btn ${period === opt.value ? 'active' : ''}`}
                   onClick={() => setPeriod(opt.value)}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            <button className="fp-btn fp-btn-secondary fp-btn-sm" onClick={handleRefresh} disabled={refreshing}>
+            <button
+              type="button"
+              className="fp-btn fp-btn-secondary fp-btn-sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
               <FiRefreshCw size={13} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Error banner */}
       {error && (
-        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#DC2626', fontSize: 13, marginBottom: 20 }}>
-          š {error} - Menampilkan data kosong, bukan data palsu.
+        <div className="fp-notice fp-notice-error">
+          {error} — Menampilkan data kosong, bukan data palsu.
         </div>
       )}
 
-      {/* No data notice (when analytics table is empty - users haven't generated events yet) */}
       {!loading && !error && pageViews === 0 && (
-        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', color: '#6366F1', fontSize: 13, marginBottom: 20 }}>
-          „ Belum ada event analytics tercatat dalam {period} hari terakhir. Data akan muncul setelah pengguna aktif menggunakan platform.
+        <div className="fp-notice fp-notice-info">
+          Belum ada event analytics dalam {period} hari terakhir. Data muncul setelah pengguna aktif.
         </div>
       )}
 
-      {/* Stats */}
-      <div className="fp-stats">
-        {[
-          { icon: <FiTrendingUp />, label: 'Page Views', value: pageViews.toLocaleString('id-ID'), iconBg: 'rgba(99,102,241,0.1)', iconColor: '#6366F1' },
-          { icon: <FiBarChart2 />, label: 'Total Logins', value: logins.toLocaleString('id-ID'), iconBg: 'rgba(245,158,11,0.1)', iconColor: '#F59E0B' },
-          { icon: <FiTrendingUp />, label: 'New Sign-ups', value: signups.toString(), iconBg: 'rgba(16,185,129,0.1)', iconColor: '#10B981' },
-          { icon: <FiSmartphone />, label: 'Mobile Usage', value: `${mobilePercent}%`, iconBg: 'rgba(239,68,68,0.1)', iconColor: '#EF4444' },
-        ].map(s => (
-          <div key={s.label} className="fp-stat">
-            <div className="fp-stat-header">
-              <div className="fp-stat-icon" style={{ background: s.iconBg, color: s.iconColor }}>{s.icon}</div>
-            </div>
-            {loading ? <SkeletonBox w="55%" h={28} /> : <div className="fp-stat-value">{s.value}</div>}
-            <div className="fp-stat-label">{s.label}</div>
-          </div>
-        ))}
-      </div>
+      <MetricStatCards items={kpiItems} className="fp-metric-strip" />
 
       {/* Traffic chart */}
       <div className="fp-card mb-sm">
@@ -255,14 +252,14 @@ export default function FounderAnalytics() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 12 }}>
                   {[
-                    { icon: <FiMonitor />, label: 'Desktop', val: desktopCount, color: '#6366F1' },
-                    { icon: <FiSmartphone />, label: 'Mobile', val: mobileCount, color: '#F59E0B' },
-                    { icon: <FiTablet />, label: 'Tablet', val: tabletCount, color: '#10B981' },
-                  ].map(item => (
+                    { icon: <FiMonitor />, label: 'Desktop', val: desktopCount },
+                    { icon: <FiSmartphone />, label: 'Mobile', val: mobileCount },
+                    { icon: <FiTablet />, label: 'Tablet', val: tabletCount },
+                  ].map((item) => (
                     <div key={item.label} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 18, color: item.color }}>{item.icon}</div>
+                      <div style={{ fontSize: 16, color: 'var(--muted, #6B7280)', marginBottom: 4 }}>{item.icon}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{item.val.toLocaleString('id-ID')}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{item.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted, #6B7280)' }}>{item.label}</div>
                     </div>
                   ))}
                 </div>

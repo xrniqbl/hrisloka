@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import {
 
@@ -45,7 +45,7 @@ export default function BranchManagement() {
     };
     const [form, setForm] = useState(initForm);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         const [{ data: branchData }, { data: countData }, { data: empData }] = await Promise.all([
             branchService.getAllBranches(),
@@ -56,7 +56,7 @@ export default function BranchManagement() {
         setEmpCounts(countData || {});
         setEmployees(empData || []);
         setLoading(false);
-    };
+    }, [employee?.company_id]);
 
     useEffect(() => {
         // Don't fetch until the tenant (employee.company_id) is known, otherwise

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiPlus, FiSearch, FiEye, FiEdit2, FiTrash2, FiDownload, FiUserCheck } from 'react-icons/fi';
 import * as employeeService from '../services/employeeService';
@@ -38,14 +38,14 @@ export default function Employees() {
   const { employee: currentUser } = useAuth();
   const isSuperAdmin = getRole(currentUser) === 'super_admin';
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     setLoading(true);
     const { data } = await employeeService.getAllEmployees(selectedBranchId, currentUser?.company_id);
     setEmployeeList(data || []);
     setLoading(false);
-  };
+  }, [selectedBranchId, currentUser?.company_id]);
 
-  useEffect(() => { fetchEmployees(); }, [selectedBranchId, currentUser?.company_id]);
+  useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
 
   // Load pending count for badge (must pass company_id — guard blocks otherwise)
   useEffect(() => {

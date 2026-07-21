@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import {
   FiPlus, FiEdit2, FiTrash2, FiX, FiCheck, FiUsers,
@@ -16,6 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import EmptyState from '../components/EmptyState';
+import MetricStatCards from '../components/MetricStatCards';
+import { Briefcase, Check, Users } from 'lucide-react';
 
 
 export default function Departments() {
@@ -29,7 +31,7 @@ export default function Departments() {
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({ name: '', code: '', description: '', head: '', is_active: true });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const [{ data: deptData }, { data: countData }] = await Promise.all([
       departmentService.getAllDepartments(companyId),
@@ -38,9 +40,9 @@ export default function Departments() {
     setDepartments(deptData || []);
     setEmpCounts(countData || {});
     setLoading(false);
-  };
+  }, [companyId]);
 
-  useEffect(() => { fetchData(); }, [companyId]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Realtime: auto-refresh
   useRealtimeTable('departments', fetchData, { companyId: companyId });
@@ -118,27 +120,11 @@ export default function Departments() {
       </div>
 
       {/* --- Stats --- */}
-      <div className="stats-grid mb">
-        {[
-          { label: 'Total Departemen', value: departments.length, color: '#6366F1', bg: 'rgba(99,102,241,0.08)', icon: <FiBriefcase /> },
-          { label: 'Aktif', value: departments.filter(d => d.is_active).length, color: '#10B981', bg: 'rgba(16,185,129,0.08)', icon: <FiCheck /> },
-          { label: 'Total Karyawan', value: totalEmp, color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)', icon: <FiUsers /> },
-        ].map(s => (
-          <div key={s.label} className="info-card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-              background: s.bg, color: s.color, fontSize: 18,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {s.icon}
-            </div>
-            <div>
-              <div className="info-card-value">{s.value}</div>
-              <div className="info-card-label">{s.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <MetricStatCards items={[
+        { key: 'total', label: 'Total Departemen', value: departments.length, icon: Briefcase },
+        { key: 'active', label: 'Aktif', value: departments.filter(d => d.is_active).length, icon: Check },
+        { key: 'emp', label: 'Total Karyawan', value: totalEmp, icon: Users },
+      ]} />
 
       {/* --- Search --- */}
       <div className="filters-bar" style={{ marginBottom: 16 }}>
@@ -326,4 +312,3 @@ export default function Departments() {
     </div>
   );
 }
-

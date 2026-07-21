@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiEye, FiX, FiZap, FiCpu, FiAward, FiPlus, FiSave, FiTrash2, FiFilter } from 'react-icons/fi';
 import * as employeeService from '../services/employeeService';
 import { useAuth } from '../context/AuthContext';
@@ -41,7 +41,7 @@ export default function AICapability() {
  const [filterDivision, setFilterDivision] = useState('all');
  const [addForm, setAddForm] = useState({ employeeId: '', skills: [] });
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const [empRes, aiRes, certRes] = await Promise.all([
  employeeService.getAllEmployees(undefined, employee?.company_id),
@@ -52,7 +52,7 @@ export default function AICapability() {
  setAiData(aiRes.data || []);
  setCertifications(certRes.data || []);
  setLoading(false);
- };
+ }, [employee?.company_id]);
 
  useEffect(() => { if (employee?.company_id, fetchData) fetchData(); }, [employee?.company_id]);
 

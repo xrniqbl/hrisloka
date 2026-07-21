@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { FiCalendar, FiStar } from 'react-icons/fi';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ export default function CalendarView() {
  const year = visibleMonth.getFullYear();
  const month = visibleMonth.getMonth();
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
   const companyId = employee?.company_id;
   if (!companyId) {
    setHolidays([]);
@@ -49,7 +49,7 @@ export default function CalendarView() {
   ]);
   setHolidays(hRes.data || []);
   setLeaves((lRes.data || []).filter(l => l.status === 'approved'));
- };
+ }, [employee?.company_id]);
 
  useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [year, employee?.company_id]);
 
@@ -79,24 +79,27 @@ export default function CalendarView() {
  const upcomingHolidays = holidays.filter(h => h.date >= toDateString(today)).slice(0, 5);
 
  return (
-  <div className="admin-page">
+  <div className="admin-page cal-page">
    <div className="page-header">
-    <h1><FiCalendar className="icon-mr" /> Kalender</h1>
+    <div>
+     <h1>Kalender</h1>
+     <p className="page-header-subtitle td-muted-sm">Libur perusahaan & cuti disetujui</p>
+    </div>
    </div>
 
-   <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 20 }}>
-    <div className="chart-card" style={{ overflow: 'hidden' }}>
-     <div className="chart-card-header" style={{ borderBottom: '1px solid var(--border)', padding: '16px 20px' }}>
+   <div className="cal-layout">
+    <div className="chart-card cal-main-card">
+     <div className="chart-card-header cal-main-header">
       <div>
        <div className="chart-card-title">{MONTHS[month]} {year}</div>
-       <div className="td-muted-sm">Kalender modern berbasis Coss/shadcn</div>
+       <div className="td-muted-sm">Klik tanggal untuk melihat detail</div>
       </div>
       <Button variant="outline" size="sm" onClick={() => { setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setSelectedDate(today); }}>
        Hari Ini
       </Button>
      </div>
 
-     <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+     <div className="cal-calendar-wrap">
       <Calendar
        mode="single"
        selected={selectedDate}
@@ -115,7 +118,7 @@ export default function CalendarView() {
      </div>
     </div>
 
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="cal-side">
      <div className="chart-card">
       <div className="chart-card-title mb-sm">
        {selectedDate ? selectedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Pilih tanggal'}

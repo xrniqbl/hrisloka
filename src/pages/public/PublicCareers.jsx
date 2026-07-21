@@ -59,9 +59,7 @@ export default function PublicCareers() {
  setLoading(false);
  };
 
- useEffect(() => {
- fetchData();
- }, [slug]);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  // Dynamic accent color
  useEffect(() => {

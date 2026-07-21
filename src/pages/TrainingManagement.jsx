@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiBook, FiPlus, FiX, FiCheck, FiUsers, FiCalendar, FiMapPin, FiAward, FiEdit2, FiTrash2, FiDownload, FiPlay, FiLink, FiExternalLink, FiYoutube } from 'react-icons/fi';
 import { supabase } from '../lib/supabase';
 import * as employeeService from '../services/employeeService';
@@ -51,7 +51,7 @@ export default function TrainingManagement() {
  const [materialForm, setMaterialForm] = useState({ title: '', url: '', description: '' });
  const [materials, setMaterials] = useState([]);
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const [tRes, eRes] = await Promise.all([
  trainingService.getAllTrainings(employee?.company_id),
@@ -60,9 +60,9 @@ export default function TrainingManagement() {
  setTrainings(tRes.data || []);
  setEmployees(eRes.data || []);
  setLoading(false);
- };
+ }, [employee?.company_id]);
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  // Realtime: auto-refresh
  useRealtimeTable('trainings', fetchData, { companyId: employee?.company_id });
@@ -168,8 +168,8 @@ export default function TrainingManagement() {
  <div className="page-header">
  <h1><FiBook className="icon-mr" /> Training & Learning</h1>
  <div className="page-header-actions">
- <Button variant="outline" className="btn-secondary" onClick={handleExport}><FiDownload /> Export</Button>
- <Button className="btn-primary" onClick={openCreate}><FiPlus /> Tambah Pelatihan</Button>
+ <button type="button" className="btn-secondary" onClick={handleExport}><FiDownload /> Export</button>
+ <button type="button" className="btn-primary" onClick={openCreate}><FiPlus /> Tambah Pelatihan</button>
  </div>
  </div>
 
@@ -250,8 +250,8 @@ export default function TrainingManagement() {
  </div>
  </DialogPanel>
  <DialogFooter>
- <Button variant="outline" className="btn-secondary" onClick={() => setModal(null)}>Batal</Button>
- <Button className="btn-primary" onClick={handleSubmit} disabled={!form.title}><FiCheck /> {selected ? 'Update' : 'Simpan'}</Button>
+ <button type="button" className="btn-secondary" onClick={() => setModal(null)}>Batal</button>
+ <button type="button" className="btn-primary" onClick={handleSubmit} disabled={!form.title}><FiCheck /> {selected ? 'Update' : 'Simpan'}</button>
  </DialogFooter>
  </DialogContent>
  </Dialog>
@@ -285,7 +285,7 @@ export default function TrainingManagement() {
  <option key={e.id} value={e.id}>{e.name} - {e.division || ''}</option>
  ))}
  </NativeSelect>
- <Button className="btn-primary btn-sm" onClick={addParticipant} disabled={!addEmpId}><FiPlus /></Button>
+ <button type="button" className="btn-primary btn-sm" onClick={addParticipant} disabled={!addEmpId}><FiPlus /></button>
  </div>
 
  {participants.length === 0 ? (
@@ -352,9 +352,9 @@ export default function TrainingManagement() {
  Tipe: {materialTypes[detectMaterialType(materialForm.url)]}
  </div>
  )}
- <Button className="btn-primary mb" onClick={addMaterial} disabled={!materialForm.title || !materialForm.url}>
+ <button type="button" className="btn-primary mb" onClick={addMaterial} disabled={!materialForm.title || !materialForm.url}>
  <FiPlus /> Tambah Materi
- </Button>
+ </button>
  </div>
 
  {/* Material List */}

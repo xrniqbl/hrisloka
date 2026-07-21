@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -62,7 +62,7 @@ export default function ContractManagement() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState('');
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     const [contractsRes, templatesRes, empRes, companyRes] = await Promise.all([
       contractService.getAllContracts(employee?.company_id),
@@ -110,11 +110,9 @@ export default function ContractManagement() {
     setTemplates(tpls);
     setEmployees(empRes.data || []);
     setLoading(false);
-  };
+  }, [employee?.company_id]);
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   // Auto-open wizard if ?employee=ID is in URL (coming from EmployeeProfile)
   useEffect(() => {

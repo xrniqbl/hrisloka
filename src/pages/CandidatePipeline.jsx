@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/PageHeader';
 import { FiUser, FiMail, FiPhone, FiX } from 'react-icons/fi';
@@ -28,22 +28,28 @@ const stageColors = {
 };
 
 export default function CandidatePipeline() {
+  const { employee } = useAuth();
   const [candidatesList, setCandidatesList] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const { data: candData } = await jobService.getAllCandidates(employee?.company_id);
     const { data: jobData } = await jobService.getAllJobs(employee?.company_id);
     setCandidatesList(candData || []);
     setJobs(jobData || []);
     setLoading(false);
-  };
+  }, [employee?.company_id]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    // Don't fetch until the tenant (employee.company_id) is known, otherwise
+    // we'd query cross-company data while employee is still null on mount.
+    if (!employee?.company_id) return;
+    fetchData();
+  }, [employee?.company_id]);
 
   useRealtimeTable('candidates', fetchData, { companyId: employee?.company_id });
 

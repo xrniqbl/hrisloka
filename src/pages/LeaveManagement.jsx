@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +29,7 @@ export default function LeaveManagement() {
   const [newLeave, setNewLeave] = useState({ type: 'cuti', startDate: '', endDate: '', reason: '', employeeId: '' });
   const { selectedBranchId } = useBranch();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const companyId = employee?.company_id;
     const [leaveRes, empRes] = await Promise.all([
@@ -39,7 +39,7 @@ export default function LeaveManagement() {
     setLeaves(leaveRes.data || []);
     setAllEmployees(empRes.data || []);
     setLoading(false);
-  };
+  }, [employee?.company_id]);
 
   const companyId = employee?.company_id;
 
@@ -89,7 +89,7 @@ export default function LeaveManagement() {
         <h1>{t('leave.title')}</h1>
         <div className="page-header-actions">
           <BranchFilter />
-          <Button className="btn-primary btn-icon-row" onClick={() => setShowForm(true)}><FiPlus /> Ajukan Cuti</Button>
+          <button type="button" className="btn-primary btn-icon-row" onClick={() => setShowForm(true)}><FiPlus /> Ajukan Cuti</button>
         </div>
       </div>
 
@@ -230,8 +230,8 @@ export default function LeaveManagement() {
             </div>
           </DialogPanel>
           <DialogFooter>
-            <Button variant="outline" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</Button>
-            <Button className="btn-primary" onClick={handleSubmit}>Ajukan</Button>
+            <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</button>
+            <button type="button" className="btn-primary" onClick={handleSubmit}>Ajukan</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

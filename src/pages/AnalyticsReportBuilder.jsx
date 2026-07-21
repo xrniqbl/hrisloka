@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { FiBarChart2, FiDownload, FiFilter, FiRefreshCw, FiUsers, FiCalendar, FiDollarSign, FiClock, FiPieChart } from 'react-icons/fi';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import * as employeeService from '../services/employeeService';
@@ -32,7 +32,7 @@ export default function AnalyticsReportBuilder() {
  const [filterStatus, setFilterStatus] = useState('');
  const [_dateRange, _setDateRange] = useState({ from: '', to: '' });
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const companyId = employee?.company_id;
  if (!companyId) {
@@ -51,9 +51,9 @@ export default function AnalyticsReportBuilder() {
  setAttendance(attRes.data || []);
  setLeaves(leaveRes.data || []);
  setLoading(false);
- };
+ }, [employee?.company_id]);
 
- useEffect(() => { fetchData(); }, [employee?.company_id]);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  const divisions = [...new Set(employees.map(e => e.division).filter(Boolean))].sort();
 

@@ -57,9 +57,7 @@ export default function PublicApplyForm() {
  setLoading(false);
  };
 
- useEffect(() => {
- fetchJob();
- }, [jobId]);
+ useEffect(() => { fetchJob(); }, [fetchJob]);
 
  if (!flagsLoading && !isEnabled('public_careers')) {
    return (

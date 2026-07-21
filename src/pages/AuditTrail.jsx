@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FiActivity, FiSearch, FiFilter, FiDownload } from 'react-icons/fi';
 import * as auditService from '../services/auditService';
@@ -29,14 +29,14 @@ export default function AuditTrail() {
  const [filterTable, setFilterTable] = useState('');
   const { employee: currentUser } = useAuth();
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const { data } = await auditService.getAuditLogs(currentUser?.company_id);
  setLogs(data || []);
  setLoading(false);
- };
+ }, [currentUser?.company_id]);
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  // Realtime: auto-refresh
  useRealtimeTable('audit_trails', fetchData, { companyId: currentUser?.company_id });

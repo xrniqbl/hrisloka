@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import '../styles/admin.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -82,24 +82,8 @@ export default function ContractEditor({ isTemplate = false }) {
     },
   });
 
-  useEffect(() => {
-    fetchContract();
-  }, [id]);
 
-  useEffect(() => {
-    // Init signature pad when modal opens
-    if (showSignModal && canvasRef.current) {
-      sigPadRef.current = new SignaturePad(canvasRef.current, {
-        backgroundColor: 'rgba(255,255,255,0)',
-        penColor: '#635BFF',
-        minWidth: 1.5,
-        maxWidth: 2.5,
-      });
-      resizeCanvas();
-    }
-  }, [showSignModal]);
-
-  const fetchContract = async () => {
+  const fetchContract = useCallback(async () => {
     setLoading(true);
     const fetcher = isTemplate ? contractService.getTemplateById : contractService.getContractById;
     const [{ data }, companiesRes] = await Promise.all([
@@ -116,7 +100,23 @@ export default function ContractEditor({ isTemplate = false }) {
       setCompany(companiesRes.data[0]);
     }
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => { fetchContract(); }, [fetchContract]);
+
+
+  useEffect(() => {
+    // Init signature pad when modal opens
+    if (showSignModal && canvasRef.current) {
+      sigPadRef.current = new SignaturePad(canvasRef.current, {
+        backgroundColor: 'rgba(255,255,255,0)',
+        penColor: '#635BFF',
+        minWidth: 1.5,
+        maxWidth: 2.5,
+      });
+      resizeCanvas();
+    }
+  }, [showSignModal]);
 
   useEffect(() => {
     if (contract && editor && !editor.isDestroyed) {

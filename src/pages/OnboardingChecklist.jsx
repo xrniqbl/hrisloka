@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiUserPlus, FiCheck, FiX, FiPlusCircle, FiSearch, FiCheckCircle, FiClipboard } from 'react-icons/fi';
 import { supabase } from '../lib/supabase';
 import * as employeeService from '../services/employeeService';
@@ -39,7 +39,7 @@ export default function OnboardingChecklist() {
  const [checklist, setChecklist] = useState([]);
  const [newEmpId, setNewEmpId] = useState('');
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
  const [obRes, empRes] = await Promise.all([
  supabase.from('onboarding').select('*, employees(name, division, position), onboarding_checklist(*)').eq('company_id', employee?.company_id).order('created_at', { ascending: false }),
@@ -48,9 +48,9 @@ export default function OnboardingChecklist() {
  setOnboardings(obRes.data || []);
  setEmployees(empRes.data || []);
  setLoading(false);
- };
+ }, [employee?.company_id]);
 
- useEffect(() => { fetchData(); }, []);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  // Realtime: auto-refresh
  useRealtimeTable('onboarding_checklists', fetchData, { companyId: employee?.company_id });
