@@ -78,8 +78,9 @@ FROM (VALUES
   ('reimbursements'),('departments'),('documents'),('companies'),
   ('subscriptions'),('announcements'),('job_postings'),('candidates'),
   ('notifications'),('company_settings'),('payroll_records'),('payroll_config'),
-  ('branches'),('shifts'),('tickets'),('contracts'),('assets'),
-  ('projects'),('timesheets'),('loans'),('appraisals')
+  ('branches'),('shifts'),('tickets'),
+  ('employee_contracts'),('contract_templates'), -- real names (not "contracts")
+  ('assets'),('projects'),('timesheets'),('loans'),('appraisals')
 ) AS t(tablename)
 ORDER BY t.tablename;
 
