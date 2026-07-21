@@ -1,16 +1,14 @@
 -- ============================================================
--- FIX: employees policies after rls-audit (query 5)
--- Problem found in production audit:
---   employees_select  → USING (true)  = ANY authenticated user can read ALL employees
--- Plus overlapping legacy policies that weaken tenant isolation.
+-- FIX: employees policies (idempotent rebuild)
+-- Safe to re-run even if a previous attempt partially succeeded.
 --
--- PostgreSQL RLS: for the same command (SELECT/UPDATE/...), policies are OR'd.
--- One bad policy with true / is_admin() without company scope defeats the good ones.
+-- Problem: overlapping policies + employees_select USING (true)
+-- Postgres ORs policies for the same command — one bad policy
+-- defeats the good ones.
 --
--- Run in Supabase SQL Editor. Idempotent.
+-- Run in Supabase SQL Editor.
 -- ============================================================
 
--- Helpers (same as other harden scripts)
 CREATE OR REPLACE FUNCTION get_my_company_id()
 RETURNS integer
 LANGUAGE sql
@@ -33,28 +31,23 @@ $$;
 
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 
--- ── Drop ALL known employees policies (legacy + current) ─────
--- We rebuild a minimal safe set below.
-DROP POLICY IF EXISTS "employees_admin_delete" ON employees;
-DROP POLICY IF EXISTS "employees_admin_insert" ON employees;
-DROP POLICY IF EXISTS "employees_company_isolation" ON employees;
-DROP POLICY IF EXISTS "employees_delete" ON employees;
-DROP POLICY IF EXISTS "employees_delete_admin" ON employees;
-DROP POLICY IF EXISTS "employees_founder_bypass" ON employees;
-DROP POLICY IF EXISTS "employees_insert" ON employees;
-DROP POLICY IF EXISTS "employees_insert_hr" ON employees;
-DROP POLICY IF EXISTS "employees_own_record_update" ON employees;
-DROP POLICY IF EXISTS "employees_own_select" ON employees;
-DROP POLICY IF EXISTS "employees_select" ON employees;
-DROP POLICY IF EXISTS "employees_select_company" ON employees;
-DROP POLICY IF EXISTS "employees_update" ON employees;
-DROP POLICY IF EXISTS "employees_update_company" ON employees;
--- Extra aliases seen in older migrations
-DROP POLICY IF EXISTS "employees_access" ON employees;
-DROP POLICY IF EXISTS "auth_full_employees" ON employees;
-DROP POLICY IF EXISTS "Enable read access for all users" ON employees;
+-- ── Drop EVERY employees policy (legacy + target names) ──────
+-- Dynamic: catches any policy we might have missed by name.
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'employees'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON employees', r.policyname);
+    RAISE NOTICE 'Dropped policy: %', r.policyname;
+  END LOOP;
+END $$;
 
--- ── SELECT: same company OR own row (pending self before company_id) ──
+-- ── SELECT: own row OR same company ──────────────────────────
 CREATE POLICY "employees_select_tenant" ON employees
   FOR SELECT
   USING (
@@ -65,12 +58,13 @@ CREATE POLICY "employees_select_tenant" ON employees
     )
   );
 
--- ── UPDATE: own profile OR HR/admin of same company ──────────
+-- ── UPDATE: own profile ──────────────────────────────────────
 CREATE POLICY "employees_update_own" ON employees
   FOR UPDATE
   USING (auth_user_id = auth.uid())
   WITH CHECK (auth_user_id = auth.uid());
 
+-- ── UPDATE: HR/admin of same company ─────────────────────────
 CREATE POLICY "employees_update_company_admin" ON employees
   FOR UPDATE
   USING (
@@ -83,7 +77,7 @@ CREATE POLICY "employees_update_company_admin" ON employees
     AND company_id = get_my_company_id()
   );
 
--- ── INSERT: HR/admin of same company only ────────────────────
+-- ── INSERT: HR/admin of same company ─────────────────────────
 CREATE POLICY "employees_insert_company_admin" ON employees
   FOR INSERT
   WITH CHECK (
@@ -92,15 +86,14 @@ CREATE POLICY "employees_insert_company_admin" ON employees
     AND get_my_role() IN ('super_admin', 'hr_admin', 'manager')
   );
 
--- Self-register path: new employee may insert own row with their auth_user_id
--- (company_id set via company_code flow). Restrict to self only.
+-- ── INSERT: self-register (own auth_user_id only) ────────────
 CREATE POLICY "employees_insert_self" ON employees
   FOR INSERT
   WITH CHECK (
     auth_user_id = auth.uid()
   );
 
--- ── DELETE: HR/admin of same company only ────────────────────
+-- ── DELETE: HR/super_admin of same company ───────────────────
 CREATE POLICY "employees_delete_company_admin" ON employees
   FOR DELETE
   USING (
@@ -110,8 +103,6 @@ CREATE POLICY "employees_delete_company_admin" ON employees
   );
 
 -- ── Founder bypass (platform operator only) ──────────────────
--- Matches email in platform_settings.key = 'founder_email'
--- If you prefer service_role only for founder, DROP this policy.
 CREATE POLICY "employees_founder_bypass" ON employees
   FOR ALL
   USING (
@@ -131,18 +122,18 @@ CREATE POLICY "employees_founder_bypass" ON employees
     )
   );
 
--- ── Verify: list remaining policies ──────────────────────────
+-- ── Verify remaining policies ────────────────────────────────
 SELECT policyname, cmd, qual::text AS using_expr, with_check::text
 FROM pg_policies
 WHERE schemaname = 'public' AND tablename = 'employees'
 ORDER BY policyname;
 
--- Expected after fix:
---   employees_select_tenant          SELECT  (own OR company)
---   employees_update_own             UPDATE
---   employees_update_company_admin   UPDATE
---   employees_insert_company_admin   INSERT
---   employees_insert_self            INSERT
---   employees_delete_company_admin   DELETE
---   employees_founder_bypass         ALL
--- NO policy with USING (true) or is_admin() alone.
+-- Expected (~7 policies):
+--   employees_select_tenant
+--   employees_update_own
+--   employees_update_company_admin
+--   employees_insert_company_admin
+--   employees_insert_self
+--   employees_delete_company_admin
+--   employees_founder_bypass
+-- NONE with USING (true) or bare is_admin().
