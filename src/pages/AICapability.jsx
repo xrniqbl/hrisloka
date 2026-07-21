@@ -54,7 +54,10 @@ export default function AICapability() {
  setLoading(false);
  }, [employee?.company_id]);
 
- useEffect(() => { if (employee?.company_id, fetchData) fetchData(); }, [employee?.company_id]);
+ useEffect(() => {
+  if (!employee?.company_id) return;
+  fetchData();
+}, [fetchData, employee?.company_id]);
 
  // Realtime: auto-refresh
  useRealtimeTable('ai_capabilities', fetchData, { companyId: employee?.company_id });

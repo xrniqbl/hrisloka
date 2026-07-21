@@ -29,9 +29,10 @@ export default function LeaveManagement() {
   const [newLeave, setNewLeave] = useState({ type: 'cuti', startDate: '', endDate: '', reason: '', employeeId: '' });
   const { selectedBranchId } = useBranch();
 
+  const companyId = employee?.company_id;
+
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const companyId = employee?.company_id;
     const [leaveRes, empRes] = await Promise.all([
       leaveService.getAllLeaves(selectedBranchId, companyId),
       employeeService.getAllEmployees(selectedBranchId, companyId),
@@ -39,11 +40,9 @@ export default function LeaveManagement() {
     setLeaves(leaveRes.data || []);
     setAllEmployees(empRes.data || []);
     setLoading(false);
-  }, [employee?.company_id]);
+  }, [employee?.company_id, selectedBranchId, companyId]);
 
-  const companyId = employee?.company_id;
-
-  useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selectedBranchId, employee?.company_id]);
+  useEffect(() => { fetchData(); }, [fetchData]);
   useRealtimeTable('leave_requests', fetchData, { companyId, enabled: !!companyId });
 
   const filtered = leaves.filter((l) => !filter || l.status === filter);

@@ -63,7 +63,7 @@ export default function BranchManagement() {
         // getAllEmployees would return cross-company records while employee is null.
         if (!employee?.company_id) return;
         fetchData();
-    }, [employee?.company_id]);
+    }, [employee?.company_id, fetchData]);
 
     const openAdd = () => {
         setEditBranch(null);

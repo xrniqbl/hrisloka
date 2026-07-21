@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiSearch, FiMapPin, FiClock, FiBriefcase, FiChevronRight, FiUsers, FiArrowRight } from 'react-icons/fi';
 import { supabase } from '../../lib/supabase';
@@ -16,7 +16,7 @@ export default function PublicCareers() {
  const [filterDept, setFilterDept] = useState('all');
  const [filterType, setFilterType] = useState('all');
 
- const fetchData = async () => {
+ const fetchData = useCallback(async () => {
  setLoading(true);
 
  // Try to fetch career settings, fallback gracefully
@@ -57,7 +57,7 @@ export default function PublicCareers() {
  }
 
  setLoading(false);
- };
+ }, [slug]);
 
  useEffect(() => { fetchData(); }, [fetchData]);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
  FiArrowLeft, FiUser, FiMail, FiPhone, FiMapPin, FiCalendar,
@@ -46,7 +46,7 @@ export default function PublicApplyForm() {
  expectedSalary: '',
  });
 
- const fetchJob = async () => {
+ const fetchJob = useCallback(async () => {
  setLoading(true);
  const { data } = await supabase
  .from('job_postings')
@@ -55,7 +55,7 @@ export default function PublicApplyForm() {
  .single();
  setJob(data);
  setLoading(false);
- };
+ }, [jobId]);
 
  useEffect(() => { fetchJob(); }, [fetchJob]);
 

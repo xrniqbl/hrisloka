@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiMapPin, FiClock, FiBriefcase, FiCalendar, FiUsers, FiChevronRight } from 'react-icons/fi';
 import { supabase } from '../../lib/supabase';
@@ -12,7 +12,7 @@ export default function PublicJobDetail() {
  const [job, setJob] = useState(null);
  const [loading, setLoading] = useState(true);
 
- const fetchJob = async () => {
+ const fetchJob = useCallback(async () => {
  setLoading(true);
  const { data } = await supabase
  .from('job_postings')
@@ -21,7 +21,7 @@ export default function PublicJobDetail() {
  .single();
  setJob(data);
  setLoading(false);
- };
+ }, [jobId]);
 
  useEffect(() => {
     let cancelled = false;
@@ -31,7 +31,7 @@ export default function PublicJobDetail() {
     };
     load();
     return () => { cancelled = true; };
-  }, [jobId]);
+  }, [fetchJob]);
 
  if (!flagsLoading && !isEnabled('public_careers')) {
  return (

@@ -49,7 +49,7 @@ export default function CandidatePipeline() {
     // we'd query cross-company data while employee is still null on mount.
     if (!employee?.company_id) return;
     fetchData();
-  }, [employee?.company_id]);
+  }, [employee?.company_id, fetchData]);
 
   useRealtimeTable('candidates', fetchData, { companyId: employee?.company_id });
 

@@ -49,9 +49,9 @@ export default function CalendarView() {
   ]);
   setHolidays(hRes.data || []);
   setLeaves((lRes.data || []).filter(l => l.status === 'approved'));
- }, [employee?.company_id]);
+ }, [employee?.company_id, year]);
 
- useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [year, employee?.company_id]);
+ useEffect(() => { fetchData(); }, [fetchData]);
 
  const getDateEvents = (date) => {
   if (!date) return [];

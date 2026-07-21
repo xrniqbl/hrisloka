@@ -49,9 +49,9 @@ export default function ShiftManagement() {
   setEmployees(empData || []);
   setAssignments(assignData || []);
   setLoading(false);
- }, [employee?.company_id]);
+ }, [employee?.company_id, selectedBranchId, companyId]);
 
- useEffect(() => { fetchData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [selectedBranchId, companyId]);
+ useEffect(() => { fetchData(); }, [fetchData]);
  useRealtimeTable('shifts', fetchData, { companyId, enabled: !!companyId });
 
  const handleAddShift = async () => {
