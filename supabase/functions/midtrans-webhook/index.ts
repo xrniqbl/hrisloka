@@ -27,14 +27,18 @@ function computeExpiry(billingCycle: string): string {
   return new Date(startUTC + durationMs).toISOString();
 }
 
-/** Send subscription activation email via Resend */
+/** Send subscription activation email via Brevo Transactional API */
 async function sendActivationEmail(to: string, planName: string, expiresAt: string): Promise<void> {
-  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-  const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@hrisloka.id';
+  const BREVO_API_KEY =
+    Deno.env.get('BREVO_API_KEY') ||
+    Deno.env.get('BREVO_SMTP_KEY') ||
+    Deno.env.get('RESEND_API_KEY'); // migration alias
+  const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || Deno.env.get('BREVO_SENDER_EMAIL') || 'noreply@hrisloka.id';
+  const FROM_NAME = Deno.env.get('FROM_NAME') || Deno.env.get('BREVO_SENDER_NAME') || 'HRIS Loka';
   const SITE_URL = Deno.env.get('SITE_URL') || 'https://hrisloka.id';
 
-  if (!RESEND_API_KEY) {
-    console.warn('[Webhook] RESEND_API_KEY not set, skipping email');
+  if (!BREVO_API_KEY) {
+    console.warn('[Webhook] BREVO_API_KEY not set, skipping email');
     return;
   }
 
@@ -42,9 +46,17 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
     day: 'numeric', month: 'long', year: 'numeric',
   });
 
+  let senderEmail = FROM_EMAIL;
+  let senderName = FROM_NAME;
+  const nameEmail = String(FROM_EMAIL).match(/^(.*?)\s*<([^>]+)>$/);
+  if (nameEmail) {
+    senderName = nameEmail[1].trim() || FROM_NAME;
+    senderEmail = nameEmail[2].trim();
+  }
+
   const html = `
     <div style="font-family:'Inter Tight',Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px">
-      <div style="background:linear-gradient(135deg,#635BFF,#4F46E5);padding:24px;border-radius:16px 16px 0 0">
+      <div style="background:linear-gradient(135deg,#5654D4,#4543C0);padding:24px;border-radius:16px 16px 0 0">
         <h1 style="color:#fff;margin:0;font-size:20px">HRIS Loka</h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:13px">Langganan Berhasil Diaktifkan</p>
       </div>
@@ -61,7 +73,7 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
           </div>
         </div>
         <p>Silakan login ke dashboard HRIS Loka untuk mulai menggunakan semua fitur.</p>
-        <a href="${SITE_URL}/login" style="display:inline-block;background:#635BFF;color:#fff;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:600;margin-top:16px">Masuk ke Dashboard</a>
+        <a href="${SITE_URL}/login" style="display:inline-block;background:#5654D4;color:#fff;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:600;margin-top:16px">Masuk ke Dashboard</a>
         <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email otomatis dari HRIS Loka.</p>
       </div>
     </div>
@@ -70,23 +82,24 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
   const text = `Langganan ${planName} Anda sudah aktif! Berlaku hingga ${expiryDate}. Login: ${SITE_URL}/login`;
 
   try {
-    const res = await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'accept': 'application/json',
+        'content-type': 'application/json',
+        'api-key': BREVO_API_KEY,
       },
       body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [to],
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: to }],
         subject: `[HRIS Loka] Langganan ${planName} Berhasil Diaktifkan`,
-        html,
-        text,
+        htmlContent: html,
+        textContent: text,
       }),
     });
 
     if (res.ok) {
-      console.log(`[Webhook] Activation email sent to ${to}`);
+      console.log(`[Webhook] Activation email sent to ${to} via Brevo`);
     } else {
       console.error(`[Webhook] Failed to send email: ${await res.text()}`);
     }
@@ -243,6 +256,31 @@ serve(async (req) => {
     if (!existingOrder) {
       console.error('[Webhook] Order not found:', order_id);
       return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+    }
+
+    // Amount verification: notification gross_amount must match the stored order.
+    // A valid signature only proves Midtrans sent it — not that it pays what we charged.
+    const notifiedAmount = parseFloat(gross_amount);
+    const storedAmount = Number(existingOrder.amount);
+    if (
+      Number.isFinite(notifiedAmount) && Number.isFinite(storedAmount)
+      && Math.abs(notifiedAmount - storedAmount) > 1
+    ) {
+      console.error(
+        `[Webhook] AMOUNT MISMATCH order=${order_id} notified=${gross_amount} stored=${storedAmount}`,
+      );
+      await supabase
+        .from('payment_orders')
+        .update({
+          status: 'failed',
+          midtrans_status: `amount_mismatch:${transaction_status}`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('order_id', order_id);
+      // 200 so Midtrans stops retrying; order is flagged for manual review
+      return new Response(JSON.stringify({ ok: false, error: 'Amount mismatch' }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     // Already fully processed paid order → acknowledge (idempotent)

@@ -1,4 +1,4 @@
-﻿import { NavLink, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   HiAcademicCap,
@@ -373,7 +373,7 @@ export default function EmployeeLayout() {
         setSetupDone(done);
       }
     });
-  }, [user, employee?.id, employee?.profile_setup_done, employee?.account_status]);
+  }, [user, employee]);
 
   // Unread notifications for this employee only (production)
   useEffect(() => {
@@ -498,6 +498,30 @@ export default function EmployeeLayout() {
   const avatarUrl = empData?.photo_url || user?.user_metadata?.avatar_url || null;
   useEffect(() => { setAvatarBroken(false); }, [avatarUrl]);
 
+  // Maintenance mode: read live from platform_settings (public read policy),
+  // not just the founder device's localStorage cache.
+  const [maintenanceOn, setMaintenanceOn] = useState(() => {
+    try {
+      return Boolean(JSON.parse(localStorage.getItem('founder_maintenance_settings') || 'null')?.is_maintenance);
+    } catch { return false; }
+  });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('platform_settings')
+          .select('key, value')
+          .eq('key', 'is_maintenance')
+          .maybeSingle();
+        if (!cancelled && data) {
+          setMaintenanceOn(String(data.value).toLowerCase() === 'true');
+        }
+      } catch { /* fail open on network errors */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const getGreeting = () => {
     const h = new Date().getHours();
     if (locale === 'en') return h < 12 ? 'Good morning' : h < 15 ? 'Good afternoon' : h < 18 ? 'Good evening' : 'Good night';
@@ -522,11 +546,13 @@ export default function EmployeeLayout() {
   if (!demo) {
     if (!user) {
     // First open this session → splash, else welcome (login / register)
+    let splashSeen = true;
     try {
-      if (!sessionStorage.getItem('hrisloka_splash_seen')) {
-        return <Navigate to="/app/splash" replace />;
-      }
+      splashSeen = Boolean(sessionStorage.getItem('hrisloka_splash_seen'));
     } catch { /* ignore */ }
+    if (!splashSeen) {
+      return <Navigate to="/app/splash" replace />;
+    }
     return <Navigate to="/app/welcome" replace />;
   }
 
@@ -546,11 +572,8 @@ export default function EmployeeLayout() {
       }
     }
 
-    if (!isFounder(user, employee)) {
-      try {
-        const raw = localStorage.getItem('founder_maintenance_settings');
-        if (raw && JSON.parse(raw)?.is_maintenance) return <Navigate to="/maintenance" replace />;
-      } catch { /* ignore */ }
+    if (!isFounder(user, employee) && maintenanceOn) {
+      return <Navigate to="/maintenance" replace />;
     }
 
     if (employee) {

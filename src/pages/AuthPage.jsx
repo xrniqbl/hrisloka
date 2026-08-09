@@ -1,10 +1,10 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getRole, isFounder } from '../lib/rbac';
 import { supabase } from '../lib/supabase';
 import { updateSEOTags } from '../lib/seo';
-import { DEMO_EMAIL, activateDemo } from '../lib/demoGuard';
+import { DEMO_EMAIL, DEMO_ENABLED, activateDemo } from '../lib/demoGuard';
 import { getRememberedPath, sanitizeAppPath, stripUrlHash } from '../lib/safePath';
 import './AuthPage.css';
 
@@ -68,7 +68,7 @@ export default function AuthPage() {
      });
    }, 1000);
    return () => clearInterval(countdownRef.current);
- }, [showEmployeeWarning]);
+ }, [showEmployeeWarning, navigate]);
 
  const passwordRules = [
  { key: 'length', label: 'Min 8 karakter', test: (p) => p.length >= 8 },
@@ -112,8 +112,8 @@ export default function AuthPage() {
  e.preventDefault();
  if (!email || !password) return;
 
- // Demo mode: intercept sebelum Supabase
- if (email.trim().toLowerCase() === DEMO_EMAIL) {
+ // Demo mode: intercept sebelum Supabase (hanya jika demo dikonfigurasi)
+ if (DEMO_ENABLED && email.trim().toLowerCase() === DEMO_EMAIL) {
    activateDemo();
    setIsDemo(true);
    window.location.replace('/dashboard'); // hard nav

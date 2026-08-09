@@ -1,6 +1,6 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { isDemoMode, activateDemo } from '../../lib/demoGuard';
+import { isDemoMode, activateDemo, DEMO_ENABLED } from '../../lib/demoGuard';
 import { SPLASH_KEY } from './EmpSplash';
 import './EmpOnboard.css';
 
@@ -75,9 +75,11 @@ export default function EmpWelcome() {
             </Link>
           </div>
 
-          <button type="button" className="emp-welcome__demo-link" onClick={enterDemo}>
-            Coba Demo
-          </button>
+          {DEMO_ENABLED && (
+            <button type="button" className="emp-welcome__demo-link" onClick={enterDemo}>
+              Coba Demo
+            </button>
+          )}
         </div>
       </main>
     </div>

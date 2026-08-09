@@ -8,9 +8,16 @@
  * Configured in vercel.json under "crons"
  */
 
+import crypto from 'node:crypto';
+
 const SUPABASE_URL    = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const FONNTE_TOKEN    = process.env.FONNTE_TOKEN;
+const MIDTRANS_SERVER_KEY  = process.env.MIDTRANS_SERVER_KEY;
+const MIDTRANS_IS_PRODUCTION = process.env.MIDTRANS_IS_PRODUCTION === 'true';
+const MIDTRANS_API_BASE = MIDTRANS_IS_PRODUCTION
+  ? 'https://api.midtrans.com'
+  : 'https://api.sandbox.midtrans.com';
 
 async function supabaseRequest(path, method = 'GET', body = null) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
@@ -36,6 +43,66 @@ async function sendWhatsApp(phone, message) {
       body: new URLSearchParams({ target: phone, message, delay: '2', countryCode: '62' }),
     });
   } catch { /* non-critical */ }
+}
+
+/**
+ * Reconcile payment_orders stuck in 'pending' > 2h against the Midtrans
+ * status API. Settled/failed results are replayed into midtrans-webhook
+ * with a recomputed SHA-512 signature so activation stays in one code path.
+ */
+async function reconcilePendingOrders(now) {
+  if (!MIDTRANS_SERVER_KEY) {
+    return { reconciled: 0, skipped: 'MIDTRANS_SERVER_KEY not set' };
+  }
+
+  const cutoff = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  const { data: pendingOrders } = await supabaseRequest(
+    `/payment_orders?status=eq.pending&created_at=lt.${cutoff.toISOString()}&select=order_id&limit=25`,
+  );
+
+  let reconciled = 0;
+  for (const { order_id } of pendingOrders || []) {
+    try {
+      const auth = Buffer.from(`${MIDTRANS_SERVER_KEY}:`).toString('base64');
+      const statusRes = await fetch(`${MIDTRANS_API_BASE}/v2/${encodeURIComponent(order_id)}/status`, {
+        headers: { 'Authorization': `Basic ${auth}`, 'Accept': 'application/json' },
+      });
+      if (!statusRes.ok) continue;
+      const mt = await statusRes.json();
+
+      // Still pending at Midtrans (unpaid QRIS/VA etc.) — leave it alone
+      if (!mt.transaction_status || mt.transaction_status === 'pending') continue;
+
+      const statusCode = mt.status_code || '200';
+      const grossAmount = mt.gross_amount || '0.00';
+      const signature = crypto
+        .createHash('sha512')
+        .update(`${mt.order_id || order_id}${statusCode}${grossAmount}${MIDTRANS_SERVER_KEY}`)
+        .digest('hex');
+
+      const replay = await fetch(`${SUPABASE_URL}/functions/v1/midtrans-webhook`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          order_id: mt.order_id || order_id,
+          status_code: statusCode,
+          gross_amount: grossAmount,
+          signature_key: signature,
+          transaction_status: mt.transaction_status,
+          fraud_status: mt.fraud_status || 'accept',
+        }),
+      });
+      if (replay.ok) reconciled++;
+      else console.warn(`[cron-subscriptions] webhook replay failed for ${order_id}: HTTP ${replay.status}`);
+    } catch (e) {
+      console.warn(`[cron-subscriptions] reconcile error for ${order_id}:`, e?.message);
+    }
+  }
+  return { reconciled };
 }
 
 export default async function handler(req, res) {
@@ -101,6 +168,11 @@ export default async function handler(req, res) {
         results.reminded++;
       }
     }
+
+    // ── 3. Reconcile stuck pending payment orders with Midtrans ────────
+    const reconcile = await reconcilePendingOrders(now);
+    results.reconciled = reconcile.reconciled;
+    if (reconcile.skipped) results.reconcile_skipped = reconcile.skipped;
 
     console.log('[cron-subscriptions] Done:', results);
     return res.status(200).json({ success: true, ...results });

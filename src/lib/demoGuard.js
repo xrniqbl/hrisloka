@@ -8,10 +8,11 @@
  * - Data yang ditampilkan adalah data dummy read-only
  */
 
-// Demo email is public info (known demo account). Password is verified server-side only.
-export const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? 'demo@hrisloka.com';
-/** Any password works for the demo email on EmpLogin; documented for design QA. */
-export const DEMO_PASSWORD = 'demo1234';
+// Demo email is public info (known demo account). Do NOT export a demo password constant.
+// Demo mode only exists when VITE_DEMO_EMAIL is explicitly configured — no hardcoded
+// fallback, so a production build without the env var has no demo backdoor.
+export const DEMO_EMAIL = (import.meta.env.VITE_DEMO_EMAIL || '').trim().toLowerCase();
+export const DEMO_ENABLED = DEMO_EMAIL.length > 0;
 export const DEMO_FLAG_KEY = 'hrisync_demo_mode';
 
 /** Fake auth user for PWA design preview (no Supabase session). */
@@ -127,22 +128,6 @@ export const DEMO_PROFILE_DATA = {
       days: 3,
       status: 'pending',
       reason: 'Keperluan pribadi',
-    },
-  ],
-  tickets: [
-    {
-      id: 'demo-ticket-1',
-      category: 'IT Support',
-      subject: 'Laptop lambat saat absensi wajah',
-      status: 'resolved',
-      created_at: '2026-05-10T08:00:00.000Z',
-    },
-    {
-      id: 'demo-ticket-2',
-      category: 'HR',
-      subject: 'Tanya sisa cuti 2026',
-      status: 'in-progress',
-      created_at: '2026-06-01T09:30:00.000Z',
     },
   ],
   documents: [
@@ -440,8 +425,9 @@ export const DEMO_PROFILE_DATA = {
   ],
 };
 
-/** Aktifkan mode demo di sessionStorage */
+/** Aktifkan mode demo di sessionStorage (no-op jika demo tidak dikonfigurasi) */
 export function activateDemo() {
+  if (!DEMO_ENABLED) return;
   sessionStorage.setItem(DEMO_FLAG_KEY, '1');
 }
 

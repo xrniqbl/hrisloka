@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DEMO_EMAIL, activateDemo, deactivateDemo, isDemoMode, demoBlock } from '../lib/demoGuard';
+import { DEMO_EMAIL, DEMO_ENABLED, activateDemo, deactivateDemo, isDemoMode, demoBlock } from '../lib/demoGuard';
 
 describe('Demo Guard Security', () => {
   beforeEach(() => {
@@ -10,8 +10,12 @@ describe('Demo Guard Security', () => {
     vi.clearAllMocks();
   });
 
-  it('should expose DEMO_EMAIL (public info)', () => {
+  it('should expose DEMO_EMAIL (public info) and gate on explicit env', () => {
+    // Test env sets VITE_DEMO_EMAIL=demo@hrisloka.com (.env loaded by Vite).
+    // Production builds without the env var get DEMO_EMAIL='' and DEMO_ENABLED=false,
+    // which disables every demo entry point (no hardcoded fallback).
     expect(DEMO_EMAIL).toBe('demo@hrisloka.com');
+    expect(DEMO_ENABLED).toBe(true);
   });
 
   it('should NOT expose DEMO_PASSWORD in client bundle', async () => {

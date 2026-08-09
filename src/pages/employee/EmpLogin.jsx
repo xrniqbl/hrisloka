@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { DEMO_EMAIL, DEMO_PASSWORD, activateDemo, isDemoMode } from '../../lib/demoGuard';
+import { DEMO_EMAIL, DEMO_ENABLED, activateDemo, isDemoMode } from '../../lib/demoGuard';
 import './EmpLogin.css';
 
 function IconMail() {
@@ -93,7 +93,7 @@ export default function EmpLogin() {
     e.preventDefault();
     if (!email || !password) return;
 
-    if (email.trim().toLowerCase() === DEMO_EMAIL) {
+    if (DEMO_ENABLED && email.trim().toLowerCase() === DEMO_EMAIL) {
       enterDemo();
       return;
     }
@@ -398,17 +398,21 @@ export default function EmpLogin() {
                 <Link to="/app/register">Daftar Sekarang</Link>
               </div>
 
-              <button
-                type="button"
-                className="emp-login__demo"
-                onClick={enterDemo}
-                disabled={busy}
-              >
-                {demoLoading ? 'Membuka demo…' : 'Masuk Demo PWA'}
-              </button>
-              <p className="emp-login__demo-hint">
-                {DEMO_EMAIL} · {DEMO_PASSWORD} · read-only
-              </p>
+              {DEMO_ENABLED && (
+                <>
+                  <button
+                    type="button"
+                    className="emp-login__demo"
+                    onClick={enterDemo}
+                    disabled={busy}
+                  >
+                    {demoLoading ? 'Membuka demo…' : 'Masuk Demo PWA'}
+                  </button>
+                  <p className="emp-login__demo-hint">
+                    {DEMO_EMAIL} · mode demo read-only
+                  </p>
+                </>
+              )}
             </>
           )}
         </div>

@@ -228,182 +228,54 @@ export function calculatePrice(originalPrice, voucher) {
   return { finalPrice: Math.max(0, originalPrice - discount), discount };
 }
 
-// ─── Create / upsert subscription (PRECISE day calculation) ───────────────────
-export async function createSubscription({
-  planSlug, planName, priceMonthly, pricePaid, discountAmount,
-  voucherCode, paymentMethod, status = 'pending',
-  billingCycle = 'monthly', companyId = null,
-}) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: new Error('Not authenticated') };
-
-  // Precise start/end using UTC midnight (no timezone drift)
-  const startDate = new Date();
-  const startUTC = new Date(Date.UTC(
-    startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()
-  ));
-  const expiresAt = computeExpiresAt(startUTC, billingCycle, planSlug);
-
-  const payload = {
-    user_id: user.id,
-    plan_slug: planSlug,
-    plan_name: planName,
-    status,
-    billing_cycle: billingCycle,
-    price_monthly: priceMonthly || 0,
-    price_paid: pricePaid || 0,
-    discount_amount: discountAmount || 0,
-    voucher_code: voucherCode || null,
-    payment_method: paymentMethod || 'midtrans',
-    starts_at: startUTC.toISOString(),
-    expires_at: expiresAt,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (companyId) payload.company_id = companyId;
-
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .upsert(payload, { onConflict: 'user_id' })
-    .select()
-    .single();
-
-  return { data, error };
-}
-
 // ─── Activate subscription + upgrade role to super_admin ─────────────────────
 // Used for free / 100% voucher only. Paid Midtrans flows activate via webhook.
+// All writes happen server-side in the activate-free-subscription Edge Function
+// (service_role). The client never writes to `subscriptions` directly.
 export async function activateSubscription({
-  planSlug, planName, priceMonthly, pricePaid, discountAmount,
-  voucherCode, paymentMethod, billingCycle = 'monthly',
+  planSlug, planName, voucherCode, billingCycle = 'monthly',
 }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { data: null, error: new Error('Not authenticated') };
 
-  // Prefer name from onboarding profile when present
-  let companyName = null;
-  let profileFullName = null;
   try {
-    const { data: ob } = await supabase
-      .from('onboarding_profiles')
-      .select('full_name, company_name, phone')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (ob?.full_name) profileFullName = ob.full_name;
-    if (ob?.company_name) companyName = String(ob.company_name).trim();
-  } catch { /* optional */ }
+    const { data, error } = await supabase.functions.invoke('activate-free-subscription', {
+      body: {
+        plan_slug: planSlug,
+        plan_name: planName,
+        billing_cycle: billingCycle,
+        voucher_code: voucherCode || null,
+      },
+    });
 
-  const fullName =
-    profileFullName ||
-    user.user_metadata?.full_name ||
-    user.email?.split('@')[0] ||
-    'User';
-
-  // Resolve existing company_id if employee already exists
-  let existingCompanyId = null;
-  try {
-    const { data: existingEmp } = await supabase
-      .from('employees')
-      .select('id, company_id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (existingEmp?.company_id) existingCompanyId = existingEmp.company_id;
-  } catch { /* optional */ }
-
-  // Ensure employee row exists BEFORE ensureOwnerCompany (needs resolveMyEmployee)
-  const empPayload = {
-    email: user.email,
-    name: fullName,
-    role: 'super_admin',
-    auth_user_id: user.id,
-    status: 'active',
-    account_status: 'active',
-    join_date: new Date().toISOString().split('T')[0],
-  };
-  if (existingCompanyId) empPayload.company_id = existingCompanyId;
-
-  const { error: empError } = await supabase
-    .from('employees')
-    .upsert(empPayload, { onConflict: 'email' });
-
-  if (empError) {
-    console.error('[subscriptionService] employee upsert failed:', empError.message);
-    return { data: null, error: empError };
-  }
-
-  // Create / attach company shell so tenant isolation is not left with null company_id
-  let resolvedCompanyId = existingCompanyId;
-  const shellName = companyName || `${fullName}'s Company`;
-  try {
-    const { ensureOwnerCompany } = await import('./ownerSetupService');
-    const { data: company, error: coErr } = await ensureOwnerCompany({ name: shellName });
-    if (coErr) {
-      console.warn('[subscriptionService] ensureOwnerCompany:', coErr.message || coErr);
-    } else if (company?.id) {
-      resolvedCompanyId = company.id;
+    if (error) {
+      // ContextFunctionsError carries the function's JSON body in .context
+      let message = 'Gagal mengaktifkan langganan. Coba lagi.';
+      try {
+        const body = error?.context && typeof error.context.json === 'function'
+          ? await error.context.json()
+          : null;
+        if (body?.error) message = body.error;
+      } catch { /* keep default message */ }
+      return { data: null, error: new Error(message) };
     }
-  } catch (e) {
-    console.warn('[subscriptionService] ensureOwnerCompany skipped:', e?.message);
-  }
 
-  // Re-read company_id if ensureOwnerCompany linked employee
-  if (!resolvedCompanyId) {
-    try {
-      const { data: linked } = await supabase
-        .from('employees')
-        .select('company_id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
-      resolvedCompanyId = linked?.company_id || null;
-    } catch { /* optional */ }
-  }
+    if (!data?.success) {
+      return { data: null, error: new Error(data?.error || 'Gagal mengaktifkan langganan.') };
+    }
 
-  const { error: subError } = await createSubscription({
-    planSlug, planName, priceMonthly, pricePaid, discountAmount, voucherCode,
-    paymentMethod: paymentMethod || (pricePaid === 0 ? 'free' : 'pending'),
-    status: 'active',
-    billingCycle,
-    companyId: resolvedCompanyId,
-  });
-
-  if (subError) {
-    console.error('[subscriptionService] subscription upsert failed:', subError.message);
     return {
-      data: null,
-      error: subError,
+      data: {
+        success: true,
+        company_id: data.company_id || null,
+        needs_setup: Boolean(data.needs_setup),
+      },
+      error: null,
     };
+  } catch (e) {
+    console.error('[subscriptionService] activateSubscription failed:', e?.message);
+    return { data: null, error: new Error('Gagal menghubungi server aktivasi. Coba lagi.') };
   }
-
-  if (voucherCode) {
-    try {
-      // Prefer RPC if present; else manual increment on used_count
-      const { error: rpcErr } = await supabase.rpc('increment_voucher_usage', { voucher_code: voucherCode });
-      if (rpcErr) {
-        const code = voucherCode.trim().toUpperCase();
-        const { data: v } = await supabase
-          .from('vouchers')
-          .select('id, used_count, current_uses')
-          .eq('code', code)
-          .maybeSingle();
-        if (v?.id) {
-          const next = (v.used_count ?? v.current_uses ?? 0) + 1;
-          const patch = v.used_count !== undefined && v.used_count !== null
-            ? { used_count: next }
-            : { current_uses: next };
-          await supabase.from('vouchers').update(patch).eq('id', v.id);
-        }
-      }
-    } catch (e) { console.warn('[subscriptionService] voucher usage increment failed:', e?.message); }
-  }
-
-  return {
-    data: {
-      success: true,
-      company_id: resolvedCompanyId,
-      needs_setup: !resolvedCompanyId,
-    },
-    error: null,
-  };
 }
 
 // ─── Check and auto-expire subscriptions (run on app load) ───────────────────
@@ -413,54 +285,12 @@ export async function checkAndExpireSubscription() {
 
   const days = getDaysRemaining(sub.expires_at);
   if (days === 0 && sub.status !== 'expired') {
-    // Mark as expired in DB. Update by primary key (id) — the row may be
-    // company-scoped with a null/different user_id, so filtering by user_id
-    // would silently match zero rows. Surface any error instead of ignoring.
-    const { error } = await supabase
-      .from('subscriptions')
-      .update({ status: 'expired', updated_at: new Date().toISOString() })
-      .eq('id', sub.id);
-    if (error) {
-      console.error('[subscriptionService] failed to expire subscription:', error.message);
-    }
+    // Persisting the 'expired' status is handled by the daily cron
+    // (service_role). The client no longer writes to subscriptions.
     return { ...sub, status: 'expired', computed_status: 'expired', days_remaining: 0, is_active: false };
   }
 
   return sub;
-}
-
-// ─── Renew subscription (extend from current expires_at) ─────────────────────
-export async function renewSubscription(planSlug, billingCycle = 'monthly') {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: new Error('Not authenticated') };
-
-  const { data: current } = await getMySubscription();
-
-  // Renew from EXACT current expiry (not from today) to prevent shortchanging
-  const renewFrom = current?.expires_at && getDaysRemaining(current.expires_at) > 0
-    ? new Date(current.expires_at)
-    : new Date();
-
-  const renewFromUTC = new Date(Date.UTC(
-    renewFrom.getUTCFullYear(), renewFrom.getUTCMonth(), renewFrom.getUTCDate()
-  ));
-  const newExpiry = computeExpiresAt(renewFromUTC, billingCycle, planSlug);
-
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .update({
-      plan_slug: planSlug,
-      billing_cycle: billingCycle,
-      status: 'active',
-      starts_at: renewFromUTC.toISOString(),
-      expires_at: newExpiry,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('user_id', user.id)
-    .select()
-    .single();
-
-  return { data: data ? enrichSubscription(data) : null, error };
 }
 
 // ─── Format currency IDR ──────────────────────────────────────────────────────
