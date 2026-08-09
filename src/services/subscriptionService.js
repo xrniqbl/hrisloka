@@ -293,6 +293,21 @@ export async function checkAndExpireSubscription() {
   return sub;
 }
 
+// ─── Payment history (own orders only — RLS is user-scoped) ─────────────────
+export async function getMyPaymentHistory(limit = 50) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: [], error: new Error('Not authenticated') };
+
+  const { data, error } = await supabase
+    .from('payment_orders')
+    .select('order_id, plan_slug, plan_name, amount, discount_amount, voucher_code, billing_cycle, status, created_at, updated_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  return { data: data || [], error };
+}
+
 // ─── Format currency IDR ──────────────────────────────────────────────────────
 export function formatIDR(amount) {
   return formatPlanIDR(amount);
