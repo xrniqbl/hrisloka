@@ -44,7 +44,6 @@ import { useAuth } from '../context/AuthContext';
 import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { hasSidebarAccess, getRole, isFounder, ROLE_LABELS, ROLE_COLORS } from '../lib/rbac';
 import { useTranslation } from '../lib/i18n';
-import ProfileDrawer from './ProfileDrawer';
 import { isDemoMode } from '../lib/demoGuard';
 import { BRAND } from '../lib/brandPalette';
 import './Sidebar.css';
@@ -144,11 +143,6 @@ const getNavItems = (t) => [
   { label: t('nav.settings'), icon: Settings, path: '/settings' },
 ]
 
-const ROLE_LABELS_ID = {
-  super_admin: 'Super Admin',
-  hr_admin: 'HR Admin',
-};
-
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
@@ -156,7 +150,6 @@ export default function Sidebar() {
   );
   const [expandedMenus, setExpandedMenus] = useState({});
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, employee } = useAuth();
@@ -191,6 +184,26 @@ export default function Sidebar() {
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, [collapsed]);
+
+  // Close the mobile drawer on any route change (incl. back/forward)
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Escape closes the drawer; lock body scroll while it is open
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileOpen]);
 
   const handleViewAs = (role) => {
     setViewAsRole(role);
@@ -232,27 +245,6 @@ export default function Sidebar() {
   const isChildActive = (children) => children?.some((c) => location.pathname.startsWith(c.path));
 
   const isDemo = isDemoMode();
-  const userName = isDemo
-    ? 'Demo'
-    : employee?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-  const userInitials = isDemo
-    ? 'DM'
-    : userName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || 'U';
-  const [avatarBroken, setAvatarBroken] = useState(false);
-  const avatarUrl = isDemo ? null : employee?.photo_url || user?.user_metadata?.avatar_url || null;
-  useEffect(() => {
-    setAvatarBroken(false);
-  }, [avatarUrl]);
-
-  // Role accent stays primary-family (founder/demo) except true role colors only if needed
-  const roleDotColor = founderUser
-    ? BRAND.primary
-    : ROLE_COLORS[actualRole] || BRAND.primary;
 
   return (
     <>
@@ -279,13 +271,21 @@ export default function Sidebar() {
         className={`sidebar ${mobileOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
         aria-label="Main navigation"
       >
+        {/* Org header — matches SolveHR “Your Organization / Maple Inc.” */}
         <div className="sidebar-brand">
           <img
             src="/landing/hrislokalogo.jpeg"
-            alt="HRIS Loka"
+            alt=""
             className="sidebar-brand-logo"
           />
-          {!collapsed && <span className="sidebar-brand-text">HRIS Loka</span>}
+          {!collapsed && (
+            <div className="sidebar-org-meta">
+              <span className="sidebar-org-label">Your Organization</span>
+              <span className="sidebar-brand-text">
+                {isDemo ? 'Demo Company' : employee?.company_name || 'HRIS Loka'}
+              </span>
+            </div>
+          )}
           <button
             type="button"
             className="sidebar-brand-btn"
@@ -293,58 +293,13 @@ export default function Sidebar() {
             onClick={() => setCollapsed((c) => !c)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <Icon icon={Menu} size="sm" color="inherit" />
+            <Icon icon={collapsed ? Menu : ChevronRight} size="sm" color="inherit" />
           </button>
-        </div>
-
-        <div
-          className={`sidebar-company-card ${collapsed ? 'collapsed-card' : ''}`}
-          onClick={() => setProfileOpen(true)}
-          title="Buka Profil"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setProfileOpen(true)}
-        >
-          <div className="sidebar-company-avatar-wrap">
-            {avatarUrl && !avatarBroken ? (
-              <img
-                src={avatarUrl}
-                alt=""
-                className="sidebar-company-photo"
-                onError={() => setAvatarBroken(true)}
-              />
-            ) : (
-              <div className="sidebar-company-avatar">{userInitials}</div>
-            )}
-            <span
-              className="sidebar-company-role-dot"
-              style={{ background: roleDotColor }}
-            />
-          </div>
-          {!collapsed && (
-            <>
-              <div className="sidebar-company-info">
-                <div className="sidebar-company-name">{userName}</div>
-                <div className="sidebar-company-plan">
-                  <span
-                    className={`sidebar-plan-badge${isDemo ? ' is-demo' : ''}${founderUser ? ' is-founder' : ''}`}
-                  >
-                    {isDemo
-                      ? 'DEMO'
-                      : founderUser
-                        ? 'Founder'
-                        : ROLE_LABELS_ID[actualRole] || 'User'}
-                  </span>
-                </div>
-              </div>
-              <Icon icon={ChevronRight} size="sm" color="inherit" className="sidebar-card-chevron" />
-            </>
-          )}
         </div>
 
         <nav className="sidebar-nav">
           {!collapsed && (
-            <div className="nav-section-label">{t('nav.main_menu')}</div>
+            <div className="nav-section-label">{t('nav.main_menu') || 'Menu'}</div>
           )}
 
           {visibleNav.map((item) => (
@@ -376,7 +331,7 @@ export default function Sidebar() {
                         <button
                           type="button"
                           key={child.path}
-                          className={`nav-submenu-link ${location.pathname === child.path ? 'active' : ''}`}
+                          className={`nav-submenu-link ${location.pathname === child.path || location.pathname.startsWith(child.path + '/') ? 'active' : ''}`}
                           onClick={() => handleNavClick(child.path)}
                         >
                           {child.icon && (
@@ -393,7 +348,7 @@ export default function Sidebar() {
               ) : (
                 <button
                   type="button"
-                  className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
+                  className={`nav-link ${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? 'active' : ''}`}
                   onClick={() => handleNavClick(item.path)}
                   title={collapsed ? item.label : ''}
                 >
@@ -451,10 +406,18 @@ export default function Sidebar() {
               )}
             </div>
           )}
+          {!collapsed && (
+            <button
+              type="button"
+              className="sidebar-help"
+              onClick={() => handleNavClick('/helpdesk')}
+            >
+              <span className="sidebar-help-title">{t('nav.need_help')}</span>
+              <span className="sidebar-help-sub">{t('nav.open_help_center')}</span>
+            </button>
+          )}
         </div>
       </aside>
-
-      <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
     </>
   );
 }
