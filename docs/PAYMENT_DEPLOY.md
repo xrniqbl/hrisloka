@@ -75,6 +75,8 @@ Run once in SQL Editor:
 5. Test **pending** (bank VA) → screen shows waiting → settles via webhook.
 6. Test **100% voucher** → Edge Function `activate-free-subscription` (no Snap).
 7. Test **yearly** pricing: amount must match `monthly × 12 × 0.85`.
+8. Test **early renewal**: pay/renew while the subscription is still active →
+   `expires_at` must extend from the previous expiry, not reset to today.
 
 ## 6. Cron (expiry reminders + payment reconciliation)
 
@@ -96,6 +98,8 @@ Run once in SQL Editor:
 - Free/voucher activation is server-side (`activate-free-subscription`) and
   rejects anything that does not price to exactly zero.
 - Idempotent: repeated `paid` notifications for same order are safe.
+- Early renewal: webhook and free activation extend `expires_at` from the
+  current expiry when the subscription is still active (no lost days).
 
 ## Quick deploy script
 

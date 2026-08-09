@@ -17,14 +17,35 @@ async function sha512(str: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Compute expires_at: 30 days (monthly) or 365 days (yearly) from UTC midnight today */
-function computeExpiry(billingCycle: string): string {
-  const now = new Date();
-  const startUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+/** Compute expires_at: 30 days (monthly) or 365 days (yearly) after baseMs (UTC midnight) */
+function computeExpiry(baseMs: number, billingCycle: string): string {
   const durationMs = billingCycle === 'yearly'
     ? 365 * 24 * 60 * 60 * 1000
     : 30 * 24 * 60 * 60 * 1000;
-  return new Date(startUTC + durationMs).toISOString();
+  return new Date(baseMs + durationMs).toISOString();
+}
+
+/** UTC-midnight ms of today */
+function todayUtcMs(): number {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+/**
+ * Early renewal support: if the user still has an active subscription,
+ * extend from its current expires_at instead of resetting to today.
+ */
+function resolveRenewalBase(currentSub: Record<string, unknown> | null | undefined): number {
+  if (
+    currentSub
+    && ['active', 'trial'].includes(String(currentSub.status))
+    && currentSub.expires_at
+  ) {
+    const exp = new Date(String(currentSub.expires_at));
+    const expMs = Date.UTC(exp.getUTCFullYear(), exp.getUTCMonth(), exp.getUTCDate());
+    if (expMs > todayUtcMs()) return expMs;
+  }
+  return todayUtcMs();
 }
 
 /** Send subscription activation email via Brevo Transactional API */
@@ -309,8 +330,16 @@ serve(async (req) => {
     // Paid → activate subscription + admin employee
     if (activate && order.user_id) {
       const billingCycle = order.billing_cycle || 'monthly';
-      const startsAt = new Date().toISOString();
-      const expiresAt = computeExpiry(billingCycle);
+
+      // Early renewal: extend from current expiry when still active
+      const { data: currentSub } = await supabase
+        .from('subscriptions')
+        .select('status, expires_at')
+        .eq('user_id', order.user_id)
+        .maybeSingle();
+      const baseMs = resolveRenewalBase(currentSub);
+      const startsAt = new Date(baseMs).toISOString();
+      const expiresAt = computeExpiry(baseMs, billingCycle);
 
       // Onboarding profile (name / company)
       const { data: profile } = await supabase
