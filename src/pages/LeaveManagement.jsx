@@ -26,6 +26,7 @@ export default function LeaveManagement() {
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [newLeave, setNewLeave] = useState({ type: 'cuti', startDate: '', endDate: '', reason: '', employeeId: '' });
   const { selectedBranchId } = useBranch();
 
@@ -33,14 +34,24 @@ export default function LeaveManagement() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [leaveRes, empRes] = await Promise.all([
-      leaveService.getAllLeaves(selectedBranchId, companyId),
-      employeeService.getAllEmployees(selectedBranchId, companyId),
-    ]);
-    setLeaves(leaveRes.data || []);
-    setAllEmployees(empRes.data || []);
-    setLoading(false);
-  }, [employee?.company_id, selectedBranchId, companyId]);
+    setFetchError(false);
+    try {
+      const [leaveRes, empRes] = await Promise.all([
+        leaveService.getAllLeaves(selectedBranchId, companyId),
+        employeeService.getAllEmployees(selectedBranchId, companyId),
+      ]);
+      if (leaveRes.error) throw leaveRes.error;
+      if (empRes.error) throw empRes.error;
+      setLeaves(leaveRes.data || []);
+      setAllEmployees(empRes.data || []);
+    } catch (err) {
+      console.error('[LeaveManagement] fetch failed:', err?.message || err);
+      setLeaves([]);
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedBranchId, companyId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useRealtimeTable('leave_requests', fetchData, { companyId, enabled: !!companyId });
@@ -128,12 +139,14 @@ export default function LeaveManagement() {
       {filtered.length === 0 ? (
         <div className="data-table-card">
           <EmptyState
-            title="Belum ada pengajuan cuti"
-            description="Semua terkendali. Pengajuan cuti karyawan akan muncul di sini."
+            title={fetchError ? 'Gagal memuat pengajuan cuti' : 'Belum ada pengajuan cuti'}
+            description={fetchError
+              ? 'Terjadi kesalahan saat mengambil data. Periksa koneksi internet Anda lalu coba lagi.'
+              : 'Semua terkendali. Pengajuan cuti karyawan akan muncul di sini.'}
             ctaLabel="Muat ulang"
             onCta={fetchData}
-            secondaryLabel="Buka persetujuan"
-            onSecondary={() => { window.location.href = '/approvals'; }}
+            secondaryLabel={fetchError ? undefined : 'Buka persetujuan'}
+            onSecondary={fetchError ? undefined : () => { window.location.href = '/approvals'; }}
           />
         </div>
       ) : (

@@ -46,6 +46,7 @@ import { hasSidebarAccess, getRole, isFounder, ROLE_LABELS, ROLE_COLORS } from '
 import { useTranslation } from '../lib/i18n';
 import { isDemoMode } from '../lib/demoGuard';
 import { BRAND } from '../lib/brandPalette';
+import { safeGetItem, safeSetItem } from '../lib/safeStorage';
 import './Sidebar.css';
 
 /** Lucide component → Astryx Icon (theme-aligned stroke icons) */
@@ -146,7 +147,7 @@ const getNavItems = (t) => [
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem('hris_sidebar_collapsed') === 'true',
+    () => safeGetItem('hris_sidebar_collapsed') === 'true',
   );
   const [expandedMenus, setExpandedMenus] = useState({});
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
@@ -161,9 +162,9 @@ export default function Sidebar() {
 
   const [viewAsRole, setViewAsRole] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('HRIS Loka_viewAs');
+      const saved = safeGetItem('HRIS Loka_viewAs');
       if (!saved || !['super_admin', 'hr_admin'].includes(saved)) {
-        localStorage.setItem('HRIS Loka_viewAs', 'super_admin');
+        safeSetItem('HRIS Loka_viewAs', 'super_admin');
         return 'super_admin';
       }
       return saved;
@@ -180,7 +181,7 @@ export default function Sidebar() {
       document.documentElement.style.setProperty('--sidebar-width', width);
     };
     update();
-    localStorage.setItem('hris_sidebar_collapsed', collapsed);
+    safeSetItem('hris_sidebar_collapsed', collapsed);
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, [collapsed]);
@@ -207,7 +208,7 @@ export default function Sidebar() {
 
   const handleViewAs = (role) => {
     setViewAsRole(role);
-    localStorage.setItem('HRIS Loka_viewAs', role);
+    safeSetItem('HRIS Loka_viewAs', role);
     setShowRoleSwitcher(false);
   };
 

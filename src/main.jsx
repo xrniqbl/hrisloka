@@ -9,28 +9,35 @@ import '@astryxdesign/core/astryx.css';
 import './index.css'
 import App from './App.jsx'
 import './lib/autoTranslate.js'
+import { initSentry } from './lib/sentry.js'
+import { safeGetItem, safeSetItem, safeRemoveItem } from './lib/safeStorage.js'
+
+// Error tracking first (before React mount)
+initSentry()
 
 // Apply saved theme before first paint (read both old + new key for migration)
-const savedTheme = localStorage.getItem('hrisync_theme') || localStorage.getItem('HRIS Loka_theme');
+// Storage access is wrapped — blocked storage (Safari private mode) must not
+// crash the app before React mounts.
+const savedTheme = safeGetItem('hrisync_theme') || safeGetItem('HRIS Loka_theme');
 if (savedTheme) {
   document.documentElement.setAttribute('data-theme', savedTheme);
   // Migrate old key to new key
-  localStorage.setItem('hrisync_theme', savedTheme);
-  localStorage.removeItem('HRIS Loka_theme');
+  safeSetItem('hrisync_theme', savedTheme);
+  safeRemoveItem('HRIS Loka_theme');
 }
 
 // Migrate locale key: hrisync_lang / HRIS Loka_locale → hrisync_locale
-const savedLocale = localStorage.getItem('hrisync_locale')
-  || localStorage.getItem('HRIS Loka_locale')
-  || localStorage.getItem('hrisync_lang');
+const savedLocale = safeGetItem('hrisync_locale')
+  || safeGetItem('HRIS Loka_locale')
+  || safeGetItem('hrisync_lang');
 if (savedLocale) {
-  localStorage.setItem('hrisync_locale', savedLocale);
-  localStorage.setItem('hrisync_lang', savedLocale);
-  localStorage.removeItem('HRIS Loka_locale');
+  safeSetItem('hrisync_locale', savedLocale);
+  safeSetItem('hrisync_lang', savedLocale);
+  safeRemoveItem('HRIS Loka_locale');
 }
 
 // Apply initial data-lang to <html> before React renders
-const initLang = localStorage.getItem('hrisync_locale') || 'id';
+const initLang = safeGetItem('hrisync_locale') || 'id';
 document.documentElement.setAttribute('lang', initLang);
 document.documentElement.setAttribute('data-lang', initLang);
 

@@ -1,19 +1,40 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Icon } from '@astryxdesign/core/Icon';
+import { Lock, AlertTriangle, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { FOUNDER_EMAIL, isFounder } from '../lib/rbac';
 import FounderSidebar from '../components/FounderSidebar';
-import { FiSun, FiMoon, FiShield, FiLock, FiAlertTriangle } from 'react-icons/fi';
+import UserAvatar from '../components/UserAvatar';
 import { LanguageToggle } from '../lib/i18n';
 import * as founderService from '../services/founderService';
 import { supabase } from '../lib/supabase';
+import { markNoIndex } from '../lib/seo';
+import { safeGetItem, safeSetItem } from '../lib/safeStorage';
 import './FounderLayout.css';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SECURITY: Hardcoded founder email - the ONLY email allowed in this layout.
-// This is checked both client-side AND against the live Supabase session.
-// ─────────────────────────────────────────────────────────────────────────────
-const ALLOWED_FOUNDER_EMAIL = FOUNDER_EMAIL; // 'hrisloka@gmail.com'
+const ALLOWED_FOUNDER_EMAIL = FOUNDER_EMAIL;
+
+const PAGE_TITLES = {
+  '/founder/dashboard': 'Dashboard',
+  '/founder/subscribers': 'Subscribers',
+  '/founder/subscriptions': 'Subscriptions',
+  '/founder/vouchers': 'Vouchers',
+  '/founder/companies': 'Companies',
+  '/founder/analytics': 'Analytics',
+  '/founder/broadcast': 'Broadcast',
+  '/founder/support': 'Support',
+  '/founder/backup': 'Backup',
+  '/founder/platform-settings': 'Settings',
+};
+
+function resolvePageTitle(pathname) {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  const match = Object.keys(PAGE_TITLES)
+    .filter((p) => pathname.startsWith(p))
+    .sort((a, b) => b.length - a.length)[0];
+  return match ? PAGE_TITLES[match] : 'Founder';
+}
 
 /** Deep-check: verify every layer of auth before allowing access */
 function useFounderAuth() {
@@ -22,21 +43,21 @@ function useFounderAuth() {
   const [verified, setVerified] = useState(false);
 
   useEffect(() => {
-    if (loading) return; // wait for AuthContext to initialise
+    if (loading) return;
 
     const runCheck = async () => {
       setVerifying(true);
       try {
-        // Layer 1 - must have an active session at all
         if (!user || !session) {
           setVerified(false);
           setVerifying(false);
           return;
         }
 
-        // Layer 2 - re-fetch the live session directly from Supabase
-        // (protects against stale in-memory state being tampered with)
-        const { data: { user: liveUser }, error: sessionError } = await supabase.auth.getUser();
+        const {
+          data: { user: liveUser },
+          error: sessionError,
+        } = await supabase.auth.getUser();
         if (sessionError || !liveUser) {
           console.warn('[FounderLayout] Live session check failed:', sessionError?.message);
           setVerified(false);
@@ -44,9 +65,9 @@ function useFounderAuth() {
           return;
         }
 
-        // Layer 3 - email must be EXACTLY the founder email (case-insensitive)
         const emailMatch =
-          liveUser.email?.toLowerCase().trim() === ALLOWED_FOUNDER_EMAIL.toLowerCase().trim();
+          liveUser.email?.toLowerCase().trim() ===
+          ALLOWED_FOUNDER_EMAIL.toLowerCase().trim();
 
         if (!emailMatch) {
           console.warn('[FounderLayout] Unauthorized access attempt by:', liveUser.email);
@@ -55,7 +76,6 @@ function useFounderAuth() {
           return;
         }
 
-        // Layer 4 - cross-check with AuthContext state (defence-in-depth)
         const contextEmailMatch = isFounder(user, employee);
         if (!contextEmailMatch) {
           console.warn('[FounderLayout] Context email mismatch - possible session tampering.');
@@ -64,7 +84,6 @@ function useFounderAuth() {
           return;
         }
 
-        // All layers passed ✓
         setVerified(true);
       } catch (err) {
         console.error('[FounderLayout] Security check exception:', err);
@@ -80,204 +99,141 @@ function useFounderAuth() {
   return { verifying: loading || verifying, verified };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 export default function FounderLayout() {
-  const { user, signOut } = useAuth();
+  const { user, employee, signOut } = useAuth();
   const { verifying, verified } = useFounderAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem('hrisync_theme') || 'light'
-  );
   const [openComplaints, setOpenComplaints] = useState(0);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('hrisync_theme', theme);
-  }, [theme]);
+    markNoIndex('HRIS Loka — Founder');
+  }, []);
+
+  // Theme follows Settings / localStorage (same as HR shell — no topbar toggle)
+  useEffect(() => {
+    const apply = () => {
+      const theme = safeGetItem('hrisync_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    };
+    apply();
+    window.addEventListener('storage', apply);
+    window.addEventListener('hrisync-theme-change', apply);
+    return () => {
+      window.removeEventListener('storage', apply);
+      window.removeEventListener('hrisync-theme-change', apply);
+    };
+  }, []);
 
   useEffect(() => {
     if (location.pathname !== '/') {
-      localStorage.setItem('hrisync_last_path', location.pathname);
+      safeSetItem('hrisync_last_path', location.pathname);
     }
   }, [location.pathname]);
 
-  // Fetch open complaint count for sidebar badge
   useEffect(() => {
     if (!verified) return;
     founderService.getAllComplaints().then(({ data }) => {
       if (data) {
-        setOpenComplaints(data.filter(c => c.status === 'open').length);
+        setOpenComplaints(data.filter((c) => c.status === 'open').length);
       }
     });
   }, [verified]);
 
-  // ── Loading Spinner ──────────────────────────────────────────────────────
+  const pageTitle = useMemo(
+    () => resolvePageTitle(location.pathname),
+    [location.pathname],
+  );
+
+  const userName =
+    employee?.name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split('@')[0] ||
+    'Founder';
+  const avatarUrl =
+    employee?.photo_url || user?.user_metadata?.avatar_url || null;
+
   if (verifying) {
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#0A0F1E', gap: 16,
-      }}>
-        <div style={{
-          width: 40, height: 40, border: '3px solid rgba(255,255,255,0.1)',
-          borderTopColor: '#F59E0B', borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }} />
-        <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, letterSpacing: 1 }}>
-          VERIFYING IDENTITY...
-        </span>
+      <div className="founder-loading">
+        <div className="founder-loading-spinner" />
+        <span className="founder-loading-text">Memverifikasi…</span>
       </div>
     );
   }
 
-  // ── Not logged in &rarr; go to login page (never expose founder UI) ───────────
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // ── Wrong account &rarr; show hardened denial screen ──────────────────────────
   if (!verified) {
-    return <FounderAccessDenied onSignOut={async () => {
-      await signOut();
-      navigate('/login', { replace: true });
-    }} />;
+    return (
+      <FounderAccessDenied
+        onSignOut={async () => {
+          await signOut();
+          navigate('/login', { replace: true });
+        }}
+      />
+    );
   }
 
-  // ── All checks passed &rarr; render founder portal ────────────────────────────
   return (
     <div className="founder-layout-wrapper">
       <FounderSidebar openComplaints={openComplaints} />
 
       <main className="founder-layout-main">
-        {/* Top Bar */}
-        <div className="founder-topbar">
+        <header className="founder-topbar">
           <div className="founder-topbar-left">
-            {/* Left slot - pages can inject breadcrumbs */}
+            <h1 className="founder-topbar-title">{pageTitle}</h1>
           </div>
           <div className="founder-topbar-right">
             <LanguageToggle />
             <button
-              className="founder-theme-btn"
-              onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              type="button"
+              className="founder-topbar-profile"
+              onClick={() => navigate('/founder/platform-settings')}
+              title={userName}
             >
-              {theme === 'dark' ? <FiSun /> : <FiMoon />}
+              <UserAvatar
+                name={userName}
+                src={avatarUrl}
+                size={32}
+              />
             </button>
-            <div className="founder-portal-badge">
-              <FiShield size={11} />
-              Founder Portal
-            </div>
           </div>
-        </div>
+        </header>
 
-        {/* Page Content */}
         <Outlet />
       </main>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hardened Access Denied screen - shown to any non-founder who tries /founder/*
-// ─────────────────────────────────────────────────────────────────────────────
 function FounderAccessDenied({ onSignOut }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      minHeight: '100vh', background: '#0A0F1E',
-      padding: 24,
-    }}>
-      <div style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,59,48,0.3)',
-        borderRadius: 20,
-        padding: '48px 40px',
-        maxWidth: 480,
-        width: '100%',
-        textAlign: 'center',
-        boxShadow: '0 0 60px rgba(255,59,48,0.08)',
-        backdropFilter: 'blur(12px)',
-      }}>
-        {/* Icon */}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          width: 72, height: 72, borderRadius: '50%',
-          background: 'rgba(255,59,48,0.12)',
-          border: '2px solid rgba(255,59,48,0.25)',
-          marginBottom: 24,
-          animation: 'founderPulse 2s ease-in-out infinite',
-        }}>
-          <FiLock size={32} color="#FF3B30" />
+    <div className="founder-access-denied">
+      <div className="founder-access-denied-card">
+        <div className="founder-access-denied-icon">
+          <Icon icon={Lock} size="lg" color="inherit" />
         </div>
-
-        {/* Title */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
-          <FiAlertTriangle size={16} color="#F59E0B" />
-          <span style={{ color: '#F59E0B', fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>
-            Access Denied
-          </span>
-          <FiAlertTriangle size={16} color="#F59E0B" />
+        <div className="founder-access-denied-kicker">
+          <Icon icon={AlertTriangle} size="sm" color="inherit" />
+          Access Denied
         </div>
-
-        <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 700, margin: '0 0 12px' }}>
-          Founder Portal Restricted
-        </h2>
-
-        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, lineHeight: 1.7, margin: '0 0 32px' }}>
-          This area is exclusively accessible to the platform founder account.
-          Your credentials do not match the required authorization level.
-          All access attempts are logged and monitored.
+        <h2 className="founder-access-denied-title">Founder Portal Restricted</h2>
+        <p className="founder-access-denied-desc">
+          Area ini hanya untuk akun founder platform. Kredensial Anda tidak
+          memenuhi level otorisasi yang diperlukan.
         </p>
-
-        {/* Security notice */}
-        <div style={{
-          background: 'rgba(245,158,11,0.08)',
-          border: '1px solid rgba(245,158,11,0.2)',
-          borderRadius: 10,
-          padding: '12px 16px',
-          marginBottom: 28,
-          display: 'flex', alignItems: 'flex-start', gap: 10, textAlign: 'left',
-        }}>
-          <FiShield size={14} color="#F59E0B" style={{ flexShrink: 0, marginTop: 1 }} />
-          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, lineHeight: 1.6 }}>
-            Unauthorized access attempts to this portal are recorded and may result in account suspension.
+        <div className="founder-access-denied-notice">
+          <Icon icon={Shield} size="sm" color="inherit" />
+          <span>
+            Percobaan akses tidak sah dicatat dan dapat berakibat penangguhan akun.
           </span>
         </div>
-
-        {/* Sign out button */}
-        <button
-          onClick={onSignOut}
-          style={{
-            display: 'block', width: '100%',
-            padding: '13px 24px',
-            background: 'rgba(255,59,48,0.15)',
-            border: '1px solid rgba(255,59,48,0.35)',
-            borderRadius: 10,
-            color: '#FF6B6B',
-            fontSize: 14, fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-          onMouseOver={e => {
-            e.target.style.background = 'rgba(255,59,48,0.25)';
-            e.target.style.borderColor = 'rgba(255,59,48,0.5)';
-          }}
-          onMouseOut={e => {
-            e.target.style.background = 'rgba(255,59,48,0.15)';
-            e.target.style.borderColor = 'rgba(255,59,48,0.35)';
-          }}
-        >
+        <button type="button" className="founder-access-denied-btn" onClick={onSignOut}>
           Sign Out & Return to Login
         </button>
-
-        <style>{`
-          @keyframes founderPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255,59,48,0.2); }
-            50% { box-shadow: 0 0 0 12px rgba(255,59,48,0); }
-          }
-        `}</style>
       </div>
     </div>
   );

@@ -16,14 +16,14 @@ import EmptyState from '../components/EmptyState';
 
 
 const LOCATION_TYPES = [
-    { value: 'headquarter', label: 'Headquarter (Pusat)', icon: '?' },
-    { value: 'branch_office', label: 'Branch Office (Cabang)', icon: '?' },
-    { value: 'warehouse', label: 'Warehouse (Gudang)', icon: '?' },
-    { value: 'outlet', label: 'Outlet', icon: '?' },
+    { value: 'headquarter', label: 'Headquarter (Pusat)', icon: '🏢' },
+    { value: 'branch_office', label: 'Branch Office (Cabang)', icon: '🏬' },
+    { value: 'warehouse', label: 'Warehouse (Gudang)', icon: '🏪' },
+    { value: 'outlet', label: 'Outlet', icon: '🏪' },
 ];
 
 const locationLabel = (v) => LOCATION_TYPES.find(t => t.value === v)?.label || v;
-const locationIcon = (v) => LOCATION_TYPES.find(t => t.value === v)?.icon || '"';
+const locationIcon = (v) => LOCATION_TYPES.find(t => t.value === v)?.icon || '📍';
 
 export default function BranchManagement() {
     const { employee } = useAuth();

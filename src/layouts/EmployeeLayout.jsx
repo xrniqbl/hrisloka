@@ -49,6 +49,7 @@ import EmpProfileSetup from '../pages/employee/EmpProfileSetup';
 import './EmployeeLayout.css';
 import { isDemoMode, DEMO_EMPLOYEE } from '../lib/demoGuard';
 import { markNoIndex } from '../lib/seo';
+import { safeGetItem, safeSetItem } from '../lib/safeStorage';
 
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch { /* intentionally empty */ } };
 
@@ -301,7 +302,7 @@ export default function EmployeeLayout() {
   const [menuSearch, setMenuSearch] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [empData, setEmpData] = useState(null);
-  const [darkMode] = useState(() => localStorage.getItem('hrisync_dark_mode') === 'true');
+  const [darkMode] = useState(() => safeGetItem('hrisync_dark_mode') === 'true');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [setupDone, setSetupDone] = useState(true); // optimistic: assume done
 
@@ -319,7 +320,7 @@ export default function EmployeeLayout() {
   // Dark mode sync
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-    localStorage.setItem('hrisync_dark_mode', darkMode.toString());
+    safeSetItem('hrisync_dark_mode', darkMode.toString());
   }, [darkMode]);
 
   // Load employee data for header avatar + name + setup status
@@ -391,8 +392,8 @@ export default function EmployeeLayout() {
 
   // Sync lang from localStorage
   useEffect(() => {
-    const savedLang = localStorage.getItem('hrisync_lang');
-    if (savedLang) localStorage.setItem('hrisync_locale', savedLang);
+    const savedLang = safeGetItem('hrisync_lang');
+    if (savedLang) safeSetItem('hrisync_locale', savedLang);
     // Request persistent storage (prevents cache eviction)
     requestPersistentStorage();
   }, []);
@@ -420,7 +421,7 @@ export default function EmployeeLayout() {
   useEffect(() => {
     const founderUser = isFounder(user, employee);
     if (user && !founderUser && location.pathname !== '/') {
-      localStorage.setItem('hrisync_last_path', location.pathname);
+      safeSetItem('hrisync_last_path', location.pathname);
     }
   }, [location.pathname, user, employee]);
 
@@ -502,7 +503,7 @@ export default function EmployeeLayout() {
   // not just the founder device's localStorage cache.
   const [maintenanceOn, setMaintenanceOn] = useState(() => {
     try {
-      return Boolean(JSON.parse(localStorage.getItem('founder_maintenance_settings') || 'null')?.is_maintenance);
+      return Boolean(JSON.parse(safeGetItem('founder_maintenance_settings') || 'null')?.is_maintenance);
     } catch { return false; }
   });
   useEffect(() => {

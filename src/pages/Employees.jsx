@@ -16,6 +16,7 @@ import { getPendingRegistrations } from '../services/companyService';
 import { ROLE_LABELS, ROLE_COLORS } from '../lib/rbac';
 import { useAuth } from '../context/AuthContext';
 import { getRole } from '../lib/rbac';
+import { useToast } from '../components/Toast';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -31,18 +32,29 @@ export default function Employees() {
   const [editEmp, setEditEmp] = useState(null);
   const [employeeList, setEmployeeList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [activeView, setActiveView] = useState('all'); // 'all' | 'pending'
   const [pendingCount, setPendingCount] = useState(0);
   const navigate = useNavigate();
   const { selectedBranchId } = useBranch();
   const { employee: currentUser } = useAuth();
+  const { toast } = useToast();
   const isSuperAdmin = getRole(currentUser) === 'super_admin';
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
-    const { data } = await employeeService.getAllEmployees(selectedBranchId, currentUser?.company_id);
-    setEmployeeList(data || []);
-    setLoading(false);
+    setFetchError(false);
+    try {
+      const { data, error } = await employeeService.getAllEmployees(selectedBranchId, currentUser?.company_id);
+      if (error) throw error;
+      setEmployeeList(data || []);
+    } catch (err) {
+      console.error('[Employees] fetch failed:', err?.message || err);
+      setEmployeeList([]);
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [selectedBranchId, currentUser?.company_id]);
 
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
@@ -106,15 +118,19 @@ export default function Employees() {
 
     const companyId = currentUser?.company_id;
     if (!companyId) {
-      alert('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
+      toast.error('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
       return;
     }
 
-    if (editEmp) {
-      await employeeService.updateEmployee(editEmp.id, payload, companyId);
-    } else {
-      await employeeService.createEmployee({ ...payload, company_id: companyId });
+    const { error } = editEmp
+      ? await employeeService.updateEmployee(editEmp.id, payload, companyId)
+      : await employeeService.createEmployee({ ...payload, company_id: companyId });
+    if (error) {
+      console.error('[Employees] save failed:', error);
+      toast.error('Gagal menyimpan karyawan: ' + (error.message || 'error'));
+      return;
     }
+    toast.success(editEmp ? 'Karyawan diperbarui.' : 'Karyawan ditambahkan.');
     setEditEmp(null);
     fetchEmployees();
     // Refresh pending badge after create/update
@@ -125,10 +141,16 @@ export default function Employees() {
     if (!confirm('Yakin ingin menghapus karyawan ini?')) return;
     const companyId = currentUser?.company_id;
     if (!companyId) {
-      alert('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
+      toast.error('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
       return;
     }
-    await employeeService.deleteEmployee(id, companyId);
+    const { error } = await employeeService.deleteEmployee(id, companyId);
+    if (error) {
+      console.error('[Employees] delete failed:', error);
+      toast.error('Gagal menghapus karyawan: ' + (error.message || 'error'));
+      return;
+    }
+    toast.success('Karyawan dihapus.');
     fetchEmployees();
   };
 
@@ -240,6 +262,15 @@ export default function Employees() {
 
           {loading ? (
             <TableSkeleton rows={6} cols={7} />
+          ) : fetchError ? (
+            <div className="data-table-card">
+              <EmptyState
+                title="Gagal memuat data karyawan"
+                description="Terjadi kesalahan saat mengambil data. Periksa koneksi internet Anda lalu coba lagi."
+                ctaLabel="Muat ulang"
+                onCta={fetchEmployees}
+              />
+            </div>
           ) : filtered.length === 0 ? (
             <div className="data-table-card">
               <EmptyState

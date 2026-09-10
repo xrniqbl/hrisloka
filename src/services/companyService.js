@@ -27,6 +27,37 @@ export async function getCompanyById(id) {
   return { data, error };
 }
 
+/**
+ * Update company profile for the caller's tenant only.
+ * Safe fields only — never overwrite company_code / plan from client freely.
+ */
+export async function updateMyCompany(companyId, payload = {}) {
+  if (!guardCompanyId(companyId, 'updateMyCompany')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+
+  const allowed = {
+    name: payload.name,
+    address: payload.address,
+    phone: payload.phone,
+    website: payload.website,
+    industry: payload.industry,
+  };
+  // Drop undefined keys
+  Object.keys(allowed).forEach((k) => {
+    if (allowed[k] === undefined) delete allowed[k];
+  });
+
+  const { data, error } = await supabase
+    .from('companies')
+    .update({ ...allowed, updated_at: new Date().toISOString() })
+    .eq('id', companyId)
+    .select()
+    .single();
+
+  return { data, error };
+}
+
 /** Get all companies (admin) — This is founder-only; no company guard needed */
 export async function getAllCompanies() {
   const { data, error } = await supabase
@@ -292,7 +323,7 @@ export async function acceptEmployeeRegistration(employeeId, verifiedById, assig
   }
 
   // Side-effects: onboarding + notify employee (non-blocking)
-  seedOnboardingTasks(data.id).catch(() => {});
+  seedOnboardingTasks(data.id).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
   try {
     const { createNotification } = await import('./notificationService');
     createNotification({
@@ -302,7 +333,7 @@ export async function acceptEmployeeRegistration(employeeId, verifiedById, assig
       title: 'Akun Anda telah diaktifkan',
       body: 'HR telah menyetujui pendaftaran. Anda dapat menggunakan absensi dan fitur karyawan.',
       data: { path: '/app/home' },
-    }).catch(() => {});
+    }).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
   } catch { /* optional */ }
   try {
     const { sendPushToEmployee } = await import('./pushService');
@@ -313,7 +344,7 @@ export async function acceptEmployeeRegistration(employeeId, verifiedById, assig
         'Pendaftaran Anda disetujui HR. Silakan buka HRIS Loka.',
         '/app/home',
         companyId,
-      ).catch(() => {});
+      ).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
     }
   } catch { /* optional */ }
   try {
@@ -322,7 +353,7 @@ export async function acceptEmployeeRegistration(employeeId, verifiedById, assig
       sendWhatsApp(
         data.phone,
         `🏢 *HRIS Loka*\n\nHalo, *${data.name}*!\n\nAkun Anda telah *DISETUJUI* oleh HR. Silakan login di aplikasi karyawan.\n\n_HRIS Loka_`,
-      ).catch(() => {});
+      ).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
     }
   } catch { /* optional */ }
 
@@ -363,7 +394,7 @@ export async function rejectEmployeeRegistration(employeeId, verifiedById, reaso
       title: 'Pendaftaran ditolak',
       body: rejectReason,
       data: { path: '/app/rejected' },
-    }).catch(() => {});
+    }).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
   } catch { /* optional */ }
   try {
     if (data.phone) {
@@ -371,7 +402,7 @@ export async function rejectEmployeeRegistration(employeeId, verifiedById, reaso
       sendWhatsApp(
         data.phone,
         `🏢 *HRIS Loka*\n\nHalo, *${data.name}*!\n\nMaaf, pendaftaran Anda *DITOLAK*.\nAlasan: ${rejectReason}\n\n_HRIS Loka_`,
-      ).catch(() => {});
+      ).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
     }
   } catch { /* optional */ }
 

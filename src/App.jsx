@@ -12,6 +12,7 @@ import { ToastProvider } from './components/Toast';
 import { BranchProvider } from './context/BranchContext';
 import { isDemoMode } from './lib/demoGuard';
 import { sanitizeAppPath, stripUrlHash } from './lib/safePath';
+import { safeGetItem, safeSetItem } from './lib/safeStorage';
 
 
 // ─── Page View Tracker (fires on every route change) ─────────────────────
@@ -52,6 +53,7 @@ const FiturPage   = lazy(() => import('./pages/FiturPage'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const EmployeeWebAccess = lazy(() => import('./pages/EmployeeWebAccess'));
 const OnboardingForm    = lazy(() => import('./pages/OnboardingForm'));
+const OwnerSetupWizard  = lazy(() => import('./pages/OwnerSetupWizard'));
 const NotRegistered     = lazy(() => import('./pages/NotRegistered'));
 const Blog              = lazy(() => import('./pages/Blog'));
 const BlogPost          = lazy(() => import('./pages/BlogPost'));
@@ -232,7 +234,7 @@ function AuthRedirect() {
   // No employee record: differentiate new Google signups vs unregistered employees
   if (user && !employee) {
     const isGoogleUser = user.app_metadata?.provider === 'google';
-    const hasGrace = localStorage.getItem('hrisync_sub_grace');
+    const hasGrace = safeGetItem('hrisync_sub_grace');
     if (isGoogleUser && !hasGrace) {
       return <Navigate to={hasOnboarding ? '/not-registered' : '/checkout'} replace />;
     }
@@ -244,8 +246,8 @@ function AuthRedirect() {
   // HR Admin / Manager / Super Admin → always Desktop HR portal
   const isHROrManager = ['super_admin', 'hr_admin', 'manager'].includes(role);
   if (isHROrManager) {
-    if (!localStorage.getItem('hrisync_sub_grace')) {
-      localStorage.setItem('hrisync_sub_grace', 'true');
+    if (!safeGetItem('hrisync_sub_grace')) {
+      safeSetItem('hrisync_sub_grace', 'true');
     }
     const savedPath = sanitizeAppPath(rawSaved, '/dashboard');
     const restorable = savedPath
@@ -414,6 +416,23 @@ function SubscriptionGuard({ children }) {
   return children;
 }
 
+/**
+ * AdminRouteGuard — restricts the desktop admin portal to founders and
+ * non-employee roles while preserving the existing subscription and
+ * maintenance checks.
+ */
+function AdminRouteGuard({ children }) {
+  const { user, employee, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isFounder(user, employee) && getRole(employee) === 'employee') {
+    return <Navigate to="/employee-web-access" replace />;
+  }
+
+  return children;
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -433,6 +452,7 @@ function App() {
                   <Route path="/install" element={<InstallGuide />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/onboarding-form" element={<OnboardingForm />} />
+                  <Route path="/setup" element={<OwnerSetupWizard />} />
                   <Route path="/harga" element={<Harga />} />
                   <Route path="/fitur" element={<FiturPage />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -443,7 +463,9 @@ function App() {
                   <Route path="/" element={
                     <SubscriptionGuard>
                       <MaintenanceGuard>
-                        <BranchProvider><DashboardLayout /></BranchProvider>
+                        <AdminRouteGuard>
+                          <BranchProvider><DashboardLayout /></BranchProvider>
+                        </AdminRouteGuard>
                       </MaintenanceGuard>
                     </SubscriptionGuard>
                   }>

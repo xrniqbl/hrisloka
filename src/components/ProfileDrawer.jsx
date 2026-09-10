@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   HiArrowDownTray,
   HiArrowLeftOnRectangle,
@@ -27,6 +27,7 @@ import { isFounder, ROLE_LABELS, ROLE_COLORS, getRole } from '../lib/rbac';
 import { useTranslation, LOCALES } from '../lib/i18n';
 import { useToast } from './Toast';
 import { loadPayrollConfig, savePayrollConfig, DEFAULT_PAYROLL_CONFIG, PTKP_VALUES } from '../lib/payrollConfig';
+import { safeGetItem, safeSetItem } from '../lib/safeStorage';
 import AvatarPicker from './AvatarPicker';
 import '../styles/shared.css';
 import './ProfileDrawer.css';
@@ -91,16 +92,21 @@ export default function ProfileDrawer({ open, onClose }) {
 
   const showSaved = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
 
-  // Handle avatar selection (from picker or upload)
+  // Handle avatar selection (preset icon or uploaded URL)
   const handleAvatarSelect = async (url) => {
+    if (!url) return;
     setAvatarUrl(url);
     try {
-      await supabase.auth.updateUser({ data: { avatar_url: url } });
-      if (employee?.id) await supabase.from('employees').update({ photo_url: url }).eq('id', employee.id);
-      await refreshEmployee();
-      toast.success('Foto profil berhasil diperbarui.');
-    } catch (_) {
-      toast.error('Gagal menyimpan foto.');
+      // Auth metadata (best-effort)
+      try { await supabase.auth.updateUser({ data: { avatar_url: url } }); } catch { /* ignore */ }
+      if (employee?.id) {
+        const { error } = await supabase.from('employees').update({ photo_url: url }).eq('id', employee.id);
+        if (error) throw error;
+      }
+      if (typeof refreshEmployee === 'function') await refreshEmployee();
+      toast?.success?.('Foto profil berhasil diperbarui.');
+    } catch (err) {
+      toast?.error?.(err?.message || 'Gagal menyimpan foto.');
     }
   };
 
@@ -120,7 +126,7 @@ export default function ProfileDrawer({ open, onClose }) {
   // ── Career form ──
   const [careerForm, setCareerForm] = useState({
     slug: 'informasilowongan', company_name: 'HRIS Loka',
-    company_description: '', accent_color: '#0047AB', is_active: true,
+    company_description: '', accent_color: '#635BFF', is_active: true,
   });
   const [originalSlug, setOriginalSlug] = useState('informasilowongan');
   // 'idle' | 'checking' | 'available' | 'taken'
@@ -133,16 +139,16 @@ export default function ProfileDrawer({ open, onClose }) {
       return s ? JSON.parse(s) : { emailLeave: true, emailPayroll: true, emailReimbursement: true, pushAttendance: true, pushApproval: true, pushAnnouncement: true };
     } catch { return { emailLeave: true, emailPayroll: true, emailReimbursement: true, pushAttendance: true, pushApproval: true, pushAnnouncement: true }; }
   });
-  useEffect(() => { localStorage.setItem('HRIS Loka_notifications', JSON.stringify(notifications)); }, [notifications]);
+  useEffect(() => { safeSetItem('HRIS Loka_notifications', JSON.stringify(notifications)); }, [notifications]);
 
   // ── Security form ──
   const [securityForm, setSecurityForm] = useState({ newPassword: '', confirmPassword: '' });
 
   // ── Appearance ──
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('hrisync_theme') === 'dark');
+  const [darkMode, setDarkMode] = useState(() => safeGetItem('hrisync_theme') === 'dark');
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
-    localStorage.setItem('hrisync_theme', darkMode ? 'dark' : 'light');
+    safeSetItem('hrisync_theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   // ── Payroll config ──
@@ -176,7 +182,7 @@ export default function ProfileDrawer({ open, onClose }) {
             slug: data.slug || 'informasilowongan',
             company_name: data.company_name || 'HRIS Loka',
             company_description: data.company_description || '',
-            accent_color: data.accent_color || '#0047AB',
+            accent_color: data.accent_color || '#635BFF',
             is_active: data.is_active !== false,
           });
           setOriginalSlug(data.slug || 'informasilowongan');
@@ -198,20 +204,19 @@ export default function ProfileDrawer({ open, onClose }) {
     if (!file) return;
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `avatars/${user.id}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      setAvatarUrl(publicUrl);
-      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
-      if (employee?.id) await supabase.from('employees').update({ photo_url: publicUrl }).eq('id', employee.id);
-      await refreshEmployee();
-      toast.success('Foto profil berhasil diperbarui.');
-    } catch (_err) {
-      toast.error('Gagal upload foto.');
+      const { uploadProfilePhoto } = await import('../services/employeeService');
+      const id = employee?.id || user?.id;
+      const { url, error } = await uploadProfilePhoto(id, file, { updateEmployee: !!employee?.id });
+      if (error || !url) throw error || new Error('Upload gagal');
+      setAvatarUrl(url);
+      try { await supabase.auth.updateUser({ data: { avatar_url: url } }); } catch { /* ignore */ }
+      if (typeof refreshEmployee === 'function') await refreshEmployee();
+      toast?.success?.('Foto profil berhasil diperbarui.');
+    } catch (err) {
+      toast?.error?.(err?.message || 'Gagal upload foto. Pastikan bucket profile_photos ada di Supabase.');
     }
     setUploading(false);
+    e.target.value = '';
   };
 
   const handleSaveAccount = async () => {
@@ -238,7 +243,7 @@ export default function ProfileDrawer({ open, onClose }) {
   };
 
   const handleSaveCompany = () => {
-    localStorage.setItem('HRIS Loka_company_settings', JSON.stringify(companyForm));
+    safeSetItem('HRIS Loka_company_settings', JSON.stringify(companyForm));
     toast.success('Pengaturan perusahaan disimpan.');
     showSaved();
   };
@@ -253,7 +258,7 @@ export default function ProfileDrawer({ open, onClose }) {
       setSlugStatus('idle');
       toast.success('Career page settings disimpan.');
     } catch {
-      localStorage.setItem('HRIS Loka_career_settings', JSON.stringify(careerForm));
+      safeSetItem('HRIS Loka_career_settings', JSON.stringify(careerForm));
       toast.info('Disimpan lokal. Jalankan migration SQL untuk simpan ke database.');
     }
     setSaving(false);
@@ -332,7 +337,7 @@ export default function ProfileDrawer({ open, onClose }) {
                 <HiCheck size={13} /> Tersimpan
               </span>
             )}
-            <button className="pd-close-btn" onClick={onClose}><HiXMark size={16} /></button>
+            <button className="pd-close-btn" onClick={onClose} aria-label="Tutup profil"><HiXMark size={16} /></button>
           </div>
         </div>
 
@@ -340,7 +345,14 @@ export default function ProfileDrawer({ open, onClose }) {
         <div className="pd-hero">
           <div className="pd-avatar-wrap">
             {avatarUrl
-              ? <img src={avatarUrl} alt="Avatar" className="pd-avatar-img" />
+              ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="pd-avatar-img"
+                  onError={() => setAvatarUrl(null)}
+                />
+              )
               : <div className="pd-avatar-initials">{initials}</div>}
             <button
               className="pd-avatar-btn"
@@ -538,7 +550,7 @@ export default function ProfileDrawer({ open, onClose }) {
                     )}
                     {slugStatus === 'available' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5, fontSize: 12, fontWeight: 600, color: '#059669' }}>
-                        <span style={{ fontSize: 14 }}>✓</span> URL tersedia — dapat digunakan
+                        <span style={{ fontSize: 14 }}>✓</span> URL tersedia - dapat digunakan
                       </div>
                     )}
                     {slugStatus === 'taken' && (
@@ -559,7 +571,7 @@ export default function ProfileDrawer({ open, onClose }) {
                     <div className="pd-color-row">
                       <input type="color" value={careerForm.accent_color} onChange={e => setCareerForm({ ...careerForm, accent_color: e.target.value })} style={{ width: 42, height: 38, border: '2px solid var(--border)', borderRadius: 8, padding: 2, cursor: 'pointer', background: 'none' }} />
                       <input className="pd-form-input" value={careerForm.accent_color} onChange={e => setCareerForm({ ...careerForm, accent_color: e.target.value })} style={{ width: 100 }} />
-                      {['#0047AB', '#16A34A', '#DC2626', '#7C3AED', '#EA580C', '#0891B2'].map(c => (
+                      {['#635BFF', '#16A34A', '#DC2626', '#7C3AED', '#EA580C', '#0891B2'].map(c => (
                         <div key={c} className={`pd-color-swatch${careerForm.accent_color === c ? ' selected' : ''}`}
                           style={{ background: c }} onClick={() => setCareerForm({ ...careerForm, accent_color: c })} />
                       ))}
@@ -570,7 +582,7 @@ export default function ProfileDrawer({ open, onClose }) {
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 6 }}>
                       <Toggle checked={careerForm.is_active} onChange={() => setCareerForm({ ...careerForm, is_active: !careerForm.is_active })} />
                       <span style={{ fontSize: 13, fontWeight: 600, color: careerForm.is_active ? 'var(--primary)' : 'var(--muted)' }}>
-                        {careerForm.is_active ? 'Aktif — Dapat diakses publik' : 'Nonaktif — Tidak dapat diakses'}
+                        {careerForm.is_active ? 'Aktif - Dapat diakses publik' : 'Nonaktif - Tidak dapat diakses'}
                       </span>
                     </div>
                   </div>
@@ -662,9 +674,9 @@ export default function ProfileDrawer({ open, onClose }) {
                       key={loc.code}
                       className="pd-lang-card"
                       onClick={() => setLocale(loc.code)}
-                      style={{ borderColor: locale === loc.code ? 'var(--primary)' : 'var(--border)', background: locale === loc.code ? 'rgba(0,71,171,0.06)' : 'var(--surface)' }}
+                      style={{ borderColor: locale === loc.code ? 'var(--primary)' : 'var(--border)', background: locale === loc.code ? 'rgba(99,91,255,0.06)' : 'var(--surface)' }}
                     >
-                      <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4, color: locale === loc.code ? 'var(--primary)' : 'var(--text)' }}>
+                      <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4, color: locale === loc.code ? 'var(--primary)' : 'var(--text)' }}>
                         {loc.code.toUpperCase()}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>{loc.label}</div>
@@ -753,8 +765,8 @@ export default function ProfileDrawer({ open, onClose }) {
                           {item.rate && (
                             <div className="pd-deduction-rate">
                               Rate: {(item.rate * 100).toFixed(0)}%
-                              {item.wageCapBP ? ` · Batas upah: Rp ${item.wageCapBP.toLocaleString('id-ID')}` : ''}
-                              {item.cap ? ` · Maks iuran: Rp ${item.cap.toLocaleString('id-ID')}` : ''}
+                              {item.wageCapBP ? `  Batas upah: Rp ${item.wageCapBP.toLocaleString('id-ID')}` : ''}
+                              {item.cap ? `  Maks iuran: Rp ${item.cap.toLocaleString('id-ID')}` : ''}
                             </div>
                           )}
                           {!item.rate && (
