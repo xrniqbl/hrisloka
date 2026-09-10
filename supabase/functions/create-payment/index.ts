@@ -8,6 +8,8 @@ const MIDTRANS_SERVER_KEY = Deno.env.get('MIDTRANS_SERVER_KEY') || '';
 const MIDTRANS_BASE_URL = Deno.env.get('MIDTRANS_IS_PRODUCTION') === 'true'
   ? 'https://app.midtrans.com/snap/v1'
   : 'https://app.sandbox.midtrans.com/snap/v1';
+// KEEP IN SYNC with src/lib/plans.js (YEARLY_DISCOUNT_PERCENT) and
+// supabase/migrations/sync_plan_prices_149k_299k.sql — checked at audit 2026-09.
 const YEARLY_DISCOUNT = 0.15;
 
 const FALLBACK_PLANS: Record<string, { name: string; price_monthly: number | null }> = {

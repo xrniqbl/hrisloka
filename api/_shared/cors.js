@@ -1,6 +1,13 @@
 /**
  * Shared CORS allowlist for API handlers (VPS + any host).
  * Extra origins: ALLOWED_ORIGINS or SITE_URL (comma-separated).
+ *
+ * Security: never reflect arbitrary Origin. Disallowed origins get no ACAO.
+ *
+ * NOTE on rate limiting: the in-memory Map used by individual api/*.js
+ * handlers is per-process. It is only meaningful on the single-node VPS
+ * deployment; on Vercel serverless each instance has its own map.
+ * See docs/ENVIRONMENT.md ("RATE LIMITING").
  */
 
 const DEFAULT_ORIGINS = [
@@ -23,20 +30,42 @@ export function getAllowedOrigins() {
 }
 
 /**
- * Apply CORS headers. Returns true if preflight was handled (caller should return).
+ * Apply CORS headers. Returns true if origin is allowed (or no Origin).
+ * Callers may reject disallowed browser origins with 403 if desired.
  */
-export function applyCors(req, res, { methods = 'GET, POST, OPTIONS', headers = 'Content-Type, Authorization' } = {}) {
+export function applyCors(
+  req,
+  res,
+  {
+    methods = 'GET, POST, OPTIONS',
+    headers = 'Content-Type, Authorization',
+    credentials = false,
+  } = {},
+) {
   const origin = req.headers.origin;
   const allowed = getAllowedOrigins();
-  if (origin && allowed.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    // same-origin / server-to-server — no ACAO needed
-  } else {
-    // Reflect nothing sensitive; still set a default for simple tools
-    res.setHeader('Access-Control-Allow-Origin', allowed[0]);
+
+  if (origin) {
+    if (allowed.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      if (credentials) res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    // Disallowed Origin: do NOT set ACAO (browser blocks). Do not echo origin.
   }
+
   res.setHeader('Access-Control-Allow-Methods', methods);
   res.setHeader('Access-Control-Allow-Headers', headers);
+  res.setHeader('Access-Control-Max-Age', '600');
   res.setHeader('Vary', 'Origin');
+
+  return !origin || allowed.includes(origin);
+}
+
+/** Reject browser requests from unknown origins (optional hard fail). */
+export function rejectDisallowedOrigin(req, res) {
+  const origin = req.headers.origin;
+  if (!origin) return false;
+  if (getAllowedOrigins().includes(origin)) return false;
+  res.status(403).json({ error: 'Origin not allowed' });
+  return true;
 }

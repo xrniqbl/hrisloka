@@ -8,6 +8,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// KEEP IN SYNC with src/lib/plans.js (YEARLY_DISCOUNT_PERCENT) and
+// supabase/migrations/sync_plan_prices_149k_299k.sql — checked at audit 2026-09.
 const YEARLY_DISCOUNT = 0.15;
 
 const corsHeaders = {
@@ -226,6 +228,8 @@ serve(async (req) => {
         return json(req, { error: 'Voucher habis dipakai' }, 400);
       }
 
+      // Schema declares discount_type VARCHAR 'percent'|'fixed'; 'percentage'
+      // is accepted defensively because legacy rows were written with it.
       if (voucher.discount_type === 'percentage' || voucher.discount_type === 'percent') {
         discount = Math.round(base * Number(voucher.discount_value) / 100);
       } else {

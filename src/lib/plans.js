@@ -3,6 +3,13 @@
  * DB `subscription_plans` overrides when available; keep these in sync.
  *
  * Yearly = monthly × 12 × (1 − YEARLY_DISCOUNT).
+ *
+ * KEEP IN SYNC (prices 149000/299000 + discount 15%):
+ * - supabase/functions/create-payment/index.ts (FALLBACK_PLANS, YEARLY_DISCOUNT)
+ * - supabase/functions/activate-free-subscription/index.ts (YEARLY_DISCOUNT)
+ * - supabase/functions/midtrans-webhook/index.ts
+ * - supabase/migrations/sync_plan_prices_149k_299k.sql
+ * (cross-checked at audit 2026-09)
  */
 export const YEARLY_DISCOUNT_PERCENT = 15;
 
