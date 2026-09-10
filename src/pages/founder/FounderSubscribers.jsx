@@ -1,6 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiSearch, FiX, FiUsers } from 'react-icons/fi';
 import * as founderService from '../../services/founderService';
+import { useToast } from '../../components/Toast';
 import './founder.css';
 // \u2500\u2500 Skeleton helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function SkeletonBox({ w = '100%', h = 28, style = {} }) {
@@ -74,6 +75,7 @@ function StatusBadge({ status }) {
 }
 
 export default function FounderSubscribers() {
+  const { toast } = useToast();
   const [subs, setSubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -81,8 +83,13 @@ export default function FounderSubscribers() {
   const [planFilter, setPlanFilter] = useState('all');
   const [selected, setSelected] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  // In-app confirmation dialogs (replace window.prompt / window.confirm)
+  const [confirmCancel, setConfirmCancel] = useState(null); // { sub }
+  const [cancelReason, setCancelReason] = useState('');
+  const [confirmExtend, setConfirmExtend] = useState(null); // { sub }
+  const [extendDays, setExtendDays] = useState('30');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const { data, error } = await founderService.getAllSubscriptions();
       if (error) throw error;
@@ -92,36 +99,40 @@ export default function FounderSubscribers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleCancelSubscription = async (sub) => {
-    const reason = window.prompt(`Alasan pembatalan langganan untuk ${sub.companies?.name}:`);
+    const reason = cancelReason.trim();
     if (!reason) return;
-    
+
     setActionLoading(sub.id);
     try {
       const { error } = await founderService.cancelSubscription(sub.id, reason);
       if (error) throw error;
+      toast.success('Langganan dibatalkan.');
+      setConfirmCancel(null);
+      setCancelReason('');
       await fetchData();
       setSelected(null);
     } catch (err) {
-      alert(`Gagal membatalkan langganan: ${err.message}`);
+      console.error('[FounderSubscribers] cancel failed:', err);
+      toast.error(`Gagal membatalkan langganan: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleExtendSubscription = async (sub) => {
-    const days = window.prompt(`Perpanjang langganan ${sub.companies?.name} berapa hari?`, '30');
-    if (!days || isNaN(days) || Number(days) <= 0) return;
-    
+    const days = Number(extendDays);
+    if (!Number.isFinite(days) || days <= 0) return;
+
     setActionLoading(sub.id);
     try {
       const currentEndDate = sub.expires_at ? new Date(sub.expires_at) : new Date();
       const newEndDate = new Date(currentEndDate);
-      newEndDate.setDate(newEndDate.getDate() + Number(days));
+      newEndDate.setDate(newEndDate.getDate() + days);
       
       const { error } = await founderService.updateSubscription(sub.id, {
         status: 'active',
@@ -129,16 +140,21 @@ export default function FounderSubscribers() {
         notes: `Extended by founder for ${days} days`,
       });
       if (error) throw error;
+      toast.success(`Langganan diperpanjang ${days} hari.`);
       await fetchData();
       setSelected(null);
     } catch (err) {
-      alert(`Gagal memperpanjang langganan: ${err.message}`);
+      console.error('[FounderSubscribers] extend failed:', err);
+      toast.error(`Gagal memperpanjang langganan: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
   if (loading) return <SkeletonPage cols={6} rows={8} hasStats={false} />;
+
+  const extendTarget = confirmExtend?.sub;
+  const cancelTarget = confirmCancel?.sub;
 
   const filtered = subs.filter(s => {
     const name = s.companies?.name?.toLowerCase() || '';
@@ -323,9 +339,8 @@ export default function FounderSubscribers() {
               <button
                 className="fp-btn fp-btn-danger fp-btn-sm"
                 onClick={() => {
-                  if (window.confirm(`Batalkan langganan ${selected.companies?.name}? Tindakan ini tidak dapat dibatalkan.`)) {
-                    handleCancelSubscription(selected);
-                  }
+                  setCancelReason('');
+                  setConfirmCancel({ sub: selected });
                 }}
                 disabled={actionLoading === selected?.id || selected?.status === 'cancelled'}
               >
@@ -333,10 +348,97 @@ export default function FounderSubscribers() {
               </button>
               <button
                 className="fp-btn fp-btn-primary fp-btn-sm"
-                onClick={() => handleExtendSubscription(selected)}
+                onClick={() => {
+                  setExtendDays('30');
+                  setConfirmExtend({ sub: selected });
+                }}
                 disabled={actionLoading === selected?.id}
               >
                 {actionLoading === selected?.id ? 'Memperpanjang...' : 'Extend Plan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel confirmation dialog (in-app, replaces window.prompt/confirm) */}
+      {cancelTarget && (
+        <div className="fp-modal-overlay" onClick={() => setConfirmCancel(null)}>
+          <div className="fp-modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="fp-modal-header">
+              <div className="fp-modal-title">Batalkan Langganan</div>
+              <button className="fp-modal-close" onClick={() => setConfirmCancel(null)}><FiX /></button>
+            </div>
+            <div className="fp-modal-body">
+              <p style={{ fontSize: 13, color: 'var(--text)', margin: '0 0 14px' }}>
+                Batalkan langganan <strong>{cancelTarget.companies?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                Alasan pembatalan
+              </label>
+              <textarea
+                className="fp-input"
+                rows={3}
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="Contoh: pelanggan berhenti, request refund, ..."
+                autoFocus
+              />
+            </div>
+            <div className="fp-modal-footer">
+              <button className="fp-btn fp-btn-secondary fp-btn-sm" onClick={() => setConfirmCancel(null)}>
+                Batal
+              </button>
+              <button
+                className="fp-btn fp-btn-danger fp-btn-sm"
+                onClick={() => handleCancelSubscription(cancelTarget)}
+                disabled={!cancelReason.trim() || actionLoading === cancelTarget.id}
+              >
+                {actionLoading === cancelTarget.id ? 'Membatalkan...' : 'Ya, Batalkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Extend confirmation dialog (in-app, replaces window.prompt) */}
+      {extendTarget && (
+        <div className="fp-modal-overlay" onClick={() => setConfirmExtend(null)}>
+          <div className="fp-modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="fp-modal-header">
+              <div className="fp-modal-title">Perpanjang Langganan</div>
+              <button className="fp-modal-close" onClick={() => setConfirmExtend(null)}><FiX /></button>
+            </div>
+            <div className="fp-modal-body">
+              <p style={{ fontSize: 13, color: 'var(--text)', margin: '0 0 14px' }}>
+                Perpanjang langganan <strong>{extendTarget.companies?.name}</strong> selama:
+              </p>
+              <input
+                className="fp-input"
+                type="number"
+                min="1"
+                value={extendDays}
+                onChange={e => setExtendDays(e.target.value)}
+                autoFocus
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8 }}>
+                Tanggal berakhir baru: {(() => {
+                  const base = extendTarget.expires_at ? new Date(extendTarget.expires_at) : new Date();
+                  base.setDate(base.getDate() + (Number(extendDays) || 0));
+                  return base.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                })()}
+              </div>
+            </div>
+            <div className="fp-modal-footer">
+              <button className="fp-btn fp-btn-secondary fp-btn-sm" onClick={() => setConfirmExtend(null)}>
+                Batal
+              </button>
+              <button
+                className="fp-btn fp-btn-primary fp-btn-sm"
+                onClick={() => handleExtendSubscription(extendTarget)}
+                disabled={!(Number(extendDays) > 0) || actionLoading === extendTarget.id}
+              >
+                {actionLoading === extendTarget.id ? 'Memperpanjang...' : 'Perpanjang'}
               </button>
             </div>
           </div>

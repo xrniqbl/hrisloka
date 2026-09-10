@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   HiArrowPath,
   HiBellAlert,
@@ -60,13 +60,14 @@ export default function EmpSubmissions() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState('');
   const [cancellingId, setCancellingId] = useState(null);
+  const [confirmCancelId, setConfirmCancelId] = useState(null);
   const [myProjects, setMyProjects] = useState([]);
 
   const [cutiForm, setCutiForm]     = useState({ type: 'Cuti Tahunan', startDate: '', endDate: '', reason: '' });
   const [reimbForm, setReimbForm]   = useState({ category: 'Transportasi', amount: '', notes: '', date: '' });
   const [lemburForm, setLemburForm] = useState({ date: '', hours: '', reason: '', projectId: '' });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (isDemoMode()) {
       setEmp({ ...DEMO_EMPLOYEE });
       setLeaves([...(DEMO_PROFILE_DATA.leaves || [])]);
@@ -97,9 +98,9 @@ export default function EmpSubmissions() {
       setMyProjects((pj.data || []).filter(a => a.projects?.status === 'active'));
     }
     setLoading(false);
-  };
+  }, [authEmployee, user]);
 
-  useEffect(() => { load(); }, [user, authEmployee?.id]);
+  useEffect(() => { load(); }, [load]);
 
   const refresh = async () => {
     if (!emp || isDemoMode()) return;
@@ -119,7 +120,7 @@ export default function EmpSubmissions() {
     const handler = () => { setLoading(true); load().then(() => setLoading(false)); };
     window.addEventListener('emp:refresh', handler);
     return () => window.removeEventListener('emp:refresh', handler);
-  }, [emp]);
+  }, [emp, load]);
 
   const openSheet = (type) => { setSheetType(type); setFormError(''); setSheetOpen(true); };
   const closeSheet = () => { setSheetOpen(false); setSheetType(''); setFormError(''); };
@@ -259,7 +260,7 @@ export default function EmpSubmissions() {
   };
 
   const handleCancelLeave = async (id) => {
-    if (!window.confirm(locale === 'en' ? 'Cancel this leave request?' : 'Batalkan pengajuan cuti ini?')) return;
+    setConfirmCancelId(null);
     setCancellingId(id);
 
     if (isDemoMode()) {
@@ -454,7 +455,7 @@ export default function EmpSubmissions() {
                     <StatusBadge status={item.status} locale={locale} />
                     {activeTab === 'cuti' && item.status === 'pending' && (
                       <button
-                        onClick={() => handleCancelLeave(item.id)}
+                        onClick={() => setConfirmCancelId(item.id)}
                         disabled={cancellingId === item.id}
                         style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(220,38,38,0.08)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#DC2626' }}
                       >
@@ -544,6 +545,52 @@ export default function EmpSubmissions() {
           <div><label className="emp-field-label">{locale === 'en' ? 'Reason' : 'Alasan'}</label><textarea placeholder={locale === 'en' ? 'Reason for overtime...' : 'Alasan lembur...'} value={lemburForm.reason} onChange={e => setLemburForm({ ...lemburForm, reason: e.target.value })} className="emp-field-textarea" /></div>
         </div>
       </BottomSheet>
+
+      {/* Cancel-leave confirmation (in-app dialog, replaces window.confirm) */}
+      {confirmCancelId != null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirmCancelId(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(2px)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 420, background: 'var(--surface, #fff)',
+              borderRadius: '16px 16px 0 0', padding: '20px 18px calc(20px + env(safe-area-inset-bottom))',
+              boxShadow: '0 -8px 30px rgba(0,0,0,0.18)',
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
+              {locale === 'en' ? 'Cancel this leave request?' : 'Batalkan pengajuan cuti ini?'}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+              {locale === 'en' ? 'This request will be withdrawn and cannot be undone.' : 'Pengajuan akan ditarik dan tidak dapat dikembalikan.'}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setConfirmCancelId(null)}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', background: 'transparent', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {locale === 'en' ? 'Keep request' : 'Kembali'}
+              </button>
+              <button
+                onClick={() => handleCancelLeave(confirmCancelId)}
+                disabled={cancellingId === confirmCancelId}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                {cancellingId === confirmCancelId && <HiArrowPath size={14} style={{ animation: 'spin 0.8s linear infinite' }} />}
+                {locale === 'en' ? 'Yes, cancel it' : 'Ya, Batalkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
