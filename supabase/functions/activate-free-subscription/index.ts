@@ -11,14 +11,35 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const YEARLY_DISCOUNT = 0.15;
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function json(body: unknown, status = 200) {
+// Origin allowlist — mirrors api/_shared/cors.js. Extra origins can be added
+// via the ALLOWED_ORIGINS / SITE_URL secrets. Never reflect unknown origins.
+const ALLOWED_ORIGINS = [
+  'https://hrisloka.id',
+  'https://www.hrisloka.id',
+  'https://hrisloka.com',
+  'https://www.hrisloka.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean),
+  ...(Deno.env.get('SITE_URL') ? [Deno.env.get('SITE_URL')!.trim().replace(/\/$/, '')] : []),
+];
+
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') || '';
+  return ALLOWED_ORIGINS.includes(origin)
+    ? { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
+    : corsHeaders;
+}
+
+function json(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
   });
 }
 
@@ -125,15 +146,15 @@ async function ensureAdminEmployee(
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeadersFor(req) });
   }
   if (req.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405);
+    return json(req, { error: 'Method not allowed' }, 405);
   }
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ error: 'Unauthorized' }, 401);
+    if (!authHeader) return json(req, { error: 'Unauthorized' }, 401);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -143,7 +164,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', ''),
     );
-    if (authError || !user) return json({ error: 'Unauthorized' }, 401);
+    if (authError || !user) return json(req, { error: 'Unauthorized' }, 401);
 
     const body = await req.json().catch(() => ({}));
     const {
@@ -153,7 +174,7 @@ serve(async (req) => {
       voucher_code,
     } = body;
 
-    if (!plan_slug) return json({ error: 'Missing plan_slug' }, 400);
+    if (!plan_slug) return json(req, { error: 'Missing plan_slug' }, 400);
 
     // ── Resolve plan price ──────────────────────────────────────────────
     let plan: Record<string, unknown> | null = null;
@@ -169,9 +190,9 @@ serve(async (req) => {
     if (!plan && plan_slug === 'free') {
       plan = { slug: 'free', name: 'Free', price_monthly: 0 };
     }
-    if (!plan) return json({ error: 'Paket tidak ditemukan atau tidak aktif' }, 400);
+    if (!plan) return json(req, { error: 'Paket tidak ditemukan atau tidak aktif' }, 400);
     if (plan_slug === 'enterprise') {
-      return json({ error: 'Paket Enterprise memerlukan kontak sales' }, 400);
+      return json(req, { error: 'Paket Enterprise memerlukan kontak sales' }, 400);
     }
 
     const cycle = billing_cycle === 'yearly' ? 'yearly' : 'monthly';
@@ -189,20 +210,20 @@ serve(async (req) => {
         .eq('is_active', true)
         .maybeSingle();
 
-      if (!voucher) return json({ error: 'Voucher tidak valid' }, 400);
+      if (!voucher) return json(req, { error: 'Voucher tidak valid' }, 400);
       if (voucher.valid_until && new Date(voucher.valid_until) < new Date()) {
-        return json({ error: 'Voucher kadaluarsa' }, 400);
+        return json(req, { error: 'Voucher kadaluarsa' }, 400);
       }
       const plans = voucher.applicable_plans || [];
       if (Array.isArray(plans) && plans.length > 0 && !plans.includes(plan_slug)) {
-        return json({ error: 'Voucher tidak berlaku untuk paket ini' }, 400);
+        return json(req, { error: 'Voucher tidak berlaku untuk paket ini' }, 400);
       }
       if (voucher.plan_slug && voucher.plan_slug !== plan_slug) {
-        return json({ error: 'Voucher tidak berlaku untuk paket ini' }, 400);
+        return json(req, { error: 'Voucher tidak berlaku untuk paket ini' }, 400);
       }
       const used = voucher.used_count ?? voucher.current_uses ?? 0;
       if (voucher.max_uses !== null && voucher.max_uses !== undefined && used >= voucher.max_uses) {
-        return json({ error: 'Voucher habis dipakai' }, 400);
+        return json(req, { error: 'Voucher habis dipakai' }, 400);
       }
 
       if (voucher.discount_type === 'percentage' || voucher.discount_type === 'percent') {
@@ -216,10 +237,10 @@ serve(async (req) => {
 
     // Only zero-amount activations belong here — anything else must pay via Midtrans.
     if (base > 0 && finalAmount > 0) {
-      return json({ error: 'Paket ini memerlukan pembayaran — gunakan checkout Midtrans' }, 400);
+      return json(req, { error: 'Paket ini memerlukan pembayaran — gunakan checkout Midtrans' }, 400);
     }
     if (voucherCode && discount < base) {
-      return json({ error: 'Voucher tidak mencakup 100% harga paket' }, 400);
+      return json(req, { error: 'Voucher tidak mencakup 100% harga paket' }, 400);
     }
 
     // ── Onboarding profile (name / company) ─────────────────────────────
@@ -265,7 +286,7 @@ serve(async (req) => {
 
     if (subErr) {
       console.error('[activate-free] subscription upsert error:', subErr.message);
-      return json({ error: 'Gagal mengaktifkan langganan. Coba lagi.' }, 500);
+      return json(req, { error: 'Gagal mengaktifkan langganan. Coba lagi.' }, 500);
     }
 
     // ── Voucher usage bookkeeping ───────────────────────────────────────
@@ -296,7 +317,7 @@ serve(async (req) => {
       `[activate-free] Activated: user=${user.id} plan=${plan_slug} cycle=${cycle} voucher=${voucherCode || '-'} expires=${expiresAt}`,
     );
 
-    return json({
+    return json(req, {
       success: true,
       company_id: companyId,
       needs_setup: !companyId,
@@ -305,6 +326,6 @@ serve(async (req) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[activate-free] Error:', message);
-    return json({ error: message }, 500);
+    return json(req, { error: message }, 500);
   }
 });

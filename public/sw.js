@@ -140,6 +140,7 @@ self.addEventListener('sync', (event) => {
 
 async function replayAttendanceQueue() {
     try {
+        const authToken = await getAuthTokenFromClients();
         const db = await openSyncDB();
         const tx = db.transaction('sync_queue', 'readwrite');
         const store = tx.objectStore('sync_queue');
@@ -154,10 +155,17 @@ async function replayAttendanceQueue() {
                 continue;
             }
 
+            // The API verifies the JWT fail-closed — without a token the replay
+            // cannot succeed; keep the item queued for a later attempt.
+            if (!authToken) {
+                await updateRetryCount(db, item.id, retries + 1);
+                continue;
+            }
+
             try {
                 const res = await fetch(item.url, {
                     method: item.method,
-                    headers: item.headers,
+                    headers: { ...(item.headers || {}), Authorization: `Bearer ${authToken}` },
                     body: item.body,
                 });
                 if (res.ok) {
@@ -176,6 +184,36 @@ async function replayAttendanceQueue() {
         }
     } catch (err) {
         console.error('[SW] Background sync error:', err);
+    }
+}
+
+/**
+ * Ask open app windows for the current Supabase access token.
+ * The service worker has no access to localStorage, so the app answers
+ * via postMessage (see backgroundSync.js listener).
+ */
+async function getAuthTokenFromClients() {
+    try {
+        const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        if (!clientList.length) return null;
+        return await new Promise((resolve) => {
+            let settled = false;
+            const finish = (token) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                self.removeEventListener('message', onMessage);
+                resolve(token || null);
+            };
+            const timer = setTimeout(() => finish(null), 3000);
+            const onMessage = (event) => {
+                if (event.data && event.data.type === 'SYNC_AUTH_TOKEN') finish(event.data.token);
+            };
+            self.addEventListener('message', onMessage);
+            clientList.forEach((client) => client.postMessage({ type: 'REQUEST_SYNC_AUTH_TOKEN' }));
+        });
+    } catch {
+        return null;
     }
 }
 

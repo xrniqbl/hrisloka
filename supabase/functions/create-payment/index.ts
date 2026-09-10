@@ -17,9 +17,30 @@ const FALLBACK_PLANS: Record<string, { name: string; price_monthly: number | nul
 };
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Origin allowlist — mirrors api/_shared/cors.js. Extra origins can be added
+// via the ALLOWED_ORIGINS / SITE_URL secrets. Never reflect unknown origins.
+const ALLOWED_ORIGINS = [
+  'https://hrisloka.id',
+  'https://www.hrisloka.id',
+  'https://hrisloka.com',
+  'https://www.hrisloka.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean),
+  ...(Deno.env.get('SITE_URL') ? [Deno.env.get('SITE_URL')!.trim().replace(/\/$/, '')] : []),
+];
+
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') || '';
+  return ALLOWED_ORIGINS.includes(origin)
+    ? { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
+    : corsHeaders;
+}
 
 function expectedBasePrice(priceMonthly: number | null, billingCycle: string): number | null {
   if (priceMonthly === null || priceMonthly === undefined) return null;
@@ -31,14 +52,14 @@ function expectedBasePrice(priceMonthly: number | null, billingCycle: string): n
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeadersFor(req) });
   }
 
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -52,7 +73,7 @@ serve(async (req) => {
     );
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -68,21 +89,21 @@ serve(async (req) => {
 
     if (!plan_slug || amount === undefined || amount === null) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     const amountNum = Number(amount);
     if (!Number.isFinite(amountNum) || amountNum < 0) {
       return new Response(JSON.stringify({ error: 'Invalid amount' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     // Free / 100% voucher must not go through Midtrans
     if (amountNum === 0) {
       return new Response(JSON.stringify({ error: 'Use free activation path for zero amount' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -100,14 +121,14 @@ serve(async (req) => {
 
     if (!plan || plan.price_monthly === null) {
       return new Response(JSON.stringify({ error: 'Invalid or custom plan — contact sales' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     const base = expectedBasePrice(Number(plan.price_monthly), billing_cycle === 'yearly' ? 'yearly' : 'monthly');
     if (base === null) {
       return new Response(JSON.stringify({ error: 'Cannot price this plan' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -125,32 +146,32 @@ serve(async (req) => {
 
       if (!voucher) {
         return new Response(JSON.stringify({ error: 'Voucher tidak valid' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       if (voucher.valid_until && new Date(voucher.valid_until) < new Date()) {
         return new Response(JSON.stringify({ error: 'Voucher kadaluarsa' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
 
       const plans = voucher.applicable_plans || [];
       if (Array.isArray(plans) && plans.length > 0 && !plans.includes(plan_slug)) {
         return new Response(JSON.stringify({ error: 'Voucher tidak berlaku untuk paket ini' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       // single plan_slug column (older schema)
       if (voucher.plan_slug && voucher.plan_slug !== plan_slug) {
         return new Response(JSON.stringify({ error: 'Voucher tidak berlaku untuk paket ini' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
 
       const used = voucher.used_count ?? voucher.current_uses ?? 0;
       if (voucher.max_uses !== null && used >= voucher.max_uses) {
         return new Response(JSON.stringify({ error: 'Voucher habis dipakai' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
 
@@ -169,13 +190,13 @@ serve(async (req) => {
         error: 'Harga tidak valid. Muat ulang halaman dan coba lagi.',
         expected: expectedAmount,
       }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
     if (!MIDTRANS_SERVER_KEY) {
       return new Response(JSON.stringify({ error: 'Payment gateway not configured' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -228,7 +249,7 @@ serve(async (req) => {
     const midtransData = await midtransRes.json();
     if (!midtransData.token) {
       return new Response(JSON.stringify({ error: 'Failed to create payment', detail: midtransData }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -248,7 +269,7 @@ serve(async (req) => {
     if (insertErr) {
       console.error('[create-payment] insert order error:', insertErr.message);
       return new Response(JSON.stringify({ error: 'Failed to save order' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
@@ -257,11 +278,11 @@ serve(async (req) => {
       order_id,
       amount: expectedAmount,
       redirect_url: midtransData.redirect_url,
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }), { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return new Response(JSON.stringify({ error: message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
     });
   }
 });

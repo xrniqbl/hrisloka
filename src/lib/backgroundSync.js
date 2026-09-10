@@ -3,12 +3,33 @@
  * When offline, stores clock-in data in IndexedDB and registers Background Sync.
  * When online, the Service Worker replays the queue.
  * Falls back to manual replay on `online` event for browsers without SyncManager (Safari, Firefox).
+ *
+ * Auth: the queued request must carry a Supabase access token — the API verifies
+ * the JWT fail-closed. The token is attached at REPLAY time (not enqueue time)
+ * so long-offline sessions still send a fresh, valid session token.
  */
+
+import { supabase } from './supabase';
 
 const DB_NAME = 'hrisloka_sync';
 const STORE_NAME = 'sync_queue';
 const SYNC_TAG = 'attendance-sync';
 const MAX_RETRIES = 5;
+
+/**
+ * Attach the current session's access token to the stored headers.
+ * Returns null when no session exists — replay then keeps the item for retry.
+ */
+async function withAuthHeaders(headers) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return null;
+    return { ...headers, Authorization: `Bearer ${token}` };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Open the sync IndexedDB.
@@ -62,6 +83,7 @@ export async function queueRequest(url, method, headers, body) {
     // Fallback: register online listener for browsers without SyncManager
     console.log('[BackgroundSync] SyncManager not available, will replay on next online event');
     registerOnlineFallback();
+    registerTokenBridge();
     return false;
   } catch (err) {
     console.warn('[BackgroundSync] Failed to queue:', err);
@@ -69,7 +91,27 @@ export async function queueRequest(url, method, headers, body) {
   }
 }
 
-// ── Fallback replay for browsers without SyncManager ──────────────────
+// ── Service-worker token bridge ─────────────────────────────────────────────
+// The SW replays the sync queue but cannot read localStorage, so it asks this
+// page for the current access token via postMessage.
+let tokenBridgeRegistered = false;
+
+function registerTokenBridge() {
+  if (tokenBridgeRegistered || typeof window === 'undefined') return;
+  tokenBridgeRegistered = true;
+  window.addEventListener('message', async (event) => {
+    if (event.data?.type !== 'REQUEST_SYNC_AUTH_TOKEN') return;
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token || null;
+      event.source?.postMessage({ type: 'SYNC_AUTH_TOKEN', token });
+    } catch {
+      event.source?.postMessage({ type: 'SYNC_AUTH_TOKEN', token: null });
+    }
+  });
+}
+
+// ── Fallback replay for browsers without SyncManager ──────────────────────
 let onlineListenerRegistered = false;
 
 async function registerOnlineFallback() {
@@ -108,9 +150,21 @@ async function fallbackReplay() {
       }
 
       try {
+        const headers = await withAuthHeaders(item.headers);
+        if (!headers) {
+          // No valid session — leave the item queued for the next attempt
+          const updTx = db.transaction(STORE_NAME, 'readwrite');
+          const updStore = updTx.objectStore(STORE_NAME);
+          const getReq = updStore.get(item.id);
+          getReq.onsuccess = () => {
+            const rec = getReq.result;
+            if (rec) { rec.retries = (rec.retries || 0) + 1; updStore.put(rec); }
+          };
+          continue;
+        }
         const res = await fetch(item.url, {
           method: item.method,
-          headers: item.headers,
+          headers,
           body: item.body,
         });
         if (res.ok) {
