@@ -10,6 +10,11 @@
 --    company_id, tetapi definisi di migration_batch2.sql tidak memilikinya.
 --
 -- Idempoten — aman dijalankan berulang (Supabase SQL Editor).
+--
+-- LIVE-DB DRIFT WARNING (audit 2026-09): tipe companies.id di production
+-- dapat berupa uuid (bukan integer seperti di repo). Script gabungan yang
+-- type-aware adalah scripts/RUN_AFTER_AUDIT.sql — gunakan itu untuk
+-- production. File ini adalah versi repo-repo asumsi integer.
 -- ============================================================
 
 -- ── 1. billing_info ─────────────────────────────────────────

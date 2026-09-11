@@ -20,37 +20,56 @@
 -- ############################################################################
 -- BAGIAN 0 — Helper functions (dari harden_tenant_rls_bcd_2026.sql)
 -- ############################################################################
+-- PENTING (live-DB drift, 2026-09): tipe kolom company_id di production
+-- CAMPUR — sebagian integer (employees), sebagian uuid (onboarding_checklist).
+-- Postgres tidak mengizinkan CREATE OR REPLACE mengubah return type, jadi
+-- fungsi helper HANYA dibuat bila belum ada (signature tetap integer), dan
+-- SEMUA perbandingan di call-site memakai cast ::text — valid untuk
+-- integer / bigint / uuid sekaligus.
 
-CREATE OR REPLACE FUNCTION get_my_company_id()
-RETURNS integer
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $$
-  SELECT company_id FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
-$$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_my_company_id' AND pronamespace = 'public'::regnamespace) THEN
+    CREATE FUNCTION get_my_company_id()
+    RETURNS integer
+    LANGUAGE sql
+    SECURITY DEFINER
+    STABLE
+    SET search_path = public
+    AS $fn$
+      SELECT company_id FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
+    $fn$;
+  END IF;
+END $$;
 
-CREATE OR REPLACE FUNCTION get_my_role()
-RETURNS text
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $$
-  SELECT role FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
-$$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_my_role' AND pronamespace = 'public'::regnamespace) THEN
+    CREATE FUNCTION get_my_role()
+    RETURNS text
+    LANGUAGE sql
+    SECURITY DEFINER
+    STABLE
+    SET search_path = public
+    AS $fn$
+      SELECT role FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
+    $fn$;
+  END IF;
+END $$;
 
-CREATE OR REPLACE FUNCTION get_my_employee_id()
-RETURNS integer
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $$
-  SELECT id FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
-$$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_my_employee_id' AND pronamespace = 'public'::regnamespace) THEN
+    CREATE FUNCTION get_my_employee_id()
+    RETURNS integer
+    LANGUAGE sql
+    SECURITY DEFINER
+    STABLE
+    SET search_path = public
+    AS $fn$
+      SELECT id FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
+    $fn$;
+  END IF;
+END $$;
 
+-- is_founder(): signature sama (boolean) — aman di-CREATE OR REPLACE.
 CREATE OR REPLACE FUNCTION is_founder()
 RETURNS boolean
 LANGUAGE sql
@@ -72,6 +91,18 @@ AS $$
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = _table AND column_name = _column
   );
+$$;
+
+-- Helper: tipe data kolom (untuk FK yang mengikuti tipe live)
+CREATE OR REPLACE FUNCTION fn_column_type(_table text, _column text)
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT data_type FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = _table AND column_name = _column
+  LIMIT 1;
 $$;
 
 -- ############################################################################
@@ -98,7 +129,7 @@ CREATE POLICY "employees_tenant_select" ON public.employees
   FOR SELECT
   USING (
     company_id IS NOT NULL
-    AND company_id = get_my_company_id()
+    AND company_id::text = get_my_company_id()::text
   );
 
 -- Employee boleh edit barisnya sendiri
@@ -113,7 +144,7 @@ DROP POLICY IF EXISTS "employees_admin_insert_v2" ON public.employees;
 CREATE POLICY "employees_admin_insert_v2" ON public.employees
   FOR INSERT
   WITH CHECK (
-    company_id = get_my_company_id()
+    company_id::text = get_my_company_id()::text
     AND get_my_role() IN ('hr_admin', 'super_admin', 'manager')
   );
 
@@ -121,15 +152,15 @@ CREATE POLICY "employees_admin_insert_v2" ON public.employees
 DROP POLICY IF EXISTS "employees_tenant_update" ON public.employees;
 CREATE POLICY "employees_tenant_update" ON public.employees
   FOR UPDATE
-  USING (company_id = get_my_company_id())
-  WITH CHECK (company_id = get_my_company_id());
+  USING (company_id::text = get_my_company_id()::text)
+  WITH CHECK (company_id::text = get_my_company_id()::text);
 
 -- Delete: super_admin / hr_admin company tsb
 DROP POLICY IF EXISTS "employees_tenant_delete" ON public.employees;
 CREATE POLICY "employees_tenant_delete" ON public.employees
   FOR DELETE
   USING (
-    company_id = get_my_company_id()
+    company_id::text = get_my_company_id()::text
     AND get_my_role() IN ('super_admin', 'hr_admin')
   );
 
@@ -165,13 +196,13 @@ BEGIN
       DROP POLICY IF EXISTS "notifications_tenant_all" ON public.notifications;
       CREATE POLICY "notifications_tenant_all" ON public.notifications
         FOR ALL USING (
-          company_id = get_my_company_id()
-          OR employee_id = get_my_employee_id()
+          company_id::text = get_my_company_id()::text
+          OR employee_id::text = get_my_employee_id()::text
         );
     ELSE
       DROP POLICY IF EXISTS "notifications_tenant_all" ON public.notifications;
       CREATE POLICY "notifications_tenant_all" ON public.notifications
-        FOR ALL USING (employee_id = get_my_employee_id());
+        FOR ALL USING (employee_id::text = get_my_employee_id()::text);
     END IF;
   END IF;
 
@@ -183,7 +214,7 @@ BEGIN
     ALTER TABLE public.company_settings ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "company_settings_tenant_all" ON public.company_settings;
     CREATE POLICY "company_settings_tenant_all" ON public.company_settings
-      FOR ALL USING (company_id = get_my_company_id());
+      FOR ALL USING (company_id::text = get_my_company_id()::text);
   END IF;
 
   -- payroll_config
@@ -194,7 +225,7 @@ BEGIN
     ALTER TABLE public.payroll_config ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "payroll_config_tenant_all" ON public.payroll_config;
     CREATE POLICY "payroll_config_tenant_all" ON public.payroll_config
-      FOR ALL USING (company_id = get_my_company_id());
+      FOR ALL USING (company_id::text = get_my_company_id()::text);
   END IF;
 END $$;
 
@@ -256,10 +287,10 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'auth_full_' || t, t);
 
     IF has_company THEN
-      using_expr := 'company_id = get_my_company_id()';
-      check_expr := 'company_id = get_my_company_id()';
+      using_expr := 'company_id::text = get_my_company_id()::text';
+      check_expr := 'company_id::text = get_my_company_id()::text';
     ELSIF has_employee THEN
-      using_expr := 'employee_id IN (SELECT id FROM employees WHERE company_id = get_my_company_id())';
+      using_expr := 'employee_id IN (SELECT id FROM employees WHERE company_id::text = get_my_company_id()::text)';
       check_expr := using_expr;
     ELSE
       RAISE NOTICE 'Skipping % — no company_id or employee_id column', t;
@@ -280,11 +311,11 @@ DO $$ BEGIN
     ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "companies_select_own" ON companies;
     CREATE POLICY "companies_select_own" ON companies
-      FOR SELECT USING (id = get_my_company_id());
+      FOR SELECT USING (id::text = get_my_company_id()::text);
     DROP POLICY IF EXISTS "companies_update_admin" ON companies;
     CREATE POLICY "companies_update_admin" ON companies
       FOR UPDATE USING (
-        id = get_my_company_id()
+        id::text = get_my_company_id()::text
         AND get_my_role() IN ('super_admin', 'hr_admin')
       );
     DROP POLICY IF EXISTS "companies_insert_auth" ON companies;
@@ -296,49 +327,75 @@ END $$;
 -- ############################################################################
 -- BAGIAN 4 — Schema hilang (fix_audit_missing_schema_2026.sql)
 -- ############################################################################
+-- Tipe FK mengikuti tipe companies.id di live DB (integer ATAU uuid),
+-- dideteksi dinamis lewat fn_column_type().
 
--- ── 4a. billing_info ─────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.billing_info (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  company_id INTEGER REFERENCES public.companies(id) ON DELETE SET NULL,
-  plan_name TEXT,
-  billing_cycle TEXT CHECK (billing_cycle IN ('monthly', 'yearly') OR billing_cycle IS NULL),
-  next_billing TIMESTAMPTZ,
-  renewal_date TIMESTAMPTZ,
-  status TEXT DEFAULT 'active',
-  payment_method TEXT,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+DO $$
+DECLARE
+  companies_id_type text;   -- 'integer' | 'bigint' | 'uuid'
+  fk_suffix text;           -- ' INTEGER' | ' BIGINT' | ' UUID'
+BEGIN
+  SELECT COALESCE(fn_column_type('companies', 'id'), 'integer') INTO companies_id_type;
 
-CREATE INDEX IF NOT EXISTS idx_billing_info_company ON public.billing_info(company_id);
+  fk_suffix := CASE companies_id_type
+    WHEN 'bigint' THEN ' BIGINT'
+    WHEN 'uuid'   THEN ' UUID'
+    ELSE ' INTEGER'
+  END;
 
-ALTER TABLE public.billing_info ENABLE ROW LEVEL SECURITY;
+  -- ── 4a. billing_info ─────────────────────────────────────────
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                 WHERE table_schema='public' AND table_name='billing_info') THEN
+    EXECUTE format('CREATE TABLE public.billing_info (
+      user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+      company_id%1$s REFERENCES public.companies(id) ON DELETE SET NULL,
+      plan_name TEXT,
+      billing_cycle TEXT CHECK (billing_cycle IN (''monthly'', ''yearly'') OR billing_cycle IS NULL),
+      next_billing TIMESTAMPTZ,
+      renewal_date TIMESTAMPTZ,
+      status TEXT DEFAULT ''active'',
+      payment_method TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )', fk_suffix);
+  END IF;
 
-DROP POLICY IF EXISTS "billing_info_self_all" ON public.billing_info;
-CREATE POLICY "billing_info_self_all" ON public.billing_info
-  FOR ALL
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  CREATE INDEX IF NOT EXISTS idx_billing_info_company ON public.billing_info(company_id);
 
-DROP POLICY IF EXISTS "billing_info_founder_read" ON public.billing_info;
-CREATE POLICY "billing_info_founder_read" ON public.billing_info
-  FOR SELECT
-  USING (public.is_founder());
+  ALTER TABLE public.billing_info ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "billing_info_isolation" ON public.billing_info;
+  DROP POLICY IF EXISTS "billing_info_self_all" ON public.billing_info;
+  CREATE POLICY "billing_info_self_all" ON public.billing_info
+    FOR ALL
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
--- ── 4b. onboarding.company_id ────────────────────────────────
-ALTER TABLE public.onboarding
-  ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES public.companies(id) ON DELETE CASCADE;
+  DROP POLICY IF EXISTS "billing_info_founder_read" ON public.billing_info;
+  CREATE POLICY "billing_info_founder_read" ON public.billing_info
+    FOR SELECT
+    USING (public.is_founder());
 
-UPDATE public.onboarding o
-SET company_id = e.company_id
-FROM public.employees e
-WHERE o.employee_id = e.id AND o.company_id IS NULL;
+  DROP POLICY IF EXISTS "billing_info_isolation" ON public.billing_info;
 
-CREATE INDEX IF NOT EXISTS idx_onboarding_company ON public.onboarding(company_id);
+  -- ── 4b. onboarding.company_id ────────────────────────────────
+  -- Tipe mengikuti companies.id; backfill dari employees.company_id
+  -- dengan cast ::text agar aman lintas tipe.
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public' AND table_name='onboarding' AND column_name='company_id') THEN
+    EXECUTE format('ALTER TABLE public.onboarding
+      ADD COLUMN company_id%1$s REFERENCES public.companies(id) ON DELETE CASCADE', fk_suffix);
 
--- (RLS onboarding sudah diatur di BAGIAN 3 via loop generik)
+    -- Backfill dengan cast: employees.company_id (integer) → companies.id (integer/uuid).
+    -- Jika ada employee.company_id yang tidak punya baris companies, di-skip otomatis.
+    EXECUTE 'UPDATE public.onboarding o
+             SET company_id = c.id
+             FROM public.employees e
+             JOIN public.companies c ON c.id::text = e.company_id::text
+             WHERE o.employee_id = e.id
+               AND o.company_id IS NULL';
+
+    EXECUTE 'CREATE INDEX idx_onboarding_company ON public.onboarding(company_id)';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- SELESAI. Lanjut ke docs/POST_AUDIT_CHECKLIST.md untuk verifikasi.
