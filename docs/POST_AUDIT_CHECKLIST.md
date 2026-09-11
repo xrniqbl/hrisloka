@@ -2,6 +2,19 @@
 
 Hasil audit branch `feature/theme-payment-align` menemukan sejumlah temuan yang **tidak bisa diperbaiki dari kode saja** — butuh eksekusi di Supabase production dan rotasi kunci. Ikuti urutan ini.
 
+## STATUS EKSEKUSI (update 2026-09)
+
+| Item | Status |
+|---|---|
+| 1. SQL gabungan (`RUN_AFTER_AUDIT.sql`) dijalankan di production | ✅ SELESAI (2 iterasi — script di-hardening untuk drift tipe int/uuid) |
+| 2. Verifikasi anon REST: `billing_info` 200, `onboarding` 200, `employees` `[]` (terkunci), `notifications` `[]` | ✅ LOLOS |
+| 3. Smoke test dua company (manual, perlu 2 akun) | ⏳ Belum |
+| 4. Rotasi VAPID private key | ⏳ **Masih wajib** — key lama ada di git history |
+| 5. Deploy edge functions (CORS allowlist baru) | ⏳ Belum (`bash scripts/deploy-payment-functions.sh`) |
+| 6. Deploy klien + API bersamaan (clock-in JWT) | ⏳ Belum |
+| 7. Smoke test pembayaran Midtrans sandbox | ⏳ Belum |
+| 8. Buat storage buckets (temuan baru: semua bucket kosong) | ⏳ Jalankan `scripts/STORAGE_BUCKETS_SETUP.sql` — tanpa ini upload dokumen/foto/struk/CV gagal |
+
 ---
 
 ## 1. Jalankan SQL gabungan di Supabase production

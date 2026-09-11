@@ -1,7 +1,27 @@
 # Multi-Tenant + HRD Web ↔ Employee PWA Audit
 
-**Date:** 2026-07-12  
+**Date:** 2026-07-12 (updated BCD pass)  
 **Canonical pricing:** `src/lib/plans.js` (Starter 149K / Pro 299K)
+
+## Apply on production (BCD)
+
+1. Run SQL: `supabase/migrations/harden_tenant_rls_bcd_2026.sql`
+2. Run audit: `scripts/rls-audit.sql` — section 2 should be empty (no global super_admin)
+3. Owner setup: after checkout → `/setup` wizard until `owner_setup` complete
+4. CSP: production `script-src` no longer allows `'unsafe-inline'` (SW via `/register-sw.js`)
+
+## ✅ PRODUCTION APPLY STATUS (2026-09, pasca-audit fitur)
+
+Item 1 di atas **SUDAH DIJALANKAN di production** via `scripts/RUN_AFTER_AUDIT.sql`
+(gabungan: employees leak fix + notifications/company_settings/payroll_config +
+core tenant RLS + billing_info/onboarding.company_id). Live-DB drift yang
+ditemukan saat eksekusi — tipe `company_id` campur integer/uuid — sudah
+diantisipasi dengan cast `::text` di semua perbandingan scope. Verifikasi
+anon REST pasca-apply: `billing_info` 200 OK, `onboarding.company_id` 200 OK,
+`employees`/`notifications` terkunci untuk anon (`[]`). Item 2 (rls-audit
+query 2 = 0 baris) disarankan tetap dijalankan sekali dari SQL Editor untuk
+konfirmasi penuh. Lihat `docs/POST_AUDIT_CHECKLIST.md` untuk sisa item
+(rotasi VAPID, deploy edge functions, smoke test payment).
 
 ---
 
