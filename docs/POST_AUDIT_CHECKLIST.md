@@ -13,7 +13,8 @@ Hasil audit branch `feature/theme-payment-align` menemukan sejumlah temuan yang 
 | 5. Deploy edge functions (CORS allowlist baru) | ⏳ Belum (`bash scripts/deploy-payment-functions.sh`) |
 | 6. Deploy klien + API bersamaan (clock-in JWT) | ⏳ Belum |
 | 7. Smoke test pembayaran Midtrans sandbox | ⏳ Belum |
-| 8. Buat storage buckets (temuan baru: semua bucket kosong) | ⏳ Jalankan `scripts/STORAGE_BUCKETS_SETUP.sql` — tanpa ini upload dokumen/foto/struk/CV gagal |
+| 8. Buat storage buckets (temuan baru: semua bucket kosong) | ✅ SELESAI — 5 bucket terverifikasi |
+| 9. Aktifkan RLS storage.objects (temuan: upload anonim lolos) | ⏳ **Wajib** — jalankan `scripts/STORAGE_LOCKDOWN.sql` |
 
 ---
 
