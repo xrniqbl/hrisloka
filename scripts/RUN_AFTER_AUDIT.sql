@@ -51,6 +51,16 @@ AS $$
   SELECT id FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
 $$;
 
+CREATE OR REPLACE FUNCTION is_founder()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT get_my_role() = 'founder';
+$$;
+
 -- Helper: does public.table have column? (used by DO blocks below)
 CREATE OR REPLACE FUNCTION fn_table_has_column(_table text, _column text)
 RETURNS boolean
@@ -68,32 +78,56 @@ $$;
 -- BAGIAN 1 — Fix employees super_admin leak (fix_employees_rls_super_admin_leak.sql)
 -- ############################################################################
 
--- Drop policy lama yang bocor (super_admin global read)
+-- Drop policy lama yang bocor / legacy (super_admin global read, schema.sql lama)
 DROP POLICY IF EXISTS "employees_select" ON public.employees;
 DROP POLICY IF EXISTS "employees_select_all" ON public.employees;
 DROP POLICY IF EXISTS "employees_admin_all" ON public.employees;
+DROP POLICY IF EXISTS "employees_insert" ON public.employees;
+DROP POLICY IF EXISTS "employees_update" ON public.employees;
+DROP POLICY IF EXISTS "employees_delete" ON public.employees;
+DROP POLICY IF EXISTS "employees_company_isolation" ON public.employees;
+DROP POLICY IF EXISTS "employees_own_record_update" ON public.employees;
+DROP POLICY IF EXISTS "employees_admin_insert" ON public.employees;
+DROP POLICY IF EXISTS "employees_admin_delete" ON public.employees;
 
 -- Policy tenant-scoped: anggota company hanya melihat company sendiri.
 -- super_admin (owner) juga company-scoped, bukan global.
+-- Semantik mengikuti fix_employees_rls_super_admin_leak.sql.
 DROP POLICY IF EXISTS "employees_tenant_select" ON public.employees;
 CREATE POLICY "employees_tenant_select" ON public.employees
-  FOR SELECT TO authenticated
-  USING (company_id = get_my_company_id());
+  FOR SELECT
+  USING (
+    company_id IS NOT NULL
+    AND company_id = get_my_company_id()
+  );
 
-DROP POLICY IF EXISTS "employees_tenant_insert" ON public.employees;
-CREATE POLICY "employees_tenant_insert" ON public.employees
-  FOR INSERT TO authenticated
-  WITH CHECK (company_id = get_my_company_id());
+-- Employee boleh edit barisnya sendiri
+DROP POLICY IF EXISTS "employees_own_record_update_v2" ON public.employees;
+CREATE POLICY "employees_own_record_update_v2" ON public.employees
+  FOR UPDATE
+  USING (auth_user_id = auth.uid())
+  WITH CHECK (auth_user_id = auth.uid());
 
+-- Insert: admin company tsb
+DROP POLICY IF EXISTS "employees_admin_insert_v2" ON public.employees;
+CREATE POLICY "employees_admin_insert_v2" ON public.employees
+  FOR INSERT
+  WITH CHECK (
+    company_id = get_my_company_id()
+    AND get_my_role() IN ('hr_admin', 'super_admin', 'manager')
+  );
+
+-- Update admin: kelola karyawan company sendiri
 DROP POLICY IF EXISTS "employees_tenant_update" ON public.employees;
 CREATE POLICY "employees_tenant_update" ON public.employees
-  FOR UPDATE TO authenticated
+  FOR UPDATE
   USING (company_id = get_my_company_id())
   WITH CHECK (company_id = get_my_company_id());
 
+-- Delete: super_admin / hr_admin company tsb
 DROP POLICY IF EXISTS "employees_tenant_delete" ON public.employees;
 CREATE POLICY "employees_tenant_delete" ON public.employees
-  FOR DELETE TO authenticated
+  FOR DELETE
   USING (
     company_id = get_my_company_id()
     AND get_my_role() IN ('super_admin', 'hr_admin')
@@ -102,13 +136,13 @@ CREATE POLICY "employees_tenant_delete" ON public.employees
 -- self-access: karyawan selalu boleh baca barisnya sendiri
 DROP POLICY IF EXISTS "employees_self_select" ON public.employees;
 CREATE POLICY "employees_self_select" ON public.employees
-  FOR SELECT TO authenticated
+  FOR SELECT
   USING (auth_user_id = auth.uid());
 
 -- Founder full access (portal founder)
 DROP POLICY IF EXISTS "employees_founder_all" ON public.employees;
 CREATE POLICY "employees_founder_all" ON public.employees
-  FOR ALL TO authenticated
+  FOR ALL
   USING (public.is_founder())
   WITH CHECK (public.is_founder());
 
@@ -119,21 +153,33 @@ CREATE POLICY "employees_founder_all" ON public.employees
 
 DO $$
 BEGIN
-  -- notifications
+  -- notifications: production table has employee_id ONLY (no company_id —
+  -- verified live 2026-09). Scope per-employee; admins manage via service
+  -- layer / tenantGuard at the app level.
   IF EXISTS (SELECT 1 FROM information_schema.tables
              WHERE table_schema='public' AND table_name='notifications') THEN
     ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS "notifications_tenant_all" ON public.notifications;
-    CREATE POLICY "notifications_tenant_all" ON public.notifications
-      FOR ALL USING (
-        company_id = get_my_company_id()
-        OR employee_id = get_my_employee_id()
-      );
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema='public' AND table_name='notifications' AND column_name='company_id') THEN
+      DROP POLICY IF EXISTS "notifications_tenant_all" ON public.notifications;
+      CREATE POLICY "notifications_tenant_all" ON public.notifications
+        FOR ALL USING (
+          company_id = get_my_company_id()
+          OR employee_id = get_my_employee_id()
+        );
+    ELSE
+      DROP POLICY IF EXISTS "notifications_tenant_all" ON public.notifications;
+      CREATE POLICY "notifications_tenant_all" ON public.notifications
+        FOR ALL USING (employee_id = get_my_employee_id());
+    END IF;
   END IF;
 
   -- company_settings
   IF EXISTS (SELECT 1 FROM information_schema.tables
-             WHERE table_schema='public' AND table_name='company_settings') THEN
+             WHERE table_schema='public' AND table_name='company_settings')
+     AND EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public' AND table_name='company_settings' AND column_name='company_id') THEN
     ALTER TABLE public.company_settings ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "company_settings_tenant_all" ON public.company_settings;
     CREATE POLICY "company_settings_tenant_all" ON public.company_settings
@@ -142,7 +188,9 @@ BEGIN
 
   -- payroll_config
   IF EXISTS (SELECT 1 FROM information_schema.tables
-             WHERE table_schema='public' AND table_name='payroll_config') THEN
+             WHERE table_schema='public' AND table_name='payroll_config')
+     AND EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_schema='public' AND table_name='payroll_config' AND column_name='company_id') THEN
     ALTER TABLE public.payroll_config ENABLE ROW LEVEL SECURITY;
     DROP POLICY IF EXISTS "payroll_config_tenant_all" ON public.payroll_config;
     CREATE POLICY "payroll_config_tenant_all" ON public.payroll_config
@@ -191,6 +239,14 @@ BEGIN
     SELECT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_schema='public' AND table_name=t AND column_name='employee_id')
       INTO has_employee;
+
+    -- Skip entirely (leave RLS state untouched) when neither scope column
+    -- exists — enabling RLS here would create a deny-all and break features
+    -- (e.g. onboarding_checklist is scoped via parent onboarding_id).
+    IF NOT has_company AND NOT has_employee THEN
+      RAISE NOTICE 'Skipping % — no company_id or employee_id column', t;
+      CONTINUE;
+    END IF;
 
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
 
