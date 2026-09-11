@@ -10,11 +10,12 @@ Hasil audit branch `feature/theme-payment-align` menemukan sejumlah temuan yang 
 | 2. Verifikasi anon REST: `billing_info` 200, `onboarding` 200, `employees` `[]` (terkunci), `notifications` `[]` | ✅ LOLOS |
 | 3. Smoke test dua company (manual, perlu 2 akun) | ⏳ Belum |
 | 4. Rotasi VAPID private key | ⏳ **Masih wajib** — key lama ada di git history |
-| 5. Deploy edge functions (CORS allowlist baru) | ⏳ Belum (`bash scripts/deploy-payment-functions.sh`) |
+| 5. Deploy edge functions (CORS allowlist baru) | ⚠️ Sebagian — `create-payment` & `midtrans-webhook` deployed; **`activate-free-subscription` 404 = BELUM** (wajib: Free plan/100% voucher). `supabase functions deploy activate-free-subscription` |
 | 6. Deploy klien + API bersamaan (clock-in JWT) | ⏳ Belum |
-| 7. Smoke test pembayaran Midtrans sandbox | ⏳ Belum |
+| 7. Smoke test pembayaran Midtrans sandbox | ⚠️ Temuan: key di env adalah **production key** tapi `MIDTRANS_IS_PRODUCTION` tidak di-set server-side → 401. Sudah diperbaiki di `.env` lokal (`MIDTRANS_IS_PRODUCTION=true`); pastikan sama di VPS & Edge secrets |
 | 8. Buat storage buckets (temuan baru: semua bucket kosong) | ✅ SELESAI — 5 bucket terverifikasi |
 | 9. Aktifkan RLS storage.objects (temuan: upload anonim lolos) | ⏳ **Wajib** — jalankan `scripts/STORAGE_LOCKDOWN.sql` |
+| 10. Rotasi VAPID — kunci baru sudah digenerate | ⏳ Kunci baru di `.vapid-rotation/vapid-new.json` (di-gitignore); update env VPS + Edge secrets lalu deploy |
 
 ---
 
