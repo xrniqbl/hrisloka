@@ -54,9 +54,9 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
     Deno.env.get('BREVO_API_KEY') ||
     Deno.env.get('BREVO_SMTP_KEY') ||
     Deno.env.get('RESEND_API_KEY'); // migration alias
-  const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || Deno.env.get('BREVO_SENDER_EMAIL') || 'noreply@hrisloka.id';
-  const FROM_NAME = Deno.env.get('FROM_NAME') || Deno.env.get('BREVO_SENDER_NAME') || 'HRIS Loka';
-  const SITE_URL = Deno.env.get('SITE_URL') || 'https://hrisloka.id';
+  const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || Deno.env.get('BREVO_SENDER_EMAIL') || 'noreply@kinikerja.id';
+  const FROM_NAME = Deno.env.get('FROM_NAME') || Deno.env.get('BREVO_SENDER_NAME') || 'KiniKerja';
+  const SITE_URL = Deno.env.get('SITE_URL') || 'https://kinikerja.id';
 
   if (!BREVO_API_KEY) {
     console.warn('[Webhook] BREVO_API_KEY not set, skipping email');
@@ -78,7 +78,7 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
   const html = `
     <div style="font-family:'Inter Tight',Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px">
       <div style="background:linear-gradient(135deg,#5654D4,#4543C0);padding:24px;border-radius:16px 16px 0 0">
-        <h1 style="color:#fff;margin:0;font-size:20px">HRIS Loka</h1>
+        <h1 style="color:#fff;margin:0;font-size:20px">KiniKerja</h1>
         <p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:13px">Langganan Berhasil Diaktifkan</p>
       </div>
       <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
@@ -93,9 +93,9 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
             <div><strong>Berlaku hingga:</strong> ${expiryDate}</div>
           </div>
         </div>
-        <p>Silakan login ke dashboard HRIS Loka untuk mulai menggunakan semua fitur.</p>
+        <p>Silakan login ke dashboard KiniKerja untuk mulai menggunakan semua fitur.</p>
         <a href="${SITE_URL}/login" style="display:inline-block;background:#5654D4;color:#fff;padding:12px 24px;border-radius:999px;text-decoration:none;font-weight:600;margin-top:16px">Masuk ke Dashboard</a>
-        <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email otomatis dari HRIS Loka.</p>
+        <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email otomatis dari KiniKerja.</p>
       </div>
     </div>
   `;
@@ -113,7 +113,7 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
       body: JSON.stringify({
         sender: { name: senderName, email: senderEmail },
         to: [{ email: to }],
-        subject: `[HRIS Loka] Langganan ${planName} Berhasil Diaktifkan`,
+        subject: `[KiniKerja] Langganan ${planName} Berhasil Diaktifkan`,
         htmlContent: html,
         textContent: text,
       }),
@@ -129,24 +129,18 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
   }
 }
 
-/** Increment voucher usage (supports used_count column) */
+/** Increment voucher usage — atomik via RPC claim_voucher (cegah double-spend) */
 async function incrementVoucher(supabase, code: string) {
   if (!code) return;
   try {
-    const { data } = await supabase
-      .from('vouchers')
-      .select('id, used_count, current_uses, max_uses')
-      .eq('code', code.trim().toUpperCase())
-      .maybeSingle();
-    if (!data) return;
-
-    const used = (data.used_count ?? data.current_uses ?? 0) + 1;
-    const patch = data.used_count !== undefined && data.used_count !== null
-      ? { used_count: used }
-      : { current_uses: used };
-
-    await supabase.from('vouchers').update(patch).eq('id', data.id);
-    console.log(`[Webhook] Voucher ${code} usage → ${used}`);
+    const { data: claimed, error } = await supabase.rpc('claim_voucher', {
+      p_code: code.trim().toUpperCase(),
+    });
+    if (error || claimed !== true) {
+      console.warn('[Webhook] voucher claim rejected:', error?.message || 'exhausted');
+      return;
+    }
+    console.log(`[Webhook] Voucher ${code} claimed`);
   } catch (err) {
     console.warn('[Webhook] voucher increment failed:', err?.message || err);
   }
@@ -188,7 +182,7 @@ async function ensureAdminEmployee(supabase, userId: string, email: string | und
   let companyId = null;
   if (companyName) {
     try {
-      const code = `HRIS-${Date.now().toString(36).toUpperCase()}`;
+      const code = `KK-${Date.now().toString(36).toUpperCase()}`;
       const { data: company } = await supabase
         .from('companies')
         .insert({ name: companyName, company_code: code, is_active: true })
@@ -387,7 +381,7 @@ serve(async (req) => {
       await incrementVoucher(supabase, order.voucher_code);
 
       if (userEmail) {
-        await sendActivationEmail(userEmail, order.plan_name || 'HRIS Loka', expiresAt);
+        await sendActivationEmail(userEmail, order.plan_name || 'KiniKerja', expiresAt);
       }
     }
 

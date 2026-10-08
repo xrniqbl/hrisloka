@@ -120,6 +120,8 @@ function QRScannerModal({ onClose, navigate }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const rafRef = useRef(null);
+  const detectorRef = useRef(null);
+  const handleResultRef = useRef(null);
   const [status, setStatus] = useState('starting'); // starting | scanning | result | error
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -135,26 +137,57 @@ function QRScannerModal({ onClose, navigate }) {
 
   const handleClose = useCallback(() => { stopStream(); onClose(); }, [stopStream, onClose]);
 
-  // Handle scanned result
+  // Handle scanned result — hentikan loop saja (stream tetap hidup agar
+  // "Scan Lagi" tanpa reload). Stream hanya dimatikan saat modal ditutup.
   const handleResult = useCallback((raw) => {
-    stopStream();
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     setResult(raw);
     setStatus('result');
     haptic(40);
-  }, [stopStream]);
+  }, []);
+
+  // Simpan handler terbaru agar scan loop (yg hidup di ref) selalu memanggil versi fresh
+  useEffect(() => { handleResultRef.current = handleResult; }, [handleResult]);
 
   // Start camera + scan loop
   useEffect(() => {
     let cancelled = false;
+    // Scan ulang tanpa reload: hentikan loop lama, pakai ulang stream/detector
+    const startScanLoop = () => {
+      if (cancelled || !detectorRef.current || !videoRef.current) return;
+      const detector = detectorRef.current;
+      const scan = async () => {
+        if (cancelled || !videoRef.current || videoRef.current.readyState < 2) {
+          rafRef.current = requestAnimationFrame(scan);
+          return;
+        }
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes.length > 0 && !cancelled) {
+            handleResultRef.current?.(barcodes[0].rawValue);
+            return;
+          }
+        } catch { /* intentionally empty */ }
+        rafRef.current = requestAnimationFrame(scan);
+      };
+      rafRef.current = requestAnimationFrame(scan);
+    };
 
     const start = async () => {
       try {
+        // getUserMedia tidak ada di konteks non-secure / browser lama — pesan ramah
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setStatus('error');
+          setErrorMsg('Kamera tidak tersedia. Buka via HTTPS atau gunakan browser modern (Chrome terbaru).');
+          return;
+        }
         // Check BarcodeDetector support
         const supported = 'BarcodeDetector' in window;
         let detector = null;
         if (supported) {
           const formats = await BarcodeDetector.getSupportedFormats().catch(() => ['qr_code']);
           detector = new BarcodeDetector({ formats: formats.includes('qr_code') ? ['qr_code'] : formats });
+          detectorRef.current = detector;
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -170,28 +203,15 @@ function QRScannerModal({ onClose, navigate }) {
         setStatus('scanning');
 
         if (!supported) {
-          // No BarcodeDetector - show manual input fallback
+          // BarcodeDetector tidak ada — kamera tetap dimatikan agar lampu tidak menyala
+          stream.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
           setStatus('error');
           setErrorMsg('BarcodeDetector tidak didukung browser ini. Coba Chrome terbaru.');
           return;
         }
 
-        // Scan loop using requestAnimationFrame
-        const scan = async () => {
-          if (cancelled || !videoRef.current || videoRef.current.readyState < 2) {
-            rafRef.current = requestAnimationFrame(scan);
-            return;
-          }
-          try {
-            const barcodes = await detector.detect(videoRef.current);
-            if (barcodes.length > 0 && !cancelled) {
-              handleResult(barcodes[0].rawValue);
-              return;
-            }
-          } catch { /* intentionally empty */ }
-          rafRef.current = requestAnimationFrame(scan);
-        };
-        rafRef.current = requestAnimationFrame(scan);
+        startScanLoop();
 
       } catch (err) {
         if (cancelled) return;
@@ -205,6 +225,35 @@ function QRScannerModal({ onClose, navigate }) {
     start();
     return () => { cancelled = true; stopStream(); };
   }, [handleResult, stopStream]);
+
+  // "Scan Lagi": reset state + mulai ulang loop pada stream yang sama (tanpa reload)
+  const handleRescan = useCallback(() => {
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    setResult(null);
+    setErrorMsg('');
+    setStatus('scanning');
+    if (streamRef.current && detectorRef.current && videoRef.current) {
+      const detector = detectorRef.current;
+      const scan = async () => {
+        if (!videoRef.current || videoRef.current.readyState < 2) {
+          rafRef.current = requestAnimationFrame(scan);
+          return;
+        }
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes.length > 0) {
+            handleResultRef.current?.(barcodes[0].rawValue);
+            return;
+          }
+        } catch { /* intentionally empty */ }
+        rafRef.current = requestAnimationFrame(scan);
+      };
+      rafRef.current = requestAnimationFrame(scan);
+    } else {
+      // Stream hilang (mis. izin dicabut) — tutup agar kamera dibuka ulang bersih
+      handleClose();
+    }
+  }, [handleClose]);
 
   // Try to route based on scanned URL
   const handleAction = () => {
@@ -277,7 +326,7 @@ function QRScannerModal({ onClose, navigate }) {
                 <button className="qr-btn-action" onClick={handleAction}>
                   Buka
                 </button>
-                <button className="qr-btn-secondary" onClick={() => { setResult(null); setStatus('starting'); /* restart */ window.location.reload(); }}>
+                <button className="qr-btn-secondary" onClick={handleRescan}>
                   Scan Lagi
                 </button>
               </div>
@@ -292,7 +341,7 @@ function QRScannerModal({ onClose, navigate }) {
 export default function EmployeeLayout() {
 
   const { user, employee, loading, isPWA, hasOnboarding } = useAuth();
-  const { isEmpPathEnabled } = useFeatureFlags();
+  const { isEmpPathEnabled, loading: flagsLoading } = useFeatureFlags();
   const location = useLocation();
   const { locale } = useTranslation();
   const navigate = useNavigate();
@@ -314,7 +363,7 @@ export default function EmployeeLayout() {
 
   // Private employee PWA — no search indexing
   useEffect(() => {
-    markNoIndex('HRIS Loka — Employee');
+    markNoIndex('KiniKerja — Employee');
   }, []);
 
   // Dark mode sync
@@ -360,19 +409,22 @@ export default function EmployeeLayout() {
       return;
     }
     const email = String(user.email || '').trim().toLowerCase();
+    const userKey = user.id || email;
     let query = supabase
       .from('employees')
       .select('id,name,photo_url,division,position,profile_setup_done,account_status,company_id,role');
     if (email) query = query.eq('email', email);
     else query = query.eq('auth_user_id', user.id);
+    // Race guard: abaikan respons milik user lama bila login berganti cepat (A→B)
     query.maybeSingle().then(({ data }) => {
-      if (data) {
-        setEmpData(data);
-        const done = data.profile_setup_done === true
-          || data.account_status === 'active'
-          || data.account_status === 'approved';
-        setSetupDone(done);
-      }
+      if (!data) return;
+      const stillMe = (user.id || String(user.email || '').trim().toLowerCase()) === userKey;
+      if (!stillMe) return;
+      setEmpData(data);
+      const done = data.profile_setup_done === true
+        || data.account_status === 'active'
+        || data.account_status === 'approved';
+      setSetupDone(done);
     });
   }, [user, employee]);
 
@@ -549,7 +601,7 @@ export default function EmployeeLayout() {
     // First open this session → splash, else welcome (login / register)
     let splashSeen = true;
     try {
-      splashSeen = Boolean(sessionStorage.getItem('hrisloka_splash_seen'));
+      splashSeen = Boolean(sessionStorage.getItem('kinikerja_splash_seen'));
     } catch { /* ignore */ }
     if (!splashSeen) {
       return <Navigate to="/app/splash" replace />;
@@ -589,8 +641,16 @@ export default function EmployeeLayout() {
       }
     }
 
-    // Feature flag gate (platform-level disable)
-    if (!isEmpPathEnabled(location.pathname)) {
+    // Feature flag gate (platform-level disable).
+    // Tunggu flags dimuat dulu (fail-closed tanpa flicker lockout).
+    if (!isFounder(user, employee) && flagsLoading) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)' }}>
+          <div style={{ width: 36, height: 36, border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      );
+    }
+    if (!isFounder(user, employee) && !flagsLoading && !isEmpPathEnabled(location.pathname)) {
       return <Navigate to="/app/home" replace />;
     }
 
@@ -731,7 +791,7 @@ export default function EmployeeLayout() {
             <div className="emp-menu-header">
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{locale === 'en' ? 'All Features' : 'Semua Fitur'}</h2>
-                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '2px 0 0' }}>{locale === 'en' ? 'Quick access to all HRIS Loka features' : 'Akses cepat ke semua fitur HRIS Loka'}</p>
+                <p style={{ fontSize: 12, color: 'var(--muted)', margin: '2px 0 0' }}>{locale === 'en' ? 'Quick access to all KiniKerja features' : 'Akses cepat ke semua fitur KiniKerja'}</p>
               </div>
               <button onClick={() => setMenuOpen(false)} className="emp-menu-close-btn" aria-label="Close menu">
                 <HiXMark size={18} />

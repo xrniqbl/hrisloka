@@ -11,9 +11,11 @@ import {
 const FeatureFlagContext = createContext({
   flags: DEFAULT_FEATURE_FLAGS,
   loading: true,
-  isEnabled: () => true,
-  isPathEnabled: () => true,
-  isEmpPathEnabled: () => true,
+  // Fail-closed: sebelum flags dimuat, anggap fitur MATI agar halaman yang
+  // dimatikan platform tidak sempat ter-render saat first paint/offline.
+  isEnabled: () => false,
+  isPathEnabled: () => false,
+  isEmpPathEnabled: () => false,
   refresh: async () => {},
 });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'HRIS Loka-v5';
+const CACHE_NAME = 'KiniKerja-v5';
 // Separate cache for face AI models — these are large (7MB) and never change
 const FACE_MODEL_CACHE = 'face-models-v1';
 // Background sync queue name
@@ -245,15 +245,71 @@ function updateRetryCount(db, id, retries) {
 
 function openSyncDB() {
     return new Promise((resolve, reject) => {
-        const req = indexedDB.open('hrisloka_sync', 1);
+        const req = indexedDB.open('kinikerja_sync', 1);
         req.onupgradeneeded = () => {
             const db = req.result;
             if (!db.objectStoreNames.contains('sync_queue')) {
                 db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
             }
         };
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => {
+            const db = req.result;
+            // Legacy pre-rebrand DB ('hrisloka_sync') may still hold queued
+            // clock-ins written by an older app version — replay those too.
+            migrateLegacySyncQueue(db).finally(() => resolve(db));
+        };
         req.onerror = () => reject(req.error);
+    });
+}
+
+// One-time migration: copy pending items from the pre-rebrand
+// 'hrisloka_sync' database, then delete it. Best-effort — failures
+// must never block the sync replay itself.
+function migrateLegacySyncQueue(db) {
+    return new Promise((resolve) => {
+        let legacyItems = [];
+        let legacyReq;
+        try {
+            legacyReq = indexedDB.open('hrisloka_sync', 1);
+        } catch { resolve(); return; }
+        legacyReq.onsuccess = () => {
+            const legacyDb = legacyReq.result;
+            try {
+                if (!legacyDb.objectStoreNames.contains('sync_queue') || legacyDb.objectStoreNames.length === 0) {
+                    legacyDb.close();
+                    try { indexedDB.deleteDatabase('hrisloka_sync'); } catch { /* ignore */ }
+                    resolve();
+                    return;
+                }
+                const tx = legacyDb.transaction('sync_queue', 'readonly');
+                const getReq = tx.objectStore('sync_queue').getAll();
+                getReq.onsuccess = () => {
+                    legacyItems = getReq.result || [];
+                    legacyDb.close();
+                    if (!legacyItems.length) {
+                        try { indexedDB.deleteDatabase('hrisloka_sync'); } catch { /* ignore */ }
+                        resolve();
+                        return;
+                    }
+                    try {
+                        const wtx = db.transaction('sync_queue', 'readwrite');
+                        const store = wtx.objectStore('sync_queue');
+                        for (const item of legacyItems) {
+                            const { id: _dropped, ...rest } = item || {};
+                            store.add(rest);
+                        }
+                        wtx.oncomplete = () => {
+                            try { indexedDB.deleteDatabase('hrisloka_sync'); } catch { /* ignore */ }
+                            resolve();
+                        };
+                        wtx.onerror = () => resolve();
+                    } catch { resolve(); }
+                };
+                getReq.onerror = () => { try { legacyDb.close(); } catch { /* ignore */ } resolve(); };
+            } catch { try { legacyDb.close(); } catch { /* ignore */ } resolve(); }
+        };
+        legacyReq.onerror = () => resolve();
+        legacyReq.onblocked = () => resolve();
     });
 }
 
@@ -268,7 +324,7 @@ function getAllFromStore(store) {
 // ── Push Notifications ───────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
     const data = event.data ? event.data.json() : {};
-    const title = data.title || 'HRIS Loka';
+    const title = data.title || 'KiniKerja';
     const options = {
         body: data.body || 'Ada notifikasi baru untuk Anda.',
         icon: '/icons/icon-192.png',
@@ -278,7 +334,7 @@ self.addEventListener('push', (event) => {
             url: data.url || '/app/home',
         },
         // Show notification badge on app icon (Badge API)
-        tag: data.tag || 'hrisloka-notification',
+        tag: data.tag || 'kinikerja-notification',
         renotify: true,
     };
     event.waitUntil(
@@ -309,9 +365,14 @@ async function trimCache(cacheName, maxEntries) {
 }
 
 // Notification Click — open the relevant page
+// SECURITY: URL dari payload push tidak dipercaya mentah — hanya path relatif
+// internal (/app/*, /checkout/*, /login/*) yang dibuka (cegah open-redirect).
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const url = event.notification.data?.url || '/app/home';
+    const raw = event.notification.data?.url || '/app/home';
+    const url = /^(\/app(\/|$|\?)|\/checkout(\/|$|\?)|\/login(\/|$|\?))/.test(raw)
+        ? raw.slice(0, 200)
+        : '/app/home';
     event.waitUntil(
         self.clients.matchAll({ type: 'window' }).then((clients) => {
             for (const client of clients) {

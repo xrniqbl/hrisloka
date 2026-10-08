@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { requestWakeLock, releaseWakeLock } from '../lib/wakeLock';
 import {
   HiArrowPath,
@@ -11,7 +11,7 @@ import {
 } from '../lib/faceRecognition';
 import {
   generateChallenges, evaluateChallenge, checkMicroMovement,
-  checkBlinkFrequency
+  checkBlinkFrequency, checkBlink
 } from '../lib/livenessDetection';
 import './FaceScanner.css';
 
@@ -43,6 +43,9 @@ export default function FaceScanner({
   const frameHistoryRef = useRef([]);
   const earHistoryRef = useRef([]);
   const challengeTimeoutRef = useRef(null);
+  const retryTimeoutRef = useRef(null);
+
+  const t = useCallback((en, id) => (locale === 'en' ? en : id), [locale]);
 
   const [phase, setPhase] = useState('loading'); // loading | ready | scanning | challenge | verifying | success | error
   const [loadProgress, setLoadProgress] = useState(0);
@@ -63,10 +66,6 @@ export default function FaceScanner({
   const [showSuccess, setShowSuccess] = useState(false);
   const [showParticles, setShowParticles] = useState(false);
   const [cameraError, setCameraError] = useState('');
-
-  function t(en, id) {
-    return locale === 'en' ? en : id;
-  }
 
   // -- Load models & camera -----------------------------------
   useEffect(() => {
@@ -99,9 +98,14 @@ export default function FaceScanner({
       stopAll();
       releaseWakeLock();
     };
+    // Intentionally mount-once: this boots the camera + models a single time.
+    // Adding `t`/startCamera would re-init the camera on locale change; `stopAll`
+    // is stable but pulling it in would still re-run this whole boot effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // -- Start scanning loop once camera ready -----------------
+  const cameraReady = phase === 'ready';
   useEffect(() => {
     if (phase === 'ready' || phase === 'scanning' || phase === 'challenge') {
       const newChallenges = generateChallenges(strict);
@@ -111,13 +115,40 @@ export default function FaceScanner({
       startDetectionLoop();
     }
     return () => cancelAnimationFrame(rafRef.current);
-  }, [phase === 'ready']);
+    // Triggered only on the ready→ transition (cameraReady). startDetectionLoop
+    // and strict are read fresh inside; listing the recreated-every-render
+    // startDetectionLoop would restart the scan loop on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraReady]);
 
   // -- Camera helpers -----------------------------------------
   const startCamera = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
-    });
+    // getUserMedia tidak ada di konteks non-secure (HTTP) / browser lama
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error(
+        locale === 'en'
+          ? 'Camera unavailable. Open via HTTPS in a modern browser (latest Chrome).'
+          : 'Kamera tidak tersedia. Buka via HTTPS di browser modern (Chrome terbaru).'
+      );
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+      });
+    } catch (err) {
+      if (err?.name === 'NotAllowedError') {
+        throw new Error(locale === 'en'
+          ? 'Camera permission denied. Enable camera in browser settings, then retry.'
+          : 'Izin kamera ditolak. Aktifkan kamera di pengaturan browser, lalu coba lagi.');
+      }
+      if (err?.name === 'NotFoundError') {
+        throw new Error(locale === 'en'
+          ? 'No camera found on this device.'
+          : 'Tidak ada kamera yang ditemukan di perangkat ini.');
+      }
+      throw err;
+    }
     streamRef.current = stream;
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -130,6 +161,7 @@ export default function FaceScanner({
   const stopAll = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     clearTimeout(challengeTimeoutRef.current);
+    clearTimeout(retryTimeoutRef.current);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
@@ -145,7 +177,8 @@ export default function FaceScanner({
     let consecutivePassed = 0;
 
     const loop = async () => {
-      if (!videoRef.current || !videoRef.current.readyState >= 2) {
+      // Tunggu video siap (HAVE_CURRENT_DATA+) sebelum deteksi — cegah loop di frame hitam
+      if (!videoRef.current || (videoRef.current.readyState ?? 0) < 2) {
         rafRef.current = requestAnimationFrame(loop);
         return;
       }
@@ -190,9 +223,8 @@ export default function FaceScanner({
         frameHistoryRef.current.push({ x: box.x, y: box.y, w: box.width, h: box.height });
         if (frameHistoryRef.current.length > 20) frameHistoryRef.current.shift();
 
-        // Track EAR for blink frequency
+        // Track EAR for blink frequency (import statis — jangan dynamic import per-frame)
         if (lm) {
-          const { checkBlink } = await import('../lib/livenessDetection');
           const blinkData = checkBlink(lm);
           earHistoryRef.current.push(blinkData.avgEAR || 1);
           if (earHistoryRef.current.length > 40) earHistoryRef.current.shift();
@@ -266,6 +298,10 @@ export default function FaceScanner({
     };
 
     rafRef.current = requestAnimationFrame(loop);
+    // doVerify/showNextChallenge/t are plain closures recreated each render;
+    // listing them would rebuild the loop mid-scan. They read current props
+    // (mode/registeredFaces/locale) at call time, so behavior stays correct.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [challenges, mode, registeredFaces]);
 
   const showNextChallenge = (idx) => {
@@ -304,7 +340,8 @@ export default function FaceScanner({
       setOvalState('error');
       setInstruction(t('Œ Liveness check failed. Try again.', 'Œ Verifikasi keaktifan gagal. Coba lagi.'));
       onError?.('Liveness check failed');
-      setTimeout(() => setPhase('ready'), 3000);
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = setTimeout(() => setPhase('ready'), 3000);
       return;
     }
 
@@ -315,7 +352,8 @@ export default function FaceScanner({
         setOvalState('error');
         setInstruction(t('No Face ID enrolled. Register first.', 'Face ID belum terdaftar. Daftarkan dulu.'));
         onError?.('No registered face data');
-        setTimeout(() => setPhase('ready'), 3000);
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => setPhase('ready'), 3000);
         return;
       }
       const matchResult = matchFace(descriptor, registeredFaces);
@@ -331,7 +369,8 @@ export default function FaceScanner({
         setOvalState('error');
         setInstruction(t('Face not recognized. Try again.', 'Wajah tidak dikenali. Coba lagi.'));
         onError?.(`Face not recognized (distance: ${Number(matchResult.distance || 0).toFixed(3)})`);
-        setTimeout(() => setPhase('ready'), 3000);
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => setPhase('ready'), 3000);
       }
     } else if (mode === 'register') {
       // Capture and return descriptor for registration

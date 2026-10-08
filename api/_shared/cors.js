@@ -10,23 +10,33 @@
  * See docs/ENVIRONMENT.md ("RATE LIMITING").
  */
 
-const DEFAULT_ORIGINS = [
-  'https://hrisloka.id',
-  'https://www.hrisloka.id',
-  'https://hrisloka.com',
-  'https://www.hrisloka.com',
+const PROD_ORIGINS = [
+  'https://kinikerja.id',
+  'https://www.kinikerja.id',
+  'https://kinikerja.com',
+  'https://www.kinikerja.com',
+];
+
+const DEV_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
 ];
 
+function defaultOrigins() {
+  // Localhost hanya di non-production — di production origin tepercaya
+  // dibatasi domain + ALLOWED_ORIGINS/SITE_URL.
+  if (process.env.NODE_ENV === 'production') return PROD_ORIGINS;
+  return [...PROD_ORIGINS, ...DEV_ORIGINS];
+}
+
 export function getAllowedOrigins() {
   const extra = `${process.env.ALLOWED_ORIGINS || ''},${process.env.SITE_URL || ''}`
     .split(',')
     .map((s) => s.trim().replace(/\/$/, ''))
     .filter(Boolean);
-  return [...new Set([...DEFAULT_ORIGINS, ...extra])];
+  return [...new Set([...defaultOrigins(), ...extra])];
 }
 
 /**

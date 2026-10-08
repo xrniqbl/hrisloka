@@ -428,17 +428,30 @@ export const DEMO_PROFILE_DATA = {
 /** Aktifkan mode demo di sessionStorage (no-op jika demo tidak dikonfigurasi) */
 export function activateDemo() {
   if (!DEMO_ENABLED) return;
-  sessionStorage.setItem(DEMO_FLAG_KEY, '1');
+  try {
+    sessionStorage.setItem(DEMO_FLAG_KEY, '1');
+  } catch {
+    /* storage diblokir — demo tidak aktif */
+  }
 }
 
 /** Nonaktifkan mode demo */
 export function deactivateDemo() {
-  sessionStorage.removeItem(DEMO_FLAG_KEY);
+  try {
+    sessionStorage.removeItem(DEMO_FLAG_KEY);
+  } catch {
+    /* abaikan */
+  }
 }
 
-/** Cek apakah saat ini sedang dalam mode demo */
+/** Cek apakah saat ini sedang dalam mode demo (wajib DEMO_ENABLED + flag sesi) */
 export function isDemoMode() {
-  return sessionStorage.getItem(DEMO_FLAG_KEY) === '1';
+  if (!DEMO_ENABLED) return false;
+  try {
+    return sessionStorage.getItem(DEMO_FLAG_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
 /**

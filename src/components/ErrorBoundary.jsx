@@ -1,7 +1,6 @@
-﻿import { Component } from 'react';
-// Optional: Import Sentry for error tracking
-// import * as Sentry from '@sentry/react';
+import { Component } from 'react';
 import { FiAlertTriangle, FiRefreshCw, FiHome } from 'react-icons/fi';
+import { captureException } from '../lib/sentry';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -13,19 +12,23 @@ class ErrorBoundary extends Component {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
-    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+  // Reset saat navigasi: error satu halaman tidak boleh mengunci seluruh Routes.
+  // Pakai resetKey (mis. pathname) agar boundary per-layout/per-route pulih otomatis.
+  componentDidUpdate(prevProps) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null, errorInfo: null });
+    }
+  }
+
+  componentDidCatch(error, errorInfo) {    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
     this.setState({ errorInfo });
-    
-    // Send to Sentry if configured
-    // Sentry integration (install @sentry/react to enable)
-    if (typeof window !== "undefined" && window.Sentry && window.Sentry.captureException) {
-      window.Sentry.captureException(error, { contexts: { react: errorInfo } });
-    }
-    // Or use window.Sentry for CDN-loaded Sentry
-    if (window.Sentry && window.Sentry.captureException) {
-      window.Sentry.captureException(error, { contexts: { react: errorInfo } });
-    }
+    captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo?.componentStack,
+        },
+      },
+    });
   }
 
   handleReload = () => {
@@ -109,8 +112,7 @@ class ErrorBoundary extends Component {
               Aplikasi mengalami masalah yang tidak terduga. Tenang, data Anda aman. Silakan muat ulang halaman atau kembali ke login.
             </p>
 
-            {/* Always show short error so login crashes are diagnosable */}
-            {errorText && (
+            {isDevelopment && errorText && (
               <div style={{
                 textAlign: 'left',
                 background: 'rgba(15, 23, 42, 0.9)',
@@ -143,7 +145,7 @@ class ErrorBoundary extends Component {
                   alignItems: 'center',
                   gap: '8px',
                   padding: '14px 28px',
-                  background: 'linear-gradient(135deg, #635BFF 0%, #4F46E5 100%)',
+                  background: 'linear-gradient(135deg, #5654D4 0%, #4543C0 100%)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '12px',
@@ -151,15 +153,15 @@ class ErrorBoundary extends Component {
                   fontWeight: '600',
                   cursor: 'pointer',
                   transition: 'transform 0.2s, box-shadow 0.2s',
-                  boxShadow: '0 4px 12px rgba(99, 91, 255, 0.4)',
+                  boxShadow: '0 4px 12px rgba(86, 84, 212, 0.4)',
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 6px 20px rgba(99, 91, 255, 0.5)';
+                  e.target.style.boxShadow = '0 6px 20px rgba(86, 84, 212, 0.5)';
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(99, 91, 255, 0.4)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(86, 84, 212, 0.4)';
                 }}
               >
                 <FiRefreshCw size={16} />
@@ -250,14 +252,14 @@ class ErrorBoundary extends Component {
             }}>
               Jika masalah berlanjut, hubungi support: 
               <a 
-                href="mailto:support@hrisloka.id" 
+                href="mailto:support@kinikerja.id" 
                 style={{ 
                   color: '#818CF8', 
                   textDecoration: 'none',
                   marginLeft: '4px',
                 }}
               >
-                support@hrisloka.id
+                support@kinikerja.id
               </a>
             </div>
           </div>

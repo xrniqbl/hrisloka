@@ -1,6 +1,7 @@
 // @refresh reset
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { safeGetItem, safeSetItem, safeRemoveItem } from '../lib/safeStorage';
 import { getEmployeeByEmail } from '../services/employeeService';
 import { trackEvent } from '../services/founderService';
 import { isDemoMode, deactivateDemo, DEMO_USER, DEMO_EMPLOYEE } from '../lib/demoGuard';
@@ -173,11 +174,11 @@ export function AuthProvider({ children }) {
 
         // Desktop: 12-hour session expiry
         if (s && !getIsPWA()) {
-          const loginTime = localStorage.getItem('hrisync_login_time');
+          const loginTime = safeGetItem('hrisync_login_time');
           if (loginTime && Date.now() - parseInt(loginTime, 10) > 12 * 60 * 60 * 1000) {
             await supabase.auth.signOut();
-            localStorage.removeItem('hrisync_login_time');
-            localStorage.removeItem('hrisync_role');
+            safeRemoveItem('hrisync_login_time');
+            safeRemoveItem('hrisync_role');
             if (!cancelled && gen === resolveGen) clearSessionState();
             return;
           }
@@ -242,7 +243,7 @@ export function AuthProvider({ children }) {
         await applySession(s, { showLoading: true });
 
         if (_event === 'SIGNED_IN') {
-          localStorage.setItem('hrisync_login_time', Date.now().toString());
+          safeSetItem('hrisync_login_time', Date.now().toString());
           trackEvent('login', {
             path: window.location.pathname,
             deviceType: window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop',
@@ -252,7 +253,7 @@ export function AuthProvider({ children }) {
 
         // Google OAuth callback — route only after profile is loaded
         if (_event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
-          const savedPath = localStorage.getItem('hrisync_last_path');
+          const savedPath = safeGetItem('hrisync_last_path');
           const safeSavedPath = (
             savedPath
             && !savedPath.startsWith('/login')
@@ -386,7 +387,7 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + (localStorage.getItem('hrisync_last_path') || '/dashboard'),
+        redirectTo: window.location.origin + (safeGetItem('hrisync_last_path') || '/dashboard'),
       },
     });
     return { data, error };
@@ -416,10 +417,10 @@ export function AuthProvider({ children }) {
       ({ error } = await supabase.auth.signOut());
     }
     // Clear all localStorage session keys including grace period bypass
-    localStorage.removeItem('hrisync_role');
-    localStorage.removeItem('hrisync_login_time');
-    localStorage.removeItem('hrisync_last_path');
-    localStorage.removeItem('hrisync_sub_grace');
+    safeRemoveItem('hrisync_role');
+    safeRemoveItem('hrisync_login_time');
+    safeRemoveItem('hrisync_last_path');
+    safeRemoveItem('hrisync_sub_grace');
     setUser(null);
     setSession(null);
     setEmployee(null);

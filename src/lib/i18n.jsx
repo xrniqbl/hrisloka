@@ -829,12 +829,19 @@ const I18nContext = createContext({});
 
 export function I18nProvider({ children }) {
  const [locale, setLocale] = useState(() => {
-  return localStorage.getItem('hrisync_locale') || localStorage.getItem('HRIS Loka_locale') || localStorage.getItem('hrisync_lang') || 'id';
+  // Storage bisa diblokir (Safari private mode) — jangan crash provider.
+  try {
+    return localStorage.getItem('hrisync_locale') || localStorage.getItem('KiniKerja_locale') || localStorage.getItem('HRIS Loka_locale') || localStorage.getItem('hrisync_lang') || 'id';
+  } catch {
+    return 'id';
+  }
  });
 
  useEffect(() => {
-  localStorage.setItem('hrisync_locale', locale);
-  localStorage.setItem('hrisync_lang', locale);
+  try {
+    localStorage.setItem('hrisync_locale', locale);
+    localStorage.setItem('hrisync_lang', locale);
+  } catch { /* storage diblokir — locale tetap jalan in-memory */ }
   document.documentElement.setAttribute('lang', locale);
   document.documentElement.setAttribute('data-lang', locale);
 
@@ -857,7 +864,13 @@ export function I18nProvider({ children }) {
  }, [locale]);
 
  const t = useCallback((key, params) => {
- let text = translations[locale]?.[key] || translations['id']?.[key] || key;
+ let text = translations[locale]?.[key] ?? translations['id']?.[key];
+ if (text === undefined) {
+ // Missing key: fallback ke key agar UI tidak kosong, tapi beri peringatan
+ // dev agar ketahuan (sebelumnya senyap → tampil "nav.foo" mentah).
+ if (import.meta.env.DEV) console.warn(`[i18n] Missing key: "${key}" (locale: ${locale})`);
+ text = key;
+ }
  if (params) {
  Object.entries(params).forEach(([k, v]) => {
  text = text.replace(`{${k}}`, v);

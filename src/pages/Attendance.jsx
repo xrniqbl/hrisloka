@@ -4,6 +4,7 @@ import { FiClock, FiMapPin, FiCamera, FiCheckCircle, FiDownload, FiAlertCircle, 
 import { useAuth } from '../context/AuthContext';
 import * as attendanceService from '../services/attendanceService';
 import { exportToExcel, formatAttendanceForExport } from '../lib/excelExport';
+import { toLocalDateKey } from '../lib/dateFormat';
 import BranchFilter from '../components/BranchFilter';
 import { useBranch } from '../context/BranchContext';
 import { useRealtimeTable } from '../hooks/useRealtime';
@@ -68,7 +69,7 @@ export default function Attendance() {
       });
       if (!error) fetchData();
     } else if (clockedIn) {
-      const { error } = await attendanceService.clockOut(myTodayAttendance.id);
+      const { error } = await attendanceService.clockOut(myTodayAttendance.id, employee.id);
       if (!error) fetchData();
     }
   };
@@ -89,8 +90,10 @@ export default function Attendance() {
         <div className="page-header-actions">
           <BranchFilter />
           <Button
+            type="button"
             variant="outline"
-            onClick={() => exportToExcel(formatAttendanceForExport(todayLogs), `Absensi_${new Date().toISOString().split('T')[0]}.xlsx`)}
+            className="btn-header-export"
+            onClick={() => exportToExcel(formatAttendanceForExport(todayLogs), `Absensi_${toLocalDateKey()}.xlsx`)}
           >
             <FiDownload /> Export Excel
           </Button>

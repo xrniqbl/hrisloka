@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   HiArrowRight,
   HiCamera,
@@ -30,7 +30,7 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
   const [error, setError] = useState('');
   const [showScanner, setShowScanner] = useState(false);
 
-  function t(en, id) { return locale === 'en' ? en : id; }
+  const t = useCallback((en, id) => (locale === 'en' ? en : id), [locale]);
 
   const stepLabels = [
     t('Front', 'Depan'),
@@ -100,7 +100,7 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
       setError(err.message || t('Failed to save face data.', 'Gagal menyimpan data wajah.'));
     }
     setSaving(false);
-  }, [employeeId, onComplete, locale]);
+  }, [employeeId, onComplete, t]);
 
   const handleCapture = useCallback(async (descriptor, imageData) => {
     setShowScanner(false);
@@ -286,8 +286,10 @@ export default function FaceRegistration({ employeeId, employeeName, locale = 'i
           mode="register"
           locale={locale}
           strict={false} // Registration uses lighter liveness (1 challenge)
+          // NOTE: hanya onSuccess yang di-wire. FaceScanner mode register
+          // memanggil onCapture lalu onSuccess untuk 1 foto — me-wire keduanya
+          // ke handleCapture menyebabkan 1 foto dihitung 2 sampel.
           onSuccess={handleScanSuccess}
-          onCapture={handleCapture}
           onError={(e) => setError(e)}
         />
       ) : (

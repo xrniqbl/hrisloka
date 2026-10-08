@@ -27,30 +27,57 @@ DROP POLICY IF EXISTS "Public can insert candidates" ON candidates;
 DROP POLICY IF EXISTS "Authenticated users can view candidates" ON candidates;
 DROP POLICY IF EXISTS "Authenticated users can update candidates" ON candidates;
 
--- Public can submit applications (insert only)
+-- Public can submit applications (insert only, job harus open)
 CREATE POLICY "Public can insert candidates"
   ON candidates FOR INSERT
   TO anon, authenticated
-  WITH CHECK (true);
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM job_postings
+      WHERE job_postings.id = candidates.job_id
+      AND job_postings.status = 'open'
+    )
+  );
 
--- Authenticated HR/Admin can view all candidates
-CREATE POLICY "Authenticated users can view candidates"
+-- HR/Admin hanya melihat kandidat perusahaannya sendiri (tenant-scoped).
+-- Butuh get_my_company_id() dari migration_phase4b_rls_complete.sql.
+CREATE POLICY "Company members can view candidates"
   ON candidates FOR SELECT
   TO authenticated
-  USING (true);
+  USING (
+    job_id IN (
+      SELECT id FROM job_postings
+      WHERE company_id = get_my_company_id()
+    )
+  );
 
--- Authenticated HR/Admin can update candidate stage etc
-CREATE POLICY "Authenticated users can update candidates"
+-- HR/Admin hanya update kandidat perusahaannya sendiri
+CREATE POLICY "Company members can update candidates"
   ON candidates FOR UPDATE
   TO authenticated
-  USING (true)
-  WITH CHECK (true);
+  USING (
+    job_id IN (
+      SELECT id FROM job_postings
+      WHERE company_id = get_my_company_id()
+    )
+  )
+  WITH CHECK (
+    job_id IN (
+      SELECT id FROM job_postings
+      WHERE company_id = get_my_company_id()
+    )
+  );
 
--- Authenticated HR/Admin can delete
-CREATE POLICY "Authenticated users can delete candidates"
+-- HR/Admin hanya hapus kandidat perusahaannya sendiri
+CREATE POLICY "Company members can delete candidates"
   ON candidates FOR DELETE
   TO authenticated
-  USING (true);
+  USING (
+    job_id IN (
+      SELECT id FROM job_postings
+      WHERE company_id = get_my_company_id()
+    )
+  );
 
 -- 3. Allow public to insert into audit_trails (for application submission log)
 ALTER TABLE audit_trails ENABLE ROW LEVEL SECURITY;
@@ -61,10 +88,12 @@ CREATE POLICY "Public can insert audit_trails"
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users can view audit_trails" ON audit_trails;
-CREATE POLICY "Authenticated users can view audit_trails"
+-- SECURITY: audit_trails tidak punya company_id — hanya user yang punya baris
+-- di tabel ini (user_id = dirinya) yang boleh baca. Jangan USING(true).
+CREATE POLICY "Users can view own audit_trails"
   ON audit_trails FOR SELECT
   TO authenticated
-  USING (true);
+  USING (user_id = auth.uid());
 
 -- 4. Allow public to insert website_analytics
 ALTER TABLE website_analytics ENABLE ROW LEVEL SECURITY;
@@ -74,14 +103,14 @@ CREATE POLICY "Public can insert analytics"
   TO anon, authenticated
   WITH CHECK (true);
 
--- 5. Storage: allow public to upload to resumes bucket
--- Run this in Storage section: create bucket 'resumes' with public = true
--- Or via SQL:
+-- 5. Storage: bucket resumes HARUS private (CV berisi PII).
+-- Pelamar publik tetap bisa upload (INSERT), tapi baca (SELECT) hanya untuk
+-- user login. Unduh CV dilakukan via signed URL dari server/HR.
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('resumes', 'resumes', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
+VALUES ('resumes', 'resumes', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
 
--- Allow anonymous uploads to resumes
+-- Allow anonymous uploads to resumes (apply form publik, insert-only)
 DROP POLICY IF EXISTS "Public can upload resumes" ON storage.objects;
 CREATE POLICY "Public can upload resumes"
   ON storage.objects FOR INSERT
@@ -89,9 +118,10 @@ CREATE POLICY "Public can upload resumes"
   WITH CHECK (bucket_id = 'resumes');
 
 DROP POLICY IF EXISTS "Public can read resumes" ON storage.objects;
-CREATE POLICY "Public can read resumes"
+DROP POLICY IF EXISTS "Members can read resumes" ON storage.objects;
+CREATE POLICY "Members can read resumes"
   ON storage.objects FOR SELECT
-  TO anon, authenticated
+  TO authenticated
   USING (bucket_id = 'resumes');
 
 -- 6. Enable Realtime for candidates (safe - won't error if already added)

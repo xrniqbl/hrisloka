@@ -8,6 +8,7 @@ import EmployeeModal from '../components/EmployeeModal';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 import * as XLSX from 'xlsx';
+import { toLocalDateKey } from '../lib/dateFormat';
 import BranchFilter from '../components/BranchFilter';
 import { useBranch } from '../context/BranchContext';
 import { useRealtimeTable } from '../hooks/useRealtime';
@@ -170,7 +171,7 @@ export default function Employees() {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Karyawan');
-    XLSX.writeFile(wb, `Data_Karyawan_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `Data_Karyawan_${toLocalDateKey()}.xlsx`);
   };
 
   return (

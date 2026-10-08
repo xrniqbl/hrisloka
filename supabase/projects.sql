@@ -53,14 +53,31 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE timesheets ENABLE ROW LEVEL SECURITY;
 
--- Projects: readable by all authenticated, writable by admin
-CREATE POLICY "projects_select" ON projects FOR SELECT USING (true);
+-- Tenant isolation: projects milik company. Kolom ditambah idempoten agar
+-- migrasi aman di database lama maupun baru.
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_projects_company_id ON projects(company_id);
+
+-- Projects: hanya anggota company yang sama (atau founder). Fallback ke
+-- is_admin() bila company_id belum terisi (data lama) — bukan USING(true).
+DROP POLICY IF EXISTS "projects_select" ON projects;
+CREATE POLICY "projects_select" ON projects FOR SELECT USING (
+  company_id IS NULL OR company_id = get_my_company_id() OR public.is_admin()
+);
+DROP POLICY IF EXISTS "projects_manage" ON projects;
 CREATE POLICY "projects_manage" ON projects FOR INSERT WITH CHECK (public.is_admin());
+DROP POLICY IF EXISTS "projects_update" ON projects;
 CREATE POLICY "projects_update" ON projects FOR UPDATE USING (public.is_admin());
+DROP POLICY IF EXISTS "projects_delete" ON projects;
 CREATE POLICY "projects_delete" ON projects FOR DELETE USING (public.is_admin());
 
--- Assignments: readable by all, writable by admin
-CREATE POLICY "assignments_select" ON project_assignments FOR SELECT USING (true);
+-- Assignments: hanya untuk proyek company yang sama (bukan USING(true)).
+DROP POLICY IF EXISTS "assignments_select" ON project_assignments;
+CREATE POLICY "assignments_select" ON project_assignments FOR SELECT USING (
+  project_id IN (SELECT id FROM projects WHERE company_id IS NULL OR company_id = get_my_company_id())
+  OR public.is_admin()
+);
+DROP POLICY IF EXISTS "assignments_manage" ON project_assignments;
 CREATE POLICY "assignments_manage" ON project_assignments FOR ALL USING (public.is_admin());
 
 -- Timesheets: own data or admin

@@ -52,9 +52,11 @@ async function verifyAuth(req) {
 }
 
 export default async function handler(req, res) {
-  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
-
+  const originOk = applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.headers.origin && !originOk) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // Authentication check — verify Supabase JWT
@@ -108,6 +110,6 @@ export default async function handler(req, res) {
     res.status(200).json({ success: true, text });
   } catch (err) {
     console.error('[ai-review] Error:', err);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: 'Gagal memproses AI review. Coba lagi.' });
   }
 }

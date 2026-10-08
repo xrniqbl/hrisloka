@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase';
  * useRealtimeTable('attendance', loadAttendance, { filter: `employee_id=eq.${empId}` });
  */
 export function useRealtimeTable(table, onRefresh, options = {}) {
- const { enabled = true, event = '*', filter } = options;
+ const { enabled = true, event = '*', filter, companyId } = options;
  const callbackRef = useRef(onRefresh);
  
  // Keep callback ref current without causing re-subscriptions
@@ -39,6 +39,9 @@ export function useRealtimeTable(table, onRefresh, options = {}) {
  if (filter) {
  channelConfig.filter = filter;
  }
+ if (companyId) {
+   channelConfig.filter = channelConfig.filter ? channelConfig.filter + ',company_id=eq.' + companyId : 'company_id=eq.' + companyId;
+ }
 
  const channel = supabase
  .channel(channelName)
@@ -52,7 +55,7 @@ export function useRealtimeTable(table, onRefresh, options = {}) {
  return () => {
  supabase.removeChannel(channel);
  };
- }, [table, enabled, event, filter]);
+ }, [table, enabled, event, filter, companyId]);
 }
 
 /**
@@ -70,6 +73,11 @@ export function useRealtimeTable(table, onRefresh, options = {}) {
 export function useRealtimeMultiple(subscriptions = []) {
   // Keep stable refs for each callback so Realtime handlers always call the latest version
   const callbackRefs = useRef([]);
+  // Kunci re-subscribe: tabel+event+filter+company (bukan hanya length) agar ganti
+  // company/filter dengan jumlah sama tetap pindah channel (cegah dengar tenant lama).
+  const subKey = JSON.stringify(
+    (subscriptions || []).map((s) => [s.table, s.event || '*', s.filter || '', s.companyId || '']),
+  );
 
   useEffect(() => {
     callbackRefs.current = subscriptions.map(s => s.onRefresh);
@@ -81,9 +89,10 @@ export function useRealtimeMultiple(subscriptions = []) {
     const channelName = `realtime-multi-${Date.now()}`;
     let channel = supabase.channel(channelName);
 
-    subscriptions.forEach(({ table, event = '*', filter }, index) => {
+    subscriptions.forEach(({ table, event = '*', filter, companyId }, index) => {
       const config = { event, schema: 'public', table };
       if (filter) config.filter = filter;
+      if (companyId) config.filter = config.filter ? config.filter + ',company_id=eq.' + companyId : 'company_id=eq.' + companyId;
 
       channel = channel.on('postgres_changes', config, (payload) => {
         // ⚠️ Dev only — never log payload in production (may contain sensitive employee data)
@@ -98,7 +107,7 @@ export function useRealtimeMultiple(subscriptions = []) {
     return () => {
       supabase.removeChannel(channel);
     };
-    // subscriptions.length is stable; individual callbacks stay fresh via refs
+    // subKey mencakup semua dimensi langganan; callback tetap fresh via refs
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscriptions.length]);
+  }, [subKey]);
 }

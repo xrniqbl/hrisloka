@@ -10,7 +10,7 @@ import SkipLink from './components/SkipLink';
 import { getRole, isFounder } from './lib/rbac';
 import { ToastProvider } from './components/Toast';
 import { BranchProvider } from './context/BranchContext';
-import { isDemoMode } from './lib/demoGuard';
+import { isDemoMode, DEMO_ENABLED } from './lib/demoGuard';
 import { sanitizeAppPath, stripUrlHash } from './lib/safePath';
 import { safeGetItem, safeSetItem } from './lib/safeStorage';
 
@@ -202,11 +202,13 @@ function RootRedirect() {
 }
 
 /* Smart redirect for authenticated users hitting protected routes */
-function AuthRedirect() {
+// Dipakai di /login: user yang sudah login langsung diarahkan ke tujuan per-role;
+// user yang belum login tetap melihat form login (children).
+function AuthRedirect({ children }) {
   const { user, employee, loading, hasOnboarding, onboardingLoading } = useAuth();
 
   if (loading || onboardingLoading) return <PageLoader />;
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return children;
   const role = getRole(employee);
   const founderUser = isFounder(user, employee);
 
@@ -273,6 +275,15 @@ function HashCleaner() {
 }
 
 /**
+ * RouteErrorBoundary — boundary per-area yang reset otomatis saat pathname berubah.
+ * Mencegah satu halaman error mengunci seluruh Routes (masalah boundary global tunggal).
+ */
+function RouteErrorBoundary({ children }) {
+  const location = useLocation();
+  return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>;
+}
+
+/**
  * FounderGuard — route-level firewall for all /founder/* paths.
  */
 function FounderGuard({ children }) {
@@ -316,32 +327,39 @@ function MaintenanceGuard({ children }) {
   const [checkDone, setCheckDone] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     // Founder bypasses check entirely
     if (!loading && isFounder(user, employee)) {
       setCheckDone(true);
-      return;
+      return undefined;
     }
-    if (loading) return;
+    if (loading) return undefined;
 
     // Query Supabase for maintenance status
     import('./lib/supabase').then(({ supabase }) => {
+      if (cancelled) return;
       supabase
         .from('platform_settings')
         .select('value')
         .eq('key', 'is_maintenance')
         .maybeSingle()
         .then(({ data }) => {
+          if (cancelled) return;
           setIsMaintenance(data?.value === 'true' || data?.value === true);
           setCheckDone(true);
         })
         .catch(() => {
           // Table may not exist yet — don't block the app
-          setCheckDone(true);
+          if (!cancelled) setCheckDone(true);
         });
+    }).catch(() => {
+      // Chunk gagal dimuat (offline/throttle) — jangan gantung aplikasi
+      if (!cancelled) setCheckDone(true);
     });
+    return () => { cancelled = true; };
   }, [loading, user, employee]);
 
-  if (loading || !checkDone) return null;
+  if (loading || !checkDone) return <PageLoader />;
   if (isFounder(user, employee)) return children;
   if (isMaintenance) return <Navigate to="/maintenance" replace />;
   return children;
@@ -377,8 +395,9 @@ function SubscriptionGuard({ children }) {
     );
   }
 
-  // Demo mode — read-only access, no Supabase session needed
-  if (isDemo || isDemoMode()) return children;
+  // Demo mode — read-only access, no Supabase session needed.
+  // Gated on DEMO_ENABLED: isDemoMode() alone is not trusted (sessionStorage is user-writable).
+  if ((isDemo || isDemoMode()) && DEMO_ENABLED) return children;
 
   if (!user) return <Navigate to="/login" replace />;
   if (isFounder(user, employee)) return children;
@@ -447,7 +466,7 @@ function App() {
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<RootRedirect />} />
-                  <Route path="/login" element={<AuthPage />} />
+                  <Route path="/login" element={<AuthRedirect><AuthPage /></AuthRedirect>} />
                   <Route path="/landing" element={<LandingPage />} />
                   <Route path="/install" element={<InstallGuide />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
@@ -460,7 +479,10 @@ function App() {
                   <Route path="/blog/:slug" element={<BlogPost />} />
                   <Route path="/employee-web-access" element={<EmployeeWebAccess />} />
                   <Route path="/not-registered"      element={<NotRegistered />} />
-                  <Route path="/" element={
+                  {/* Admin portal — layout route di "/*" (bukan "/" duplikat) agar
+                      tidak berebut match dengan RootRedirect di atas. */}
+                  <Route path="/*" element={
+                    <RouteErrorBoundary>
                     <SubscriptionGuard>
                       <MaintenanceGuard>
                         <AdminRouteGuard>
@@ -468,6 +490,7 @@ function App() {
                         </AdminRouteGuard>
                       </MaintenanceGuard>
                     </SubscriptionGuard>
+                    </RouteErrorBoundary>
                   }>
                     <Route path="dashboard"        element={<Dashboard />} />
                     <Route path="approvals"         element={<ApprovalDashboard />} />
@@ -543,6 +566,8 @@ function App() {
                     <Route path="contracts"                     element={<ContractManagement />} />
                     <Route path="contracts/edit/:id"            element={<ContractEditor isTemplate={false} />} />
                     <Route path="contracts/template/:id"        element={<ContractEditor isTemplate={true} />} />
+                    {/* Unknown admin path → 404 di dalam shell dashboard */}
+                    <Route path="*" element={<NotFound />} />
                   </Route>
 
                   {/* Public Career Pages (no auth required) */}
@@ -552,9 +577,11 @@ function App() {
 
                   {/* Founder Portal — triple-guarded */}
                   <Route path="/founder" element={
+                    <RouteErrorBoundary>
                     <FounderGuard>
                       <FounderLayout />
                     </FounderGuard>
+                    </RouteErrorBoundary>
                   }>
                     <Route index element={<Navigate to="/founder/dashboard" replace />} />
                     <Route path="dashboard"         element={<FounderDashboard />} />
@@ -567,6 +594,8 @@ function App() {
                     <Route path="support"           element={<FounderSupport />} />
                     <Route path="platform-settings" element={<FounderSettings />} />
                     <Route path="backup"            element={<FounderBackup />} />
+                    {/* Unknown founder path → 404 di dalam shell founder */}
+                    <Route path="*" element={<NotFound />} />
                   </Route>
 
                   {/* Maintenance page */}
@@ -582,7 +611,7 @@ function App() {
                   <Route path="/app/rejected"        element={<PendingVerificationScreen />} />
 
                   {/* Employee PWA — protected routes */}
-                  <Route path="/app" element={<EmployeeLayout />}>
+                  <Route path="/app" element={<RouteErrorBoundary><EmployeeLayout /></RouteErrorBoundary>}>
                     <Route index element={<Navigate to="/app/home" replace />} />
                     <Route path="home"          element={<EmpDashboard />} />
                     <Route path="absen"         element={<EmpAbsen />} />
@@ -614,6 +643,8 @@ function App() {
                     <Route path="approvals"     element={<EmpApprovals />} />
                     <Route path="org-chart"     element={<EmpOrgChart />} />
                     <Route path="expense-ocr"   element={<EmpExpenseOCR />} />
+                    {/* Unknown PWA path → tetap di shell PWA (bukan 404 desktop) */}
+                    <Route path="*" element={<Navigate to="/app/home" replace />} />
                   </Route>
 
                   {/* 404 — always last */}

@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useCallback } from 'react';
+import { useState, createContext, useContext, useCallback, useRef, useEffect } from 'react';
 import {
   HiBellAlert,
   HiCheck,
@@ -13,19 +13,46 @@ let toastId = 0;
 
 export function ToastProvider({ children }) {
  const [toasts, setToasts] = useState([]);
+ const timersRef = useRef(new Map());
+ const MAX_TOASTS = 5;
+
+ // Bersihkan semua timer saat provider unmount (cegah setState pasca-unmount)
+ useEffect(() => {
+   const timers = timersRef.current;
+   return () => {
+     timers.forEach(clearTimeout);
+     timers.clear();
+   };
+ }, []);
 
  const addToast = useCallback((message, type = 'info', duration = 4000) => {
  const id = ++toastId;
- setToasts(prev => [...prev, { id, message, type }]);
+ // Batasi stack: toast terlama dibuang + timernya dibersihkan
+ setToasts(prev => {
+   const next = [...prev, { id, message, type }];
+   if (next.length > MAX_TOASTS) {
+     const dropped = next.slice(0, next.length - MAX_TOASTS);
+     dropped.forEach(t => {
+       const timer = timersRef.current.get(t.id);
+       if (timer) { clearTimeout(timer); timersRef.current.delete(t.id); }
+     });
+     return next.slice(next.length - MAX_TOASTS);
+   }
+   return next;
+ });
  if (duration > 0) {
- setTimeout(() => {
+ const timer = setTimeout(() => {
+ timersRef.current.delete(id);
  setToasts(prev => prev.filter(t => t.id !== id));
  }, duration);
+ timersRef.current.set(id, timer);
  }
  return id;
  }, []);
 
  const removeToast = useCallback((id) => {
+ const timer = timersRef.current.get(id);
+ if (timer) { clearTimeout(timer); timersRef.current.delete(id); }
  setToasts(prev => prev.filter(t => t.id !== id));
  }, []);
 

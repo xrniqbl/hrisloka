@@ -83,6 +83,55 @@ function toNumberOrFalse(val) {
   return typeof val === 'number' && Number.isFinite(val) ? val : null;
 }
 
+/** Haversine distance (meter) antara dua titik lat/lng. */
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+/**
+ * Verifikasi radius server-side: hitung jarak klaim client ke office_locations
+ * milik company. Klaim `inRadius=true` yang tidak konsisten dengan jarak
+ * dihitung ulang menjadi false (tidak dipercaya mentah — cegah absensi palsu).
+ * Return { inRadius, officeName }.
+ */
+async function verifyRadiusServerSide(companyId, lat, lng) {
+  const fallback = { inRadius: false, officeName: null };
+  if (lat === null || lng === null) return fallback;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/office_locations?select=id,name,latitude,longitude,radius_meters,company_id`;
+    const res = await fetch(url, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    });
+    if (!res.ok) return fallback;
+    const offices = await res.json();
+    if (!Array.isArray(offices)) return fallback;
+    // Filter company bila kolom tersedia; skema lama tanpa company_id → pakai semua
+    const scoped = offices.filter(
+      (o) => o.company_id === undefined || o.company_id === null || String(o.company_id) === String(companyId),
+    );
+    let best = null;
+    let bestDist = Infinity;
+    for (const o of scoped) {
+      const oLat = Number(o.latitude);
+      const oLng = Number(o.longitude);
+      if (!Number.isFinite(oLat) || !Number.isFinite(oLng)) continue;
+      const d = haversineMeters(lat, lng, oLat, oLng);
+      if (d < bestDist) { bestDist = d; best = o; }
+    }
+    if (!best) return fallback;
+    const radius = Number(best.radius_meters) || 100;
+    return { inRadius: bestDist <= radius, officeName: best.name || null };
+  } catch {
+    return fallback;
+  }
+}
+
 export default async function handler(req, res) {
   applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
 
@@ -133,6 +182,15 @@ export default async function handler(req, res) {
 
   const cleanLat = toNumberOrFalse(latitude);
   const cleanLng = toNumberOrFalse(longitude);
+  // Verifikasi radius server-side — klaim client tidak dipercaya mentah
+  const { inRadius: serverInRadius, officeName } = await verifyRadiusServerSide(
+    employee.company_id, cleanLat, cleanLng,
+  );
+  // Face/selfie flag client hanya disimpan sebagai klaim (bukan bukti);
+  // threshold face-distance yang longgar ditolak.
+  const cleanFaceDistance = toNumberOrFalse(faceDistance);
+  const faceVerifiedClean = faceVerified === true
+    && (cleanFaceDistance === null || cleanFaceDistance <= 0.6);
   const cleanTrustScore = typeof trustScore === 'number' && Number.isFinite(trustScore)
     ? Math.max(0, Math.min(100, trustScore))
     : 100;
@@ -175,15 +233,17 @@ export default async function handler(req, res) {
         status: 'present',
         latitude: cleanLat,
         longitude: cleanLng,
-        in_radius: inRadius ?? false,
-        selfie_verified: selfieVerified ?? false,
-        face_verified: faceVerified ?? false,
-        face_distance: toNumberOrFalse(faceDistance),
+        // Hasil verifikasi server-side (bukan klaim client)
+        in_radius: serverInRadius,
+        in_radius_claimed: inRadius === true,
+        selfie_verified: selfieVerified === true,
+        face_verified: faceVerifiedClean,
+        face_distance: cleanFaceDistance,
         face_confidence: toNumberOrFalse(faceConfidence),
         trust_score: cleanTrustScore,
         trust_level: cleanTrustLevel,
         anti_spoof_flags: cleanFlags,
-        location: inRadius ? 'Office' : 'Remote',
+        location: serverInRadius ? (officeName || 'Office') : 'Remote',
       }),
     });
 

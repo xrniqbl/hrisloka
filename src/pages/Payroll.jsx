@@ -1,7 +1,6 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useTranslation } from '../lib/i18n';
 import { FiDollarSign, FiDownload } from 'react-icons/fi';
 import {
@@ -28,16 +27,20 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
+import MetricStatCards from '../components/MetricStatCards';
+import MonthPicker from '../components/MonthPicker';
+import { toLocalMonthKey, formatIDR as formatCurrency } from '../lib/dateFormat';
+import { Wallet, MinusCircle, Timer, Banknote } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
-const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 const chartFont = { family: 'Inter Tight', weight: '500' };
 
 export default function Payroll() {
   const { t } = useTranslation();
   const { employee } = useAuth();
-  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  // Lokal (bukan toISOString/UTC): cegah label mundur sehari di WIB 00:xx tgl 1
+  const [selectedMonth, setSelectedMonth] = useState(() => toLocalMonthKey());
  const [employees, setEmployees] = useState([]);
  const [overtimeRecords, setOvertimeRecords] = useState([]);
  const [loading, setLoading] = useState(true);
@@ -202,47 +205,69 @@ export default function Payroll() {
 
  /** Persist payroll so PWA EmpPayslip can read payroll_records */
  const handlePublishPayroll = async () => {
-  if (!employee?.company_id || payrollData.length === 0) return;
-  setPublishing(true);
-  setPublishMsg('');
-  const records = payrollData.map((row) => ({
-    employee_id: row.id,
-    period: selectedMonth,
-    base_salary: row.salary.baseSalary || 0,
-    allowance: row.salary.allowance || 0,
-    overtime_pay: row.salary.overtimePay || 0,
-    overtime_hours: row.salary.overtimeHours || 0,
-    gross_income: row.salary.grossIncome || 0,
-    bpjs_kesehatan: row.salary.bpjs?.bpjsKesehatan || 0,
-    bpjs_jht: row.salary.bpjs?.bpjsJHT || 0,
-    bpjs_jp: row.salary.bpjs?.bpjsJP || 0,
-    pph21: row.salary.pph21 || 0,
-    total_deductions: row.salary.totalDeductions || 0,
-    take_home_pay: row.salary.takeHomePay || 0,
-    status: 'generated',
-  }));
-  const { data, error } = await payrollService.batchSavePayroll(records, employee.company_id);
-  if (error) {
-    setPublishMsg('Gagal menyimpan: ' + (error.message || 'error'));
-    setPublishing(false);
+  if (publishing) return;
+  if (!employee?.company_id) {
+    setPublishMsg('Gagal: akun belum terhubung ke perusahaan (company_id).');
     return;
   }
-  // Notify each employee (PWA notifikasi + push)
-  const monthLabel = new Date(selectedMonth + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-  for (const row of (data || records)) {
-    const empId = row.employee_id;
-    createNotification({
-      employeeId: empId,
-      companyId: employee.company_id,
-      type: 'payslip',
-      title: 'Slip gaji tersedia',
-      body: `Slip gaji ${monthLabel} sudah dapat dilihat di aplikasi.`,
-      data: { path: '/app/payslip', period: selectedMonth },
-    }).catch(() => {});
-    sendPayslipPush(empId, selectedMonth.split('-')[1], selectedMonth.split('-')[0]).catch(() => {});
+  if (payrollData.length === 0) {
+    setPublishMsg('Gagal: tidak ada data karyawan untuk dipublikasi.');
+    return;
   }
-  setPublishMsg(`Payroll ${selectedMonth} tersimpan (${(data || records).length} karyawan). Karyawan dapat lihat di PWA.`);
-  setPublishing(false);
+  setPublishing(true);
+  setPublishMsg('');
+  try {
+    const records = payrollData.map((row) => ({
+      employee_id: row.id,
+      period: selectedMonth,
+      base_salary: row.salary.baseSalary || 0,
+      allowance: row.salary.allowance || 0,
+      overtime_pay: row.salary.overtimePay || 0,
+      overtime_hours: row.salary.overtimeHours || 0,
+      gross_income: row.salary.grossIncome || 0,
+      bpjs_kesehatan: row.salary.bpjs?.bpjsKesehatan || 0,
+      bpjs_jht: row.salary.bpjs?.bpjsJHT || 0,
+      bpjs_jp: row.salary.bpjs?.bpjsJP || 0,
+      pph21: row.salary.pph21 || 0,
+      total_deductions: row.salary.totalDeductions || 0,
+      take_home_pay: row.salary.takeHomePay || 0,
+      status: 'generated',
+    }));
+    const { data, error } = await payrollService.batchSavePayroll(records, employee.company_id);
+    if (error) {
+      setPublishMsg('Gagal menyimpan: ' + (error.message || 'error'));
+      return;
+    }
+    const saved = data || records;
+    // Notify each employee (PWA notifikasi + push) — non-blocking
+    const monthLabel = new Date(selectedMonth + '-01').toLocaleDateString('id-ID', {
+      month: 'long',
+      year: 'numeric',
+    });
+    await Promise.allSettled(
+      saved.map((row) => {
+        const empId = row.employee_id;
+        return Promise.all([
+          createNotification({
+            employeeId: empId,
+            companyId: employee.company_id,
+            type: 'payslip',
+            title: 'Slip gaji tersedia',
+            body: `Slip gaji ${monthLabel} sudah dapat dilihat di aplikasi.`,
+            data: { path: '/app/payslip', period: selectedMonth },
+          }),
+          sendPayslipPush(empId, selectedMonth.split('-')[1], selectedMonth.split('-')[0]),
+        ]);
+      }),
+    );
+    setPublishMsg(
+      `Payroll ${selectedMonth} tersimpan (${saved.length} karyawan). Karyawan dapat lihat di PWA.`,
+    );
+  } catch (err) {
+    setPublishMsg('Gagal: ' + (err?.message || 'terjadi kesalahan'));
+  } finally {
+    setPublishing(false);
+  }
  };
 
   if (loading) return <PageSkeleton hasStats={true} tableRows={6} tableCols={6} />;
@@ -250,51 +275,44 @@ export default function Payroll() {
  <div>
  <div className="page-header">
  <h1>{t('payroll.title')}</h1>
- <div className="page-header-actions">
- <Input
- type="month"
- className="input-month"
- value={selectedMonth}
- onChange={(e) => setSelectedMonth(e.target.value)}
- />
- <Button onClick={handleExportExcel}><FiDownload /> Export Payroll</Button>
+ <div className="page-header-actions payroll-actions">
+ <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
  <Button
+  type="button"
+  variant="outline"
+  className="payroll-btn-export"
+  onClick={handleExportExcel}
+  disabled={payrollData.length === 0}
+ >
+  <FiDownload /> Export Payroll
+ </Button>
+ <Button
+  type="button"
+  variant="default"
+  className="payroll-btn-publish"
   onClick={handlePublishPayroll}
-  disabled={publishing || payrollData.length === 0}
-  style={{ background: publishing ? 'var(--border)' : 'var(--success)' }}
+  disabled={publishing || !employee?.company_id || payrollData.length === 0}
+  loading={publishing}
  >
   {publishing ? 'Menyimpan...' : 'Publikasi ke PWA'}
  </Button>
  </div>
  </div>
  {publishMsg && (
-  <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', color: '#15803d', fontSize: 13, fontWeight: 600 }}>
+  <div
+   className={`payroll-publish-msg ${publishMsg.startsWith('Gagal') ? 'is-error' : 'is-ok'}`}
+   role="status"
+  >
    {publishMsg}
   </div>
  )}
 
- {/* Summary Cards */}
- <div className="stats-grid">
- <div className="info-card">
- <div className="info-card-label">Total Penghasilan Kotor</div>
- <div className="info-card-value">{formatCurrency(totals.gross)}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Total Potongan</div>
- <div className="info-card-value danger">- {formatCurrency(totals.deductions)}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Biaya Lembur</div>
- <div className="info-card-value warning">{formatCurrency(totals.overtime)}</div>
- <div className="info-card-subtext">
- {totals.baseSalary > 0 ? `${((totals.overtime / totals.baseSalary) * 100).toFixed(1)}% dari gaji pokok` : '-'}
- </div>
- </div>
- <div className="info-card highlight">
- <div className="info-card-label light">Total Take Home Pay</div>
- <div className="info-card-value">{formatCurrency(totals.net)}</div>
- </div>
- </div>
+ <MetricStatCards items={[
+ { key: 'gross', label: 'Penghasilan Kotor', value: formatCurrency(totals.gross), icon: Wallet },
+ { key: 'deduct', label: 'Total Potongan', value: formatCurrency(totals.deductions), icon: MinusCircle },
+ { key: 'ot', label: 'Biaya Lembur', value: formatCurrency(totals.overtime), icon: Timer },
+ { key: 'net', label: 'Take Home Pay', value: formatCurrency(totals.net), icon: Banknote },
+ ]} />
 
  {/* Overtime Cost by Division Chart */}
  {divisionCostData.labels.length > 0 && (
@@ -377,4 +395,3 @@ export default function Payroll() {
  </div>
  );
 }
-

@@ -25,6 +25,10 @@ const PLAN_COLORS = {
 };
 
 // -- Load Midtrans Snap script --------------------------------------------------
+// SECURITY: mode (sandbox/prod) wajib konsisten dengan server. Edge Function
+// mengembalikan `midtrans_mode`; jika berbeda dengan env frontend, tolak
+// sebelum window.snap.pay agar token prod tidak dibuka dengan Snap sandbox.
+export const MIDTRANS_MODE_MISMATCH = 'Mode pembayaran tidak sinkron antara aplikasi dan server. Muat ulang halaman.';
 function loadSnapScript() {
   return new Promise((resolve, reject) => {
     if (window.snap) { resolve(); return; }
@@ -120,7 +124,7 @@ function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingC
                   {(plan.features || []).map((f, i) => <li key={i}><FeatCheck />{f}</li>)}
                 </ul>
                 <a
-                  href="https://wa.me/6289512114437?text=Halo%2C%20saya%20tertarik%20dengan%20paket%20Enterprise%20HRIS%20Loka."
+                  href="https://wa.me/6289512114437?text=Halo%2C%20saya%20tertarik%20dengan%20paket%20Enterprise%20KiniKerja."
                   target="_blank" rel="noopener noreferrer"
                   className="co-plan-select-btn"
                   style={{ marginTop: 20, display: 'block', textDecoration: 'none', background: color, borderColor: color, color: '#fff', textAlign: 'center', borderRadius: 12, padding: '11px 16px', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
@@ -359,7 +363,7 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
             </div>
           )}
           <div style={{ marginTop: 16, fontSize: 11, color: 'rgba(255,255,255,0.15)', lineHeight: 1.6 }}>
-            Dengan melanjutkan, Anda menyetujui Syarat Layanan dan Kebijakan Privasi HRIS Loka.
+            Dengan melanjutkan, Anda menyetujui Syarat Layanan dan Kebijakan Privasi KiniKerja.
           </div>
         </div>
       </div>
@@ -632,6 +636,15 @@ export default function CheckoutPage() {
       const { snap_token } = res.data;
       const orderId = res.data?.order_id;
 
+      // Guard: server menyatakan mode-nya — harus sama dengan script Snap yg diload
+      const serverMode = res.data?.midtrans_mode;
+      const clientMode = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true' ? 'production' : 'sandbox';
+      if (serverMode && serverMode !== clientMode) {
+        setPayError(MIDTRANS_MODE_MISMATCH);
+        setActivating(false);
+        return;
+      }
+
       window.snap.pay(snap_token, {
         onSuccess: () => {
           // DO NOT activate client-side — webhook is source of truth
@@ -669,7 +682,7 @@ export default function CheckoutPage() {
       <div className="co-topbar">
         <div className="co-logo">
           <picture>
-            <img src="/landing/hrislokawhitepanjang.png" alt="HRIS Loka" />
+            <img src="/landing/kinikerjawhitepanjang.png" alt="KiniKerja" />
           </picture>
         </div>
         <div className="co-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

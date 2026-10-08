@@ -28,6 +28,7 @@ export default function LeaveManagement() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [newLeave, setNewLeave] = useState({ type: 'cuti', startDate: '', endDate: '', reason: '', employeeId: '' });
+  const [formError, setFormError] = useState('');
   const { selectedBranchId } = useBranch();
 
   const companyId = employee?.company_id;
@@ -80,7 +81,25 @@ export default function LeaveManagement() {
   };
 
   const handleSubmit = async () => {
-    const days = Math.ceil((new Date(newLeave.endDate) - new Date(newLeave.startDate)) / (1000 * 60 * 60 * 24)) + 1;
+    // Validasi tanggal murni kalender (tanpa komponen jam/DST) — cegah hari
+    // negatif bila end < start dan off-by-one lintas DST.
+    const parseDay = (s) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+      if (!m) return null;
+      return Date.UTC(+m[1], +m[2] - 1, +m[3]);
+    };
+    const startMs = parseDay(newLeave.startDate);
+    const endMs = parseDay(newLeave.endDate);
+    if (startMs === null || endMs === null) {
+      setFormError('Tanggal mulai dan selesai wajib diisi (format YYYY-MM-DD).');
+      return;
+    }
+    if (endMs < startMs) {
+      setFormError('Tanggal selesai tidak boleh sebelum tanggal mulai.');
+      return;
+    }
+    setFormError('');
+    const days = Math.round((endMs - startMs) / 86400000) + 1;
     const { error } = await leaveService.submitLeave(newLeave.employeeId || employee?.id, {
       type: newLeave.type, startDate: newLeave.startDate, endDate: newLeave.endDate, days, reason: newLeave.reason,
     });
@@ -240,6 +259,11 @@ export default function LeaveManagement() {
                 <Textarea placeholder="Tuliskan alasan cuti/izin..." value={newLeave.reason} onChange={(e) => setNewLeave({ ...newLeave, reason: e.target.value })} />
               </div>
             </div>
+            {formError && (
+              <div role="alert" style={{ color: '#DC2626', fontSize: 13, marginTop: 8 }}>
+                {formError}
+              </div>
+            )}
           </DialogPanel>
           <DialogFooter>
             <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</button>

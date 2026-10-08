@@ -1,169 +1,310 @@
-import { useState, useEffect } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Icon } from '@astryxdesign/core/Icon';
+import { Plus, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { isDemoMode } from '../lib/demoGuard';
 import Sidebar from '../components/Sidebar';
-import { AppShellAstryx, SideNavAstryx } from '../components/ui/astryx-layout';
 import NotificationCenter from '../components/NotificationCenter';
+import PlatformBroadcastBanner from '../components/PlatformBroadcastBanner';
 import Breadcrumb from '../components/Breadcrumb';
-import { hasAccess, getRole, isFounder, ROLE_LABELS, ROLE_COLORS } from '../lib/rbac';
-import { useTranslation, LanguageToggle } from '../lib/i18n';
-import { FiSun, FiMoon, FiLock } from 'react-icons/fi';
-import { HiShieldCheck } from 'react-icons/hi2';
+import ProfileDrawer from '../components/ProfileDrawer';
 import GlobalSearch from '../components/GlobalSearch';
+import UserAvatar from '../components/UserAvatar';
+import { hasAccess, getRole, isFounder, ROLE_LABELS, ROLE_COLORS } from '../lib/rbac';
+import { safeGetItem } from '../lib/safeStorage';
+import { useTranslation, LanguageToggle } from '../lib/i18n';
 import { rememberAppPath, stripUrlHash } from '../lib/safePath';
+import { markNoIndex } from '../lib/seo';
+import { needsOwnerSetup } from '../services/ownerSetupService';
 import './DashboardLayout.css';
 
+/** Route path → page title for topbar (SolveHR-style) */
+const PAGE_TITLES = {
+  '/dashboard': 'Dashboard',
+  '/approvals': 'Approvals',
+  '/employees': 'Employees',
+  '/departments': 'Departments',
+  '/org-chart': 'Org Chart',
+  '/documents': 'Documents',
+  '/profile-requests': 'Profile Requests',
+  '/branches': 'Branches',
+  '/onboarding': 'Onboarding',
+  '/offboarding': 'Offboarding',
+  '/attendance': 'Attendance',
+  '/shifts': 'Shift Management',
+  '/leave': 'Leave',
+  '/geo-attendance': 'Geo Attendance',
+  '/overtime': 'Overtime',
+  '/payroll': 'Payroll',
+  '/payslips': 'Payslips',
+  '/reimbursement': 'Reimbursement',
+  '/expense-ocr': 'Expense OCR',
+  '/loans': 'Loans',
+  '/projects': 'Projects',
+  '/timesheets': 'Timesheets',
+  '/kpi': 'KPI',
+  '/appraisal': 'Appraisal',
+  '/jobs': 'Job Postings',
+  '/candidates': 'Candidates',
+  '/it-assets': 'Assets',
+  '/helpdesk': 'Helpdesk',
+  '/training': 'Training',
+  '/ai-capability': 'AI Capability',
+  '/calendar': 'Calendar',
+  '/holidays': 'Holidays',
+  '/announcements': 'Announcements',
+  '/audit-trail': 'Audit Trail',
+  '/analytics': 'Analytics',
+  '/integrations': 'Integrations',
+  '/policies': 'Policies',
+  '/contracts': 'Contracts',
+  '/settings': 'Settings',
+};
+
+function resolvePageTitle(pathname) {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  const match = Object.keys(PAGE_TITLES)
+    .filter((p) => p !== '/dashboard' && pathname.startsWith(p))
+    .sort((a, b) => b.length - a.length)[0];
+  return match ? PAGE_TITLES[match] : 'Dashboard';
+}
+
 export default function DashboardLayout() {
- const { user, employee, loading, hasOnboarding, onboardingLoading } = useAuth();
- const { isPathEnabled } = useFeatureFlags();
- const location = useLocation();
- const { t } = useTranslation();
- const [theme, setTheme] = useState(() => localStorage.getItem('hrisync_theme') || 'light');
+  const { user, employee, loading, hasOnboarding, onboardingLoading } = useAuth();
+  const { isPathEnabled, loading: flagsLoading } = useFeatureFlags();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const [profileOpen, setProfileOpen] = useState(false);
 
- useEffect(() => {
- document.documentElement.setAttribute('data-theme', theme);
- localStorage.setItem('hrisync_theme', theme);
- }, [theme]);
+  const [setupGate, setSetupGate] = useState(null); // null=checking, true=need setup, false=ok
 
- // Track current path for "return to last page" after re-login (never store # hashes)
- useEffect(() => {
- if (user && location.pathname !== '/') {
- rememberAppPath(location.pathname);
- }
- stripUrlHash();
- }, [location.pathname, user]);
+  // Private app shell — never index in search engines
+  useEffect(() => {
+    markNoIndex('KiniKerja — Dashboard');
+  }, []);
 
- if (loading) {
- return (
- <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)' }}>
- <div style={{ textAlign: 'center' }}>
- <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
- <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{t('common.loading')}</p>
- </div>
- </div>
- );
- }
+  // Owner setup wizard gate (company bootstrap)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (isFounder(user, employee)) {
+        if (!cancelled) setSetupGate(false);
+        return;
+      }
+      const need = await needsOwnerSetup();
+      if (!cancelled) setSetupGate(need);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, employee]);
 
- // Demo mode - bypass all guards, no real session needed
- if (isDemoMode()) {
+  // Keep document theme in sync with Settings (localStorage) — toggle lives in Settings → Tampilan
+  useEffect(() => {
+    const apply = () => {
+      const theme = safeGetItem('hrisync_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    };
+    apply();
+    window.addEventListener('storage', apply);
+    window.addEventListener('hrisync-theme-change', apply);
+    return () => {
+      window.removeEventListener('storage', apply);
+      window.removeEventListener('hrisync-theme-change', apply);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (user && location.pathname !== '/') {
+      rememberAppPath(location.pathname);
+    }
+    stripUrlHash();
+  }, [location.pathname, user]);
+
+  const pageTitle = useMemo(() => resolvePageTitle(location.pathname), [location.pathname]);
+
+  const isDemo = isDemoMode();
+  const userName = isDemo
+    ? 'Demo User'
+    : employee?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+const avatarUrl = isDemo ? null : employee?.photo_url || user?.user_metadata?.avatar_url || null;
+if (loading) {
+    return (
+      <div className="layout-loading">
+        <div className="layout-loading-inner">
+          <div className="layout-spinner" />
+          <p>{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isDemoMode()) {
+    return (
+      <div className="layout-wrapper">
+        <Sidebar />
+        <main id="main-content" role="main" className="layout-content" tabIndex={-1}>
+          <div className="layout-demo-banner">
+            Mode Demo — Akses Read-Only. Fitur edit/tambah/hapus dinonaktifkan
+          </div>
+          <TopBar
+            pageTitle={pageTitle}
+            userName={userName}
+            avatarUrl={null}
+            onProfile={() => setProfileOpen(true)}
+            onCreateNew={() => navigate('/employees')}
+          />
+          <Outlet />
+        </main>
+        <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  const role = getRole(employee);
+  const founderUser = isFounder(user, employee);
+
+  if (!founderUser && role === 'employee') {
+    return <Navigate to="/employee-web-access" replace />;
+  }
+
+  if (!founderUser && !onboardingLoading && !hasOnboarding) {
+    return <Navigate to="/onboarding-form" replace />;
+  }
+
+  // Wait for setup gate (avoid flash); then force owner wizard if needed
+  if (!founderUser && setupGate === null) {
+    return (
+      <div className="layout-loading">
+        <div className="layout-loading-inner">
+          <div className="layout-spinner" />
+          <p>{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+  if (!founderUser && setupGate === true && location.pathname !== '/setup') {
+    return <Navigate to="/setup" replace />;
+  }
+
+  // Tunggu flags dimuat dulu (fail-closed): jangan tolak akses sebelum tahu status fitur
+  if (!founderUser && flagsLoading) {
+    return (
+      <div className="layout-loading">
+        <div className="layout-loading-inner">
+          <div className="layout-spinner" />
+          <p>{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const featureAllowed = founderUser || isPathEnabled(location.pathname);
+  if (!hasAccess(role, location.pathname, founderUser) || !featureAllowed) {
+    return (
+      <div className="layout-wrapper">
+        <Sidebar />
+        <main className="layout-content">
+          <div className="layout-denied">
+            <div className="layout-denied-icon">
+              <Icon icon={Lock} size="md" color="inherit" />
+            </div>
+            <h2>{t('auth.access_denied')}</h2>
+            <p>
+              {!featureAllowed
+                ? 'Fitur ini dinonaktifkan oleh administrator platform.'
+                : t('auth.no_permission')}{' '}
+              {t('auth.your_role')}:{' '}
+              <span
+                className="layout-role-chip"
+                style={{
+                  color: ROLE_COLORS[role],
+                  background: `${ROLE_COLORS[role]}15`,
+                }}
+              >
+                {ROLE_LABELS[role]}
+              </span>
+            </p>
+            <button type="button" className="btn-create-new" onClick={() => window.history.back()}>
+              {t('common.back')}
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-   <div className="layout-wrapper">
-    <Sidebar />
-    <main id="main-content" role="main" className="layout-content" tabIndex={-1}>
-     <div style={{
-      background: 'linear-gradient(90deg,#635BFF,#4F46E5)',
-      color: '#fff', padding: '6px 16px', fontSize: 12,
-      fontWeight: 700, textAlign: 'center', borderRadius: 8, marginBottom: 14,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-     }}>
-      🔒 Mode Demo - Akses Read-Only  Fitur edit/tambah/hapus dinonaktifkan
-     </div>
-     <Outlet />
-    </main>
-   </div>
+    <div className="layout-wrapper">
+      <Sidebar />
+      <main id="main-content" role="main" className="layout-content" tabIndex={-1}>
+        <TopBar
+          pageTitle={pageTitle}
+          userName={userName}
+          avatarUrl={avatarUrl}
+          onProfile={() => setProfileOpen(true)}
+          onCreateNew={() => navigate('/employees')}
+        />
+        <Breadcrumb />
+        <PlatformBroadcastBanner />
+        <Outlet />
+      </main>
+      <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
+    </div>
   );
- }
+}
 
- if (!user) {
- return <Navigate to="/" replace />;
- }
+function TopBar({
+  pageTitle,
+  userName,
+  avatarUrl,
+  onProfile,
+  onCreateNew,
+}) {
+  const { t } = useTranslation();
 
- const role = getRole(employee);
- const founderUser = isFounder(user, employee);
+  return (
+    <header className="layout-topbar">
+      <div className="layout-topbar-left">
+        <h1 className="layout-topbar-title">{pageTitle}</h1>
+      </div>
 
- // Guard: plain employees should not access the HR Dashboard.
- // Redirect them to the PWA instead. Founder always passes.
- if (!founderUser && role === 'employee') {
- // Employee accounts must use the PWA app - show informative block page
- return <Navigate to="/employee-web-access" replace />;
- }
+      <div className="layout-topbar-center">
+        <div className="layout-topbar-search">
+          <GlobalSearch />
+        </div>
+      </div>
 
- // Guard: onboarding must be completed (founder skips)
- if (!founderUser && !onboardingLoading && !hasOnboarding) {
- return <Navigate to="/onboarding-form" replace />;
- }
-
- // RBAC: check route access (founder always passes)
- const featureAllowed = founderUser || isPathEnabled(location.pathname);
- if (!hasAccess(role, location.pathname, founderUser) || !featureAllowed) {
- return (
- <div className="layout-wrapper">
- <Sidebar />
- <main className="layout-content">
- <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
- <div style={{ textAlign: 'center', maxWidth: 400 }}>
- <div style={{
- width: 56, height: 56, borderRadius: 16,
- background: 'rgba(220, 38, 38, 0.08)', display: 'flex',
- alignItems: 'center', justifyContent: 'center',
- margin: '0 auto 16px', color: 'var(--danger)', fontSize: 24,
- }}>
- <FiLock />
- </div>
- <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{t('auth.access_denied')}</h2>
- <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6 }}>
- {!featureAllowed
-   ? 'Fitur ini dinonaktifkan oleh administrator platform.'
-   : t('auth.no_permission')}
- {' '}{t('auth.your_role')}: <span style={{ fontWeight: 700, color: ROLE_COLORS[role], padding: '2px 8px', borderRadius: 20, background: `${ROLE_COLORS[role]}15`, fontSize: 12 }}>{ROLE_LABELS[role]}</span>
- </p>
- <button
- onClick={() => window.history.back()}
- style={{ marginTop: 20, padding: '10px 24px', borderRadius: 'var(--radius-sm)', background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
- >
- {t('common.back')}
- </button>
- </div>
- </div>
- </main>
- </div>
- );
- }
-
- // Display role - for founder, show the viewAs role from localStorage
- const displayRole = founderUser
- ? (localStorage.getItem('HRIS Loka_viewAs') || 'super_admin')
- : role;
-
- return (
- <div className="layout-wrapper">
- <Sidebar />
- <main id="main-content" role="main" className="layout-content" tabIndex={-1}>
-   {/* Top bar — spaced from viewport edge (not flush to top) */}
-   <header className="layout-topbar">
-     <div className="layout-topbar-search">
-       <GlobalSearch />
-     </div>
-     <div className="layout-topbar-actions">
-       <LanguageToggle />
-       <button
-         type="button"
-         className="layout-topbar-icon-btn"
-         onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-         title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-         aria-label={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-       >
-         {theme === 'dark' ? <FiSun /> : <FiMoon />}
-       </button>
-       <div
-         className="layout-topbar-role"
-         style={{
-           background: founderUser ? 'rgba(99,91,255,0.10)' : `${ROLE_COLORS[displayRole]}15`,
-           color: founderUser ? 'var(--primary)' : (ROLE_COLORS[displayRole] || 'var(--primary)'),
-           borderColor: founderUser ? 'rgba(99,91,255,0.20)' : `${ROLE_COLORS[displayRole] || '#635BFF'}25`,
-         }}
-       >
-         {founderUser && <HiShieldCheck size={12} />}
-         {founderUser ? 'Founder' : (ROLE_LABELS[displayRole] || displayRole || 'User')}
-       </div>
-       <NotificationCenter />
-     </div>
-   </header>
-   <Breadcrumb />
-   <Outlet />
- </main>
- </div>
- );
+      <div className="layout-topbar-actions">
+        <LanguageToggle />
+        <NotificationCenter />
+        <button type="button" className="btn-create-new" onClick={onCreateNew}>
+          <Icon icon={Plus} size="sm" color="inherit" />
+          <span>{t('common.create_new')}</span>
+        </button>
+        <button
+          type="button"
+          className="top-navbar-user"
+          onClick={onProfile}
+          title={t('common.profile')}
+        >
+          <UserAvatar
+            src={avatarUrl}
+            name={userName}
+            alt={userName}
+            size={34}
+            className="top-navbar-avatar"
+          />
+          <span className="top-navbar-username">{userName}</span>
+        </button>
+      </div>
+    </header>
+  );
 }

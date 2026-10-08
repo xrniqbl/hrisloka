@@ -106,10 +106,17 @@ async function reconcilePendingOrders(now) {
 }
 
 export default async function handler(req, res) {
-  // Vercel cron sends GET; protect with a secret header
-  const cronSecret = req.headers['x-cron-secret'] || req.query.secret;
-  if (cronSecret !== process.env.CRON_SECRET) {
+  // Vercel cron sends GET; protect with a secret header.
+  // SECURITY: secret wajib dikonfigurasi — jika CRON_SECRET kosong endpoint
+  // harus menolak semua request (fail-closed). Hanya terima via header
+  // (query ?secret= bocor ke log akses).
+  const configured = process.env.CRON_SECRET;
+  const cronSecret = req.headers['x-cron-secret'];
+  if (!configured || !cronSecret || cronSecret !== configured) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const now = new Date();
@@ -161,8 +168,8 @@ export default async function handler(req, res) {
         const emp = empList?.[0];
         if (!emp) continue;
 
-        const planName = sub.plan_name || sub.subscription_plans?.name || 'HRIS Loka';
-        const message = `⏰ *HRIS Loka — Pengingat Berlangganan*\n\nHalo, *${emp.name}*!\n\nLangganan *${planName}* Anda akan berakhir dalam *${days} hari*.\n\nPerbarui berlangganan Anda agar tidak kehilangan akses ke fitur HR.\n\n👉 Kunjungi: https://hrisloka.id/checkout\n\n_HRIS Loka — Smart HR Platform_`;
+        const planName = sub.plan_name || sub.subscription_plans?.name || 'KiniKerja';
+        const message = `⏰ *KiniKerja — Pengingat Berlangganan*\n\nHalo, *${emp.name}*!\n\nLangganan *${planName}* Anda akan berakhir dalam *${days} hari*.\n\nPerbarui berlangganan Anda agar tidak kehilangan akses ke fitur HR.\n\n👉 Kunjungi: https://kinikerja.id/checkout\n\n_KiniKerja — Smart HR Platform_`;
 
         await sendWhatsApp(emp.phone, message);
         results.reminded++;
@@ -178,6 +185,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, ...results });
   } catch (err) {
     console.error('[cron-subscriptions] Error:', err);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: 'Internal error' });
   }
 }

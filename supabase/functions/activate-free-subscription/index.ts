@@ -19,10 +19,10 @@ const corsHeaders = {
 // Origin allowlist — mirrors api/_shared/cors.js. Extra origins can be added
 // via the ALLOWED_ORIGINS / SITE_URL secrets. Never reflect unknown origins.
 const ALLOWED_ORIGINS = [
-  'https://hrisloka.id',
-  'https://www.hrisloka.id',
-  'https://hrisloka.com',
-  'https://www.hrisloka.com',
+  'https://kinikerja.id',
+  'https://www.kinikerja.id',
+  'https://kinikerja.com',
+  'https://www.kinikerja.com',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
@@ -117,7 +117,7 @@ async function ensureAdminEmployee(
   let companyId = null;
   if (companyName) {
     try {
-      const code = `HRIS-${Date.now().toString(36).toUpperCase()}`;
+      const code = `KK-${Date.now().toString(36).toUpperCase()}`;
       const { data: company } = await supabase
         .from('companies')
         .insert({ name: companyName, company_code: code, is_active: true })
@@ -293,20 +293,23 @@ serve(async (req) => {
       return json(req, { error: 'Gagal mengaktifkan langganan. Coba lagi.' }, 500);
     }
 
-    // ── Voucher usage bookkeeping ───────────────────────────────────────
+    // ── Voucher usage bookkeeping (atomik via RPC claim_voucher) ──────────
+    // Select-then-update non-atomik rawan race/double-spend voucher sekali-pakai.
     if (voucherCode) {
       try {
+        const { data: claimed, error: claimErr } = await supabase.rpc('claim_voucher', {
+          p_code: voucherCode,
+        });
+        if (claimErr || claimed !== true) {
+          console.warn('[activate-free] voucher claim rejected:', claimErr?.message || 'exhausted');
+          return json(req, { error: 'Voucher habis dipakai atau tidak valid.' }, 400);
+        }
         const { data: v } = await supabase
           .from('vouchers')
-          .select('id, used_count, current_uses')
+          .select('id')
           .eq('code', voucherCode)
           .maybeSingle();
         if (v?.id) {
-          const next = (v.used_count ?? v.current_uses ?? 0) + 1;
-          const patch = v.used_count !== undefined && v.used_count !== null
-            ? { used_count: next }
-            : { current_uses: next };
-          await supabase.from('vouchers').update(patch).eq('id', v.id);
           await supabase.from('voucher_usage').insert({
             voucher_id: v.id,
             company_id: companyId,

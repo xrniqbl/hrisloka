@@ -25,10 +25,10 @@ const corsHeaders = {
 // Origin allowlist — mirrors api/_shared/cors.js. Extra origins can be added
 // via the ALLOWED_ORIGINS / SITE_URL secrets. Never reflect unknown origins.
 const ALLOWED_ORIGINS = [
-  'https://hrisloka.id',
-  'https://www.hrisloka.id',
-  'https://hrisloka.com',
-  'https://www.hrisloka.com',
+  'https://kinikerja.id',
+  'https://www.kinikerja.id',
+  'https://kinikerja.com',
+  'https://www.kinikerja.com',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
@@ -202,7 +202,32 @@ serve(async (req) => {
       });
     }
 
-    const order_id = `HRIS-${Date.now()}-${user.id.slice(0, 8).toUpperCase()}`;
+    // order_id acak (crypto UUID) — prediktabilitas + fragmen user id dihilangkan.
+    // Idempotency: bila client double-click dalam 60 detik untuk plan+amount sama,
+    // kembalikan order pending yang sudah ada alih-alih membuat order baru.
+    const since = new Date(Date.now() - 60_000).toISOString();
+    const { data: recent } = await supabase
+      .from('payment_orders')
+      .select('order_id, snap_token, amount')
+      .eq('user_id', user.id)
+      .eq('plan_slug', plan_slug)
+      .eq('amount', expectedAmount)
+      .eq('status', 'pending')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (recent?.order_id && recent?.snap_token) {
+      return new Response(JSON.stringify({
+        snap_token: recent.snap_token,
+        order_id: recent.order_id,
+        amount: expectedAmount,
+        deduped: true,
+        midtrans_mode: Deno.env.get('MIDTRANS_IS_PRODUCTION') === 'true' ? 'production' : 'sandbox',
+      }), { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } });
+    }
+
+    const order_id = `KK-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
     const resolvedName = plan_name || plan.name || plan_slug;
 
     const { data: profile } = await supabase
@@ -226,15 +251,15 @@ serve(async (req) => {
           id: plan_slug,
           price: expectedAmount,
           quantity: 1,
-          name: `HRIS Loka — Paket ${resolvedName}`,
-          brand: 'HRIS Loka',
+          name: `KiniKerja — Paket ${resolvedName}`,
+          brand: 'KiniKerja',
           category: 'SaaS Subscription',
         },
       ],
       callbacks: {
-        finish: `${Deno.env.get('SITE_URL') || 'https://hrisloka.id'}/checkout?status=success&order_id=${encodeURIComponent(order_id)}`,
-        error: `${Deno.env.get('SITE_URL') || 'https://hrisloka.id'}/checkout?status=error&order_id=${encodeURIComponent(order_id)}`,
-        pending: `${Deno.env.get('SITE_URL') || 'https://hrisloka.id'}/checkout?status=pending&order_id=${encodeURIComponent(order_id)}`,
+        finish: `${Deno.env.get('SITE_URL') || 'https://kinikerja.id'}/checkout?status=success&order_id=${encodeURIComponent(order_id)}`,
+        error: `${Deno.env.get('SITE_URL') || 'https://kinikerja.id'}/checkout?status=error&order_id=${encodeURIComponent(order_id)}`,
+        pending: `${Deno.env.get('SITE_URL') || 'https://kinikerja.id'}/checkout?status=pending&order_id=${encodeURIComponent(order_id)}`,
       },
     };
 
@@ -280,6 +305,8 @@ serve(async (req) => {
       order_id,
       amount: expectedAmount,
       redirect_url: midtransData.redirect_url,
+      // Memberitahu frontend mode server agar bisa menolak mismatch sandbox/prod
+      midtrans_mode: Deno.env.get('MIDTRANS_IS_PRODUCTION') === 'true' ? 'production' : 'sandbox',
     }), { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

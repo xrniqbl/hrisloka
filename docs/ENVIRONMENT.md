@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------
-# HRIS Loka � Environment Variables Checklist
+# KiniKerja � Environment Variables Checklist
 # ---------------------------------------------------------------
 
 ## REQUIRED (Production)
@@ -8,17 +8,17 @@ VITE_SUPABASE_ANON_KEY=               # From Supabase project settings
 VITE_FOUNDER_EMAIL=                   # Founder portal access (no fallback!)
 
 ## OPTIONAL (Features)
-VITE_DEMO_EMAIL=demo@hrisloka.com     # Demo mode account
+VITE_DEMO_EMAIL=demo@kinikerja.com     # Demo mode account
 VITE_VAPID_PUBLIC_KEY=                # Push notifications
-VITE_FONNTE_TOKEN=                    # WhatsApp notifications
-VITE_FONNTE_TOKEN_DEV=                # WhatsApp dev mode
-# Email — server only (see BREVO_API_KEY in .env.example, not VITE_)
-VITE_FROM_EMAIL=noreply@hrisloka.com  # Email sender
+# WhatsApp + Email + AI + Bank — SERVER ONLY (tanpa prefix VITE_).
+# Set FONNTE_TOKEN / BREVO_API_KEY+FROM_EMAIL / GEMINI_API_KEY /
+# BANK_VALIDATION_API_KEY di Vercel/Supabase env (lihat .env.example).
+# JANGAN pernah pakai VITE_FONNTE_TOKEN / VITE_FROM_EMAIL — ter-bundle ke browser!
 VITE_SENTRY_DSN=                      # Error tracking
 
 ## VERIFICATION COMMAND
-# Run in browser console after login:
-# console.log(import.meta.env)
+# Cek field publik spesifik saja (jangan dump seluruh import.meta.env):
+# localStorage.getItem('hrisync_demo_mode'); document.querySelector('meta[name="description"]')
 
 ## SECURITY NOTES
 # - Never commit .env file to git

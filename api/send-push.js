@@ -15,7 +15,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_EMAIL = process.env.VAPID_EMAIL || 'mailto:hrisloka@gmail.com';
+const VAPID_EMAIL = process.env.VAPID_EMAIL || 'mailto:kinikerja@gmail.com';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PUSH_API_SECRET = process.env.PUSH_API_SECRET;
@@ -143,6 +143,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'companyId required for broadcast (no global push)' });
   }
 
+  // SECURITY: URL push diteruskan ke clients.openWindow() di SW — hanya path
+  // relatif internal yang diizinkan (cegah open-redirect/phishing).
+  const rawUrl = typeof url === 'string' && url ? url : '/app/home';
+  const safeUrl = /^(\/app(\/|$|\?)|\/checkout(\/|$|\?)|\/login(\/|$|\?))/.test(rawUrl)
+    ? rawUrl.slice(0, 200)
+    : '/app/home';
+
   webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
   try {
@@ -154,7 +161,8 @@ export default async function handler(req, res) {
         .select('id')
         .eq('company_id', companyId);
       if (empErr) {
-        return res.status(500).json({ success: false, error: empErr.message });
+        console.error('[send-push] employee fetch error:', empErr.message);
+        return res.status(500).json({ success: false, error: 'Gagal mengambil data karyawan' });
       }
       employeeIds = (emps || []).map((e) => e.id);
       if (employeeIds.length === 0) {
@@ -184,8 +192,8 @@ export default async function handler(req, res) {
       .in('employee_id', employeeIds);
 
     if (fetchError) {
-      console.error('[send-push] Supabase fetch error:', fetchError);
-      return res.status(500).json({ success: false, error: fetchError.message });
+      console.error('[send-push] Supabase fetch error:', fetchError.message);
+      return res.status(500).json({ success: false, error: 'Gagal mengambil data langganan' });
     }
 
     if (!subscriptions || subscriptions.length === 0) {
@@ -195,7 +203,7 @@ export default async function handler(req, res) {
     const payload = JSON.stringify({
       title: title.trim(),
       body: body.trim(),
-      url: url || '/app/home',
+      url: safeUrl,
     });
 
     let sent = 0;
