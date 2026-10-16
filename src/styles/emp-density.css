@@ -551,3 +551,26 @@
 .emp-layout .ep-tabs {
   max-width: 100%;
 }
+
+
+/* Clean emp form controls (match admin monochrome) */
+.emp-field-input,
+.emp-reg__input {
+  border: 1px solid #E8E8EE !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  min-height: 38px !important;
+  box-shadow: none !important;
+  font-size: 13.5px !important;
+}
+.emp-field-input:focus,
+.emp-reg__input:focus {
+  border-color: #C8C6E0 !important;
+  box-shadow: 0 0 0 3px rgba(86,84,212,0.1) !important;
+  outline: none !important;
+}
+.emp-field-label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #6B7280 !important;
+}

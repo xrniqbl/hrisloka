@@ -1,36 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
-import { FiUserPlus, FiCheck, FiX, FiPlusCircle, FiSearch, FiCheckCircle, FiClipboard } from 'react-icons/fi';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { FiUserPlus, FiCheck, FiX, FiPlusCircle, FiCheckCircle, FiClipboard } from 'react-icons/fi';
+import * as onboardingService from '../services/onboardingService';
 import * as employeeService from '../services/employeeService';
 import { useAuth } from '../context/AuthContext';
 import { useRealtimeTable } from '../hooks/useRealtime';
+import { useToast } from '../components/Toast';
 import '../styles/shared.css';
 import '../styles/admin.css';
 
-const CATEGORIES = ['documents', 'training', 'equipment', 'access', 'orientation'];
-const CAT_LABELS = { documents: 'Dokumen', training: 'Pelatihan', equipment: 'Peralatan', access: ' Access', orientation: 'Orientasi' };
-const DEFAULT_CHECKLIST = [
- { category: 'documents', item: 'KTP / ID Card' },
- { category: 'documents', item: 'NPWP' },
- { category: 'documents', item: 'Ijazah / Sertifikat' },
- { category: 'documents', item: 'Surat Perjanjian Kerja' },
- { category: 'documents', item: 'Rekening Bank' },
- { category: 'training', item: 'Company Overview & Culture' },
- { category: 'training', item: 'SOP & Kebijakan Perusahaan' },
- { category: 'training', item: 'Training Tools & Systems' },
- { category: 'equipment', item: 'Laptop / PC' },
- { category: 'equipment', item: 'ID Badge / Access Card' },
- { category: 'equipment', item: 'Email & Akun Sistem' },
- { category: 'access', item: 'Akses Supabase / Database' },
- { category: 'access', item: 'Akses Repository (GitHub)' },
- { category: 'access', item: 'VPN / Network Access' },
- { category: 'orientation', item: 'Tour Kantor' },
- { category: 'orientation', item: 'Perkenalan Tim' },
- { category: 'orientation', item: 'Mentoring Assignment' },
-];
+const CATEGORIES = ['documents', 'training', 'equipment', 'access', 'orientation', 'general'];
+const CAT_LABELS = { documents: 'Dokumen', training: 'Pelatihan', equipment: 'Peralatan', access: ' Access', orientation: 'Orientasi', general: 'Umum' };
 
 export default function OnboardingChecklist() {
   const { employee } = useAuth();
+  const { toast } = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
  const [onboardings, setOnboardings] = useState([]);
  const [employees, setEmployees] = useState([]);
  const [loading, setLoading] = useState(true);
@@ -39,65 +24,144 @@ export default function OnboardingChecklist() {
  const [checklist, setChecklist] = useState([]);
  const [newEmpId, setNewEmpId] = useState('');
 
+ // Group flat onboarding_tasks rows (per employee) into card-shaped groups
+ // so the existing UI keeps working unchanged.
+ const groupTasksByEmployee = (tasks = []) => {
+   const map = new Map();
+   for (const t of tasks) {
+     const empId = t.employee_id;
+     if (!map.has(empId)) {
+       map.set(empId, {
+         id: `emp-${empId}`,
+         employee_id: empId,
+         employees: t.employees || null,
+         status: 'in-progress',
+         target_completion: t.due_date || null,
+         tasks: [],
+       });
+     }
+     const g = map.get(empId);
+     g.tasks.push(t);
+     if (!g.employees && t.employees) g.employees = t.employees;
+     if (!g.target_completion && t.due_date) g.target_completion = t.due_date;
+   }
+   return [...map.values()];
+ };
+
  const fetchData = useCallback(async () => {
  setLoading(true);
- const [obRes, empRes] = await Promise.all([
- supabase.from('onboarding').select('*, employees(name, division, position), onboarding_checklist(*)').eq('company_id', employee?.company_id).order('created_at', { ascending: false }),
+ if (!employee?.company_id) {
+   setOnboardings([]);
+   setEmployees([]);
+   setLoading(false);
+   return;
+ }
+ try {
+ const [taskRes, empRes] = await Promise.all([
+ onboardingService.getAllOnboardingTasks(employee.company_id),
  employeeService.getAllEmployees(undefined, employee?.company_id),
  ]);
- setOnboardings(obRes.data || []);
+ if (taskRes.error) throw taskRes.error;
+ if (empRes.error) throw empRes.error;
+ // Attach employee details from the employee list (join may be partial)
+ const empById = new Map((empRes.data || []).map((e) => [e.id, e]));
+ const enriched = (taskRes.data || []).map((t) => ({
+   ...t,
+   employees: t.employees || empById.get(t.employee_id) || null,
+ }));
+ setOnboardings(groupTasksByEmployee(enriched));
  setEmployees(empRes.data || []);
+ } catch (e) {
+   console.error('[Onboarding] fetch failed:', e?.message || e);
+   setOnboardings([]);
+   toastRef.current.error('Gagal memuat data onboarding. Coba muat ulang.');
+ } finally {
  setLoading(false);
+ }
  }, [employee?.company_id]);
 
  useEffect(() => { fetchData(); }, [fetchData]);
 
  // Realtime: auto-refresh
- useRealtimeTable('onboarding_checklists', fetchData, { companyId: employee?.company_id });
+ useRealtimeTable('onboarding_tasks', fetchData, { companyId: employee?.company_id });
 
  const openCreate = () => { setNewEmpId(''); setModal('create'); };
 
  const handleCreate = async () => {
  if (!newEmpId) return;
- const { data: ob } = await supabase.from('onboarding').insert({
-    company_id: employee?.company_id,
-    employee_id: Number(newEmpId),
- status: 'in-progress',
- target_completion: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
- }).select().single();
- if (ob) {
- const items = DEFAULT_CHECKLIST.map(c => ({ onboarding_id: ob.id, ...c }));
- await supabase.from('onboarding_checklist').insert(items);
- }
+ try {
+ const { error } = await onboardingService.seedOnboardingTasks(Number(newEmpId), employee?.company_id);
+ if (error) throw error;
  setModal(null);
+ toast.success('Onboarding dimulai.');
  fetchData();
+ } catch (e) {
+   console.error('[Onboarding] create failed:', e?.message || e);
+   toast.error('Gagal memulai onboarding. Coba lagi.');
+ }
  };
 
  const openDetail = async (ob) => {
  setSelectedOb(ob);
- const { data } = await supabase.from('onboarding_checklist').select('*').eq('onboarding_id', ob.id).order('category');
+ if (Array.isArray(ob.tasks)) {
+   setChecklist(ob.tasks);
+   setModal('detail');
+   return;
+ }
+ try {
+ const { data, error } = await onboardingService.getOnboardingTasks(ob.employee_id);
+ if (error) throw error;
  setChecklist(data || []);
+ } catch (e) {
+   console.error('[Onboarding] detail fetch failed:', e?.message || e);
+   toast.error('Gagal memuat checklist onboarding.');
+   setChecklist([]);
+ }
  setModal('detail');
  };
 
  const toggleCheck = async (checkId, checked) => {
- await supabase.from('onboarding_checklist').update({
- completed: !checked,
- completed_at: !checked ? new Date().toISOString() : null,
- }).eq('id', checkId);
- setChecklist(prev => prev.map(c => c.id === checkId ? { ...c, completed: !checked, completed_at: !checked ? new Date().toISOString() : null } : c));
+ const newStatus = checked ? 'pending' : 'done';
+ setChecklist(prev => prev.map(c => c.id === checkId ? { ...c, status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null } : c));
+ const { error } = await onboardingService.updateTaskStatus(checkId, newStatus);
+ if (error) {
+   console.error('[Onboarding] toggle failed:', error.message);
+   toast.error('Gagal memperbarui checklist. Coba lagi.');
+   fetchData();
+ }
  };
 
  const markComplete = async (id) => {
- await supabase.from('onboarding').update({ status: 'completed' }).eq('id', id);
+ const group = onboardings.find((o) => o.id === id);
+ const empId = group?.employee_id ?? selectedOb?.employee_id;
+ if (!empId) return;
+ const pending = (checklist || []).filter((c) => c.status !== 'done');
+ try {
+ // Tandai semua task karyawan ini selesai via service (tabel onboarding_tasks)
+ for (const t of pending) {
+   const { error } = await onboardingService.updateTaskStatus(t.id, 'done');
+   if (error) throw error;
+ }
  setModal(null);
+ toast.success('Onboarding selesai.');
  fetchData();
+ } catch (e) {
+   console.error('[Onboarding] complete failed:', e?.message || e);
+   toast.error('Gagal menyelesaikan onboarding. Coba lagi.');
+   fetchData();
+ }
  };
 
  const getProgress = (ob) => {
- const items = ob.onboarding_checklist || [];
+ const items = ob.tasks || [];
  if (items.length === 0) return 0;
- return Math.round(items.filter(c => c.completed).length / items.length * 100);
+ return Math.round(items.filter(c => c.status === 'done').length / items.length * 100);
+ };
+
+ const getGroupStatus = (ob) => {
+ const items = ob.tasks || [];
+ if (items.length === 0) return 'in-progress';
+ return items.every((c) => c.status === 'done') ? 'completed' : 'in-progress';
  };
 
  return (
@@ -119,9 +183,10 @@ export default function OnboardingChecklist() {
  </div>
  ) : onboardings.map(ob => {
  const progress = getProgress(ob);
+ const groupStatus = getGroupStatus(ob);
  const emp = ob.employees;
  return (
- <div key={ob.id} className="info-card" onClick={() => openDetail(ob)} style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: `4px solid ${ob.status === 'completed' ? 'var(--success)' : 'var(--primary)'}` }}>
+ <div key={ob.id} className="info-card" onClick={() => openDetail({ ...ob, status: groupStatus })} style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: `4px solid ${groupStatus === 'completed' ? 'var(--success)' : 'var(--primary)'}` }}>
  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
  <div>
  <div style={{ fontWeight: 700, fontSize: 15 }}>{emp?.name || '-'}</div>
@@ -129,9 +194,9 @@ export default function OnboardingChecklist() {
  </div>
  <span style={{
  padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
- color: '#fff', background: ob.status === 'completed' ? 'var(--success)' : 'var(--primary)',
+ color: '#fff', background: groupStatus === 'completed' ? 'var(--success)' : 'var(--primary)',
  }}>
- {ob.status === 'completed' ? 'Selesai' : 'Berlangsung'}
+ {groupStatus === 'completed' ? 'Selesai' : 'Berlangsung'}
  </span>
  </div>
  <div className="progress-bar" style={{ marginBottom: 8 }}>
@@ -163,7 +228,7 @@ export default function OnboardingChecklist() {
  </select>
  </div>
  <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
- Checklist default ({DEFAULT_CHECKLIST.length} item) akan ditambahkan otomatis. Anda bisa menambah/menghapus nanti.
+ Checklist dari template perusahaan akan ditambahkan otomatis. Anda bisa menambah/menghapus nanti.
  </p>
  </div>
  <div className="modal-footer">
@@ -184,9 +249,9 @@ export default function OnboardingChecklist() {
  </div>
  <div className="modal-body" style={{ maxHeight: '70vh', overflow: 'auto' }}>
  {CATEGORIES.map(cat => {
- const items = checklist.filter(c => c.category === cat);
+ const items = checklist.filter(c => (c.category || 'general') === cat);
  if (items.length === 0) return null;
- const done = items.filter(c => c.completed).length;
+ const done = items.filter(c => c.status === 'done').length;
  return (
  <div key={cat} style={{ marginBottom: 20 }}>
  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, display: 'flex', justifyContent: 'space-between' }}>
@@ -195,33 +260,35 @@ export default function OnboardingChecklist() {
  {done}/{items.length}
  </span>
  </div>
- {items.map(item => (
+ {items.map(item => {
+ const isDone = item.status === 'done';
+ return (
  <div
  key={item.id}
- onClick={() => toggleCheck(item.id, item.completed)}
+ onClick={() => toggleCheck(item.id, isDone)}
  style={{
  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
- background: item.completed ? 'var(--success-light)' : 'var(--bg)',
+ background: isDone ? 'var(--success-light)' : 'var(--bg)',
  borderRadius: 'var(--radius-sm)', marginBottom: 6, cursor: 'pointer',
- border: `1px solid ${item.completed ? 'var(--success)' : 'var(--border)'}`,
+ border: `1px solid ${isDone ? 'var(--success)' : 'var(--border)'}`,
  transition: 'all 0.15s',
  }}
  >
  <div style={{
  width: 20, height: 20, borderRadius: 4,
- border: item.completed ? 'none' : '2px solid var(--border)',
- background: item.completed ? 'var(--success)' : 'transparent',
+ border: isDone ? 'none' : '2px solid var(--border)',
+ background: isDone ? 'var(--success)' : 'transparent',
  display: 'flex', alignItems: 'center', justifyContent: 'center',
  color: '#fff', fontSize: 12, flexShrink: 0,
  }}>
- {item.completed && <FiCheck />}
+ {isDone && <FiCheck />}
  </div>
  <span style={{
  fontSize: 13, flex: 1,
- textDecoration: item.completed ? 'line-through' : 'none',
- color: item.completed ? 'var(--muted)' : 'var(--text)',
+ textDecoration: isDone ? 'line-through' : 'none',
+ color: isDone ? 'var(--muted)' : 'var(--text)',
  }}>
- {item.item}
+ {item.title || item.item}
  </span>
  {item.completed_at && (
  <span style={{ fontSize: 10, color: 'var(--muted)' }}>
@@ -229,14 +296,15 @@ export default function OnboardingChecklist() {
  </span>
  )}
  </div>
- ))}
+ );
+ })}
  </div>
  );
  })}
  </div>
  {selectedOb.status !== 'completed' && (
  <div className="modal-footer">
- <button className="btn-primary" onClick={() => markComplete(selectedOb.id)} disabled={checklist.some(c => !c.completed)}>
+ <button className="btn-primary" onClick={() => markComplete(selectedOb.id)} disabled={checklist.some(c => c.status !== 'done')}>
  <FiCheckCircle /> Tandai Selesai
  </button>
  </div>

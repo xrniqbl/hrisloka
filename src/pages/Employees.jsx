@@ -291,7 +291,6 @@ export default function Employees() {
                   <TableHeader>
                     <TableRow>
                   
-                    <tr>
                                   <TableHead>NIP</TableHead>
                                   <TableHead>Karyawan</TableHead>
                                   <TableHead>Divisi</TableHead>
@@ -301,7 +300,6 @@ export default function Employees() {
                       {isSuperAdmin && <TableHead>Role</TableHead>}
                                   <TableHead>Gaji Pokok</TableHead>
                                   <TableHead>Aksi</TableHead>
-                    </tr>
                   
                                     </TableRow>
                   </TableHeader>

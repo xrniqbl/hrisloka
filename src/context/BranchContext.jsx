@@ -3,7 +3,15 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { useAuth } from './AuthContext';
 import * as branchService from '../services/branchService';
 
-const BranchContext = createContext({});
+const BranchContext = createContext({
+  branches: [],
+  selectedBranchId: null,
+  setSelectedBranchId: () => {},
+  loading: true,
+  isBranchAdmin: false,
+  isAdmin: false,
+  refetchBranches: async () => {},
+});
 
 export const useBranch = () => useContext(BranchContext);
 
@@ -19,11 +27,21 @@ export function BranchProvider({ children }) {
     const companyId = employee?.company_id;
     const reqId = ++requestRef.current;
     setLoading(true);
-    // Scope branches to the current company
-    const { data } = await branchService.getActiveBranches(companyId);
-    if (reqId !== requestRef.current) return; // respons basi — abaikan
-    setBranches(data || []);
-    setLoading(false);
+    try {
+      // Scope branches to the current company. No company (logged-out /
+      // founder / not-registered) → empty list instead of an unbounded query.
+      if (!companyId) {
+        if (reqId !== requestRef.current) return;
+        setBranches([]);
+        setLoading(false);
+        return;
+      }
+      const { data } = await branchService.getActiveBranches(companyId);
+      if (reqId !== requestRef.current) return; // respons basi — abaikan
+      setBranches(data || []);
+    } finally {
+      if (reqId === requestRef.current) setLoading(false);
+    }
   }, [employee?.company_id]);
 
   useEffect(() => {

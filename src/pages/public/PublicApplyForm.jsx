@@ -11,6 +11,49 @@ import './PublicCareers.css';
 
 const educationLevels = ['SMA/SMK', 'D3', 'S1', 'S2', 'S3'];
 const genderOptions = [{ value: 'Laki-laki', label: '♂ Laki-laki' }, { value: 'Perempuan', label: '♀ Perempuan' }];
+
+// H8 — validasi upload CV anonim: batas 10 MB + allowlist pdf/doc/docx
+const RESUME_MAX_BYTES = 10 * 1024 * 1024;
+const RESUME_MIME_BY_EXT = {
+	pdf: 'application/pdf',
+	doc: 'application/msword',
+	docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+
+function getResumeExt(fileName) {
+	const base = String(fileName || '').split(/[\\/]/).pop() || '';
+	const idx = base.lastIndexOf('.');
+	if (idx < 0) return '';
+	return base.slice(idx + 1).toLowerCase();
+}
+
+// Sanitasi basename: buang path, ganti karakter selain [a-zA-Z0-9._-] jadi _,
+// batasi ≤ 80 char, paksa ekstensi sesuai MIME yang tervalidasi.
+function sanitizeResumeName(originalName, validatedExt) {
+	const base = String(originalName || '').split(/[\\/]/).pop() || 'resume';
+	const withoutExt = base.includes('.') ? base.slice(0, base.lastIndexOf('.')) : base;
+	const cleaned = withoutExt.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/_+/g, '_').slice(0, 80) || 'resume';
+	return `${cleaned}.${validatedExt}`;
+}
+
+function validateResumeFile(file) {
+	if (!file) return { ok: true, ext: '', mime: '' };
+	if (file.size > RESUME_MAX_BYTES) {
+		return { ok: false, error: 'Ukuran file maksimal 10 MB. Kecilkan file lalu coba lagi.' };
+	}
+	const ext = getResumeExt(file.name);
+	const expectedMime = RESUME_MIME_BY_EXT[ext];
+	if (!expectedMime) {
+		return { ok: false, error: 'Format tidak didukung. Unggah CV dalam format PDF, DOC, atau DOCX.' };
+	}
+	// Tolak svg/html/js/txt dan lainnya: MIME harus cocok dengan ekstensi yang diizinkan.
+	// Beberapa browser mengirim type kosong untuk .doc — tolak hanya bila non-kosong dan tak cocok.
+	const actualMime = String(file.type || '').split(';')[0].trim().toLowerCase();
+	if (actualMime && actualMime !== expectedMime) {
+		return { ok: false, error: 'Tipe file tidak cocok dengan ekstensinya. Unggah CV dalam format PDF, DOC, atau DOCX.' };
+	}
+	return { ok: true, ext, mime: expectedMime };
+}
 export default function PublicApplyForm() {
  const { slug, jobId } = useParams();
  const navigate = useNavigate();
@@ -20,6 +63,7 @@ export default function PublicApplyForm() {
  const [submitting, setSubmitting] = useState(false);
  const [success, setSuccess] = useState(false);
  const [refNumber, setRefNumber] = useState('');
+ const [resumeError, setResumeError] = useState('');
 
  // Form state
  const [form, setForm] = useState({
@@ -69,6 +113,16 @@ export default function PublicApplyForm() {
  }
 
  const handleChange = (field, value) => {
+ if (field === 'resumeFile' && value) {
+ const check = validateResumeFile(value);
+ if (!check.ok) {
+ setResumeError(check.error);
+ console.warn('[PublicApplyForm]', check.error);
+ return;
+ }
+ setResumeError('');
+ }
+ if (field === 'resumeFile' && !value) setResumeError('');
  setForm(prev => ({ ...prev, [field]: value }));
  };
 
@@ -97,16 +151,38 @@ export default function PublicApplyForm() {
  const handleSubmit = async (e) => {
  e.preventDefault();
  if (!form.name || !form.email || !form.phone) return;
+ if (form.resumeFile) {
+ const check = validateResumeFile(form.resumeFile);
+ if (!check.ok) {
+ setResumeError(check.error);
+ console.warn('[PublicApplyForm]', check.error);
+ return;
+ }
+ }
+ setResumeError('');
  setSubmitting(true);
  try {
- // Upload resume if provided
+ // Upload resume if provided (anon flow — nama file disanitasi, bukan form.name mentah)
  let resumeUrl = null;
  if (form.resumeFile) {
- const ext = form.resumeFile.name.split('.').pop();
- const fileName = `${Date.now()}_${form.name.replace(/\s+/g, '_')}.${ext}`;
+ const check = validateResumeFile(form.resumeFile);
+ if (!check.ok) {
+ setResumeError(check.error);
+ setSubmitting(false);
+ return;
+ }
+ const safeBase = sanitizeResumeName(form.resumeFile.name, check.ext);
+ const fileName = `${Date.now()}_${safeBase}`;
  const { data: uploadData, error: uploadError } = await supabase.storage
- .from('resumes').upload(fileName, form.resumeFile);
- if (!uploadError && uploadData) {
+ .from('resumes').upload(fileName, form.resumeFile, { contentType: check.mime });
+ if (uploadError) {
+ const msg = `Gagal mengunggah CV: ${uploadError.message}`;
+ setResumeError(msg);
+ console.warn('[PublicApplyForm]', msg);
+ setSubmitting(false);
+ return;
+ }
+ if (uploadData) {
  const { data: urlData } = supabase.storage.from('resumes').getPublicUrl(fileName);
  resumeUrl = urlData?.publicUrl || null;
  }
@@ -373,7 +449,7 @@ export default function PublicApplyForm() {
  <div className={`career-file-zone${form.resumeFile ? ' has-file' : ''}`}>
  <input
  type="file"
- accept=".pdf,.doc,.docx"
+ accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
  onChange={e => handleChange('resumeFile', e.target.files?.[0] || null)}
  />
  <div className="career-file-icon"><FiFileText /></div>
@@ -382,10 +458,15 @@ export default function PublicApplyForm() {
  ) : (
  <>
  <div className="career-file-label">Klik atau seret file ke sini</div>
- <div className="career-file-hint">PDF, DOC, atau DOCX — Maks. 5MB</div>
+ <div className="career-file-hint">PDF, DOC, atau DOCX — Maks. 10MB</div>
  </>
  )}
  </div>
+ {resumeError && (
+ <div role="alert" style={{ color: '#DC2626', fontSize: 12, fontWeight: 600, marginTop: 8 }}>
+ {resumeError}
+ </div>
+ )}
  </div>
  </div>
  <div className="career-form-group full">
@@ -424,7 +505,7 @@ export default function PublicApplyForm() {
  </div>
 
  <div className="career-footer">
- Powered by <a href="/">HRIS Loka</a> — Platform HRIS Modern
+ Powered by <a href="/">KiniKerja</a> — Platform HRIS Modern
  </div>
  </div>
  );

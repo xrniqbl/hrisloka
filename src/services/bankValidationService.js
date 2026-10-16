@@ -1,6 +1,6 @@
 /**
  * Bank List Service
- * Uses /api/banks Vercel serverless function (API key stays server-side)
+ * Uses /api/banks VPS handler (API key stays server-side)
  * In dev mode, also routes through /api/banks via Vite proxy (no key exposed to client)
  * Docs: https://docs.api.co.id/products/bank-validation
  */

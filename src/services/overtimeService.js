@@ -78,11 +78,11 @@ export async function approveOvertime(id, approverId, companyId) {
     const otDate = data.date || '';
     const otHours = data.hours || 0;
     if (emp?.phone) {
-      const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} (${otHours} jam) telah *DISETUJUI*.\n\n_HRIS Loka — Smart HR Platform_`;
+      const msg = `🏢 *KiniKerja*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} (${otHours} jam) telah *DISETUJUI*.\n\n_KiniKerja — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[overtimeService] WA error:', e));
     }
     // pushService expects employees.id (not auth_user_id)
-    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Lembur Disetujui ✅', `Lembur ${otDate} (${otHours} jam) telah disetujui.`, '/app/overtime', companyId)
+    sendPushToEmployee(data.employee_id || emp?.id, 'KiniKerja — Lembur Disetujui ✅', `Lembur ${otDate} (${otHours} jam) telah disetujui.`, '/app/overtime', companyId)
       .catch(e => console.warn('[overtimeService] push error:', e));
     try {
       const { createNotification } = await import('./notificationService');
@@ -123,10 +123,10 @@ export async function rejectOvertime(id, companyId) {
     const emp = data.employees;
     const otDate = data.date || '';
     if (emp?.phone) {
-      const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} telah *DITOLAK*.\n\n_HRIS Loka — Smart HR Platform_`;
+      const msg = `🏢 *KiniKerja*\n\nHalo, *${emp.name}*!\n\nPengajuan lembur ${otDate} telah *DITOLAK*.\n\n_KiniKerja — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[overtimeService] WA error:', e));
     }
-    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Lembur Ditolak ❌', `Lembur ${otDate} ditolak.`, '/app/overtime', companyId)
+    sendPushToEmployee(data.employee_id || emp?.id, 'KiniKerja — Lembur Ditolak ❌', `Lembur ${otDate} ditolak.`, '/app/overtime', companyId)
       .catch(e => console.warn('[overtimeService] push error:', e));
     try {
       const { createNotification } = await import('./notificationService');

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FiCheck, FiX, FiFileText, FiCalendar, FiDollarSign, FiClock, FiInbox, FiRefreshCw } from 'react-icons/fi';
+import MetricStatCards from '../components/MetricStatCards';
+import { Calendar, Clock, DollarSign, FileText } from 'lucide-react';
 import * as leaveService from '../services/leaveService';
 import * as reimbursementService from '../services/reimbursementService';
 import * as documentService from '../services/documentService';
@@ -10,6 +12,7 @@ import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import DocLink from '../components/DocLink';
+import EmptyState from '../components/EmptyState';
 
 export default function ApprovalDashboard() {
   const { employee, loading: authLoading } = useAuth();
@@ -119,7 +122,7 @@ export default function ApprovalDashboard() {
         </div>
         <div className="stats-grid" style={{ marginBottom: 24 }}>
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="info-card skeleton" style={{ height: 100, borderRadius: 12 }} />
+            <div key={i} className="info-card skeleton" style={{ height: 44, borderRadius: 12 }} />
           ))}
         </div>
         <div className="data-table-card">
@@ -143,18 +146,12 @@ export default function ApprovalDashboard() {
           </div>
         </div>
         <div className="data-table-card">
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <FiInbox size={28} />
-            </div>
-            <div className="empty-state-title">Perusahaan belum terhubung</div>
-            <div className="empty-state-desc">
-              Akun Anda belum terhubung ke company_id. Hubungkan profil karyawan ke perusahaan agar antrian persetujuan bisa dimuat.
-            </div>
-            <a href="/dashboard" className="btn-primary" style={{ textDecoration: 'none' }}>
-              Kembali ke Dashboard
-            </a>
-          </div>
+          <EmptyState
+            title="Perusahaan belum terhubung"
+            description="Akun Anda belum terhubung ke company_id. Hubungkan profil karyawan ke perusahaan agar antrian persetujuan bisa dimuat."
+            ctaLabel="Kembali ke Dashboard"
+            onCta={() => { window.location.href = '/dashboard'; }}
+          />
         </div>
       </div>
     );
@@ -167,12 +164,6 @@ export default function ApprovalDashboard() {
   const totalPending =
     pendingLeaves.length + pendingReimbursements.length + pendingDocuments.length + pendingOvertime.length;
 
-  const tabs = [
-    { key: 'leave', label: 'CUTI', icon: <FiCalendar />, color: 'var(--primary)', count: pendingLeaves.length, desc: 'Menunggu Persetujuan' },
-    { key: 'overtime', label: 'LEMBUR', icon: <FiClock />, color: '#8B5CF6', count: pendingOvertime.length, desc: 'Menunggu Approval' },
-    { key: 'reimburse', label: 'REIMBURSE', icon: <FiDollarSign />, color: 'var(--warning)', count: pendingReimbursements.length, desc: 'Menunggu Klaim' },
-    { key: 'document', label: 'DOKUMEN', icon: <FiFileText />, color: '#10B981', count: pendingDocuments.length, desc: 'Verifikasi Data' },
-  ];
 
   const getActiveItems = () => {
     switch (activeTab) {
@@ -247,32 +238,17 @@ export default function ApprovalDashboard() {
         </div>
       )}
 
-      {/* Metrics */}
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
-        {tabs.map((tab) => (
-          <div
-            key={tab.key}
-            className="info-card"
-            onClick={() => setActiveTab(tab.key)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') setActiveTab(tab.key);
-            }}
-            style={{
-              cursor: 'pointer',
-              border: activeTab === tab.key ? `2px solid ${tab.color}` : '1px solid var(--border)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <div className="btn-icon-row" style={{ color: tab.color, marginBottom: 8 }}>
-              {tab.icon} <span className="td-semibold">{tab.label}</span>
-            </div>
-            <div className="info-card-value">{tab.count}</div>
-            <div className="info-card-label">{tab.desc}</div>
-          </div>
-        ))}
-      </div>
+      {/* Metrics — clean monochrome strip */}
+      <MetricStatCards
+        activeKey={activeTab}
+        onSelect={setActiveTab}
+        items={[
+          { key: 'leave', label: 'Cuti', value: pendingLeaves.length, icon: Calendar },
+          { key: 'overtime', label: 'Lembur', value: pendingOvertime.length, icon: Clock },
+          { key: 'reimburse', label: 'Reimburse', value: pendingReimbursements.length, icon: DollarSign },
+          { key: 'document', label: 'Dokumen', value: pendingDocuments.length, icon: FileText },
+        ]}
+      />
 
       {/* List */}
       <div className="data-table-card">
@@ -284,23 +260,14 @@ export default function ApprovalDashboard() {
         </div>
 
         {activeItems.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <FiCheck size={28} style={{ color: 'var(--primary)' }} />
-            </div>
-            <div className="empty-state-title">Tidak ada pengajuan menunggu</div>
-            <div className="empty-state-desc">
-              Semua {getTabTitle().toLowerCase()} sudah diproses. Pengajuan baru dari karyawan akan muncul di sini.
-            </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button type="button" className="btn-primary" onClick={fetchData}>
-                <FiRefreshCw size={14} /> Muat Ulang
-              </button>
-              <a href="/leave" className="btn-ghost" style={{ textDecoration: 'none' }}>
-                Lihat Cuti
-              </a>
-            </div>
-          </div>
+          <EmptyState
+            title="Tidak ada pengajuan menunggu"
+            description={`Semua ${getTabTitle().toLowerCase()} sudah diproses. Pengajuan baru dari karyawan akan muncul di sini.`}
+            ctaLabel="Muat Ulang"
+            onCta={fetchData}
+            secondaryLabel="Lihat Cuti"
+            onSecondary={() => { window.location.href = '/leave'; }}
+          />
         ) : (
           <div className="table-responsive">
             <table className="data-table">

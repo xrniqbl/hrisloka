@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, createContext, useContext, memo } from 'react';
 import {
   HiArrowLeftOnRectangle,
   HiArrowPath,
@@ -48,6 +48,74 @@ import {
   DEMO_PROFILE_DATA,
 } from '../../lib/demoGuard';
 import './EmpProfile.css';
+
+// ── Local contexts so InfoRow / SectionCard can live at module scope ────────
+// Defining these components inside EmpProfile (as before) gave them a fresh
+// function identity on every render, so React remounted the inline-edit
+// <input> on each keystroke — dropping focus and the in-progress value.
+// Moving them to module scope and reading closures via context fixes that.
+const EditContext = createContext(null);
+const SectionContext = createContext(null);
+
+const InfoRow = memo(({ icon, label, value, fieldName, freeEdit, locked }) => {
+  const { editingField, editValue, setEditValue, handleDirectSave, savingDirect, setEditingField, locale } = useContext(EditContext);
+  const isEditing = editingField === fieldName;
+  const displayValue = value || '—';
+  return (
+    <div className="profile-info-row">
+      <div className="profile-info-icon">{icon}</div>
+      <div className="profile-info-flex">
+        <div className="profile-info-label">
+          {label}
+          {locked && <span className="profile-locked-badge"><HiLockClosed size={9} /> {locale === 'en' ? 'Needs Approval' : 'Perlu Persetujuan'}</span>}
+        </div>
+        {isEditing ? (
+          <div className="profile-inline-edit">
+            <input
+              autoFocus
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              className="profile-inline-input"
+            />
+            <button onClick={() => handleDirectSave(fieldName)} disabled={savingDirect} className="profile-inline-save">
+              {savingDirect ? '...' : '✓'}
+            </button>
+            <button onClick={() => setEditingField(null)} className="profile-inline-cancel">{`✕`}</button>
+          </div>
+        ) : (
+          <div className="profile-info-value-row">
+            <div className={`profile-info-value ${!value ? 'empty' : ''}`}>{displayValue}</div>
+            {freeEdit && fieldName && (
+              <button onClick={() => { setEditingField(fieldName); setEditValue(value || ''); }} className="profile-edit-btn">
+                <HiPencilSquare size={13} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+const SectionCard = memo(({ id, icon, iconBg, title, children }) => {
+  const { openSections, toggleSection } = useContext(SectionContext);
+  return (
+    <div className="profile-section">
+      <div className="profile-section-header" onClick={() => toggleSection(id)}>
+        <div className="profile-section-title">
+          <div className="profile-section-icon" style={{ background: iconBg }}>{icon}</div>
+          {title}
+        </div>
+        <HiChevronDown className={`profile-section-chevron ${openSections[id] ? 'open' : ''}`} />
+      </div>
+      {openSections[id] && (
+        <div className="profile-section-body">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+});
 
 export default function EmpProfile() {
   const navigate = useNavigate();
@@ -167,7 +235,7 @@ export default function EmpProfile() {
         })
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, [emp?.id]);
+  }, [emp?.id, emp?.email]);
 
   // Pull-to-refresh support
   useEffect(() => {
@@ -307,62 +375,6 @@ export default function EmpProfile() {
   const leaveBalance = (emp.leave_quota || 0) - (emp.leave_used || 0);
 
   const statusColor = (s) => s === 'approved' || s === 'resolved' ? 'var(--success)' : s === 'rejected' ? 'var(--danger)' : s === 'in-progress' ? 'var(--warning)' : 'var(--primary)';
-
-  const InfoRow = ({ icon, label, value, fieldName, freeEdit, locked }) => {
-    const isEditing = editingField === fieldName;
-    const displayValue = value || '\u2014';
-    return (
-      <div className="profile-info-row">
-        <div className="profile-info-icon">{icon}</div>
-        <div className="profile-info-flex">
-          <div className="profile-info-label">
-            {label}
-            {locked && <span className="profile-locked-badge"><HiLockClosed size={9} /> {locale === 'en' ? 'Needs Approval' : 'Perlu Persetujuan'}</span>}
-          </div>
-          {isEditing ? (
-            <div className="profile-inline-edit">
-              <input
-                autoFocus
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                className="profile-inline-input"
-              />
-              <button onClick={() => handleDirectSave(fieldName)} disabled={savingDirect} className="profile-inline-save">
-                {savingDirect ? '...' : '\u2713'}
-              </button>
-              <button onClick={() => setEditingField(null)} className="profile-inline-cancel">\u2715</button>
-            </div>
-          ) : (
-            <div className="profile-info-value-row">
-              <div className={`profile-info-value ${!value ? 'empty' : ''}`}>{displayValue}</div>
-              {freeEdit && fieldName && (
-                <button onClick={() => { setEditingField(fieldName); setEditValue(value || ''); }} className="profile-edit-btn">
-                  <HiPencilSquare size={13} />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const SectionCard = ({ id, icon, iconBg, title, children }) => (
-    <div className="profile-section">
-      <div className="profile-section-header" onClick={() => toggleSection(id)}>
-        <div className="profile-section-title">
-          <div className="profile-section-icon" style={{ background: iconBg }}>{icon}</div>
-          {title}
-        </div>
-        <HiChevronDown className={`profile-section-chevron ${openSections[id] ? 'open' : ''}`} />
-      </div>
-      {openSections[id] && (
-        <div className="profile-section-body">
-          {children}
-        </div>
-      )}
-    </div>
-  );
 
   const TABS = [
     { key: 'info', label: t('profile') },
@@ -516,6 +528,8 @@ export default function EmpProfile() {
 
       {/* PROFIL TAB */}
       {activeTab === 'info' && (
+        <EditContext.Provider value={{ editingField, editValue, setEditValue, handleDirectSave, savingDirect, setEditingField, locale }}>
+        <SectionContext.Provider value={{ openSections, toggleSection }}>
         <div>
           {pendingRequests.filter(r => r.status === 'pending').length > 0 && (
             <div style={{ padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 'var(--radius-sm)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#D97706', fontWeight: 600 }}>
@@ -629,6 +643,8 @@ export default function EmpProfile() {
             </div>
           )}
         </div>
+        </SectionContext.Provider>
+        </EditContext.Provider>
       )}
 
       {/* LEAVE TAB */}

@@ -1,6 +1,6 @@
 -- ============================================================
 -- Migration: Contract Management System
--- HRIS Loka — Kontrak Kerja & Offering Letter
+-- KiniKerja — Kontrak Kerja & Offering Letter
 -- Run this in Supabase SQL Editor
 -- ============================================================
 

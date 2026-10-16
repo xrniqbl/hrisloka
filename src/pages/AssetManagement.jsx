@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FiPlus, FiEye, FiEdit2, FiMonitor, FiHardDrive, FiCpu, FiX } from 'react-icons/fi';
 import * as assetService from '../services/assetService';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPanel, DialogFo
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import MetricStatCards from '../components/MetricStatCards';
+import { HardDrive, Cpu, Monitor } from 'lucide-react';
 
 const statusColors = { 'in-use': '#635BFF', available: '#16A34A', maintenance: '#F59E0B' };
 const statusLabels = { 'in-use': 'In Use', available: 'Available', maintenance: 'Maintenance' };
@@ -52,13 +54,13 @@ export default function AssetManagement() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('assets', fetchData, { companyId: currentUser?.company_id });
+ useRealtimeTable('assets', fetchData, { companyId: employee?.company_id });
 
- const stats = [
- { label: 'Total Aset', value: assetList.length, color: '#635BFF', icon: <FiHardDrive /> },
- { label: 'In Use', value: assetList.filter(a => a.status === 'in-use').length, color: '#635BFF', icon: <FiCpu /> },
- { label: 'Available', value: assetList.filter(a => a.status === 'available').length, color: '#16A34A', icon: <FiMonitor /> },
- { label: 'Maintenance', value: assetList.filter(a => a.status === 'maintenance').length, color: '#F59E0B', icon: <FiMonitor /> },
+ const metricItems = [
+ { key: 'total', label: 'Total Aset', value: assetList.length, icon: HardDrive },
+ { key: 'inuse', label: 'In Use', value: assetList.filter(a => a.status === 'in-use').length, icon: Cpu },
+ { key: 'available', label: 'Available', value: assetList.filter(a => a.status === 'available').length, icon: Monitor },
+ { key: 'maint', label: 'Maintenance', value: assetList.filter(a => a.status === 'maintenance').length, icon: Monitor },
  ];
 
  const filtered = assetList.filter(a => {
@@ -75,10 +77,11 @@ export default function AssetManagement() {
 
  const handleSave = async () => {
  const assetData = { ...form, assigned_to: form.assigned_to ? Number(form.assigned_to) : null, status: form.assigned_to ? 'in-use' : form.status };
+ const companyId = employee?.company_id;
  if (modal === 'add') {
- await assetService.createAsset(assetData);
+ await assetService.createAsset(assetData, companyId);
  } else {
- await assetService.updateAsset(form.id, assetData);
+ await assetService.updateAsset(form.id, assetData, companyId);
  }
  closeModal();
  fetchData();
@@ -101,17 +104,7 @@ export default function AssetManagement() {
  </div>
 
  {/* Stat Cards */}
- <div className="stats-grid">
- {stats.map(s => (
- <div key={s.label} className="info-card">
- <div className="btn-icon-row" style={{ color: s.color, marginBottom: 8 }}>
- <span style={{ fontSize: 20 }}>{s.icon}</span>
- <span className="info-card-label">{s.label}</span>
- </div>
- <div className="info-card-value" style={{ color: s.color }}>{s.value}</div>
- </div>
- ))}
- </div>
+ <MetricStatCards items={metricItems} />
 
  {/* Filters */}
  <div className="filters-bar">
@@ -278,4 +271,3 @@ export default function AssetManagement() {
  </div>
  );
 }
-

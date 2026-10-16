@@ -1,17 +1,18 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FiStar, FiPlus, FiCheck, FiEdit2, FiTrash2, FiDownload, FiCalendar } from 'react-icons/fi';
 import * as holidayService from '../services/holidayService';
 import { exportToExcel } from '../lib/excelExport';
 import { useRealtimeTable } from '../hooks/useRealtime';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPanel, DialogFooter } from '@/components/ui/dialog';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import EmptyState from '../components/EmptyState';
+import MetricStatCards from '../components/MetricStatCards';
+import { CalendarDays, CalendarClock } from 'lucide-react';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -82,16 +83,16 @@ export default function HolidayManagement() {
  <NativeSelect value={year} onChange={e => setYear(Number(e.target.value))}>
  {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
  </NativeSelect>
- <Button variant="outline" className="btn-secondary" onClick={handleExport}><FiDownload /> Export</Button>
- <Button className="btn-primary" onClick={openCreate}><FiPlus /> Tambah</Button>
+ <button type="button" className="btn-secondary" onClick={handleExport}><FiDownload /> Export</button>
+ <button type="button" className="btn-primary" onClick={openCreate}><FiPlus /> Tambah</button>
  </div>
  </div>
 
  {/* Stats */}
- <div className="stats-grid">
- <div className="info-card"><div className="info-card-label">Total Hari Libur {year}</div><div className="info-card-value danger">{holidays.length}</div></div>
- <div className="info-card"><div className="info-card-label">Mendatang</div><div className="info-card-value primary">{upcoming.length}</div></div>
- </div>
+ <MetricStatCards items={[
+ { key: 'total', label: `Total Hari Libur ${year}`, value: holidays.length, icon: CalendarDays },
+ { key: 'upcoming', label: 'Mendatang', value: upcoming.length, icon: CalendarClock },
+ ]} />
 
  {/* Monthly Timeline */}
  <div className="stats-grid">
@@ -148,8 +149,8 @@ export default function HolidayManagement() {
     </div>
    </DialogPanel>
    <DialogFooter>
-    <Button variant="outline" className="btn-secondary" onClick={() => setModal(null)}>Batal</Button>
-    <Button className="btn-primary" onClick={handleSubmit} disabled={!form.name || !form.date}><FiCheck /> {editId ? 'Update' : 'Simpan'}</Button>
+    <button type="button" className="btn-secondary" onClick={() => setModal(null)}>Batal</button>
+    <button type="button" className="btn-primary" onClick={handleSubmit} disabled={!form.name || !form.date}><FiCheck /> {editId ? 'Update' : 'Simpan'}</button>
    </DialogFooter>
   </DialogContent>
  </Dialog>

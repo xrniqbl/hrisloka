@@ -11,17 +11,19 @@ import {
   HiXMark
 } from 'react-icons/hi2';
 import { supabase } from '../lib/supabase';
+import { sanitizeAppPath } from '../lib/safePath';
 import { useAuth } from '../context/AuthContext';
 import './NotificationCenter.css';
 
 const typeIcons = {
  leave: <HiCalendarDays />, approval: <HiCheckCircle />, announcement: <HiBell />,
  birthday: <HiUsers />, contract: <HiBellAlert />, system: <HiCog6Tooth />,
- payroll: <HiCurrencyDollar />,
+ payroll: <HiCurrencyDollar />, platform: <HiBellAlert />,
 };
 const typeColors = {
- leave: '#635BFF', approval: '#16A34A', announcement: '#F59E0B',
+ leave: '#5654D4', approval: '#16A34A', announcement: '#F59E0B',
  birthday: '#EC4899', contract: '#DC2626', system: '#6D8196', payroll: '#8B5CF6',
+ platform: '#5654D4',
 };
 
 export default function NotificationCenter() {
@@ -134,7 +136,50 @@ export default function NotificationCenter() {
  <div
  key={n.id}
  className={`nc-item ${!n.read ? 'unread' : ''}`}
- onClick={() => { markRead(n.id); if (n.link) window.location.href = n.link; }}
+ onClick={() => {
+   markRead(n.id);
+   let data = n.data;
+   if (typeof data === 'string') {
+     try { data = JSON.parse(data); } catch { data = {}; }
+   }
+   const actionUrl = n.link || data?.action_url;
+   if (actionUrl) {
+     const raw = String(actionUrl).trim();
+     // Reject protocol-relative URLs (//evil.com) outright
+     if (raw.startsWith('//')) {
+       // ignore — invalid URL, stay (already marked read)
+     } else if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw) && !/^https?:\/\//i.test(raw)) {
+       // Reject javascript:, data:, vbscript:, etc. — anything with a
+       // scheme colon that is not http(s). Stops scheme bypasses where
+       // ':' appears before the first '/'.
+     } else if (/^https?:\/\//i.test(raw)) {
+       // Absolute http(s): only allow same-origin
+       try {
+         if (new URL(raw, window.location.origin).origin === window.location.origin) {
+           window.location.href = new URL(raw, window.location.origin).pathname
+             + new URL(raw, window.location.origin).search
+             + new URL(raw, window.location.origin).hash;
+         }
+         // else: cross-origin → ignore (do not open)
+       } catch {
+         // unparsable → ignore
+       }
+     } else if (raw.startsWith('/')) {
+       // Internal relative path: must not be // and must not contain
+       // ':' before the first '/' (catches /\/evil, /javascript: etc.)
+       const firstSlash = raw.indexOf('/', 1);
+       const head = firstSlash === -1 ? raw : raw.slice(0, firstSlash);
+       if (!head.includes(':')) {
+         const safe = sanitizeAppPath(raw, '');
+         if (safe) window.location.href = safe;
+       }
+       // else: ignore
+     }
+     // else: bare relative / scheme-less junk → ignore
+   } else if (n.type === 'platform') {
+     window.location.href = '/settings';
+   }
+ }}
  >
  <div className="nc-item-icon" style={{ background: `${typeColors[n.type] || '#6D8196'}15`, color: typeColors[n.type] || '#6D8196' }}>
  {typeIcons[n.type] || <HiBell />}

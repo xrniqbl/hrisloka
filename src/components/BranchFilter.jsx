@@ -18,7 +18,12 @@ export default function BranchFilter({ style }) {
  }} />
  <select
  value={selectedBranchId || ''}
- onChange={(e) => setSelectedBranchId(e.target.value ? Number(e.target.value) : null)}
+ onChange={(e) => {
+   const raw = e.target.value;
+   if (!raw) { setSelectedBranchId(null); return; }
+   // Preserve UUID branch ids as strings; only coerce when numeric
+   setSelectedBranchId(Number.isNaN(Number(raw)) ? raw : Number(raw));
+ }}
  disabled={isBranchAdmin}
  style={{
  appearance: 'none',
@@ -36,7 +41,7 @@ export default function BranchFilter({ style }) {
  minWidth: 180,
  transition: 'border-color 0.2s, box-shadow 0.2s',
  opacity: isBranchAdmin ? 0.7 : 1,
- boxShadow: selectedBranchId ? '0 0 0 2px rgba(0, 71, 171, 0.1)' : 'none',
+ boxShadow: selectedBranchId ? '0 0 0 2px rgba(99,91,255, 0.1)' : 'none',
  }}
  onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
  onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
@@ -55,3 +60,4 @@ export default function BranchFilter({ style }) {
  </div>
  );
 }
+

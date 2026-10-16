@@ -1,4 +1,4 @@
-﻿import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 // Simple SVG icons (no emoji)
@@ -58,8 +58,8 @@ export default function PendingVerificationScreen() {
         {/* Logo */}
         <div style={{ marginBottom: 32 }}>
           <picture>
-            <source media="(prefers-color-scheme: dark)" srcSet="/landing/hrislokawhitepanjang.png" />
-            <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" style={{ height: 30, objectFit: 'contain' }} />
+            <source media="(prefers-color-scheme: dark)" srcSet="/landing/kinikerjawhitepanjang.png" />
+            <img src="/landing/kinikerjabluepanjang.png" alt="KiniKerja" style={{ height: 30, objectFit: 'contain' }} />
           </picture>
         </div>
 
@@ -92,7 +92,7 @@ export default function PendingVerificationScreen() {
 
         {!isRejected && (() => {
           let emailHint = '';
-          try { emailHint = sessionStorage.getItem('hrisloka_reg_email_hint') || ''; } catch { /* */ }
+          try { emailHint = sessionStorage.getItem('kinikerja_reg_email_hint') || ''; } catch { /* */ }
           if (!emailHint && !employee) {
             return (
               <div style={{

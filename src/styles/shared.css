@@ -727,54 +727,50 @@
   padding-left: 2px;
 }
 
-/* ─── Empty State (PWA) ─── */
+/* ─── Empty State (PWA) — plain icon, no box ─── */
 .emp-empty {
   text-align: center;
-  padding: 40px 20px;
+  padding: 32px 18px;
   color: var(--muted);
 }
 
 .emp-empty--cta {
-  padding: 48px 24px;
+  padding: 36px 20px;
 }
 
-.emp-empty-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: var(--bg);
-  display: flex;
+.emp-empty-icon,
+.emp-empty-icon--solid,
+.emp-empty-icon--plain {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  border: none !important;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 14px;
-  color: var(--primary);
-  opacity: 0.5;
-}
-
-.emp-empty-icon--solid {
-  width: auto;
-  height: auto;
-  min-width: 72px;
-  min-height: 72px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  opacity: 1;
-  color: var(--primary);
+  margin: 0 auto 10px !important;
+  color: #9CA3AF !important;
+  opacity: 1 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  font-size: 22px;
 }
 
 .emp-empty-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text);
-  margin-bottom: 6px;
-  letter-spacing: -0.2px;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
 }
 
 .emp-empty-desc {
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--muted);
-  line-height: 1.55;
+  line-height: 1.5;
   max-width: 280px;
   margin: 0 auto;
 }
@@ -782,9 +778,9 @@
 .emp-empty-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   max-width: 280px;
-  margin: 18px auto 0;
+  margin: 14px auto 0;
   width: 100%;
 }
 
@@ -1761,3 +1757,20 @@
   white-space: nowrap;
 }
 
+
+
+/* emp-field clean v2 */
+.emp-field-input {
+  border: 1px solid #E8E8EE;
+  border-radius: 10px;
+  background: #fff;
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  box-shadow: none;
+}
+.emp-field-input:focus {
+  border-color: #C8C6E0;
+  box-shadow: 0 0 0 3px rgba(86,84,212,0.1);
+  outline: none;
+}

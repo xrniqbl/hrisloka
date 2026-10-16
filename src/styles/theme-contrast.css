@@ -1,0 +1,610 @@
+/**
+ * Theme contrast layer — ensures text/icons/backgrounds never clash
+ * in light or dark mode. Loaded last so it wins over hard-coded hex.
+ */
+
+/* ── Light mode: readable defaults on white surfaces ── */
+:root,
+[data-theme="light"] {
+  --text: #111827;
+  --text-secondary: #4B5563;
+  --text-tertiary: #6B7280;
+  --muted: #6B7280;
+  --bg: #F7F7FB;
+  --surface: #FFFFFF;
+  --border: #E8E8EE;
+  --border-strong: #D1D5DB;
+  color-scheme: light;
+}
+
+/* Selection: dark text on soft primary (readable) */
+::selection {
+  background: color-mix(in srgb, var(--primary, #5654D4) 22%, white);
+  color: #111827;
+}
+
+/* ── Dark mode tokens — higher contrast ── */
+[data-theme="dark"] {
+  --primary: #A5A0FF;
+  --primary-dark: #C4C0FF;
+  --primary-light: rgba(165, 160, 255, 0.16);
+  --primary-soft: rgba(165, 160, 255, 0.12);
+  --primary-mid: rgba(165, 160, 255, 0.2);
+  --primary-hover: #B8B3FF;
+
+  --muted: #A1A8B8;
+  --text: #F3F4F6;
+  --text-secondary: #C5CAD6;
+  --text-tertiary: #9BA3B4;
+
+  --bg: #0B0D14;
+  --bg-elevated: #12151F;
+  --surface: #161A27;
+  --surface-raised: #1C2133;
+  --card: #161A27;
+
+  --border: #2C3348;
+  --border-light: #232838;
+  --border-strong: #3D4660;
+
+  --success: #4ADE80;
+  --success-light: rgba(74, 222, 128, 0.12);
+  --warning: #FBBF24;
+  --warning-light: rgba(251, 191, 36, 0.12);
+  --danger: #F87171;
+  --danger-light: rgba(248, 113, 113, 0.12);
+  --info: #7DD3FC;
+  --info-light: rgba(125, 211, 252, 0.12);
+
+  --background: #0B0D14;
+  --foreground: #F3F4F6;
+  --card-foreground: #F3F4F6;
+  --popover: #161A27;
+  --popover-foreground: #F3F4F6;
+  --primary-foreground: #0B0D14;
+  --muted-foreground: #A1A8B8;
+  --accent-foreground: #F3F4F6;
+  --input: #2C3348;
+  --ring: #A5A0FF;
+
+  color-scheme: dark;
+}
+
+[data-theme="dark"] ::selection {
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
+  color: #FFFFFF;
+}
+
+/* ── Base text inherits theme tokens ── */
+body {
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+/* ── Hard-coded light hex → theme-aware ── */
+
+/* Page headers (had #111827 !important) */
+.page-header-title,
+.page-header h1,
+.page-header h2 {
+  color: var(--text) !important;
+}
+.page-header-subtitle,
+.page-header p {
+  color: var(--muted) !important;
+}
+
+/* Soft cards forced light border */
+.card,
+.info-card,
+.chart-card,
+.recent-table-card,
+.data-card,
+.data-table-card,
+.panel-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+/* Metric stat strip */
+.metric-stat-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+.metric-stat-label {
+  color: var(--muted) !important;
+}
+.metric-stat-value {
+  color: var(--text) !important;
+}
+.metric-stat-icon {
+  background: color-mix(in srgb, var(--muted) 14%, transparent) !important;
+  color: var(--muted) !important;
+}
+.metric-stat-card--clickable:hover {
+  border-color: var(--border-strong) !important;
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg)) !important;
+}
+.metric-stat-card--active {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border)) !important;
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface)) !important;
+}
+
+/* Empty state icons */
+.empty-state-icon,
+.empty-state-clean-icon,
+.emp-empty-icon,
+.emp-empty-icon--plain,
+.emp-empty-icon--solid,
+.dash-empty-icon,
+.ep-empty-icon {
+  color: var(--muted) !important;
+  background: none !important;
+  border: none !important;
+}
+.empty-state-title,
+.emp-empty-title,
+.dash-empty-title,
+.ep-empty-title {
+  color: var(--text) !important;
+}
+.empty-state-desc,
+.emp-empty-desc,
+.dash-empty-text,
+.ep-empty-desc {
+  color: var(--muted) !important;
+}
+
+/* Layout shell */
+.layout-wrapper {
+  background: var(--bg) !important;
+}
+.layout-content {
+  background: var(--surface) !important;
+  color: var(--text);
+}
+.layout-topbar {
+  border-bottom-color: var(--border) !important;
+  background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+}
+.layout-topbar-title {
+  color: var(--text) !important;
+}
+.layout-topbar-icon-btn {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+.layout-topbar-icon-btn:hover {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface)) !important;
+}
+.top-navbar-user {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+.top-navbar-user:hover {
+  background: color-mix(in srgb, var(--bg) 80%, var(--surface)) !important;
+  border-color: var(--border-strong) !important;
+}
+.top-navbar-username {
+  color: var(--text) !important;
+}
+.btn-create-new {
+  background: var(--primary) !important;
+  color: #fff !important;
+}
+.btn-create-new:hover {
+  background: var(--primary-hover, var(--primary-dark)) !important;
+}
+
+/* Forms */
+.form-input,
+.form-select,
+.form-textarea,
+input.form-input,
+select.form-select,
+textarea.form-textarea,
+.filter-search,
+.filter-select,
+.search-input-padded {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.form-input::placeholder,
+.form-textarea::placeholder,
+.filter-search::placeholder {
+  color: var(--muted) !important;
+  opacity: 0.85;
+}
+.form-label,
+label.form-label {
+  color: var(--muted) !important;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border)) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+.form-date-trigger {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Tables */
+.data-table th {
+  background: color-mix(in srgb, var(--bg) 80%, var(--surface)) !important;
+  color: var(--muted) !important;
+  border-color: var(--border) !important;
+}
+.data-table td {
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.data-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface)) !important;
+}
+.td-semibold,
+.td-sm {
+  color: var(--text);
+}
+.td-muted-sm,
+.td-muted {
+  color: var(--muted) !important;
+}
+
+/* Buttons secondary / ghost */
+.btn-secondary,
+button.btn-secondary {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+.btn-secondary:hover,
+button.btn-secondary:hover {
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface)) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text) !important;
+}
+.btn-ghost,
+button.btn-ghost {
+  color: var(--muted) !important;
+  background: transparent !important;
+}
+.btn-ghost:hover,
+button.btn-ghost:hover {
+  color: var(--text) !important;
+  background: color-mix(in srgb, var(--bg) 60%, transparent) !important;
+}
+.btn-primary,
+button.btn-primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #FFFFFF !important;
+}
+
+/* Outline / export-style buttons: dark text on light surface (not white-on-white) */
+button[data-slot="button"].border-input,
+button[data-slot="button"][class*="bg-popover"],
+button[data-slot="button"][class*="text-foreground"],
+.payroll-btn-export,
+.btn-header-export,
+.page-header-actions .btn-secondary {
+  color: var(--text) !important;
+}
+
+/* Default/primary shadcn Button: always white label on primary fill */
+button[data-slot="button"].bg-primary,
+button[data-slot="button"][class*="bg-primary"] {
+  color: #FFFFFF !important;
+}
+
+/* Never force white text onto secondary/outline export actions */
+.btn-secondary,
+button.btn-secondary {
+  color: var(--text) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Action icons */
+.action-btn {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+.action-btn:hover {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface)) !important;
+  color: var(--primary) !important;
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--border)) !important;
+}
+
+/* Global search trigger */
+.gs-trigger {
+  background: color-mix(in srgb, var(--bg) 90%, var(--surface)) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+.gs-trigger:hover {
+  background: var(--surface) !important;
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border)) !important;
+  color: var(--text) !important;
+}
+.gs-trigger-kbd {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* Dashboard KPI strip */
+.dash-kpi {
+  background: var(--dash-card-bg, var(--surface)) !important;
+  border-color: var(--dash-card-border, var(--border)) !important;
+  color: var(--dash-text, var(--text)) !important;
+}
+.dash-kpi-value {
+  color: var(--dash-text, var(--text)) !important;
+}
+.dash-kpi-label {
+  color: var(--dash-text-muted, var(--muted)) !important;
+}
+.dash-kpi-icon {
+  background: color-mix(in srgb, var(--muted) 14%, transparent) !important;
+  color: var(--muted) !important;
+}
+.dash-greeting-name {
+  color: var(--dash-text, var(--text)) !important;
+}
+.dash-greeting-sub {
+  color: var(--dash-text-muted, var(--muted)) !important;
+}
+.dash-card {
+  background: var(--dash-card-bg, var(--surface)) !important;
+  border-color: var(--dash-card-border, var(--border)) !important;
+}
+.dash-card-header-title {
+  color: var(--dash-text, var(--text)) !important;
+}
+.dash-card-header-icon {
+  background: color-mix(in srgb, var(--muted) 12%, transparent) !important;
+  color: var(--muted) !important;
+}
+.dash-task-item--card {
+  background: color-mix(in srgb, var(--bg) 50%, var(--surface)) !important;
+  border-color: var(--border) !important;
+}
+.dash-task-title {
+  color: var(--dash-text, var(--text)) !important;
+}
+.dash-task-datetime {
+  color: var(--dash-text-muted, var(--muted)) !important;
+}
+
+/* Sidebar light shell dark adaptation */
+[data-theme="dark"] .sidebar {
+  background: #10131C !important;
+  border-right-color: var(--border) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .sidebar-brand-text,
+[data-theme="dark"] .sidebar-help-title {
+  color: var(--text) !important;
+}
+[data-theme="dark"] .sidebar-org-label,
+[data-theme="dark"] .nav-section-label,
+[data-theme="dark"] .sidebar-help-sub {
+  color: var(--muted) !important;
+}
+[data-theme="dark"] .nav-link {
+  color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .nav-link:hover {
+  color: var(--text) !important;
+  background: color-mix(in srgb, var(--surface) 70%, transparent) !important;
+}
+[data-theme="dark"] .nav-link.active {
+  color: var(--text) !important;
+  background: var(--surface) !important;
+  box-shadow: 0 0 0 1px var(--border) !important;
+}
+[data-theme="dark"] .nav-link.active .nav-link-icon,
+[data-theme="dark"] .nav-link-icon {
+  color: var(--primary) !important;
+}
+[data-theme="dark"] .nav-link:not(.active) .nav-link-icon {
+  color: var(--muted) !important;
+}
+[data-theme="dark"] .nav-submenu-link {
+  color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .nav-submenu-link:hover,
+[data-theme="dark"] .nav-submenu-link.active {
+  color: var(--primary) !important;
+  background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+}
+[data-theme="dark"] .sidebar-help {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .sidebar-footer {
+  border-top-color: var(--border) !important;
+}
+[data-theme="dark"] .mobile-header {
+  background: var(--surface) !important;
+  box-shadow: 0 1px 0 var(--border) !important;
+}
+[data-theme="dark"] .mobile-brand {
+  color: var(--primary) !important;
+}
+[data-theme="dark"] .mobile-hamburger {
+  color: var(--text) !important;
+}
+
+/* Info card values always use text color (not rainbow) */
+.info-card-value,
+.info-card-value.primary,
+.info-card-value.warning,
+.info-card-value.danger,
+.info-card-value.success,
+.info-card-value.info,
+.stats-grid .info-card-value[style*="color"] {
+  color: var(--text) !important;
+}
+.info-card-label {
+  color: var(--muted) !important;
+}
+
+/* Modal */
+.modal-box {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.modal-header,
+.modal-footer {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+.modal-close {
+  background: color-mix(in srgb, var(--bg) 80%, var(--surface)) !important;
+  color: var(--muted) !important;
+}
+
+/* Status badges: ensure readable on both themes */
+.status-badge {
+  font-weight: 600;
+}
+[data-theme="dark"] .status-badge.active,
+[data-theme="dark"] .status-badge.approved {
+  background: rgba(74, 222, 128, 0.15) !important;
+  color: #4ADE80 !important;
+}
+[data-theme="dark"] .status-badge.inactive,
+[data-theme="dark"] .status-badge.rejected {
+  background: rgba(248, 113, 113, 0.15) !important;
+  color: #FCA5A5 !important;
+}
+[data-theme="dark"] .status-badge.pending {
+  background: rgba(251, 191, 36, 0.15) !important;
+  color: #FCD34D !important;
+}
+
+/* Geo map card */
+.geo-zone-card,
+.geo-zone-header {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+.geo-zone-header {
+  border-bottom-color: var(--border) !important;
+}
+.geo-legend-item {
+  color: var(--muted) !important;
+}
+.geo-zone-empty {
+  color: var(--muted) !important;
+  background: color-mix(in srgb, var(--bg) 80%, var(--surface)) !important;
+}
+
+/* Chart titles */
+.chart-card-title {
+  color: var(--text) !important;
+}
+.chart-card-subtitle {
+  color: var(--muted) !important;
+}
+
+/* Breadcrumb */
+.breadcrumb,
+.breadcrumb a {
+  color: var(--muted) !important;
+}
+.breadcrumb a:hover {
+  color: var(--primary) !important;
+}
+
+/* Astryx / coss surfaces in dark */
+[data-theme="dark"] [data-slot="card"],
+[data-theme="dark"] [data-slot="input-control"] {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Light mode residual: never pure black icons on dark purple soft */
+[data-theme="light"] .nav-link.active .nav-link-icon {
+  color: var(--primary) !important;
+}
+[data-theme="light"] .btn-primary,
+[data-theme="light"] button.btn-primary {
+  color: #FFFFFF !important;
+}
+
+/* Notification / language controls */
+[data-theme="dark"] .lang-toggle,
+[data-theme="dark"] .language-toggle {
+  color: var(--text-secondary) !important;
+}
+
+/* Founder sidebar light-first CSS → dark */
+[data-theme="dark"] .founder-sidebar {
+  background: #10131C !important;
+  border-right-color: var(--border) !important;
+}
+[data-theme="dark"] .founder-nav-item,
+[data-theme="dark"] .founder-switch-btn {
+  color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .founder-nav-item.active {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  box-shadow: 0 0 0 1px var(--border) !important;
+}
+[data-theme="dark"] .founder-nav-item.active .founder-nav-icon {
+  color: var(--primary) !important;
+}
+[data-theme="dark"] .founder-user-card,
+[data-theme="dark"] .founder-logout-btn {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+[data-theme="dark"] .founder-user-name,
+[data-theme="dark"] .founder-sidebar-brand-text {
+  color: var(--text) !important;
+}
+
+/* PWA emp cards */
+[data-theme="dark"] .emp-card,
+[data-theme="dark"] .emp-page {
+  color: var(--text);
+}
+[data-theme="dark"] .emp-page-title {
+  color: var(--text) !important;
+}
+[data-theme="dark"] .emp-page-subtitle,
+[data-theme="dark"] .emp-field-label {
+  color: var(--muted) !important;
+}
+[data-theme="dark"] .emp-field-input,
+[data-theme="dark"] .emp-reg__input {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Settings theme picker readable in both modes */
+[data-theme="dark"] .settings-tabs,
+[data-theme="dark"] [role="tablist"] {
+  color: var(--text);
+}

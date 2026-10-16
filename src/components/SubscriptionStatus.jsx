@@ -95,7 +95,7 @@ export default function SubscriptionStatus({ compact = false }) {
 
   if (compact) {
     return (
-      <div className="sub-status-compact" style={{ borderColor: meta.color }} onClick={() => navigate('/settings')}>
+      <div className="sub-status-compact" style={{ borderColor: meta.color }} onClick={() => navigate('/checkout')}>
         <meta.icon size={14} color={meta.color} />
         <span style={{ color: meta.color, fontWeight: 700, fontSize: 12 }}>
           {sub.plan_label || sub.plan_slug}

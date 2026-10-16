@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiEye, FiX, FiMapPin, FiSettings, FiCheck, FiAlertTriangle, FiShield, FiAlertCircle, FiNavigation } from 'react-icons/fi';
+import { MapPin, Check, AlertTriangle, Shield, AlertCircle } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -8,11 +9,14 @@ import { supabase } from '../lib/supabase';
 import BranchFilter from '../components/BranchFilter';
 import { useBranch } from '../context/BranchContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import FormDateField from '../components/FormDateField';
+import MetricStatCards from '../components/MetricStatCards';
 
 // Fix Leaflet default marker icon (webpack/vite bundler issue)
 delete L.Icon.Default.prototype._getIconUrl;
@@ -26,6 +30,126 @@ L.Icon.Default.mergeOptions({
 function MapClickHandler({ onMapClick }) {
   useMapEvents({ click: (e) => onMapClick(e.latlng) });
   return null;
+}
+
+const DEFAULT_CENTER = [-6.2088, 106.8456]; // Jakarta fallback
+
+function pinIcon(color) {
+  return L.divIcon({
+    className: 'geo-pin',
+    html: `<span style="
+      display:block;width:12px;height:12px;border-radius:50%;
+      background:${color};border:2px solid #fff;
+      box-shadow:0 1px 4px rgba(0,0,0,.25);
+    "></span>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6],
+  });
+}
+
+const officeIcon = L.divIcon({
+  className: 'geo-office-pin',
+  html: `<span style="
+    display:block;width:16px;height:16px;border-radius:50%;
+    background:#5654D4;border:3px solid #fff;
+    box-shadow:0 2px 8px rgba(86,84,212,.4);
+  "></span>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+/** Compact Leaflet map: office radius + clock-in points */
+function OfficeRadiusMap({ office, logs = [], inRadius = 0, outRadius = 0, onOpenSettings, onSelectLog }) {
+  const lat = office?.latitude != null ? Number(office.latitude) : null;
+  const lng = office?.longitude != null ? Number(office.longitude) : null;
+  const hasOffice = Number.isFinite(lat) && Number.isFinite(lng);
+  const radius = Number(office?.radius_meters) || 100;
+  const center = hasOffice ? [lat, lng] : DEFAULT_CENTER;
+
+  const clockPins = logs.filter(
+    (l) => Number.isFinite(Number(l.latitude)) && Number.isFinite(Number(l.longitude)),
+  );
+
+  return (
+    <div className="chart-card geo-zone-card mb">
+      <div className="geo-zone-header">
+        <div>
+          <div className="chart-card-title" style={{ marginBottom: 2 }}>Office Radius Zone</div>
+          <div className="td-muted-sm">
+            {office?.name || 'Kantor Utama'}
+            {hasOffice
+              ? ` · ${lat.toFixed(5)}, ${lng.toFixed(5)} · radius ${radius}m`
+              : ' · Lokasi belum diatur'}
+          </div>
+        </div>
+        <div className="geo-zone-legend">
+          <span className="geo-legend-item">
+            <span className="geo-dot geo-dot--in" /> In Zone ({inRadius})
+          </span>
+          <span className="geo-legend-item">
+            <span className="geo-dot geo-dot--out" /> Out of Zone ({outRadius})
+          </span>
+        </div>
+      </div>
+
+      <div className="geo-zone-map-wrap">
+        {!hasOffice ? (
+          <div className="geo-zone-empty">
+            <FiMapPin size={22} style={{ opacity: 0.5 }} />
+            <div style={{ fontWeight: 600, fontSize: 13, marginTop: 8 }}>Lokasi kantor belum diset</div>
+            <div className="td-muted-sm" style={{ marginBottom: 12, textAlign: 'center', maxWidth: 280 }}>
+              Atur koordinat & radius agar zona geofence tampil di peta.
+            </div>
+            <button type="button" className="btn-primary" style={{ padding: '8px 14px', fontSize: 13 }} onClick={onOpenSettings}>
+              Atur Office Location
+            </button>
+          </div>
+        ) : (
+          <MapContainer
+            key={`zone-${lat}-${lng}-${radius}-${filterDateKey(logs)}`}
+            center={center}
+            zoom={radius > 300 ? 15 : 16}
+            className="geo-zone-map"
+            scrollWheelZoom={false}
+            dragging
+            zoomControl
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Circle
+              center={center}
+              radius={radius}
+              pathOptions={{
+                color: '#5654D4',
+                fillColor: '#5654D4',
+                fillOpacity: 0.12,
+                weight: 2,
+                dashArray: '6 4',
+              }}
+            />
+            <Marker position={center} icon={officeIcon} title={office?.name || 'Kantor'} />
+            {clockPins.map((l) => (
+              <Marker
+                key={l.id}
+                position={[Number(l.latitude), Number(l.longitude)]}
+                icon={pinIcon(l.in_radius ? '#16A34A' : '#DC2626')}
+                eventHandlers={{
+                  click: () => onSelectLog?.(l),
+                }}
+                title={l.employees?.name || 'Clock-in'}
+              />
+            ))}
+          </MapContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function filterDateKey(logs) {
+  return `${logs.length}-${logs[0]?.id || 0}-${logs[logs.length - 1]?.id || 0}`;
 }
 
 function TrustScoreBadge({ score, level }) {
@@ -44,6 +168,9 @@ function TrustScoreBadge({ score, level }) {
 }
 
 export default function GeofenceAttendance() {
+ const { toast } = useToast();
+ const toastRef = useRef(toast);
+ useEffect(() => { toastRef.current = toast; }, [toast]);
  const [logs, setLogs] = useState([]);
  const [locations, setLocations] = useState([]);
  const [, setLoading] = useState(true);
@@ -63,15 +190,23 @@ export default function GeofenceAttendance() {
   setLoading(false);
   return;
  }
- const { data: attData } = await attendanceService.getAttendanceByDate(
+ try {
+ const { data: attData, error: attError } = await attendanceService.getAttendanceByDate(
   filterDate,
   selectedBranchId,
   employee.company_id,
  );
- const { data: locData } = await attendanceService.getOfficeLocations(employee.company_id);
+ if (attError) throw attError;
+ const { data: locData, error: locError } = await attendanceService.getOfficeLocations(employee.company_id);
+ if (locError) throw locError;
  setLogs(attData || []);
  setLocations(locData || []);
+ } catch (e) {
+  console.error('[Geofence] fetch failed:', e?.message || e);
+  toastRef.current.error('Gagal memuat data geofence. Coba muat ulang.');
+ } finally {
  setLoading(false);
+ }
  }, [filterDate, selectedBranchId, employee]);
 
  useEffect(() => { fetchData(); }, [fetchData]);
@@ -81,12 +216,12 @@ export default function GeofenceAttendance() {
  const faceVerifiedCount = logs.filter(l => l.face_verified).length;
  const suspiciousCount = logs.filter(l => l.trust_level === 'warning' || l.trust_level === 'rejected').length;
 
- const stats = [
- { label: 'Total Clock-In', value: logs.length, color: '#635BFF', icon: <FiMapPin /> },
- { label: 'Dalam Radius', value: inRadius, color: '#16A34A', icon: <FiCheck /> },
- { label: 'Di Luar Radius', value: outRadius, color: '#DC2626', icon: <FiAlertTriangle /> },
- { label: 'Face Verified', value: faceVerifiedCount, color: '#7C3AED', icon: <FiShield /> },
- { label: 'Suspicious', value: suspiciousCount, color: '#DC2626', icon: <FiAlertCircle /> },
+ const metricItems = [
+ { key: 'total', label: 'Total Clock-In', value: logs.length, icon: MapPin },
+ { key: 'in', label: 'Dalam Radius', value: inRadius, icon: Check },
+ { key: 'out', label: 'Di Luar Radius', value: outRadius, icon: AlertTriangle },
+ { key: 'face', label: 'Face Verified', value: faceVerifiedCount, icon: Shield },
+ { key: 'suspicious', label: 'Suspicious', value: suspiciousCount, icon: AlertCircle },
  ];
 
  const openDetail = (log) => { setSelected(log); setModal('detail'); };
@@ -123,63 +258,21 @@ export default function GeofenceAttendance() {
  </div>
  </div>
 
- <div className="stats-grid">
- {stats.map(s => (
- <div key={s.label} className="info-card">
- <div className="btn-icon-row mb-sm">
- <span style={{ color: s.color, fontSize: 20 }}>{s.icon}</span>
- <span className="info-card-label">{s.label}</span>
- </div>
- <div className="info-card-value" style={{ color: s.color }}>{s.value}</div>
- </div>
- ))}
- </div>
+ <MetricStatCards items={metricItems} />
 
- {/* Geo Radius Visualization */}
- <div className="chart-card mb">
- <div className="chart-card-title">Office Radius Zone</div>
- <div className="btn-icon-row" style={{ flexWrap: 'wrap' }}>
- <div style={{ position: 'relative', width: 180, height: 180 }}>
- <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(99,91,255, 0.08)', border: '2px dashed rgba(99,91,255, 0.3)' }} />
- <div style={{ position: 'absolute', inset: 30, borderRadius: '50%', background: 'rgba(99,91,255, 0.12)' }} />
- <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 16, height: 16, borderRadius: '50%', background: '#635BFF', boxShadow: '0 0 0 4px rgba(99,91,255, 0.2)' }} />
- {logs.slice(0, 7).map((l, i) => {
- const angle = (i / 7) * Math.PI * 2;
- // Deterministic positioning based on id to avoid flickering on re-render
- const seed = (l.id || i) * 137 % 100;
- const dist = l.in_radius ? 30 + (seed / 100) * 30 : 75 + (seed / 100) * 10;
- const x = 90 + Math.cos(angle) * dist;
- const y = 90 + Math.sin(angle) * dist;
- return (
- <div key={l.id} style={{
- position: 'absolute', left: x - 5, top: y - 5,
- width: 10, height: 10, borderRadius: '50%',
- background: l.in_radius ? '#16A34A' : '#DC2626',
- border: '2px solid #fff', boxShadow: 'var(--shadow-sm)',
- cursor: 'pointer', zIndex: 1
- }} title={l.employees?.name || '-'} />
- );
- })}
- </div>
- <div>
- <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{locations[0]?.name || 'Kantor Utama'}</div>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 2 }}>Lat: {locations[0]?.latitude || '-'}, Lng: {locations[0]?.longitude || '-'}</div>
- <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>Radius: {locations[0]?.radius_meters || 100}m</div>
- <div style={{ display: 'flex', gap: 12 }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
- <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#16A34A' }} /> In Zone
- </div>
- <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
- <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#DC2626' }} /> Out of Zone
- </div>
- </div>
- </div>
- </div>
- </div>
+ {/* Office radius — real map (compact + responsive) */}
+ <OfficeRadiusMap
+   office={locations[0]}
+   logs={logs}
+   inRadius={inRadius}
+   outRadius={outRadius}
+   onOpenSettings={openSettings}
+   onSelectLog={openDetail}
+ />
 
  {/* Filters */}
  <div className="filters-bar">
- <input type="date" className="form-input" value={filterDate} onChange={e => setFilterDate(e.target.value)} style={{ maxWidth: 200 }} />
+ <div style={{ maxWidth: 220 }}><FormDateField value={filterDate} onChange={setFilterDate} placeholder="Filter tanggal" /></div>
  </div>
 
  {/* Table */}
@@ -380,7 +473,10 @@ export default function GeofenceAttendance() {
                latitude: pos.coords.latitude.toFixed(6),
                longitude: pos.coords.longitude.toFixed(6),
              }));
-           }, () => { console.error('[Geofence] Location access denied'); });
+           }, () => {
+             console.error('[Geofence] Location access denied');
+             toastRef.current.error('Akses lokasi ditolak. Isi koordinat manual.');
+           });
          }
        }}
        style={{

@@ -794,23 +794,27 @@
 }
 .ep-empty-wrap {
   text-align: center;
-  padding: 80px 20px;
+  padding: 40px 20px;
 }
 .ep-empty-icon {
-  width: 56px; height: 56px;
-  border-radius: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  display: flex;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  border: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
-  color: var(--text-secondary);
+  margin: 0 auto 10px;
+  color: #9CA3AF;
+  padding: 0;
+  box-shadow: none;
+  font-size: 22px;
 }
 .ep-empty-title {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px;
   color: var(--text);
 }
 .ep-empty-desc {

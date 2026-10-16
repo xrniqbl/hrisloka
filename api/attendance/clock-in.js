@@ -17,26 +17,39 @@
  */
 
 import { applyCors } from '../_shared/cors.js';
+import { enforceJsonBodyLimit } from '../_shared/securityHeaders.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Rate limit: max 5 clock-in per IP per hour
-// NOTE: in-memory limits are per serverless instance — effective only on the
-// single-node VPS deployment (see docs/ENVIRONMENT.md).
-const rateLimitMap = new Map();
-function checkRateLimit(ip) {
+// Rate limit: 100/hr per IP + 20/hr per user (NAT-safe: users behind one
+// office IP share the IP bucket but each get their own user bucket).
+// NOTE: in-memory limits are per process — effective on the single-node
+// VPS deployment (see docs/ENVIRONMENT.md).
+// Client IP: req.socket.remoteAddress is primary. X-Forwarded-For is NOT
+// trusted (spoofable when clients can reach the function directly) — same
+// rule as the server/index.js cron route.
+function getClientIp(req) {
+  return req.socket?.remoteAddress || 'unknown';
+}
+const ipRateLimitMap = new Map();
+const userRateLimitMap = new Map();
+function checkBucket(map, key, max, window = 3_600_000) {
   const now = Date.now();
-  const window = 3_600_000;
-  const max = 5;
-  const entry = rateLimitMap.get(ip) || { count: 0, start: now };
+  const entry = map.get(key) || { count: 0, start: now };
   if (now - entry.start > window) {
-    rateLimitMap.set(ip, { count: 1, start: now });
+    map.set(key, { count: 1, start: now });
     return true;
   }
   entry.count++;
-  rateLimitMap.set(ip, entry);
+  map.set(key, entry);
   return entry.count <= max;
+}
+function checkIpRateLimit(ip) {
+  return checkBucket(ipRateLimitMap, `ip:${ip}`, 100);
+}
+function checkUserClockRateLimit(userId) {
+  return checkBucket(userRateLimitMap, `user:${userId}`, 20);
 }
 
 /**
@@ -104,20 +117,30 @@ async function verifyRadiusServerSide(companyId, lat, lng) {
   const fallback = { inRadius: false, officeName: null };
   if (lat === null || lng === null) return fallback;
   try {
-    const url = `${SUPABASE_URL}/rest/v1/office_locations?select=id,name,latitude,longitude,radius_meters,company_id`;
+    const url = `${SUPABASE_URL}/rest/v1/office_locations?company_id=eq.${encodeURIComponent(companyId)}&select=id,name,latitude,longitude,radius_meters,company_id`;
     const res = await fetch(url, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
     });
     if (!res.ok) return fallback;
     const offices = await res.json();
     if (!Array.isArray(offices)) return fallback;
-    // Filter company bila kolom tersedia; skema lama tanpa company_id → pakai semua
-    const scoped = offices.filter(
-      (o) => o.company_id === undefined || o.company_id === null || String(o.company_id) === String(companyId),
+    // Strict tenant scope: the PostgREST query above already filters
+    // company_id=eq.<requested>. Defense-in-depth on the result set:
+    // - If ANY row carries an explicit company_id, require an exact match
+    //   and drop NULL-company rows (legacy/unscoped rows must never act as
+    //   a global geofence shared across tenants).
+    // - Only when NO row carries company_id at all (pre-multi-tenant
+    //   single-company schema) are all rows treated as ours.
+    // Foreign-company rows are never used for verification.
+    const hasTenantCol = offices.some(
+      (o) => o.company_id !== undefined && o.company_id !== null,
     );
+    const safe = hasTenantCol
+      ? offices.filter((o) => String(o.company_id) === String(companyId))
+      : offices;
     let best = null;
     let bestDist = Infinity;
-    for (const o of scoped) {
+    for (const o of safe) {
       const oLat = Number(o.latitude);
       const oLng = Number(o.longitude);
       if (!Number.isFinite(oLat) || !Number.isFinite(oLng)) continue;
@@ -133,17 +156,23 @@ async function verifyRadiusServerSide(companyId, lat, lng) {
 }
 
 export default async function handler(req, res) {
-  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
+  const originOk = applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // Reject oversized JSON bodies before auth (matches express 1mb limit)
+  if (!enforceJsonBodyLimit(req, res)) return;
+  // Browser requests must come from allowlisted Origin
+  if (req.headers.origin && !originOk) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return res.status(500).json({ success: false, error: 'Supabase server configuration is missing' });
   }
 
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
+  const ip = getClientIp(req);
+  if (!checkIpRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
@@ -151,6 +180,12 @@ export default async function handler(req, res) {
   const authUserId = await getAuthUserId(req);
   if (!authUserId) {
     return res.status(401).json({ error: 'Unauthorized — valid session required' });
+  }
+  // Per-user bucket in addition to IP (NAT-safe: whole-office IPs share the
+  // IP bucket without blocking individuals; a single abusive account is
+  // still capped at 20/hr).
+  if (!checkUserClockRateLimit(authUserId)) {
+    return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
   // 2. Attendance may only be recorded for the session's own employee
@@ -171,7 +206,8 @@ export default async function handler(req, res) {
     latitude,
     longitude,
     inRadius,
-    selfieVerified,
+    // NOTE: klaim mentah `selfieVerified` dari client sengaja TIDAK
+    // didestruktur/disimpan (lihat selfieVerifiedDerived di bawah).
     faceVerified,
     faceDistance,
     faceConfidence,
@@ -182,20 +218,68 @@ export default async function handler(req, res) {
 
   const cleanLat = toNumberOrFalse(latitude);
   const cleanLng = toNumberOrFalse(longitude);
+  // No-location attendance must NEVER be recorded as present/Remote.
+  // Range-check coordinates too (reject NaN-equivalents and out-of-range).
+  const hasLocation = cleanLat !== null && cleanLng !== null
+    && cleanLat >= -90 && cleanLat <= 90
+    && cleanLng >= -180 && cleanLng <= 180;
+  if (!hasLocation) {
+    return res.status(400).json({
+      success: false,
+      status: 'invalid',
+      error: 'Location required — enable GPS and retry. Attendance without coordinates cannot be recorded.',
+    });
+  }
   // Verifikasi radius server-side — klaim client tidak dipercaya mentah
   const { inRadius: serverInRadius, officeName } = await verifyRadiusServerSide(
     employee.company_id, cleanLat, cleanLng,
   );
-  // Face/selfie flag client hanya disimpan sebagai klaim (bukan bukti);
+  // Face flag client hanya disimpan bila lolos threshold server-side;
   // threshold face-distance yang longgar ditolak.
   const cleanFaceDistance = toNumberOrFalse(faceDistance);
   const faceVerifiedClean = faceVerified === true
     && (cleanFaceDistance === null || cleanFaceDistance <= 0.6);
+  // M8: selfie_verified JANGAN percaya klaim client mentah — diturunkan dari
+  // face-match server-threshold (faceVerifiedClean). Klaim mentah
+  // (selfieVerified === true) sengaja tidak disimpan: kolom `selfie_claimed`
+  // tidak ada di skema attendance (baseline + repair + backfill), dan membuat
+  // migrasi DB di luar cakupan — jadi hanya hasil turunan yang disimpan.
+  const selfieVerifiedDerived = faceVerifiedClean === true;
   const cleanTrustScore = typeof trustScore === 'number' && Number.isFinite(trustScore)
     ? Math.max(0, Math.min(100, trustScore))
     : 100;
-  const cleanTrustLevel = ['trusted', 'warning', 'rejected'].includes(trustLevel) ? trustLevel : 'trusted';
-  const cleanFlags = Array.isArray(antiSpoofFlags) ? antiSpoofFlags.slice(0, 20) : [];
+  let cleanTrustLevel = ['trusted', 'warning', 'rejected'].includes(trustLevel) ? trustLevel : 'trusted';
+  // M8 heuristik server-side: klaim lokasi (serverInRadius=false) yang tidak
+  // konsisten dengan klaim kepercayaan tinggi ('trusted' + score > 80)
+  // diturunkan ke 'warning'. Absensi tetap dicatat — hanya flag, bukan penolakan.
+  if (serverInRadius === false && cleanTrustLevel === 'trusted' && cleanTrustScore > 80) {
+    cleanTrustLevel = 'warning';
+  }
+  // M8: allowlist ketat nilai flag legitimate dari src/lib/antiSpoofing.js.
+  // Nilai di luar allowlist dibuang diam-diam (backward compatible client lama).
+  // Tiap item harus string, cap 64 char, max 20 item (cegah stored-XSS via render tanpa escape).
+  const ANTI_SPOOF_FLAG_ALLOWLIST = new Set([
+    'gps_accuracy_zero',
+    'gps_accuracy_unrealistically_precise',
+    'gps_accuracy_too_low',
+    'insufficient_gps_samples',
+    'gps_coordinates_identical_across_samples',
+    'gps_accuracy_perfectly_constant',
+    'gps_impossible_speed_between_samples',
+    'gps_no_altitude_data',
+    'ip_location_unavailable',
+    'impossible_travel_speed',
+    'suspicious_travel_speed',
+    'motion_sensor_unavailable',
+    'device_motion_suspiciously_stable',
+  ]);
+  const cleanFlags = Array.isArray(antiSpoofFlags)
+    ? antiSpoofFlags
+      .filter((f) => typeof f === 'string')
+      .map((f) => f.slice(0, 64))
+      .filter((f) => ANTI_SPOOF_FLAG_ALLOWLIST.has(f) || /^gps_ip_mismatch_\d+km$/.test(f))
+      .slice(0, 20)
+    : [];
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -236,7 +320,7 @@ export default async function handler(req, res) {
         // Hasil verifikasi server-side (bukan klaim client)
         in_radius: serverInRadius,
         in_radius_claimed: inRadius === true,
-        selfie_verified: selfieVerified === true,
+        selfie_verified: selfieVerifiedDerived,
         face_verified: faceVerifiedClean,
         face_distance: cleanFaceDistance,
         face_confidence: toNumberOrFalse(faceConfidence),

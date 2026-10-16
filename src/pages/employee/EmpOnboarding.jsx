@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   HiCheckCircle,
   HiCircleStack,
@@ -6,7 +6,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
-import { supabase } from '../../lib/supabase';
+import { getOnboardingTasks, updateTaskStatus } from '../../services/onboardingService';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import '../../styles/shared.css';
@@ -35,11 +35,7 @@ export default function EmpOnboarding() {
     }
     if (empData) {
       setEmp(empData);
-      const { data } = await supabase
-        .from('onboarding_tasks')
-        .select('*')
-        .eq('employee_id', empData.id)
-        .order('sort_order', { ascending: true });
+      const { data } = await getOnboardingTasks(empData.id);
       setChecklist(data || []);
     }
     setLoading(false);
@@ -62,11 +58,7 @@ export default function EmpOnboarding() {
       )));
       return;
     }
-    const { error } = await supabase
-      .from('onboarding_tasks')
-      .update({ status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null })
-      .eq('id', task.id)
-      .eq('employee_id', emp?.id);
+    const { error } = await updateTaskStatus(task.id, newStatus, emp?.id);
     if (error) {
       console.warn('[EmpOnboarding] toggle failed:', error.message);
       return;

@@ -3,16 +3,22 @@ import { supabase } from '../../lib/supabase';
 import * as reimbursementService from '../../services/reimbursementService';
 
 vi.mock('../../lib/supabase');
+vi.mock('../../lib/tenantGuard', async (importOriginal) => ({
+  ...(await importOriginal()),
+  resolveMyEmployee: vi.fn(),
+}));
 vi.mock('../../services/emailService', () => ({
   sendReimbursementEmail: vi.fn().mockResolvedValue({}),
 }));
 vi.mock('../../services/whatsappService', () => ({
   sendWhatsApp: vi.fn().mockResolvedValue({ success: true }),
 }));
+import { resolveMyEmployee } from '../../lib/tenantGuard';
 
 describe('reimbursementService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resolveMyEmployee.mockResolvedValue({ id: 'emp-123' });
   });
 
   describe('getAllReimbursements', () => {
@@ -31,6 +37,14 @@ describe('reimbursementService', () => {
     it('should return empty array when companyId is null', async () => {
       const result = await reimbursementService.getAllReimbursements(null);
       expect(result.data).toEqual([]);
+    });
+  });
+
+  describe('self-service identity', () => {
+    it('should reject a different employee identity before querying reimbursements', async () => {
+      const result = await reimbursementService.getMyReimbursements('emp-other');
+      expect(result.error?.code).toBe('IDENTITY_MISMATCH');
+      expect(supabase.from).not.toHaveBeenCalled();
     });
   });
 

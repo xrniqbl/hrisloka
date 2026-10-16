@@ -158,56 +158,83 @@ CREATE INDEX IF NOT EXISTS idx_analytics_company ON website_analytics(company_id
 -- RLS Policies
 -- ============================================================
 
--- Plans: public read (for landing page), authenticated write
+-- Plans: public read (for landing page), service_role write only
 ALTER TABLE subscription_plans ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "plans_read" ON subscription_plans;
 CREATE POLICY "plans_read" ON subscription_plans FOR SELECT USING (true);
 DROP POLICY IF EXISTS "plans_write_auth" ON subscription_plans;
-CREATE POLICY "plans_write_auth" ON subscription_plans FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "plans_service" ON subscription_plans;
+CREATE POLICY "plans_service" ON subscription_plans FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Subscriptions: authenticated only
+-- Subscriptions: owners read own company, service_role full
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "subscriptions_auth" ON subscriptions;
-CREATE POLICY "subscriptions_auth" ON subscriptions FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "subscriptions_owner" ON subscriptions;
+DROP POLICY IF EXISTS "subscriptions_service" ON subscriptions;
+CREATE POLICY "subscriptions_owner" ON subscriptions FOR SELECT USING (company_id = get_my_company_id());
+CREATE POLICY "subscriptions_service" ON subscriptions FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Payments: authenticated only
+-- Payments: owners read own company, service_role full
 ALTER TABLE subscription_payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "payments_auth" ON subscription_payments;
-CREATE POLICY "payments_auth" ON subscription_payments FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "payments_owner" ON subscription_payments;
+DROP POLICY IF EXISTS "payments_service" ON subscription_payments;
+CREATE POLICY "payments_owner" ON subscription_payments FOR SELECT USING (company_id = get_my_company_id());
+CREATE POLICY "payments_service" ON subscription_payments FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Vouchers: public read (validation), authenticated write
+-- Vouchers: public read of active codes (validation), writes service_role only
 ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "vouchers_read" ON vouchers;
-CREATE POLICY "vouchers_read" ON vouchers FOR SELECT USING (true);
+CREATE POLICY "vouchers_read" ON vouchers FOR SELECT USING (is_active = true);
 DROP POLICY IF EXISTS "vouchers_write_auth" ON vouchers;
-CREATE POLICY "vouchers_write_auth" ON vouchers FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "vouchers_service" ON vouchers;
+CREATE POLICY "vouchers_service" ON vouchers FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Voucher usage: authenticated
+-- Voucher usage: owners read own company, service_role full
 ALTER TABLE voucher_usage ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "voucher_usage_auth" ON voucher_usage;
-CREATE POLICY "voucher_usage_auth" ON voucher_usage FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "voucher_usage_owner" ON voucher_usage;
+DROP POLICY IF EXISTS "voucher_usage_service" ON voucher_usage;
+CREATE POLICY "voucher_usage_owner" ON voucher_usage FOR SELECT USING (company_id = get_my_company_id());
+CREATE POLICY "voucher_usage_service" ON voucher_usage FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Broadcasts: public read, authenticated write
+-- Broadcasts: public read, writes service_role only
 ALTER TABLE founder_broadcasts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "broadcasts_read" ON founder_broadcasts;
 CREATE POLICY "broadcasts_read" ON founder_broadcasts FOR SELECT USING (true);
 DROP POLICY IF EXISTS "broadcasts_write_auth" ON founder_broadcasts;
-CREATE POLICY "broadcasts_write_auth" ON founder_broadcasts FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "broadcasts_service" ON founder_broadcasts;
+CREATE POLICY "broadcasts_service" ON founder_broadcasts FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Client complaints: authenticated
+-- Client complaints: owners scoped to own company, service_role full
 ALTER TABLE client_complaints ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "complaints_auth" ON client_complaints;
-CREATE POLICY "complaints_auth" ON client_complaints FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "complaints_owner_select" ON client_complaints;
+DROP POLICY IF EXISTS "complaints_owner_insert" ON client_complaints;
+DROP POLICY IF EXISTS "complaints_service" ON client_complaints;
+CREATE POLICY "complaints_owner_select" ON client_complaints FOR SELECT USING (company_id = get_my_company_id());
+CREATE POLICY "complaints_owner_insert" ON client_complaints FOR INSERT WITH CHECK (company_id = get_my_company_id());
+CREATE POLICY "complaints_service" ON client_complaints FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Complaint replies: authenticated
+-- Complaint replies: owners scoped via parent complaint's company, service_role full
 ALTER TABLE complaint_replies ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "replies_auth" ON complaint_replies;
-CREATE POLICY "replies_auth" ON complaint_replies FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "replies_owner_select" ON complaint_replies;
+DROP POLICY IF EXISTS "replies_owner_insert" ON complaint_replies;
+DROP POLICY IF EXISTS "replies_service" ON complaint_replies;
+CREATE POLICY "replies_owner_select" ON complaint_replies FOR SELECT USING (EXISTS (SELECT 1 FROM client_complaints c WHERE c.id = complaint_replies.complaint_id AND c.company_id = get_my_company_id()));
+CREATE POLICY "replies_owner_insert" ON complaint_replies FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM client_complaints c WHERE c.id = complaint_replies.complaint_id AND c.company_id = get_my_company_id()));
+CREATE POLICY "replies_service" ON complaint_replies FOR ALL TO service_role USING (true) WITH CHECK (true);
 
--- Analytics: authenticated
+-- Analytics: owners scoped to own company, service_role full
 ALTER TABLE website_analytics ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "analytics_auth" ON website_analytics;
-CREATE POLICY "analytics_auth" ON website_analytics FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "analytics_owner_select" ON website_analytics;
+DROP POLICY IF EXISTS "analytics_owner_insert" ON website_analytics;
+DROP POLICY IF EXISTS "analytics_service" ON website_analytics;
+CREATE POLICY "analytics_owner_select" ON website_analytics FOR SELECT USING (company_id = get_my_company_id());
+CREATE POLICY "analytics_owner_insert" ON website_analytics FOR INSERT WITH CHECK (company_id = get_my_company_id());
+CREATE POLICY "analytics_service" ON website_analytics FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- Seed Data — Subscription Plans

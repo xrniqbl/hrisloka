@@ -11,10 +11,10 @@ describe('Demo Guard Security', () => {
   });
 
   it('should expose DEMO_EMAIL (public info) and gate on explicit env', () => {
-    // Test env sets VITE_DEMO_EMAIL=demo@hrisloka.com (.env loaded by Vite).
+    // Test env sets VITE_DEMO_EMAIL=demo@kinikerja.com (.env loaded by Vite).
     // Production builds without the env var get DEMO_EMAIL='' and DEMO_ENABLED=false,
     // which disables every demo entry point (no hardcoded fallback).
-    expect(DEMO_EMAIL).toBe('demo@hrisloka.com');
+    expect(DEMO_EMAIL).toBe('demo@kinikerja.com');
     expect(DEMO_ENABLED).toBe(true);
   });
 

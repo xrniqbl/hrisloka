@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════
--- HRIS LOKA — MISSING TABLES MIGRATION
+-- KINIKERJA — MISSING TABLES MIGRATION
 -- Jalankan di: Supabase Dashboard → SQL Editor → New Query
 -- Aman dijalankan berulang (CREATE TABLE IF NOT EXISTS)
 -- ══════════════════════════════════════════════════════════════════
@@ -354,3 +354,10 @@ DO $$ BEGIN
     NULL;
   END IF;
 END $$;
+
+-- ── 15. STORAGE NOTE (run in Dashboard → Storage, not pure SQL) ──
+-- Create PRIVATE bucket named: employee_docs
+-- (optional aliases: employee-documents)
+-- Policies: authenticated users can upload to folder {employee_id}/
+-- and read own files; HR roles can read all company files.
+-- App stores storage PATH in employee_documents.file_url, not public URL.

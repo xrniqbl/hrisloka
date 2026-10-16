@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import PageHeader from '../components/PageHeader';
+import { Icon } from '@astryxdesign/core/Icon';
+import { Badge } from '@astryxdesign/core/Badge';
 import {
-
- FiCheck, FiX, FiUser, FiClock, FiAlertCircle, FiMessageSquare,
- FiEye, FiCalendar, FiChevronDown,
-} from 'react-icons/fi';
+  Check, X, Users, Clock, MessageSquare, Eye, Calendar,
+} from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import MetricStatCards from '../components/MetricStatCards';
 import { getAllUpdateRequests, approveRequest, rejectRequest } from '../services/profileUpdateService';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
@@ -44,7 +45,7 @@ const statusConfig = {
 
 export default function ProfileRequests() {
  const { employee } = useAuth();
- const [requests, setRequests] = useState([]);
+ const [allRequests, setAllRequests] = useState([]);
  const [loading, setLoading] = useState(true);
  const [filter, setFilter] = useState('pending');
  const [actionLoading, setActionLoading] = useState(null);
@@ -57,15 +58,16 @@ export default function ProfileRequests() {
 
  const fetchRequests = async () => {
  setLoading(true);
- const { data } = await getAllUpdateRequests(filter || undefined);
- setRequests(data || []);
+ // Always load full list so metric cards stay accurate; filter client-side for table
+ const { data } = await getAllUpdateRequests(undefined);
+ setAllRequests(data || []);
  setLoading(false);
  };
 
- useEffect(() => { fetchRequests(); }, [filter]);
+ useEffect(() => { fetchRequests(); }, []);
 
  // Realtime: auto-refresh when any request changes
- useRealtimeTable('profile_update_requests', fetchRequests, { companyId: currentUser?.company_id });
+ useRealtimeTable('profile_update_requests', fetchRequests, { companyId: employee?.company_id });
 
  const handleApprove = async (req) => {
  setActionLoading(req.id);
@@ -89,9 +91,12 @@ export default function ProfileRequests() {
  if (detailReq?.id === rejectModal.id) setDetailReq(null);
  };
 
- const pending = requests.filter(r => r.status === 'pending').length;
- const approved = requests.filter(r => r.status === 'approved').length;
- const rejected = requests.filter(r => r.status === 'rejected').length;
+ const pending = allRequests.filter(r => r.status === 'pending').length;
+ const approved = allRequests.filter(r => r.status === 'approved').length;
+ const rejected = allRequests.filter(r => r.status === 'rejected').length;
+ const requests = filter
+  ? allRequests.filter(r => r.status === filter)
+  : allRequests;
 
  const getInitials = (name) => (name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
  const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
@@ -115,23 +120,17 @@ export default function ProfileRequests() {
  </select>
  </div>
 
- {/* Stats */}
- <div className="stats-grid">
- {[
- { label: 'Menunggu', value: pending, color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', icon: <FiClock /> },
- { label: 'Disetujui', value: approved, color: '#16A34A', bg: 'rgba(22,163,74,0.08)', icon: <FiCheck /> },
- { label: 'Ditolak', value: rejected, color: '#DC2626', bg: 'rgba(220,38,38,0.08)', icon: <FiX /> },
- { label: 'Total', value: requests.length, color: '#635BFF', bg: 'rgba(99,91,255,0.06)', icon: <FiUser /> },
- ].map(s => (
- <div key={s.label} className="info-card">
- <div className="info-card-header">
- <span style={{ color: s.color, padding: '6px', borderRadius: 8, background: s.bg }}>{s.icon}</span>
- <span className="info-card-label">{s.label}</span>
- </div>
- <div className="info-card-value" style={{ color: s.color }}>{s.value}</div>
- </div>
- ))}
- </div>
+ {/* Stats — Astryx Card / Badge / Grid */}
+ <MetricStatCards
+ activeKey={filter === '' ? 'all' : filter}
+ onSelect={(key) => setFilter(key === 'all' ? '' : key)}
+ items={[
+ { key: 'pending', label: 'Menunggu', value: pending, icon: Clock },
+ { key: 'approved', label: 'Disetujui', value: approved, icon: Check },
+ { key: 'rejected', label: 'Ditolak', value: rejected, icon: X },
+ { key: 'all', label: 'Total', value: allRequests.length, icon: Users },
+ ]}
+ />
 
  {/* Table */}
  {loading ? <TableSkeleton /> : requests.length === 0 ? (
@@ -200,7 +199,7 @@ export default function ProfileRequests() {
  {/* Date */}
  <td className="td-muted-sm" style={{ whiteSpace: 'nowrap' }}>
  <div className="btn-icon-row" style={{ gap: 5 }}>
- <FiCalendar size={11} /> {formatDate(req.requested_at)}
+ <Icon icon={Calendar} size="sm" color="inherit" /> {formatDate(req.requested_at)}
  </div>
  {req.reviewed_at && (
  <div className="td-muted-sm" style={{ marginTop: 2 }}>
@@ -211,9 +210,10 @@ export default function ProfileRequests() {
 
  {/* Status */}
  <td>
- <span className="badge" style={{ color: st.color, background: st.bg, whiteSpace: 'nowrap' }}>
- {st.label}
- </span>
+ <Badge
+ variant={req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'error' : 'warning'}
+ label={st.label}
+ />
  {req.review_note && req.status === 'rejected' && (
  <div className="td-muted-sm" style={{ marginTop: 3, fontStyle: 'italic' }}>
  "{req.review_note}"
@@ -229,7 +229,7 @@ export default function ProfileRequests() {
  className="action-btn"
  title="Lihat Detail"
  onClick={() => setDetailReq(req)}
- ><FiEye size={14} />
+ ><Icon icon={Eye} size="sm" color="inherit" />
  </button>
 
  {req.status === 'pending' && (
@@ -239,7 +239,7 @@ export default function ProfileRequests() {
  title="Setujui & Terapkan"
  disabled={actionLoading === req.id}
  onClick={() => handleApprove(req)}
- ><FiCheck size={14} />
+ ><Icon icon={Check} size="sm" color="inherit" />
  </button>
  <button
  className="action-btn danger"
@@ -247,7 +247,7 @@ export default function ProfileRequests() {
  disabled={actionLoading === req.id}
  onClick={() => { setRejectModal(req); setRejectNote(''); }}
  >
- <FiX size={14} />
+ <Icon icon={X} size="sm" color="inherit" />
  </button>
  </>
  )}
@@ -266,8 +266,8 @@ export default function ProfileRequests() {
  <div className="modal-overlay" onClick={() => setDetailReq(null)}>
  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
  <div className="modal-header">
- <h2><FiEye style={{ marginRight: 8 }} /> Detail Permintaan</h2>
- <button className="modal-close" onClick={() => setDetailReq(null)}><FiX /></button>
+ <h2><Icon icon={Eye} size="sm" color="inherit" /> Detail Permintaan</h2>
+ <button className="modal-close" onClick={() => setDetailReq(null)}><Icon icon={X} size="sm" color="inherit" /></button>
  </div>
  <div className="modal-body" style={{ display: 'grid', gap: 14 }}>
  {/* Employee info */}
@@ -309,7 +309,7 @@ export default function ProfileRequests() {
 
  {detailReq.review_note && (
  <div className="btn-icon-row" style={{ gap: 8, padding: '12px 14px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 10 }}>
- <FiMessageSquare size={14} style={{ color: '#D97706', flexShrink: 0, marginTop: 2 }} />
+ <span style={{ color: '#D97706', flexShrink: 0, marginTop: 2 }}><Icon icon={MessageSquare} size="sm" color="inherit" /></span>
  <div>
  <div className="section-label" style={{ color: '#D97706', marginBottom: 4 }}>Catatan Review</div>
  <div className="td-sm">{detailReq.review_note}</div>
@@ -325,13 +325,13 @@ export default function ProfileRequests() {
  className="btn-danger"
  onClick={() => { setRejectModal(detailReq); setRejectNote(''); setDetailReq(null); }}
  >
- <FiX size={14} /> Tolak
+ <Icon icon={X} size="sm" color="inherit" /> Tolak
  </button>
  <button
  className="btn-primary"
  disabled={actionLoading === detailReq.id}
  onClick={() => handleApprove(detailReq)}
- ><FiCheck size={14} /> {actionLoading === detailReq.id ? 'Memproses...' : 'Setujui & Terapkan'}
+ ><Icon icon={Check} size="sm" color="inherit" /> {actionLoading === detailReq.id ? 'Memproses...' : 'Setujui & Terapkan'}
  </button>
  </>
  )}
@@ -345,8 +345,8 @@ export default function ProfileRequests() {
  <div className="modal-overlay" onClick={() => setRejectModal(null)}>
  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
  <div className="modal-header">
- <h2 className="td-danger-bold"><FiX style={{ marginRight: 8 }} /> Tolak Permintaan</h2>
- <button className="modal-close" onClick={() => setRejectModal(null)}><FiX /></button>
+ <h2 className="td-danger-bold"><Icon icon={X} size="sm" color="inherit" /> Tolak Permintaan</h2>
+ <button className="modal-close" onClick={() => setRejectModal(null)}><Icon icon={X} size="sm" color="inherit" /></button>
  </div>
  <div className="modal-body">
  <div className="mb" style={{ padding: '12px 14px', background: 'rgba(220,38,38,0.04)', borderRadius: 10, border: '1px solid rgba(220,38,38,0.12)' }}>
@@ -369,7 +369,7 @@ export default function ProfileRequests() {
  <div className="modal-footer">
  <button className="btn-secondary" onClick={() => setRejectModal(null)}>Batal</button>
  <button className="btn-danger" onClick={handleRejectConfirm} disabled={rejectLoading}>
- {rejectLoading ? 'Menolak...' : <><FiX size={13} /> Konfirmasi Tolak</>}
+ {rejectLoading ? 'Menolak...' : <><Icon icon={X} size="sm" color="inherit" /> Konfirmasi Tolak</>}
  </button>
  </div>
  </div>

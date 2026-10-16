@@ -3,8 +3,28 @@ import { guardCompanyId } from '../lib/tenantGuard';
 
 // ── Company Code Validation ──────────────────────────────────────────────────
 
+// NOTE: Throttle below is a client-side best-effort mitigation against
+// company-code guessing. It is trivially bypassable (fresh reload, devtools,
+// direct API calls) — real enforcement MUST be a server-side / Edge rate
+// limit on the companies lookup. Success responses intentionally still
+// return company name/logo (needed for register UX).
+const codeAttemptMap = new Map(); // normalizedCode -> { count, start }
+const CODE_ATTEMPT_MAX = 5;
+const CODE_ATTEMPT_WINDOW_MS = 60 * 1000;
+
 /** Validate a company code and return company info if valid — also verifies company is active */
 export async function validateCompanyCode(code) {
+  const normalized = String(code || '').trim().toUpperCase();
+  const now = Date.now();
+  const entry = codeAttemptMap.get(normalized);
+  if (entry && now - entry.start < CODE_ATTEMPT_WINDOW_MS) {
+    if (entry.count >= CODE_ATTEMPT_MAX) {
+      return { valid: false, company: null, error: 'Terlalu banyak percobaan. Tunggu sebentar.' };
+    }
+    entry.count += 1;
+  } else {
+    codeAttemptMap.set(normalized, { count: 1, start: now });
+  }
   const { data, error } = await supabase
     .from('companies')
     .select('id, name, logo_url, is_active')
@@ -88,7 +108,7 @@ export async function getOrCreateCompanyCode() {
 
     // Generate code for existing company that has none
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = 'HRSLK-';
+    let code = 'KK-';
     for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
 
     const { data, error } = await supabase
@@ -341,7 +361,7 @@ export async function acceptEmployeeRegistration(employeeId, verifiedById, assig
       sendPushToEmployee(
         data.id,
         'Akun Diaktifkan',
-        'Pendaftaran Anda disetujui HR. Silakan buka HRIS Loka.',
+        'Pendaftaran Anda disetujui HR. Silakan buka KiniKerja.',
         '/app/home',
         companyId,
       ).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
@@ -352,7 +372,7 @@ export async function acceptEmployeeRegistration(employeeId, verifiedById, assig
       const { sendWhatsApp } = await import('./whatsappService');
       sendWhatsApp(
         data.phone,
-        `🏢 *HRIS Loka*\n\nHalo, *${data.name}*!\n\nAkun Anda telah *DISETUJUI* oleh HR. Silakan login di aplikasi karyawan.\n\n_HRIS Loka_`,
+        `🏢 *KiniKerja*\n\nHalo, *${data.name}*!\n\nAkun Anda telah *DISETUJUI* oleh HR. Silakan login di aplikasi karyawan.\n\n_KiniKerja_`,
       ).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
     }
   } catch { /* optional */ }
@@ -401,7 +421,7 @@ export async function rejectEmployeeRegistration(employeeId, verifiedById, reaso
       const { sendWhatsApp } = await import('./whatsappService');
       sendWhatsApp(
         data.phone,
-        `🏢 *HRIS Loka*\n\nHalo, *${data.name}*!\n\nMaaf, pendaftaran Anda *DITOLAK*.\nAlasan: ${rejectReason}\n\n_HRIS Loka_`,
+        `🏢 *KiniKerja*\n\nHalo, *${data.name}*!\n\nMaaf, pendaftaran Anda *DITOLAK*.\nAlasan: ${rejectReason}\n\n_KiniKerja_`,
       ).catch((err) => console.warn("[companyService] non-blocking side-effect failed:", err?.message || err));
     }
   } catch { /* optional */ }

@@ -5,7 +5,7 @@ const file = path.join(__dirname, 'src/pages/employee/EmpProfile.jsx');
 let content = fs.readFileSync(file, 'utf8');
 
 // Fix mojibake patterns - these are UTF-8 chars mis-encoded as latin1
-const fixes = [
+const _FIXES = [
   // em dash: â€" -> —
   [/\u00e2\u0080\u0094/g, '\u2014'],
   // en dash: â€" -> –  

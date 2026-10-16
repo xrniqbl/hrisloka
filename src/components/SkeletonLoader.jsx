@@ -3,7 +3,7 @@ import '../styles/shared.css';
 // ── ADMIN skeleton components ─────────────────────────────────────────────────
 
 /**
- * PageSkeleton — Universal full-page loading skeleton.
+ * PageSkeleton - Universal full-page loading skeleton.
  * Use when loading=true to replace the entire page content.
  */
 export function PageSkeleton({ hasStats = true, tableRows = 6, tableCols = 5 }) {

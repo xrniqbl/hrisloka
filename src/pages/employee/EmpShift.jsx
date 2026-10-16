@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   HiCalendarDays,
   HiChevronLeft,
@@ -22,6 +22,7 @@ export default function EmpShift() {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [error, setError] = useState(null);
 
   const DAYS = locale === 'en' ? DAYS_EN : DAYS_ID;
 
@@ -56,15 +57,23 @@ export default function EmpShift() {
       setLoading(false);
       return;
     }
-    const email = user?.email || user?.user_metadata?.email || '';
-    const { data: empData } = await getEmployeeByEmail(email);
-    if (empData?.id && empData?.company_id) {
-      const { data: mine } = await getMyShiftAssignments(empData.id, empData.company_id);
-      setShifts(mine || []);
-    } else {
+    try {
+      setError(null);
+      const email = user?.email || user?.user_metadata?.email || '';
+      const { data: empData } = await getEmployeeByEmail(email);
+      if (empData?.id && empData?.company_id) {
+        const { data: mine, error: shiftErr } = await getMyShiftAssignments(empData.id, empData.company_id);
+        if (shiftErr) throw shiftErr;
+        setShifts(mine || []);
+      } else {
+        setShifts([]);
+      }
+    } catch (e) {
+      setError(e?.message || 'Failed to load schedule');
       setShifts([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [user]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -106,6 +115,12 @@ export default function EmpShift() {
           {locale === 'en' ? 'Your work shift and attendance schedule' : 'Jadwal kerja dan absensi Anda'}
         </p>
       </div>
+
+      {error && (
+        <div className="emp-card" style={{ padding: '12px 16px', marginBottom: 12, borderLeft: '4px solid var(--danger)', fontSize: 13, color: 'var(--danger)' }}>
+          {error}
+        </div>
+      )}
 
       {/* Week Navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
@@ -155,12 +170,7 @@ export default function EmpShift() {
         <div className="emp-card emp-empty" style={{ padding: '40px 24px' }}>
           <div
             className="emp-empty-icon"
-            style={{
-              opacity: 1,
-              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
-              color: 'var(--primary, #635BFF)',
-              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
-            }}
+            style={{ color: '#9CA3AF' }}
           >
             <HiCalendarDays size={24} />
           </div>

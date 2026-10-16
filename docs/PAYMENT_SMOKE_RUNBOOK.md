@@ -93,7 +93,7 @@ LIMIT 5;
 | WhatsApp | `FONNTE_TOKEN` + session JWT | Integration Hub → Test |
 | Push | VAPID pair + `PUSH_API_SECRET` | Subscribe di PWA settings |
 | AI | `GEMINI_API_KEY` | AI review page |
-| Cron | `CRON_SECRET`, `ENABLE_CRON` | Hit `/api/cron-check-subscriptions?secret=…` |
+| Cron | `CRON_SECRET`, `ENABLE_CRON` | `curl -H "x-cron-secret: $CRON_SECRET" /api/cron-check-subscriptions` (header-only; `?secret=` tidak lagi didukung) |
 
 ## Gate lulus (B selesai)
 

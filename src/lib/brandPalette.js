@@ -4,32 +4,32 @@
  */
 
 export const BRAND = {
-  primary: '#635BFF',
-  primaryDark: '#4F46E5',
-  primaryHover: '#5449FF',
-  primarySoft: '#F0EEFF',
-  primaryMid: '#E8E6FF',
+  primary: '#5654D4',
+  primaryDark: '#4543C0',
+  primaryHover: '#4A48C4',
+  primarySoft: '#F4F3FB',
+  primaryMid: '#E8E6F5',
   /** Decorative tints of primary (charts, avatars, KPI steps) */
   scale: [
-    '#3730A3', // deepest
-    '#4F46E5',
-    '#635BFF',
+    '#3730A3',
+    '#4543C0',
+    '#5654D4',
     '#7C75FF',
     '#A5A0FF',
     '#C4C0FF',
     '#E0DEFF',
-    '#F0EEFF',
+    '#F4F3FB',
   ],
   /** Soft fills matching scale */
   soft: [
     'rgba(55,48,163,0.10)',
-    'rgba(79,70,229,0.10)',
-    'rgba(99,91,255,0.10)',
+    'rgba(69,67,192,0.10)',
+    'rgba(86,84,212,0.10)',
     'rgba(124,117,255,0.12)',
     'rgba(165,160,255,0.14)',
     'rgba(196,192,255,0.16)',
     'rgba(224,222,255,0.40)',
-    'rgba(240,238,255,0.80)',
+    'rgba(244,243,251,0.90)',
   ],
   success: '#16A34A',
   successSoft: 'rgba(22,163,74,0.10)',

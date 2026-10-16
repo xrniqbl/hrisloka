@@ -12,7 +12,7 @@ VITE_DEMO_EMAIL=demo@kinikerja.com     # Demo mode account
 VITE_VAPID_PUBLIC_KEY=                # Push notifications
 # WhatsApp + Email + AI + Bank — SERVER ONLY (tanpa prefix VITE_).
 # Set FONNTE_TOKEN / BREVO_API_KEY+FROM_EMAIL / GEMINI_API_KEY /
-# BANK_VALIDATION_API_KEY di Vercel/Supabase env (lihat .env.example).
+# BANK_VALIDATION_API_KEY di VPS .env / Supabase env (lihat .env.example).
 # JANGAN pernah pakai VITE_FONNTE_TOKEN / VITE_FROM_EMAIL — ter-bundle ke browser!
 VITE_SENTRY_DSN=                      # Error tracking
 
@@ -28,8 +28,8 @@ VITE_SENTRY_DSN=                      # Error tracking
 
 ## RATE LIMITING — LIMITASI (audit 2026-09)
 # Rate limit di api/*.js adalah in-memory (Map per proses).
-# - Vercel serverless: TIDAK efektif (tiap instance punya Map sendiri, cold start reset).
-#   Dianggap lapisan kosmetik; keamanan tetap bergantung pada verifikasi JWT + RLS.
-# - VPS (server/index.js, PM2 single node): efektif sebagai throttle dasar.
+# - VPS (server/index.js, PM2 single node): efektif sebagai throttle dasar,
+#   diperkuat rate limit nginx (limit_req_zone, lihat deploy/nginx.kinikerja.conf).
+#   Keamanan tetap bergantung pada verifikasi JWT + RLS.
 # Jika butuh limit ketat lintas-instance (mis. brute force), pakai penyimpanan
 # bersama (Upstash Redis / Supabase table + RPC) — belum diimplementasi.

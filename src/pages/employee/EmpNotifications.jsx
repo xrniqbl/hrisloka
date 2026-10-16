@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   HiBell,
   HiBellAlert,
@@ -11,6 +11,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
+import { markRead as markNotifRead, markAllRead as markAllNotifRead } from '../../services/notificationService';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
@@ -77,6 +78,8 @@ export default function EmpNotifications() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
   const [readIds, setReadIds] = useState(() => getReadSet());
+  // Current employee id for server-side read sync (set during loadData)
+  const empIdRef = useRef(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -95,6 +98,7 @@ export default function EmpNotifications() {
       const res = await getEmployeeByEmail(email);
       empData = res.data;
     }
+    empIdRef.current = empData?.id || null;
 
     // Company-scoped announcements only — never unscoped (cross-tenant risk)
     if (empData?.company_id) {
@@ -218,12 +222,20 @@ export default function EmpNotifications() {
   const handleMarkRead = (id) => {
     markRead(id);
     setReadIds(prev => { const s = new Set(prev); s.add(String(id)); return s; });
+    // Sync to server so other devices / header badge agree. Only real
+    // notifications-table rows sync (ids prefixed notif_); derived timeline
+    // items (leave_/ot_/...) are local-only.
+    if (typeof id === 'string' && id.startsWith('notif_')) {
+      const rawId = id.slice('notif_'.length);
+      markNotifRead(rawId, empIdRef.current).catch(() => {});
+    }
   };
 
   const handleMarkAllRead = () => {
     const ids = allNotifs.map(n => String(n.id));
     markAllRead(ids);
     setReadIds(prev => { const s = new Set(prev); ids.forEach(id => s.add(id)); return s; });
+    if (empIdRef.current) markAllNotifRead(empIdRef.current).catch(() => {});
   };
 
   if (loading) return (

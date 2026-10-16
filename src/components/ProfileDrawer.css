@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════ */
-/* Profile Drawer — Premium Settings Panel        */
+/* Profile Drawer - Premium Settings Panel        */
 /* ═══════════════════════════════════════════════ */
 
 /* Backdrop */
@@ -97,7 +97,7 @@
   align-items: center;
   gap: 22px;
   padding: 28px 32px;
-  background: linear-gradient(135deg, #0A1628 0%, #0D2A54 50%, #1646A0 100%);
+  background: linear-gradient(135deg, #0B0A1A 0%, #0D2A54 50%, #1646A0 100%);
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
@@ -117,7 +117,7 @@
   bottom: -30px; left: 200px;
   width: 120px; height: 120px;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(99, 91, 255, 0.08);
   pointer-events: none;
 }
 
@@ -154,8 +154,8 @@
   bottom: -6px; right: -6px;
   width: 28px; height: 28px;
   border-radius: 9px;
-  background: #3B82F6;
-  border: 2px solid #0A1628;
+  background: #635BFF;
+  border: 2px solid #0B0A1A;
   color: #fff;
   display: flex;
   align-items: center;
@@ -164,7 +164,7 @@
   transition: transform 0.2s, background 0.2s;
   z-index: 2;
 }
-.pd-avatar-btn:hover { transform: scale(1.1); background: #2563EB; }
+.pd-avatar-btn:hover { transform: scale(1.1); background: #4F46E5; }
 .pd-avatar-btn:disabled { opacity: 0.6; cursor: default; }
 
 /* hero info */
@@ -218,7 +218,7 @@
   white-space: nowrap;
 }
 
-/* ── Tab Bar — scrollable, compact ── */
+/* ── Tab Bar - scrollable, compact ── */
 .pd-tab-bar {
   display: flex;
   gap: 4px;
@@ -251,7 +251,7 @@
 .pd-tab-btn.active {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 3px 10px rgba(0,71,171,0.25);
+  box-shadow: 0 3px 10px rgba(99,91,255,0.25);
 }
 .pd-tab-btn:hover:not(.active) {
   background: var(--bg);
@@ -294,7 +294,7 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.pd-card-icon.blue   { background: rgba(0,71,171,0.1); color: #0047AB; }
+.pd-card-icon.blue   { background: rgba(99,91,255,0.1); color: #635BFF; }
 .pd-card-icon.red    { background: rgba(220,38,38,0.1); color: #DC2626; }
 .pd-card-icon.green  { background: rgba(34,197,94,0.1); color: #16A34A; }
 .pd-card-icon.purple { background: rgba(139,92,246,0.1); color: #7C3AED; }
@@ -349,7 +349,7 @@
 .pd-form-textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(0,71,171,0.1);
+  box-shadow: 0 0 0 3px rgba(99,91,255,0.1);
 }
 .pd-form-input:disabled {
   opacity: 0.55;
@@ -468,8 +468,8 @@
 }
 .pd-deduction-item:last-child { margin-bottom: 0; }
 .pd-deduction-item.active {
-  background: rgba(0,71,171,0.04);
-  border-color: rgba(0,71,171,0.18);
+  background: rgba(99,91,255,0.04);
+  border-color: rgba(99,91,255,0.18);
 }
 .pd-deduction-name {
   font-size: 13px;
@@ -520,9 +520,9 @@
   margin-bottom: 14px;
 }
 .pd-alert.info {
-  background: rgba(0,71,171,0.05);
-  border: 1px solid rgba(0,71,171,0.15);
-  color: #0047AB;
+  background: rgba(99,91,255,0.05);
+  border: 1px solid rgba(99,91,255,0.15);
+  color: #635BFF;
 }
 .pd-alert.warning {
   background: #FFFBEB;
@@ -549,7 +549,7 @@
   border-color: var(--border);
 }
 .pd-ptkp-btn.selected {
-  background: rgba(0,71,171,0.06);
+  background: rgba(99,91,255,0.06);
   border-color: var(--primary);
 }
 .pd-ptkp-label {

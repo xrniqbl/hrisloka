@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { updateSEOTags, injectSchema } from '../lib/seo';
 
@@ -16,7 +16,7 @@ const ARTICLES = [
       <p>HRIS (Human Resource Information System) atau Sistem Informasi Sumber Daya Manusia adalah platform perangkat lunak yang mengintegrasikan seluruh proses manajemen HR dalam satu sistem terpusat. Dengan HRIS, perusahaan dapat mengelola data karyawan, absensi, penggajian, rekrutmen, dan penilaian kinerja secara digital dan efisien.</p>
 
       <h2>Mengapa Perusahaan Indonesia Butuh HRIS?</h2>
-      <p>Di era digital ini, pengelolaan HR secara manual dengan spreadsheet Excel sangat tidak efisien dan rentan kesalahan. HRIS modern seperti HRIS Loka hadir untuk membantu perusahaan Indonesia naik kelas dengan:</p>
+      <p>Di era digital ini, pengelolaan HR secara manual dengan spreadsheet Excel sangat tidak efisien dan rentan kesalahan. HRIS modern seperti KiniKerja hadir untuk membantu perusahaan Indonesia naik kelas dengan:</p>
       <ul>
         <li><strong>Hemat waktu:</strong> Proses penggajian yang butuh berhari-hari jadi hanya 1 klik</li>
         <li><strong>Minim error:</strong> Perhitungan otomatis BPJS, PPh 21, lembur</li>
@@ -37,7 +37,8 @@ const ARTICLES = [
       </ul>
 
       <h2>Berapa Biaya HRIS untuk Perusahaan Indonesia?</h2>
-      <p>HRIS Loka menawarkan harga yang sangat terjangkau mulai dari <strong>Rp 149.000/bulan</strong> untuk paket Starter (hingga 25 karyawan) dan <strong>Rp 299.000/bulan</strong> untuk paket Pro (hingga 100 karyawan). Berlangganan tahunan mendapat diskon.</p>
+      {/* KEEP IN SYNC with src/lib/plans.js CANONICAL_PLANS (Starter 149000 / Pro 299000) */}
+      <p>KiniKerja menawarkan harga yang sangat terjangkau mulai dari <strong>Rp 149.000/bulan</strong> untuk paket Starter (hingga 25 karyawan) dan <strong>Rp 299.000/bulan</strong> untuk paket Pro (hingga 100 karyawan). Berlangganan tahunan mendapat diskon.</p>
     `,
   },
   {
@@ -53,7 +54,7 @@ const ARTICLES = [
       <p>Sistem absensi manual menghadapi berbagai masalah: titip absen, rekap yang lambat, data tidak akurat, hingga kesulitan memantau karyawan WFH atau lapangan. Inilah mengapa sistem absensi digital menjadi kebutuhan wajib perusahaan modern Indonesia.</p>
 
       <h2>Keunggulan Absensi GPS dengan Geofencing</h2>
-      <p>Absensi GPS real-time seperti yang ada di HRIS Loka memiliki keunggulan:</p>
+      <p>Absensi GPS real-time seperti yang ada di KiniKerja memiliki keunggulan:</p>
       <ul>
         <li>Verifikasi lokasi otomatis - karyawan hanya bisa absen di dalam radius yang ditentukan</li>
         <li>Anti fraud - tidak bisa titip absen karena pakai GPS + selfie</li>
@@ -62,7 +63,7 @@ const ARTICLES = [
       </ul>
 
       <h2>Cara Implementasi Absensi Digital di Perusahaan</h2>
-      <p>Implementasi HRIS Loka untuk absensi digital hanya butuh 3 langkah: (1) Daftar dan setup profil perusahaan, (2) Import data karyawan, (3) Karyawan install PWA di smartphone. Selesai dalam 5 menit!</p>
+      <p>Implementasi KiniKerja untuk absensi digital hanya butuh 3 langkah: (1) Daftar dan setup profil perusahaan, (2) Import data karyawan, (3) Karyawan install PWA di smartphone. Selesai dalam 5 menit!</p>
     `,
   },
   {
@@ -86,10 +87,10 @@ const ARTICLES = [
       </ul>
 
       <h2>Mengapa Penggajian Manual Berisiko?</h2>
-      <p>Kesalahan hitung penggajian bisa berakibat fatal: sanksi dari BPJS, protes karyawan, hingga masalah hukum. Dengan HRIS Loka, semua perhitungan dilakukan otomatis dan akurat sesuai regulasi terbaru.</p>
+      <p>Kesalahan hitung penggajian bisa berakibat fatal: sanksi dari BPJS, protes karyawan, hingga masalah hukum. Dengan KiniKerja, semua perhitungan dilakukan otomatis dan akurat sesuai regulasi terbaru.</p>
 
-      <h2>Fitur Payroll HRIS Loka</h2>
-      <p>Modul payroll HRIS Loka mengkalkulasi seluruh komponen gaji secara otomatis, menghasilkan slip gaji digital, dan bisa langsung transfer ke rekening karyawan. Hemat waktu tim HR hingga 80%.</p>
+      <h2>Fitur Payroll KiniKerja</h2>
+      <p>Modul payroll KiniKerja mengkalkulasi seluruh komponen gaji secara otomatis, menghasilkan slip gaji digital, dan bisa langsung transfer ke rekening karyawan. Hemat waktu tim HR hingga 80%.</p>
     `,
   },
   {
@@ -104,9 +105,10 @@ const ARTICLES = [
       <h2>Kriteria Memilih Software HR Terbaik</h2>
       <p>Dalam memilih software HR untuk perusahaan Indonesia, perhatikan: (1) Lengkap fiturnya, (2) Harga terjangkau, (3) Mudah digunakan, (4) Support bahasa Indonesia, (5) Comply dengan regulasi Indonesia.</p>
 
-      <h2>Kenapa HRIS Loka Unggul?</h2>
-      <p>HRIS Loka dirancang khusus untuk perusahaan Indonesia dengan mempertimbangkan regulasi lokal, bahasa Indonesia, dan kebutuhan spesifik HR di Indonesia seperti BPJS, PPh 21, dan aturan Kemnaker.</p>
+      <h2>Kenapa KiniKerja Unggul?</h2>
+      <p>KiniKerja dirancang khusus untuk perusahaan Indonesia dengan mempertimbangkan regulasi lokal, bahasa Indonesia, dan kebutuhan spesifik HR di Indonesia seperti BPJS, PPh 21, dan aturan Kemnaker.</p>
       <ul>
+        {/* KEEP IN SYNC with src/lib/plans.js CANONICAL_PLANS prices */}
         <li>œ... Harga mulai Rp 149.000/bulan - paling terjangkau</li>
         <li>œ... Bahasa Indonesia penuh</li>
         <li>œ... Absensi GPS geofencing anti fraud</li>
@@ -121,21 +123,21 @@ const ARTICLES = [
 const SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'Blog',
-  name: 'Blog HRIS Loka - Tips & Panduan HR Indonesia',
+  name: 'Blog KiniKerja - Tips & Panduan HR Indonesia',
   description: 'Artikel, panduan, dan tips seputar manajemen SDM, absensi digital, payroll, dan software HR untuk perusahaan Indonesia.',
-  url: 'https://hrisloka.com/blog',
+  url: 'https://kinikerja.id/blog',
   publisher: {
     '@type': 'Organization',
-    name: 'HRIS Loka',
-    logo: { '@type': 'ImageObject', url: 'https://hrisloka.com/landing/hrislokabluepanjang.png' },
+    name: 'KiniKerja',
+    logo: { '@type': 'ImageObject', url: 'https://kinikerja.id/landing/kinikerjabluepanjang.png' },
   },
   blogPost: ARTICLES.map(a => ({
     '@type': 'BlogPosting',
     headline: a.title,
     description: a.excerpt,
-    url: `https://hrisloka.com/blog/${a.slug}`,
+    url: `https://kinikerja.id/blog/${a.slug}`,
     datePublished: a.date,
-    author: { '@type': 'Organization', name: 'HRIS Loka' },
+    author: { '@type': 'Organization', name: 'KiniKerja' },
     keywords: a.keywords.join(', '),
   })),
 };
@@ -161,9 +163,9 @@ const s = {
 export default function Blog() {
   useEffect(() => {
     updateSEOTags({
-      title: 'Blog HR Indonesia - Tips Manajemen SDM, Payroll & Absensi | HRIS Loka',
+      title: 'Blog HR Indonesia - Tips Manajemen SDM, Payroll & Absensi | KiniKerja',
       description: 'Artikel & panduan HR terlengkap untuk perusahaan Indonesia: cara hitung gaji BPJS PPh21, sistem absensi digital, software HR terbaik, implementasi HRIS. Gratis dibaca!',
-      canonical: 'https://hrisloka.com/blog',
+      canonical: 'https://kinikerja.id/blog',
       keywords: 'blog HR Indonesia, panduan HRIS, tips manajemen SDM, cara hitung gaji BPJS, software HR Indonesia',
     });
     injectSchema('blog-page', SCHEMA);
@@ -172,7 +174,7 @@ export default function Blog() {
   return (
     <>
       <nav style={s.nav}>
-        <Link to="/" style={s.logo}>HRIS Loka</Link>
+        <Link to="/" style={s.logo}>KiniKerja</Link>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <Link to="/harga" style={{ fontSize: 14, color: '#64748B', textDecoration: 'none', fontWeight: 600 }}>Harga</Link>
           <Link to="/blog" style={{ fontSize: 14, color: '#635BFF', textDecoration: 'none', fontWeight: 700, borderBottom: '2px solid #635BFF', paddingBottom: 2 }}>Blog</Link>
@@ -207,9 +209,10 @@ export default function Blog() {
         {/* CTA */}
         <div style={s.cta}>
           <h2 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Siap Digitalisasi HR Perusahaan Anda?</h2>
+          {/* KEEP IN SYNC with src/lib/plans.js CANONICAL_PLANS prices */}
           <p style={{ color: 'rgba(255,255,255,0.85)', marginBottom: 28, fontSize: 16 }}>Mulai dengan paket Starter hanya Rp 149.000/bulan. Tanpa kontrak, batalkan kapan saja.</p>
           <Link to="/checkout" style={{ display: 'inline-block', padding: '14px 36px', background: '#fff', color: '#635BFF', borderRadius: 12, fontWeight: 600, fontSize: 16, textDecoration: 'none' }}>
-            Coba HRIS Loka Sekarang &rarr;
+            Coba KiniKerja Sekarang &rarr;
           </Link>
         </div>
       </main>

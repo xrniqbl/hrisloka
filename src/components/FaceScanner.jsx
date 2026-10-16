@@ -61,6 +61,11 @@ export default function FaceScanner({
   const [challenges, setChallenges] = useState([]);
   const [currentChallengeIdx, setCurrentChallengeIdx] = useState(0);
   const [completedChallenges, setCompletedChallenges] = useState([]);
+  // Consecutive timeout misses for the visible-retry path in showNextChallenge.
+  // Read via the setter callback below (functional update), so the variable
+  // itself is intentionally unused — retained for clarity of the retry flow.
+  // eslint-disable-next-line no-unused-vars
+  const [challengeMisses, setChallengeMisses] = useState(0);
 
   // Result
   const [showSuccess, setShowSuccess] = useState(false);
@@ -310,14 +315,29 @@ export default function FaceScanner({
     setInstruction(`${ch.icon} ${locale === 'en' ? ch.instructionEn : ch.instruction}`);
     setSubText(t('Hold the pose for 1 second', 'Tahan posisi 1 detik'));
 
-    // Timeout: if challenge not passed in time, restart from idx
+    // Timeout: the user gets two visible retries, then a clean restart back
+    // to the scanning phase (never a silent reset that looks frozen).
     clearTimeout(challengeTimeoutRef.current);
     challengeTimeoutRef.current = setTimeout(() => {
-      setInstruction(t('š Too slow. Try again.', 'š Terlalu lama. Coba lagi.'));
-      setSubText('');
-      // Reset to first challenge
-      setCurrentChallengeIdx(0);
-      setCompletedChallenges([]);
+      setChallengeMisses((m) => {
+        if (m + 1 >= 2) {
+          setInstruction(t('Let’s restart the scan.', 'Mari ulangi pemindaian.'));
+          setSubText('');
+          setCurrentChallengeIdx(0);
+          setCompletedChallenges([]);
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          frameHistoryRef.current = [];
+          setOvalState('scanning');
+          setPhase('scanning');
+          startDetectionLoop();
+          return 0;
+        }
+        setInstruction(t('Too slow. Try again.', 'Terlalu lama. Coba lagi.'));
+        setSubText('');
+        setCurrentChallengeIdx(0);
+        setCompletedChallenges([]);
+        return m + 1;
+      });
     }, ch.timeout);
   };
 
@@ -338,7 +358,7 @@ export default function FaceScanner({
 
     if (!overallLiveness && strict) {
       setOvalState('error');
-      setInstruction(t('Œ Liveness check failed. Try again.', 'Œ Verifikasi keaktifan gagal. Coba lagi.'));
+      setInstruction(t('Liveness check failed. Try again.', 'Verifikasi keaktifan gagal. Coba lagi.'));
       onError?.('Liveness check failed');
       clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = setTimeout(() => setPhase('ready'), 3000);
@@ -401,7 +421,7 @@ export default function FaceScanner({
     setFaceDots([]);
     setShowSuccess(true);
     setShowParticles(true);
-    setInstruction(t('œ... Verified!', 'œ... Terverifikasi!'));
+    setInstruction(t('Verified!', 'Terverifikasi!'));
     setSubText('');
     if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
     await new Promise(r => setTimeout(r, 1500));
@@ -409,12 +429,19 @@ export default function FaceScanner({
   };
 
   const handleRetry = () => {
+    clearTimeout(challengeTimeoutRef.current);
+    clearTimeout(retryTimeoutRef.current);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     frameHistoryRef.current = [];
     earHistoryRef.current = [];
     setShowSuccess(false);
+    setShowScanLine(false);
     setFaceDots([]);
+    setFaceDetected(false);
+    setChallengeMisses(0);
     setOvalState('idle');
     setInstruction(t('Position your face in the frame', 'Posisikan wajah dalam frame'));
+    setSubText('');
     setPhase('ready');
   };
 

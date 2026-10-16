@@ -12,18 +12,39 @@ export async function getAllAssets(companyId) {
   return { data: data || [], error };
 }
 
-// Get asset by ID
-export async function getAssetById(id) {
+// Get assets assigned to one employee (PWA) — MANDATORY company scope
+export async function getMyAssets(employeeId, companyId) {
+  if (!employeeId) return { data: [], error: null };
+  if (!guardCompanyId(companyId, 'getMyAssets')) return { data: [], error: null };
   const { data, error } = await supabase
     .from('assets')
+    .select('*')
+    .eq('assigned_to', employeeId)
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+  return { data: data || [], error };
+}
+
+// Get asset by ID — optional companyId scope (defense in depth).
+// assets HAS company_id (migration_phase4_security_complete.sql) so the
+// filter applies directly; RLS remains primary.
+export async function getAssetById(id, companyId = null) {
+  let query = supabase
+    .from('assets')
     .select('*, employees:assigned_to(name, division)')
-    .eq('id', id)
-    .single();
+    .eq('id', id);
+  if (companyId) query = query.eq('company_id', companyId);
+  const { data, error } = await (companyId ? query.maybeSingle() : query.single());
   return { data, error };
 }
 
-// Create asset — REMOVED client-controlled id (let DB auto-generate)
-export async function createAsset(asset) {
+// Create asset — companyId resolved from asset.companyId (backward compat).
+// Writes without a tenant are refused instead of inserting an unscoped row.
+export async function createAsset(asset, companyId = null) {
+  const resolvedCompanyId = companyId ?? asset?.companyId ?? null;
+  if (!guardCompanyId(resolvedCompanyId, 'createAsset')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
   const { data, error } = await supabase
     .from('assets')
     .insert({
@@ -37,7 +58,7 @@ export async function createAsset(asset) {
       assigned_to: asset.assignedTo || null,
       condition: asset.condition || 'Good',
       notes: asset.notes,
-      company_id: asset.companyId || null,
+      company_id: resolvedCompanyId,
     })
     .select()
     .single();

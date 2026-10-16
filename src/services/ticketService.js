@@ -98,12 +98,12 @@ export async function updateTicket(id, updates, companyId) {
     const st = updates.status === 'in-progress' ? 'in_progress' : updates.status;
     const statusLabel = st === 'resolved' ? 'DISELESAIKAN ✅' : st === 'in_progress' ? 'SEDANG DIPROSES 🔄' : st === 'closed' ? 'DITUTUP' : String(st).toUpperCase();
     if (emp?.phone) {
-      const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nTiket "${data.subject}" telah *${statusLabel}*.\n\n_HRIS Loka — Smart HR Platform_`;
+      const msg = `🏢 *KiniKerja*\n\nHalo, *${emp.name}*!\n\nTiket "${data.subject}" telah *${statusLabel}*.\n\n_KiniKerja — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[ticketService] WA error:', e));
     }
     sendPushToEmployee(
       data.employee_id || emp?.id,
-      `HRIS Loka — Tiket ${statusLabel}`,
+      `KiniKerja — Tiket ${statusLabel}`,
       `Tiket "${data.subject}" ${statusLabel}.`,
       '/app/helpdesk',
       companyId,

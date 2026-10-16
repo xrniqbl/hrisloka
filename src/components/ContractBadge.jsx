@@ -30,7 +30,7 @@ export default function ContractBadge({ contractEnd, status }) {
  const colors = {
  critical: { background: 'rgba(220,38,38,0.08)', color: '#DC2626' },
  warning: { background: 'rgba(245,158,11,0.08)', color: '#D97706' },
- normal: { background: 'rgba(0,71,171,0.06)', color: '#0047AB' },
+ normal: { background: 'rgba(99,91,255,0.06)', color: '#635BFF' },
  };
 
  return (
@@ -56,3 +56,4 @@ export default function ContractBadge({ contractEnd, status }) {
  </div>
  );
 }
+

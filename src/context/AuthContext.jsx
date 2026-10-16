@@ -1,6 +1,7 @@
 // @refresh reset
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { sanitizeAppPath } from '../lib/safePath';
 import { safeGetItem, safeSetItem, safeRemoveItem } from '../lib/safeStorage';
 import { getEmployeeByEmail } from '../services/employeeService';
 import { trackEvent } from '../services/founderService';
@@ -384,10 +385,14 @@ export function AuthProvider({ children }) {
   };
 
   const signInWithGoogle = async () => {
+    // Sanitize the remembered path before trusting it as an OAuth redirect —
+    // a poisoned localStorage value could otherwise bounce the user to an
+    // unexpected route after the provider round-trip.
+    const redirectTo = window.location.origin + sanitizeAppPath(safeGetItem('hrisync_last_path'), '/dashboard');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin + (safeGetItem('hrisync_last_path') || '/dashboard'),
+        redirectTo,
       },
     });
     return { data, error };

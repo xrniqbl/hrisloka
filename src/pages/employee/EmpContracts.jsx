@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DOMPurify from 'dompurify';
 import {
   HiArrowDownTray,

@@ -60,18 +60,18 @@ export default function ProfileCompletionBar({ employee }) {
  return (
  <div style={{
  background: bgColor,
- borderRadius: 'var(--radius-md)',
- padding: '12px 16px',
- marginBottom: 16,
+ borderRadius: 12,
+ padding: '10px 12px',
+ marginBottom: 12,
  border: `1px solid ${barColor}20`,
  }}>
  {/* Header */}
- <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
- <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: barColor }}>
- <Icon size={16} />
+ <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+ <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: barColor }}>
+ <Icon size={14} />
  Kelengkapan Profil
  </div>
- <div style={{ fontSize: 14, fontWeight: 800, color: barColor }}>
+ <div style={{ fontSize: 12, fontWeight: 700, color: barColor }}>
  {percentage}%
  </div>
  </div>
@@ -79,22 +79,22 @@ export default function ProfileCompletionBar({ employee }) {
  {/* Progress Bar */}
  <div style={{
  width: '100%',
- height: 8,
- borderRadius: 4,
+ height: 6,
+ borderRadius: 3,
  background: 'rgba(0,0,0,0.06)',
  overflow: 'hidden',
  }}>
  <div style={{
  width: `${percentage}%`,
  height: '100%',
- borderRadius: 4,
+ borderRadius: 3,
  background: `linear-gradient(90deg, ${barColor}, ${barColor}CC)`,
  transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
  }} />
  </div>
 
  {/* Details */}
- <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
+ <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 5 }}>
  {filled}/{total} data terisi
  </div>
 
@@ -120,3 +120,4 @@ export default function ProfileCompletionBar({ employee }) {
  </div>
  );
 }
+

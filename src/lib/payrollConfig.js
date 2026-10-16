@@ -1,5 +1,5 @@
 /**
- * HRIS Loka — Payroll Configuration
+ * KiniKerja — Payroll Configuration
  * Centralized deduction settings, stored in localStorage.
  * Managed by HR Admin / Super Admin via Settings > Payroll.
  *

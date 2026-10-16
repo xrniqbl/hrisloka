@@ -83,6 +83,11 @@ export async function sendAnnouncementPush(title, message) {
 
 /** Notify employee about leave approve/reject. */
 export async function sendLeavePush(employeeId, status, leaveType) {
+  try {
+    const { shouldNotifyEmployee } = await import('./companySettingsService');
+    const allow = await shouldNotifyEmployee(employeeId, 'pushApproval');
+    if (!allow) return { success: false, skipped: true };
+  } catch { /* proceed */ }
   const approved = status === 'approved';
   const typeLabel = leaveType || 'Cuti';
   return sendPushToEmployee(
@@ -97,6 +102,11 @@ export async function sendLeavePush(employeeId, status, leaveType) {
 
 /** Notify employee that their payslip for a period is ready. */
 export async function sendPayslipPush(employeeId, month, year) {
+  try {
+    const { shouldNotifyEmployee } = await import('./companySettingsService');
+    const allow = await shouldNotifyEmployee(employeeId, 'emailPayroll');
+    if (!allow) return { success: false, skipped: true };
+  } catch { /* proceed */ }
   const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',

@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import DOMPurify from 'dompurify';
 
 /**
  * Inject print-safe styles into the render container
@@ -47,8 +48,9 @@ export async function generateContractPDF(htmlContent, contractNumber = 'contrac
     color:      '#000',
   });
 
-  // Inject CSS + content
-  container.innerHTML = `<style>${CONTRACT_PRINT_CSS}</style>${htmlContent}`;
+  // Inject CSS + content (sanitized: contract HTML is user-editable rich text)
+  const safeHtml = DOMPurify.sanitize(htmlContent, { FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input'] });
+  container.innerHTML = `<style>${CONTRACT_PRINT_CSS}</style>${safeHtml}`;
   document.body.appendChild(container);
 
   try {
@@ -125,7 +127,7 @@ export async function generateContractPDF(htmlContent, contractNumber = 'contrac
         PDF_W / 2, footerY, { align: 'center' },
       );
       pdf.text(
-        `Dibuat oleh HRIS Loka`,
+        `Dibuat oleh KiniKerja`,
         PDF_W - MARGIN, footerY, { align: 'right' },
       );
     }

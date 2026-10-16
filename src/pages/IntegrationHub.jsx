@@ -34,7 +34,7 @@ const INTEGRATIONS = [
         key: 'notify_from_name',
         label: 'Nama Pengirim (opsional)',
         type: 'text',
-        placeholder: 'HRIS Loka Notifications',
+        placeholder: 'KiniKerja Notifications',
       },
       {
         key: 'notify_reply_to',
@@ -78,26 +78,29 @@ export default function IntegrationHub() {
 
   const loadConfigs = useCallback(async () => {
     setLoadingConfigs(true);
+    setSaveError('');
     try {
       if (employee?.company_id) {
         // Schema A: key/value rows
-        const { data: kv } = await supabase
+        const { data: kv, error: kvError } = await supabase
           .from('company_settings')
           .select('value')
           .eq('company_id', employee.company_id)
           .eq('key', 'integration_configs')
           .maybeSingle();
+        if (kvError) throw kvError;
         if (kv?.value) {
           setConfigs(typeof kv.value === 'string' ? JSON.parse(kv.value) : kv.value);
           setLoadingConfigs(false);
           return;
         }
         // Schema B: wide row with integrations jsonb
-        const { data: wide } = await supabase
+        const { data: wide, error: wideError } = await supabase
           .from('company_settings')
           .select('integrations, value')
           .eq('company_id', employee.company_id)
           .maybeSingle();
+        if (wideError) throw wideError;
         if (wide?.integrations) {
           setConfigs(
             typeof wide.integrations === 'string'
@@ -108,8 +111,9 @@ export default function IntegrationHub() {
           return;
         }
       }
-    } catch {
-      /* fall through */
+    } catch (e) {
+      console.error('[IntegrationHub] load failed:', e?.message || e);
+      setSaveError('Gagal memuat konfigurasi dari database — fallback lokal dipakai.');
     }
     try {
       const local = localStorage.getItem(STORAGE_KEY);

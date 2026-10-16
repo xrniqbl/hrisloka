@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import { Icon } from '@astryxdesign/core/Icon';
 import DashEmpty from './DashEmpty';

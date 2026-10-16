@@ -7,7 +7,21 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { crypto } from 'https://deno.land/std@0.168.0/crypto/mod.ts';
 
-const MIDTRANS_SERVER_KEY = Deno.env.get('MIDTRANS_SERVER_KEY') || '';
+/** Fail-fast env validation: missing secrets must crash the function at boot
+ * (loud deploy-time error) rather than silently accepting every notification
+ * with an empty-string signature key or sending broken login links. */
+function requireEnv(name: string): string {
+  const v = Deno.env.get(name);
+  if (!v) {
+    throw new Error(`[midtrans-webhook] CONFIG ERROR: ${name} is not set`);
+  }
+  return v;
+}
+
+const MIDTRANS_SERVER_KEY = requireEnv('MIDTRANS_SERVER_KEY');
+const SITE_URL = requireEnv('SITE_URL');
+const SUPABASE_URL = requireEnv('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
 
 async function sha512(str: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -56,7 +70,6 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
     Deno.env.get('RESEND_API_KEY'); // migration alias
   const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || Deno.env.get('BREVO_SENDER_EMAIL') || 'noreply@kinikerja.id';
   const FROM_NAME = Deno.env.get('FROM_NAME') || Deno.env.get('BREVO_SENDER_NAME') || 'KiniKerja';
-  const SITE_URL = Deno.env.get('SITE_URL') || 'https://kinikerja.id';
 
   if (!BREVO_API_KEY) {
     console.warn('[Webhook] BREVO_API_KEY not set, skipping email');
@@ -66,6 +79,9 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
   const expiryDate = new Date(expiresAt).toLocaleDateString('id-ID', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
+
+  // planName comes from DB/client input — escape before HTML interpolation.
+  const safePlanName = escapeHtml(planName);
 
   let senderEmail = FROM_EMAIL;
   let senderName = FROM_NAME;
@@ -84,11 +100,11 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
       <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
         <h2 style="margin:0 0 16px;color:#16A34A">Langganan Anda Sudah Aktif!</h2>
         <p>Halo,</p>
-        <p>Pembayaran Anda telah berhasil diverifikasi. Langganan <strong>${planName}</strong> Anda sudah aktif.</p>
+        <p>Pembayaran Anda telah berhasil diverifikasi. Langganan <strong>${safePlanName}</strong> Anda sudah aktif.</p>
         <div style="background:#F0FDF4;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid #16A34A">
           <div style="font-size:14px;font-weight:600;color:#16A34A;margin-bottom:8px">Detail Langganan:</div>
           <div style="font-size:13px;color:#374151;line-height:1.6">
-            <div><strong>Paket:</strong> ${planName}</div>
+            <div><strong>Paket:</strong> ${safePlanName}</div>
             <div><strong>Status:</strong> Aktif</div>
             <div><strong>Berlaku hingga:</strong> ${expiryDate}</div>
           </div>
@@ -100,7 +116,7 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
     </div>
   `;
 
-  const text = `Langganan ${planName} Anda sudah aktif! Berlaku hingga ${expiryDate}. Login: ${SITE_URL}/login`;
+  const text = `Langganan ${safePlanName} Anda sudah aktif! Berlaku hingga ${expiryDate}. Login: ${SITE_URL}/login`;
 
   try {
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -113,7 +129,7 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
       body: JSON.stringify({
         sender: { name: senderName, email: senderEmail },
         to: [{ email: to }],
-        subject: `[KiniKerja] Langganan ${planName} Berhasil Diaktifkan`,
+        subject: `[KiniKerja] Langganan ${safePlanName} Berhasil Diaktifkan`,
         htmlContent: html,
         textContent: text,
       }),
@@ -129,43 +145,125 @@ async function sendActivationEmail(to: string, planName: string, expiresAt: stri
   }
 }
 
-/** Increment voucher usage — atomik via RPC claim_voucher (cegah double-spend) */
-async function incrementVoucher(supabase, code: string) {
-  if (!code) return;
+/** Best-effort admin alert (amount mismatch / voucher dispute).
+ * Recipient: ADMIN_ALERT_EMAIL, fallback to the sender address itself so the
+ * flag is at least visible in Brevo logs. Never throws. */
+async function sendAdminAlert(subject: string, text: string): Promise<void> {
+  try {
+    const BREVO_API_KEY =
+      Deno.env.get('BREVO_API_KEY') ||
+      Deno.env.get('BREVO_SMTP_KEY') ||
+      Deno.env.get('RESEND_API_KEY');
+    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || Deno.env.get('BREVO_SENDER_EMAIL') || 'noreply@kinikerja.id';
+    const ADMIN_EMAIL = Deno.env.get('ADMIN_ALERT_EMAIL') || FROM_EMAIL;
+    if (!BREVO_API_KEY || !ADMIN_EMAIL) return;
+    await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'content-type': 'application/json',
+        'api-key': BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: { name: 'KiniKerja Alert', email: FROM_EMAIL },
+        to: [{ email: ADMIN_EMAIL }],
+        subject: `[KiniKerja ALERT] ${subject}`,
+        textContent: text,
+      }),
+    });
+  } catch (err) {
+    console.error('[Webhook] admin alert failed:', err?.message || err);
+  }
+}
+
+/** Increment voucher usage — atomik via RPC claim_voucher (cegah double-spend).
+ * Returns true when claimed, false when exhausted/invalid. Caller decides
+ * whether a failed claim must block activation (single-use voucher). */
+async function incrementVoucher(supabase, code: string): Promise<boolean> {
+  if (!code) return true;
   try {
     const { data: claimed, error } = await supabase.rpc('claim_voucher', {
       p_code: code.trim().toUpperCase(),
     });
     if (error || claimed !== true) {
-      console.warn('[Webhook] voucher claim rejected:', error?.message || 'exhausted');
-      return;
+      console.error('[Webhook] voucher claim FAILED (blocking):', error?.message || 'exhausted');
+      return false;
     }
     console.log(`[Webhook] Voucher ${code} claimed`);
+    return true;
   } catch (err) {
-    console.warn('[Webhook] voucher increment failed:', err?.message || err);
+    console.error('[Webhook] voucher increment failed:', err?.message || err);
+    return false;
   }
+}
+
+/** Escape text interpolated into activation HTML (plan names are DB/client supplied). */
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// In-memory per-IP rate limit (best-effort, self-contained Deno — same pattern
+// as api/*): at most 60 requests/min per IP. Runs BEFORE signature verification
+// so floods of forged signatures (expensive SHA-512) are held back.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 60;
+const rateLimitMap = new Map<string, { count: number; start: number }>();
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.start > RATE_WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, start: now });
+    return true;
+  }
+  entry.count++;
+  rateLimitMap.set(ip, entry);
+  return entry.count <= RATE_MAX;
 }
 
 /**
  * Ensure the paying user has an active super_admin employee record
  * so SubscriptionGuard + dashboard access work after Midtrans pay.
+ * Anti-hijack: only touch rows owned by this auth user, or unclaimed
+ * rows (auth_user_id IS NULL) with the same email. Never reassign an
+ * auth_user_id owned by someone else, never promote claimed rows.
  */
 async function ensureAdminEmployee(supabase, userId: string, email: string | undefined, profile: Record<string, unknown> | null) {
-  if (!email) return;
+  if (!email) return null;
 
   const fullName = (profile?.full_name as string)
     || email.split('@')[0]
     || 'User';
   const companyName = (profile?.company_name as string) || null;
 
-  // Prefer update existing employee by auth_user_id / email
-  const { data: existing } = await supabase
+  // 1) Row already owned by this auth user — keep role, just ensure active.
+  const { data: owned } = await supabase
     .from('employees')
     .select('id, company_id, role')
-    .or(`auth_user_id.eq.${userId},email.eq.${email}`)
+    .eq('auth_user_id', userId)
     .maybeSingle();
 
-  if (existing?.id) {
+  if (owned?.id) {
+    await supabase
+      .from('employees')
+      .update({ status: 'active', name: fullName })
+      .eq('id', owned.id);
+    return owned.company_id || null;
+  }
+
+  // 2) Unclaimed row with same email — safe to claim as super_admin.
+  const { data: unclaimed } = await supabase
+    .from('employees')
+    .select('id, company_id')
+    .eq('email', email)
+    .is('auth_user_id', null)
+    .maybeSingle();
+
+  if (unclaimed?.id) {
     await supabase
       .from('employees')
       .update({
@@ -174,8 +272,8 @@ async function ensureAdminEmployee(supabase, userId: string, email: string | und
         auth_user_id: userId,
         name: fullName,
       })
-      .eq('id', existing.id);
-    return existing.company_id || null;
+      .eq('id', unclaimed.id);
+    return unclaimed.company_id || null;
   }
 
   // Create company if onboarding provided a company name (best-effort)
@@ -216,6 +314,18 @@ serve(async (req) => {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
+  // Rate-limit BEFORE signature verification (flood signature palsu ditahan).
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('x-real-ip')
+    || 'unknown';
+  if (!checkRateLimit(clientIp)) {
+    console.warn('[Webhook] rate limited:', clientIp);
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const notification = await req.json();
     const {
@@ -237,13 +347,11 @@ serve(async (req) => {
     );
     if (signature_key !== expectedSignature) {
       console.error('[Webhook] Invalid signature for order:', order_id);
-      return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401 });
+      // Generik (sama seperti order-not-found): hilangkan oracle enumerasi order_id.
+      return new Response(JSON.stringify({ error: 'Invalid notification' }), { status: 401 });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Map Midtrans transaction → internal status
     let finalStatus = 'pending';
@@ -270,16 +378,19 @@ serve(async (req) => {
 
     if (!existingOrder) {
       console.error('[Webhook] Order not found:', order_id);
-      return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+      // Generik 401 (sama seperti signature salah): hilangkan oracle enumerasi order_id.
+      return new Response(JSON.stringify({ error: 'Invalid notification' }), { status: 401 });
     }
 
     // Amount verification: notification gross_amount must match the stored order.
     // A valid signature only proves Midtrans sent it — not that it pays what we charged.
-    const notifiedAmount = parseFloat(gross_amount);
+    // Robust compare: Number() on both sides with 1 IDR rounding tolerance,
+    // and non-numeric values fail closed (dispute) instead of skipping the check.
+    const notifiedAmount = Number(gross_amount);
     const storedAmount = Number(existingOrder.amount);
     if (
-      Number.isFinite(notifiedAmount) && Number.isFinite(storedAmount)
-      && Math.abs(notifiedAmount - storedAmount) > 1
+      !Number.isFinite(notifiedAmount) || !Number.isFinite(storedAmount)
+      || Math.abs(notifiedAmount - storedAmount) > 1
     ) {
       console.error(
         `[Webhook] AMOUNT MISMATCH order=${order_id} notified=${gross_amount} stored=${storedAmount}`,
@@ -287,20 +398,28 @@ serve(async (req) => {
       await supabase
         .from('payment_orders')
         .update({
-          status: 'failed',
+          status: 'disputed',
           midtrans_status: `amount_mismatch:${transaction_status}`,
           updated_at: new Date().toISOString(),
         })
         .eq('order_id', order_id);
+      // Notify admin (best-effort) so money-received-but-wrong-amount is reviewed.
+      await sendAdminAlert(
+        `Amount mismatch ${order_id}`,
+        `Order ${order_id}: notified=${gross_amount} stored=${storedAmount} status=${transaction_status}. Flagged 'disputed' — needs manual review.`,
+      );
       // 200 so Midtrans stops retrying; order is flagged for manual review
       return new Response(JSON.stringify({ ok: false, error: 'Amount mismatch' }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Already fully processed paid order → acknowledge (idempotent)
-    if (existingOrder.status === 'paid' && finalStatus === 'paid') {
-      return new Response(JSON.stringify({ ok: true, status: 'paid', already: true }), {
+    // Already-seen order_id → acknowledge idempotently REGARDLESS of status.
+    // A failed/expired order retried by Midtrans with a NEW transaction_status
+    // must not re-run activation side-effects (voucher claim, subscription
+    // upsert) a second time — this closes the voucher-fail re-activation loop.
+    if (existingOrder.status !== 'pending' && existingOrder.status !== 'disputed') {
+      return new Response(JSON.stringify({ ok: true, status: existingOrder.status, already: true }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -318,7 +437,8 @@ serve(async (req) => {
 
     if (orderErr || !order) {
       console.error('[Webhook] Order update failed:', order_id, orderErr?.message);
-      return new Response(JSON.stringify({ error: 'Order update failed' }), { status: 500 });
+      // Generic 500 — no table/column internals to the caller.
+      return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 });
     }
 
     // Paid → activate subscription + admin employee
@@ -352,6 +472,20 @@ serve(async (req) => {
         profile,
       );
 
+      // Guard: never create an orphan subscription with no company context.
+      // Abort loudly (alert + 500) so the order stays paid-but-unactivated
+      // and is visible for manual recovery instead of silently drifting.
+      if (!companyId) {
+        await sendAdminAlert(
+          `Missing company ${order_id}`,
+          `Order ${order_id} paid (user=${order.user_id}) but no company_id could be resolved. Subscription NOT created — manual recovery required.`,
+        );
+        return new Response(JSON.stringify({ error: 'Internal error' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       const subPayload: Record<string, unknown> = {
         user_id: order.user_id,
         plan_slug: order.plan_slug,
@@ -362,9 +496,9 @@ serve(async (req) => {
         payment_method: 'midtrans',
         starts_at: startsAt,
         expires_at: expiresAt,
+        company_id: companyId,
         updated_at: new Date().toISOString(),
       };
-      if (companyId) subPayload.company_id = companyId;
 
       const { error: subErr } = await supabase
         .from('subscriptions')
@@ -378,7 +512,33 @@ serve(async (req) => {
         );
       }
 
-      await incrementVoucher(supabase, order.voucher_code);
+      // Claim voucher BEFORE considering activation complete. A failed claim
+      // (race / exhausted single-use) blocks activation instead of only
+      // logging a warning — prevents discount double-spend.
+      if (order.voucher_code) {
+        const claimed = await incrementVoucher(supabase, order.voucher_code);
+        if (!claimed) {
+          await supabase
+            .from('payment_orders')
+            .update({
+              status: 'disputed',
+              midtrans_status: `voucher_claim_failed:${transaction_status}`,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('order_id', order_id);
+          await supabase
+            .from('subscriptions')
+            .update({ status: 'past_due', updated_at: new Date().toISOString() })
+            .eq('user_id', order.user_id);
+          await sendAdminAlert(
+            `Voucher claim failed ${order_id}`,
+            `Order ${order_id} paid but voucher ${order.voucher_code} claim failed (race/exhausted). Flagged 'disputed' — needs manual review.`,
+          );
+          return new Response(JSON.stringify({ ok: false, error: 'Voucher claim failed — flagged for review' }), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
 
       if (userEmail) {
         await sendActivationEmail(userEmail, order.plan_name || 'KiniKerja', expiresAt);
@@ -391,6 +551,7 @@ serve(async (req) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[Webhook] Error:', message);
-    return new Response(JSON.stringify({ error: message }), { status: 500 });
+    // Pesan generik ke client — detail sudah tercatat di log server-side.
+    return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500 });
   }
 });

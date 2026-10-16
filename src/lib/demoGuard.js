@@ -6,6 +6,12 @@
  * - Login tidak memerlukan akun Supabase nyata
  * - Semua aksi write (tambah/edit/hapus) diblokir
  * - Data yang ditampilkan adalah data dummy read-only
+ *
+ * DUMMY DATA NOTICE: every PII-like value below (DEMO_USER, DEMO_EMPLOYEE,
+ * DEMO_PROFILE_DATA — names, NIK/NIP, phones, addresses, bank/NPWP/BPJS
+ * numbers, emails) is entirely fictitious placeholder data for design QA
+ * and read-only demo mode. It does not belong to any real person; do not
+ * treat it as real user data and do not copy it into production records.
  */
 
 // Demo email is public info (known demo account). Do NOT export a demo password constant.

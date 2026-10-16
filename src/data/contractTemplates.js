@@ -333,10 +333,10 @@ c. Uang Penggantian Hak (cuti yang belum diambil, biaya perjalanan, dll).</p>
     is_default: true,
     html_content: `<div style="font-family: 'Arial', sans-serif; font-size: 11pt; line-height: 1.7; color: #1a1a1a; max-width: 800px; margin: 0 auto; padding: 40px;">
 
-<div style="border-bottom: 3px solid #0047AB; padding-bottom: 16px; margin-bottom: 24px;">
+<div style="border-bottom: 3px solid #635BFF; padding-bottom: 16px; margin-bottom: 24px;">
   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
     <div>
-      <p style="font-size:18pt; font-weight:bold; color:#0047AB; margin:0;">{{company_name}}</p>
+      <p style="font-size:18pt; font-weight:bold; color:#635BFF; margin:0;">{{company_name}}</p>
       <p style="margin:4px 0; color:#666; font-size:9pt;">{{company_address}}</p>
     </div>
     <div style="text-align:right;">
@@ -354,8 +354,8 @@ c. Uang Penggantian Hak (cuti yang belum diambil, biaya perjalanan, dll).</p>
 
 <p>Setelah melalui serangkaian proses seleksi, kami dengan bangga menyampaikan bahwa Anda telah berhasil dan terpilih untuk bergabung bersama <strong>{{company_name}}</strong>.</p>
 
-<div style="background:#F0F7FF; border-left:4px solid #0047AB; padding:16px 20px; margin:20px 0; border-radius:0 8px 8px 0;">
-  <p style="font-weight:bold; color:#0047AB; margin:0 0 12px; font-size:12pt;">Detail Penawaran</p>
+<div style="background:#F0F7FF; border-left:4px solid #635BFF; padding:16px 20px; margin:20px 0; border-radius:0 8px 8px 0;">
+  <p style="font-weight:bold; color:#635BFF; margin:0 0 12px; font-size:12pt;">Detail Penawaran</p>
   <table style="width:100%; border-collapse:collapse;">
     <tr>
       <td style="padding:5px 0; width:40%; color:#555;">Jabatan</td>

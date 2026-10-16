@@ -116,7 +116,7 @@ export default function OrgChart() {
  );
 
  const companyName = (() => {
- try { return JSON.parse(localStorage.getItem('HRIS Loka_company_settings') || '{}').name || 'Perusahaan'; }
+ try { return JSON.parse(localStorage.getItem('KiniKerja_company_settings') || '{}').name || 'Perusahaan'; }
  catch { return 'Perusahaan'; }
  })();
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isFounder } from '../lib/rbac';
+import { supabase } from '../lib/supabase';
 import './MaintenancePage.css';
 
 export default function MaintenancePage() {
@@ -21,9 +22,9 @@ export default function MaintenancePage() {
   const [platform, _setPlatform] = useState(() => {
     try {
       const s = localStorage.getItem('founder_platform_settings');
-      return s ? JSON.parse(s) : { name: 'HRIS Loka', support_email: 'support@hrisloka.id' };
+      return s ? JSON.parse(s) : { name: 'KiniKerja', support_email: 'support@kinikerja.id' };
     } catch {
-      return { name: 'HRIS Loka', support_email: 'support@hrisloka.id' };
+      return { name: 'KiniKerja', support_email: 'support@kinikerja.id' };
     }
   });
 
@@ -33,6 +34,24 @@ export default function MaintenancePage() {
     const timer = setInterval(() => setElapsed(e => e + 1), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Poll for maintenance-end: when the founder disables maintenance,
+  // return non-founder users to the app automatically (every 30s).
+  useEffect(() => {
+    if (founderUser) return;
+    const poll = setInterval(async () => {
+      try {
+        const { data } = await supabase
+          .from('platform_settings')
+          .select('value')
+          .eq('key', 'is_maintenance')
+          .maybeSingle();
+        const off = data?.value !== 'true' && data?.value !== true;
+        if (off) navigate('/dashboard', { replace: true });
+      } catch { /* keep waiting */ }
+    }, 30000);
+    return () => clearInterval(poll);
+  }, [founderUser, navigate]);
 
   const formatElapsed = (s) => {
     if (s < 60) return `${s}s`;
@@ -57,7 +76,7 @@ export default function MaintenancePage() {
       <div className="mnt-wrapper">
         {/* Logo */}
         <div className="mnt-logo-wrap">
-          <img src="/landing/hrislokalogo.jpeg" alt={platform.name} className="mnt-logo" />
+          <img src="/landing/kinikerjalogo.jpeg" alt={platform.name} className="mnt-logo" />
           <span className="mnt-brand">{platform.name}</span>
         </div>
 
@@ -120,7 +139,7 @@ export default function MaintenancePage() {
           {/* Contact */}
           <div className="mnt-contact">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <span>For urgent matters, contact <a href={`mailto:${platform.support_email || 'support@hrisloka.id'}`}>{platform.support_email || 'support@hrisloka.id'}</a></span>
+            <span>For urgent matters, contact <a href={`mailto:${platform.support_email || 'support@kinikerja.id'}`}>{platform.support_email || 'support@kinikerja.id'}</a></span>
           </div>
         </div>
 
@@ -146,7 +165,7 @@ export default function MaintenancePage() {
         <div className="mnt-footer">
           <span>{platform.name} - All rights reserved</span>
           <span></span>
-          <a href={`mailto:${platform.support_email || 'support@hrisloka.id'}`}>Contact Support</a>
+          <a href={`mailto:${platform.support_email || 'support@kinikerja.id'}`}>Contact Support</a>
         </div>
       </div>
     </div>

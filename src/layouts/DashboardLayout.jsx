@@ -86,19 +86,30 @@ export default function DashboardLayout() {
     markNoIndex('KiniKerja — Dashboard');
   }, []);
 
-  // Owner setup wizard gate (company bootstrap)
+  // Owner setup wizard gate (company bootstrap) — fail-open after 15s so a
+  // hung company_settings query never traps admins on an infinite spinner.
   useEffect(() => {
     let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) setSetupGate(false);
+    }, 15000);
     (async () => {
       if (isFounder(user, employee)) {
-        if (!cancelled) setSetupGate(false);
+        if (!cancelled) { setSetupGate(false); clearTimeout(timeout); }
         return;
       }
-      const need = await needsOwnerSetup();
-      if (!cancelled) setSetupGate(need);
+      try {
+        const need = await needsOwnerSetup();
+        if (!cancelled) setSetupGate(need);
+      } catch {
+        if (!cancelled) setSetupGate(false);
+      } finally {
+        clearTimeout(timeout);
+      }
     })();
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
   }, [user, employee]);
 
@@ -119,10 +130,11 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (user && location.pathname !== '/') {
-      rememberAppPath(location.pathname);
+      // Preserve search so deep links (e.g. /checkout?status=..&order_id=..) survive reload
+      rememberAppPath(location.pathname + location.search);
     }
     stripUrlHash();
-  }, [location.pathname, user]);
+  }, [location.pathname, location.search, user]);
 
   const pageTitle = useMemo(() => resolvePageTitle(location.pathname), [location.pathname]);
 
@@ -157,6 +169,8 @@ if (loading) {
             onProfile={() => setProfileOpen(true)}
             onCreateNew={() => navigate('/employees')}
           />
+          <Breadcrumb />
+          <PlatformBroadcastBanner />
           <Outlet />
         </main>
         <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
@@ -165,7 +179,7 @@ if (loading) {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const role = getRole(employee);
@@ -225,8 +239,8 @@ if (loading) {
               <span
                 className="layout-role-chip"
                 style={{
-                  color: ROLE_COLORS[role],
-                  background: `${ROLE_COLORS[role]}15`,
+                  color: ROLE_COLORS[role] || '#6B7280',
+                  background: `${ROLE_COLORS[role] || '#6B7280'}15`,
                 }}
               >
                 {ROLE_LABELS[role]}

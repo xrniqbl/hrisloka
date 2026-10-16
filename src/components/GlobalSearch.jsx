@@ -22,7 +22,7 @@ const FEATURES = [
  { label: 'Struktur Organisasi', path: '/org-chart', icon: <FiGlobe />, category: 'Halaman' },
  { label: 'Kebijakan Perusahaan', path: '/policies', icon: <FiFileText />, category: 'Halaman' },
  { label: 'Settings', path: '/settings', icon: <FiSettings />, category: 'Halaman' },
- { label: 'Career Page', path: '/jobs', icon: <FiGlobe />, category: 'Halaman' },
+ { label: 'Career Page', path: '/careers', icon: <FiGlobe />, category: 'Halaman' },
  { label: 'Candidate Pipeline', path: '/candidates', icon: <FiUsers />, category: 'Halaman' },
  { label: 'Analytics', path: '/analytics', icon: <FiBarChart2 />, category: 'Halaman' },
  { label: 'Audit Trail', path: '/audit-trail', icon: <FiFileText />, category: 'Halaman' },
@@ -125,12 +125,17 @@ export default function GlobalSearch() {
  {/* Modal overlay */}
  {open && (
  <div className="gs-overlay">
- <div className="gs-modal" ref={containerRef}>
+ <div className="gs-modal" ref={containerRef} role="dialog" aria-modal="true" aria-label="Pencarian global">
  {/* Search input */}
  <div className="gs-input-wrap">
  <FiSearch className="gs-input-icon" />
  <input
  ref={inputRef}
+ autoFocus
+ role="combobox"
+ aria-expanded="true"
+ aria-controls="gs-results"
+ aria-label="Cari karyawan, fitur, halaman"
  className="gs-input"
  placeholder="Cari karyawan, fitur, halaman..."
  value={query}
@@ -143,15 +148,15 @@ export default function GlobalSearch() {
  </div>
 
  {/* Results */}
- <div className="gs-results">
+ <div className="gs-results" id="gs-results" role="listbox" aria-label="Hasil pencarian">
  {/* Employees */}
  {employees.length > 0 && (
  <div className="gs-section">
  <div className="gs-section-title">Karyawan</div>
  {employees.map(emp => (
- <button key={emp.id} className="gs-item" onClick={() => go(`/employees/${emp.id}`)}>
+ <button key={emp.id || emp.name || emp.email} className="gs-item" onClick={() => go(`/employees/${emp.id}`)}>
  <div className="gs-item-icon emp">
- {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+ {(emp.name || '').split(' ').map(n => n[0]).join('').slice(0, 2)}
  </div>
  <div className="gs-item-body">
  <div className="gs-item-label">{emp.name}</div>
@@ -168,8 +173,8 @@ export default function GlobalSearch() {
  <div className="gs-section">
  <div className="gs-section-title">{query ? 'Fitur & Halaman' : 'Akses Cepat'}</div>
  <div className="gs-features-grid">
- {matchedFeatures.slice(0, 9).map((f, i) => (
- <button key={i} className="gs-feature-btn" onClick={() => go(f.path)}>
+ {matchedFeatures.slice(0, 9).map((f) => (
+ <button key={f.path} className="gs-feature-btn" onClick={() => go(f.path)}>
  <span className="gs-feature-icon">{f.icon}</span>
  <span className="gs-feature-label">{f.label}</span>
  </button>

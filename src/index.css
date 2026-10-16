@@ -11,17 +11,19 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/inter";
+/* Must load last: fixes light/dark text-icon-surface contrast */
+@import './styles/theme-contrast.css';
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
   /* â”€â”€â”€ Brand Colors â”€â”€â”€ */
-  --primary:  #635BFF;  /* Cobalt Blue â€” authoritative */
-  --primary-dark:  #4F46E5;
-  --primary-light: rgba(99,91,255,0.10);
-  --primary-soft:  #F0EEFF;
-  --primary-mid:   #E8E6FF;
-  --primary-hover: #5449FF;
+  --primary:  #5654D4;  /* SolveHR purple — matches dbupdate.png */
+  --primary-dark:  #4543C0;
+  --primary-light: rgba(86,84,212,0.10);
+  --primary-soft:  #F4F3FB;
+  --primary-mid:   #E8E6F5;
+  --primary-hover: #4A48C4;
 
   /* â”€â”€â”€ Accent â€” Teal (differentiator from generic blue) â”€â”€â”€ */
   --accent:  #0F766E;
@@ -253,11 +255,7 @@ img {
   background: rgba(139, 149, 165, 0.5);
 }
 
-/* â”€â”€â”€ Selection â”€â”€â”€ */
-::selection {
-  background: var(--primary-light);
-  color: var(--primary);
-}
+/* Selection handled in theme-contrast.css for readable contrast */
 
 /* â”€â”€â”€ Dark Mode â”€â”€â”€ */
 [data-theme="dark"] {
@@ -282,23 +280,23 @@ img {
   --info:          #38BDF8;
   --info-light:    rgba(56, 189, 248, 0.1);
 
-  /* Neutrals */
-  --muted:           #7A8499;
-  --text:            #E4E9F2;
-  --text-secondary:  #9BA3B4;
-  --text-tertiary:   #5E6A7E;
+  /* Neutrals — higher contrast for body/icons */
+  --muted:           #A1A8B8;
+  --text:            #F3F4F6;
+  --text-secondary:  #C5CAD6;
+  --text-tertiary:   #9BA3B4;
 
-  /* Surfaces â€” rich navy depth */
-  --bg:              #0C0F1A;
-  --bg-elevated:     #141827;
-  --surface:         #151B2E;
-  --surface-raised:  #1C2340;
-  --card:            #151B2E;
+  /* Surfaces */
+  --bg:              #0B0D14;
+  --bg-elevated:     #12151F;
+  --surface:         #161A27;
+  --surface-raised:  #1C2133;
+  --card:            #161A27;
 
   /* Borders */
-  --border:          #252D45;
-  --border-light:    #1E2538;
-  --border-strong:   #334060;
+  --border:          #2C3348;
+  --border-light:    #232838;
+  --border-strong:   #3D4660;
 
   /* Shadows */
   --shadow-xs:         0 1px 2px rgba(0, 0, 0, 0.3);
@@ -388,8 +386,58 @@ img {
   background: #2A2D3A;
 }
 
-[data-theme="dark"] .page-header h1 {
-  color: #E8EAED;
+/* Feature page headers — theme tokens (contrast layer refines further) */
+.page-header {
+  margin-bottom: 20px;
+}
+.page-header-row {
+  width: 100%;
+}
+.page-header-title,
+.page-header h1 {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: var(--text) !important;
+  margin: 0 !important;
+  line-height: 1.25 !important;
+}
+.page-header-subtitle,
+.page-header p {
+  color: var(--muted) !important;
+  font-size: 13.5px !important;
+  margin: 4px 0 0 !important;
+}
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Soft cards / tables on HR pages */
+.card,
+.info-card,
+.chart-card,
+.recent-table-card,
+.data-card {
+  border-radius: 12px !important;
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+}
+
+.btn-primary,
+button.btn-primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  border-radius: 999px !important;
+  font-weight: 600 !important;
+  color: #FFFFFF !important;
+}
+.btn-primary:hover,
+button.btn-primary:hover {
+  background: var(--primary-hover, var(--primary-dark)) !important;
 }
 
 [data-theme="dark"] .chart-card {

@@ -9,7 +9,7 @@ import { getEmployeeByEmail } from '../../services/employeeService';
 import { formatCurrency } from '../../lib/utils';
 import { generatePayslipPDF } from '../../lib/pdfGenerator';
 import { useTranslation } from '../../lib/i18n';
-import { supabase } from '../../lib/supabase';
+import { getMyPayrollHistory, getMyPayrollByPeriod } from '../../services/payrollService';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
@@ -26,6 +26,7 @@ export default function EmpPayslip() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -42,39 +43,28 @@ export default function EmpPayslip() {
         setLoading(false);
         return;
       }
-      let empData = authEmployee;
-      if (!empData?.id) {
-        const email = user?.email || user?.user_metadata?.email;
-        const res = await getEmployeeByEmail(email);
-        empData = res.data;
-      }
-      if (empData) {
-        setEmp(empData);
-        // Schema uses `period` (YYYY-MM); older code used `month`
-        let history = [];
-        const h1 = await supabase
-          .from('payroll_records')
-          .select('*')
-          .eq('employee_id', empData.id)
-          .order('period', { ascending: false })
-          .limit(12);
-        if (!h1.error) {
-          history = h1.data || [];
-        } else {
-          const h2 = await supabase
-            .from('payroll_records')
-            .select('*')
-            .eq('employee_id', empData.id)
-            .order('created_at', { ascending: false })
-            .limit(12);
-          history = h2.data || [];
+      try {
+        setError(null);
+        let empData = authEmployee;
+        if (!empData?.id) {
+          const email = user?.email || user?.user_metadata?.email;
+          const res = await getEmployeeByEmail(email);
+          empData = res.data;
         }
-        setPayrollHistory(history);
+        if (empData) {
+          setEmp(empData);
+          const { data: history, error: histErr } = await getMyPayrollHistory(empData.id);
+          if (histErr) throw histErr;
+          setPayrollHistory(history || []);
+        }
+      } catch (e) {
+        setError(e?.message || 'Failed to load payroll history');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     load();
-  }, [user, authEmployee?.id]);
+  }, [user, authEmployee]);
 
   // Load specific month payroll record
   useEffect(() => {
@@ -97,25 +87,15 @@ export default function EmpPayslip() {
       const now = new Date();
       now.setMonth(now.getMonth() + monthOffset);
       const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      // Prefer period = YYYY-MM (schema), fallback month column / period text match
-      let row = null;
-      const q1 = await supabase
-        .from('payroll_records')
-        .select('*')
-        .eq('employee_id', emp.id)
-        .eq('period', monthStr)
-        .maybeSingle();
-      if (!q1.error && q1.data) row = q1.data;
-      if (!row) {
-        const q2 = await supabase
-          .from('payroll_records')
-          .select('*')
-          .eq('employee_id', emp.id)
-          .or(`period.ilike.%${monthStr}%,month.ilike.%${monthStr}%`)
-          .maybeSingle();
-        if (!q2.error) row = q2.data;
+      try {
+        setError(null);
+        const { data: row, error: monthErr } = await getMyPayrollByPeriod(emp.id, monthStr);
+        if (monthErr) throw monthErr;
+        setPayrollRecord(row);
+      } catch (e) {
+        setError(e?.message || 'Failed to load payroll record');
+        setPayrollRecord(null);
       }
-      setPayrollRecord(row);
     }
     loadMonth();
   }, [emp, monthOffset]);
@@ -143,12 +123,7 @@ export default function EmpPayslip() {
         <div className="emp-card emp-empty" style={{ padding: '48px 24px' }}>
           <div
             className="emp-empty-icon"
-            style={{
-              opacity: 1,
-              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
-              color: 'var(--primary, #635BFF)',
-              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
-            }}
+            style={{ color: '#9CA3AF' }}
           >
             <HiCurrencyDollar size={24} />
           </div>
@@ -227,6 +202,12 @@ export default function EmpPayslip() {
     <div className="emp-page">
       <h1 className="emp-page-title">{locale === 'en' ? 'Payslip' : 'Slip Gaji'}</h1>
 
+      {error && (
+        <div className="emp-card" style={{ padding: '12px 16px', marginBottom: 12, borderLeft: '4px solid var(--danger)', fontSize: 13, color: 'var(--danger)' }}>
+          {error}
+        </div>
+      )}
+
       {/* Month Selector */}
       <div className="emp-month-selector">
         <button className="emp-month-btn" onClick={() => setMonthOffset(m => m - 1)}>
@@ -258,12 +239,7 @@ export default function EmpPayslip() {
         <div className="emp-card emp-empty" style={{ padding: '48px 24px', marginBottom: 12 }}>
           <div
             className="emp-empty-icon"
-            style={{
-              opacity: 1,
-              background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
-              color: 'var(--primary, #635BFF)',
-              border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
-            }}
+            style={{ color: '#9CA3AF' }}
           >
             <HiCurrencyDollar size={24} />
           </div>

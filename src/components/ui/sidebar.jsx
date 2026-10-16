@@ -629,10 +629,13 @@ export function SidebarMenuSkeleton(
     ...props
   }
 ) {
-  // Random width between 50 to 90%.
+  // Deterministic pseudo-random width (50–90%). Derived from useId so it is
+  // pure/SSR-safe — Math.random() inside render (even memoized) is impure.
+  const reactId = React.useId();
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+    const seed = reactId.charCodeAt(0) + reactId.charCodeAt(1);
+    return `${(seed % 40) + 50}%`;
+  }, [reactId]);
 
   return (
     <div

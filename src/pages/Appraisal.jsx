@@ -9,6 +9,8 @@ import EmptyState from '../components/EmptyState';
 import { useRealtimeTable } from '../hooks/useRealtime';
 import '../styles/shared.css';
 import '../styles/admin.css';
+import MetricStatCards from '../components/MetricStatCards';
+import { ClipboardList, CheckCircle2, Hourglass, Star } from 'lucide-react';
 
 const statusColors = { draft: '#6D8196', 'in-progress': '#F59E0B', completed: '#16A34A' };
 const statusLabels = { draft: 'Draft', 'in-progress': 'Berlangsung', completed: 'Selesai' };
@@ -91,7 +93,7 @@ export default function Appraisal() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('appraisals', fetchData, { companyId: currentUser?.company_id });
+ useRealtimeTable('appraisals', fetchData, { companyId: employee?.company_id });
 
  // Update reviewer groups when employee changes
  useEffect(() => {
@@ -122,12 +124,13 @@ export default function Appraisal() {
 
  const handleSubmit = async () => {
  if (!form.employeeId) return;
+ const companyId = employee?.company_id;
  if (editingId) {
  await appraisalService.updateAppraisal(editingId, {
  rating: Number(form.rating),
  status: form.status,
  comments: form.comments,
- });
+ }, companyId);
  } else {
  await appraisalService.createAppraisal({
  employeeId: Number(form.employeeId),
@@ -136,7 +139,7 @@ export default function Appraisal() {
  rating: Number(form.rating),
  status: form.status,
  comments: form.comments,
- });
+ }, companyId);
  }
  setModal(null);
  fetchData();
@@ -144,7 +147,7 @@ export default function Appraisal() {
 
  const handleDelete = async (id) => {
  if (!confirm('Hapus appraisal ini?')) return;
- await appraisalService.deleteAppraisal(id);
+ await appraisalService.deleteAppraisal(id, employee?.company_id);
  fetchData();
  };
 
@@ -168,25 +171,12 @@ export default function Appraisal() {
  </div>
  </div>
 
- {/* Stats */}
- <div className="stats-grid">
- <div className="info-card">
- <div className="info-card-label">Total Appraisal</div>
- <div className="info-card-value primary">{appraisals.length}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Selesai</div>
- <div className="info-card-value success">{completed}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Berlangsung</div>
- <div className="info-card-value warning">{inProgress}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Rata-rata Rating</div>
- <div className="info-card-value warning">{avgRating}/5</div>
- </div>
- </div>
+ <MetricStatCards items={[
+ { key: 'total', label: 'Total Appraisal', value: appraisals.length, icon: ClipboardList },
+ { key: 'done', label: 'Selesai', value: completed, icon: CheckCircle2 },
+ { key: 'progress', label: 'Berlangsung', value: inProgress, icon: Hourglass },
+ { key: 'rating', label: 'Rata-rata Rating', value: `${avgRating}/5`, icon: Star },
+ ]} />
 
  {loading ? (
  <div className="data-table-card" style={{ padding: 24 }}>
@@ -428,6 +418,5 @@ export default function Appraisal() {
  </div>
  );
 }
-
 
 

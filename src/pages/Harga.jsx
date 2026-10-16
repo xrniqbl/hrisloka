@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { updateSEOTags, injectSchema } from '../lib/seo';
+import { updateSEOTags, injectSchema, waEnterpriseLink } from '../lib/seo';
 import {
   CANONICAL_PLANS,
   YEARLY_DISCOUNT_PERCENT,
@@ -21,7 +21,7 @@ const PLANS = CANONICAL_PLANS.map((p) => ({
   features: p.features,
   cta: p.slug === 'enterprise' ? 'Hubungi Sales via WhatsApp' : p.slug === 'pro' ? 'Pilih Pro' : 'Mulai Sekarang',
   ctaLink: p.slug === 'enterprise'
-    ? 'https://wa.me/6289512114437?text=Halo%2C+saya+tertarik+paket+Enterprise+HRIS+Loka.'
+    ? waEnterpriseLink()
     : '/checkout',
   isExternal: p.slug === 'enterprise',
 }));
@@ -32,13 +32,13 @@ const pro = CANONICAL_PLANS.find((p) => p.slug === 'pro');
 const PRICING_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'Product',
-  name: 'HRIS Loka -- Software HR Indonesia',
+  name: 'KiniKerja -- Software HR Indonesia',
   description: 'Platform HRIS modern untuk perusahaan Indonesia.',
-  url: 'https://hrisloka.com/harga',
-  brand: { '@type': 'Brand', name: 'HRIS Loka' },
+  url: 'https://kinikerja.id/harga',
+  brand: { '@type': 'Brand', name: 'KiniKerja' },
   offers: [
-    { '@type': 'Offer', name: 'Paket Starter', price: String(starter.price_monthly), priceCurrency: 'IDR', availability: 'https://schema.org/InStock', url: 'https://hrisloka.com/checkout' },
-    { '@type': 'Offer', name: 'Paket Pro', price: String(pro.price_monthly), priceCurrency: 'IDR', availability: 'https://schema.org/InStock', url: 'https://hrisloka.com/checkout' },
+    { '@type': 'Offer', name: 'Paket Starter', price: String(starter.price_monthly), priceCurrency: 'IDR', availability: 'https://schema.org/InStock', url: 'https://kinikerja.id/checkout' },
+    { '@type': 'Offer', name: 'Paket Pro', price: String(pro.price_monthly), priceCurrency: 'IDR', availability: 'https://schema.org/InStock', url: 'https://kinikerja.id/checkout' },
     { '@type': 'Offer', name: 'Paket Enterprise', description: 'Harga custom.', availability: 'https://schema.org/InStock' },
   ],
 };
@@ -47,9 +47,9 @@ const FAQ_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
   mainEntity: [
-    { '@type': 'Question', name: 'Berapa harga HRIS Loka per bulan?', acceptedAnswer: { '@type': 'Answer', text: `Paket Starter ${formatPlanIDRShort(starter.price_monthly)}/bulan untuk hingga ${starter.max_employees} karyawan. Paket Pro ${formatPlanIDRShort(pro.price_monthly)}/bulan untuk hingga ${pro.max_employees} karyawan. Paket Enterprise dengan harga custom.` } },
+    { '@type': 'Question', name: 'Berapa harga KiniKerja per bulan?', acceptedAnswer: { '@type': 'Answer', text: `Paket Starter ${formatPlanIDRShort(starter.price_monthly)}/bulan untuk hingga ${starter.max_employees} karyawan. Paket Pro ${formatPlanIDRShort(pro.price_monthly)}/bulan untuk hingga ${pro.max_employees} karyawan. Paket Enterprise dengan harga custom.` } },
     { '@type': 'Question', name: 'Apakah ada diskon berlangganan tahunan?', acceptedAnswer: { '@type': 'Answer', text: `Ya! Berlangganan tahunan mendapatkan diskon ${YEARLY_DISCOUNT_PERCENT}% dibanding harga bulanan.` } },
-    { '@type': 'Question', name: 'Apakah ada biaya setup atau implementasi?', acceptedAnswer: { '@type': 'Answer', text: 'Tidak ada biaya setup. HRIS Loka bisa digunakan dalam hitungan menit tanpa instalasi server.' } },
+    { '@type': 'Question', name: 'Apakah ada biaya setup atau implementasi?', acceptedAnswer: { '@type': 'Answer', text: 'Tidak ada biaya setup. KiniKerja bisa digunakan dalam hitungan menit tanpa instalasi server.' } },
     { '@type': 'Question', name: 'Apakah bisa upgrade atau downgrade paket?', acceptedAnswer: { '@type': 'Answer', text: 'Ya, Anda bisa upgrade atau downgrade paket kapan saja.' } },
     { '@type': 'Question', name: 'Apakah data aman jika saya berhenti berlangganan?', acceptedAnswer: { '@type': 'Answer', text: 'Data Anda tetap aman selama periode grace 30 hari setelah berlangganan berakhir.' } },
   ],
@@ -105,10 +105,10 @@ export default function Harga() {
 
   useEffect(() => {
     updateSEOTags({
-      title: `Harga HRIS Loka -- Paket Starter ${formatPlanIDRShort(starter.price_monthly)}, Pro ${formatPlanIDRShort(pro.price_monthly)}, Enterprise Custom`,
-      description: `Harga HRIS Loka: Starter ${formatPlanIDRShort(starter.price_monthly)}/bulan (maks ${starter.max_employees} karyawan), Pro ${formatPlanIDRShort(pro.price_monthly)}/bulan (maks ${pro.max_employees} karyawan), Enterprise custom. Hemat ${YEARLY_DISCOUNT_PERCENT}% dengan langganan tahunan.`,
-      canonical: 'https://hrisloka.com/harga',
-      keywords: 'harga HRIS Indonesia, biaya software HR, paket HR, harga aplikasi absensi, HRIS Loka harga',
+      title: `Harga KiniKerja -- Paket Starter ${formatPlanIDRShort(starter.price_monthly)}, Pro ${formatPlanIDRShort(pro.price_monthly)}, Enterprise Custom`,
+      description: `Harga KiniKerja: Starter ${formatPlanIDRShort(starter.price_monthly)}/bulan (maks ${starter.max_employees} karyawan), Pro ${formatPlanIDRShort(pro.price_monthly)}/bulan (maks ${pro.max_employees} karyawan), Enterprise custom. Hemat ${YEARLY_DISCOUNT_PERCENT}% dengan langganan tahunan.`,
+      canonical: 'https://kinikerja.id/harga',
+      keywords: 'harga HRIS Indonesia, biaya software HR, paket HR, harga aplikasi absensi, KiniKerja harga',
     });
     injectSchema('pricing', PRICING_SCHEMA);
     injectSchema('faq-pricing', FAQ_SCHEMA);
@@ -118,7 +118,7 @@ export default function Harga() {
     <>
       {/* Navbar */}
       <nav style={s.nav}>
-        <Link to="/" style={s.logo}>HRIS Loka</Link>
+        <Link to="/" style={s.logo}>KiniKerja</Link>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <Link to="/landing" style={{ fontSize: 14, color: '#64748B', textDecoration: 'none', fontWeight: 600 }}>Fitur</Link>
           <Link to="/harga" style={{ fontSize: 14, color: '#635BFF', textDecoration: 'none', fontWeight: 700, borderBottom: '2px solid #635BFF', paddingBottom: 2 }}>Harga</Link>
@@ -157,7 +157,7 @@ export default function Harga() {
 
       <main style={s.page}>
         {/* Pricing Cards */}
-        <section aria-label="Paket harga HRIS Loka">
+        <section aria-label="Paket harga KiniKerja">
           <div style={s.grid}>
             {PLANS.map((plan) => {
               const yearlyTotal = plan.monthly != null ? getYearlyPrice(plan.monthly) : null;
@@ -205,7 +205,7 @@ export default function Harga() {
         </section>
 
         {/* FAQ */}
-        <section style={s.faq} aria-label="Pertanyaan umum harga HRIS Loka">
+        <section style={s.faq} aria-label="Pertanyaan umum harga KiniKerja">
           <h2 style={s.faqTitle}>Pertanyaan Seputar Harga</h2>
           {FAQ_SCHEMA.mainEntity.map((q, i) => (
             <div key={i} style={s.faqItem}>
@@ -218,7 +218,7 @@ export default function Harga() {
         {/* CTA Bottom */}
         <section style={{ textAlign: 'center', marginTop: 72, padding: '48px 24px', background: 'linear-gradient(135deg, #635BFF 0%, #5449FF 100%)', borderRadius: 24 }}>
           <h2 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Siap Digitalisasi HR Perusahaan Anda?</h2>
-          <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 28, fontSize: 16 }}>Bergabunglah dengan ratusan perusahaan Indonesia yang sudah menggunakan HRIS Loka.</p>
+          <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 28, fontSize: 16 }}>Bergabunglah dengan ratusan perusahaan Indonesia yang sudah menggunakan KiniKerja.</p>
           <Link to="/checkout" style={{ display: 'inline-block', padding: '14px 36px', background: '#fff', color: '#635BFF', borderRadius: 999, fontWeight: 600, fontSize: 16, textDecoration: 'none', boxShadow: '0 4px 14px rgba(15,23,42,.08)' }}>
             Mulai Berlangganan Sekarang
           </Link>

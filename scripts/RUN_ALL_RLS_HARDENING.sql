@@ -2,6 +2,19 @@
 -- ONE-SHOT: Multi-tenant RLS hardening (Supabase SQL Editor)
 -- Safe to re-run (idempotent DROP IF EXISTS).
 -- After this, run scripts/rls-audit.sql separately and check query 2 = 0 rows.
+--
+-- NOTE: jalankan juga tiga hardening lanjutan ini (tidak digabung di sini
+-- agar tiap file tetap bisa dijalankan mandiri di SQL Editor):
+--   scripts/FIX_FOUNDER_PORTAL_RLS.sql  (founder-only billing/platform RLS)
+--   scripts/FIX_CONTRACTS_RLS.sql       (employee_contracts/contract_templates RLS)
+--   scripts/FIX_FOUNDER_ESCALATION.sql  (C1: platform_founders + is_founder
+--     kanonis + trigger anti self-grant role founder; jalankan ini DULU
+--     lalu bootstrap 1x via blok INSERT tercomment di file tsb)
+--   scripts/FIX_RLS_COVERAGE_GAPS.sql   (H4: payroll_records, employee_faces,
+--     loan_payments, employee_documents, shift_assignments,
+--     profile_update_requests, billing_info, push_subscriptions,
+--     onboarding_tasks, company_policies, office_locations, branches,
+--     holidays, attendance_trust_logs)
 -- ============================================================
 
 

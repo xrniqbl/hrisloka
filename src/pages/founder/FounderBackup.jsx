@@ -1,5 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiDatabase, FiRefreshCw, FiDownload, FiRotateCcw, FiTrash2, FiCheck, FiAlertTriangle, FiClock } from 'react-icons/fi';
+import { Database, Trash2, CheckCircle2, Activity } from 'lucide-react';
+import MetricStatCards from '../../components/MetricStatCards';
 import * as backupService from '../../services/backupService';
 import { useToast } from '../../components/Toast';
 import './founder.css';
@@ -61,7 +63,7 @@ export default function FounderBackup() {
   const [exportTable, setExportTable] = useState('employees');
   const [exporting, setExporting] = useState(false);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const [{ data: snaps }, { data: deleted }, { data: logs }] = await Promise.all([
@@ -77,9 +79,9 @@ export default function FounderBackup() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   if (loading) return <SkeletonPage />;
 
@@ -158,44 +160,35 @@ export default function FounderBackup() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="fp-stats mb">
-        <div className="fp-stat">
-          <div className="fp-stat-value">{snapshots.length}</div>
-          <div className="fp-stat-label">Total Snapshots</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{deletedRecords.length}</div>
-          <div className="fp-stat-label">Data di Recycle Bin</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{backupLogs.filter(l => l.status === 'completed').length}</div>
-          <div className="fp-stat-label">Backup Sukses</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value" style={{ color: backupLogs.some(l => l.status === 'failed') ? '#EF4444' : '#10B981' }}>
-            {backupLogs.some(l => l.status === 'failed') ? 'Ada Error' : 'OK'}
-          </div>
-          <div className="fp-stat-label">Status Sistem</div>
-        </div>
+      <MetricStatCards
+        className="fp-metric-strip"
+        items={[
+          { key: 'snap', label: 'Snapshots', value: snapshots.length, icon: Database },
+          { key: 'bin', label: 'Recycle Bin', value: deletedRecords.length, icon: Trash2 },
+          { key: 'ok', label: 'Backup Sukses', value: backupLogs.filter((l) => l.status === 'completed').length, icon: CheckCircle2 },
+          {
+            key: 'status',
+            label: 'Status Sistem',
+            value: backupLogs.some((l) => l.status === 'failed') ? 'Error' : 'OK',
+            icon: Activity,
+          },
+        ]}
+      />
+
+      <div className="fp-notice fp-notice-info" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <FiAlertTriangle style={{ flexShrink: 0 }} />
+        <span>Snapshot harian otomatis jam 01:00 UTC via pg_cron. Data terhapus disimpan 90 hari di Recycle Bin.</span>
       </div>
 
-      {/* Info banner */}
-      <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.15)', fontSize: 13, color: '#6366F1', marginBottom: 24, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <FiAlertTriangle />
-        <span>Snapshot harian otomatis berjalan setiap jam 01:00 UTC via pg_cron. Data terhapus disimpan 90 hari di Recycle Bin sebelum dihapus permanen.</span>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: 'var(--surface)', border: '1px solid var(--border)', padding: 4, borderRadius: 10, width: 'fit-content' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px',
-            borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            fontWeight: 600, fontSize: 13,
-            background: activeTab === t.key ? 'var(--primary, #635BFF)' : 'none',
-            color: activeTab === t.key ? '#fff' : 'var(--text-secondary)',
-          }}>
+      <div className="fp-seg" style={{ marginBottom: 14 }}>
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`fp-seg-btn ${activeTab === t.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.key)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, padding: '0 14px' }}
+          >
             {t.icon} {t.label}
           </button>
         ))}
@@ -260,7 +253,7 @@ export default function FounderBackup() {
                           : '-'}
                       </td>
                       <td>
-                        <span style={{ fontSize: 11, color: '#6366F1', fontWeight: 600 }}>
+                        <span style={{ fontSize: 11, color: 'var(--primary, #5654D4)', fontWeight: 600 }}>
                           {selectedSnapshot?.id === s.id ? 'Tutup ▲' : 'Detail ▼'}
                         </span>
                       </td>
@@ -272,7 +265,7 @@ export default function FounderBackup() {
 
             {/* Snapshot detail drawer */}
             {selectedSnapshot && (
-              <div style={{ padding: '16px 20px', borderTop: '2px solid var(--primary, #635BFF)', background: 'rgba(99,102,241,0.04)' }}>
+              <div style={{ padding: '16px 20px', borderTop: '2px solid var(--primary, #5654D4)', background: 'color-mix(in srgb, var(--primary, #5654D4) 5%, transparent)' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: 'var(--text)' }}>
                   Detail Snapshot - {fmtDateOnly(selectedSnapshot.snapshot_date)}
                 </div>
@@ -340,7 +333,7 @@ export default function FounderBackup() {
                 ) : filteredDeleted.map(r => (
                   <tr key={r.id}>
                     <td>
-                      <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, background: 'rgba(99,102,241,0.1)', color: '#6366F1', padding: '2px 8px', borderRadius: 5 }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, background: 'color-mix(in srgb, var(--primary, #5654D4) 10%, transparent)', color: 'var(--primary, #5654D4)', padding: '2px 8px', borderRadius: 5 }}>
                         {r.table_name}
                       </span>
                     </td>
@@ -403,7 +396,7 @@ export default function FounderBackup() {
                     <td>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 5,
                         background: l.backup_type === 'auto_daily' ? 'rgba(99,102,241,0.1)' : 'rgba(245,158,11,0.1)',
-                        color: l.backup_type === 'auto_daily' ? '#6366F1' : '#D97706',
+                        color: l.backup_type === 'auto_daily' ? 'var(--primary, #5654D4)' : 'var(--muted, #6B7280)',
                       }}>
                         {l.backup_type}
                       </span>

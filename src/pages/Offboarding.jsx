@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import FormDateField from '../components/FormDateField';
 
 const statusColors = { initiated: '#F59E0B', 'in-progress': '#635BFF', completed: '#16A34A' };
 const statusLabels = { initiated: 'Initiated', 'in-progress': 'In Progress', completed: 'Completed' };
@@ -52,7 +53,7 @@ export default function Offboarding() {
  }, [employee?.company_id]);
 
  // Realtime: auto-refresh
- useRealtimeTable('offboarding', fetchData, { companyId: currentUser?.company_id });
+ useRealtimeTable('offboarding', fetchData, { companyId: employee?.company_id });
 
  const stats = [
  { label: 'Total Offboarding', value: records.length, color: '#635BFF' },
@@ -215,7 +216,7 @@ export default function Offboarding() {
  </div>
  <div className="form-group">
  <Label>Hari Kerja Terakhir</Label>
- <Input type="date" value={form.lastWorkingDay} onChange={e => setForm({ ...form, lastWorkingDay: e.target.value })} />
+ <FormDateField value={form.lastWorkingDay} onChange={(v) => setForm({ ...form, lastWorkingDay: v })} placeholder="Hari terakhir" />
  </div>
  </div>
  <DialogFooter>

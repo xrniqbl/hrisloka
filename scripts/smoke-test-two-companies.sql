@@ -1,5 +1,5 @@
 -- ============================================================
--- HRIS Loka — Smoke test multi-tenant (2 companies A & B)
+-- KiniKerja — Smoke test multi-tenant (2 companies A & B)
 -- Run in Supabase SQL Editor AFTER:
 --   1) fix_employees_rls_super_admin_leak.sql
 --   2) harden_notifications_company_settings_rls.sql

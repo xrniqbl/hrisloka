@@ -37,7 +37,7 @@ export default function PublicCareers() {
  // Use defaults if no settings found
  setSettings(settingsData || {
  slug: slug || 'informasilowongan',
- company_name: 'HRIS Loka',
+ company_name: 'KiniKerja',
  company_description: 'Platform HRIS Modern untuk Perusahaan Indonesia',
  accent_color: '#635BFF',
  is_active: true,
@@ -94,7 +94,7 @@ export default function PublicCareers() {
  return matchSearch && matchDept && matchType;
  });
 
- const companyName = settings?.company_name || 'HRIS Loka';
+ const companyName = settings?.company_name || 'KiniKerja';
  const companyDesc = settings?.company_description || 'Bergabunglah bersama kami dan kembangkan karir Anda.';
 
  if (loading) {
@@ -250,7 +250,7 @@ export default function PublicCareers() {
  {/* Footer */}
  <div className="career-footer">
  <div style={{ marginBottom: 6 }}>{companyName} &mdash; Career Portal</div>
- <div>Powered by <a href="/">HRIS Loka</a></div>
+ <div>Powered by <a href="/">KiniKerja</a></div>
  </div>
  </div>
  );

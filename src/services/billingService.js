@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { CANONICAL_PLANS } from '../lib/plans';
 
 /**
  * Billing info is user-scoped (subscriber). Always force current auth user —
@@ -65,26 +64,78 @@ export async function upsertBillingInfo(userId, payload) {
 }
 
 /**
- * Default billing placeholder when no record exists (UI only).
+ * Build billing card from real subscription (never fake Pro plan).
  */
-export function getDefaultBillingInfo() {
-  const pro = CANONICAL_PLANS.find((p) => p.slug === 'pro');
-  const renewal = new Date();
-  renewal.setMonth(renewal.getMonth() + 1);
-  const formatted = renewal.toLocaleDateString('id-ID', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  });
+export function billingFromSubscription(sub) {
+  if (!sub) return null;
+  const planName =
+    sub.plan_name ||
+    sub.plan_label ||
+    sub.subscription_plans?.name ||
+    sub.plan_slug ||
+    'Free';
+  const cycle = sub.billing_cycle || 'monthly';
+  const next = sub.expires_at || sub.end_date || null;
+  const nextLabel = next
+    ? new Date(next).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null;
 
   return {
-    plan: pro?.name || 'Pro',
-    billing_cycle: 'monthly',
-    price: pro?.price_monthly ?? 299000,
+    plan: planName,
+    billing_cycle: cycle,
+    price: sub.price_paid ?? sub.price_monthly ?? sub.amount ?? null,
     currency: 'IDR',
-    cardholder_name: 'HRIS Loka',
-    account_number_masked: 'xxxx xxxx xxxx ----',
-    expiry: '--/--',
-    payment_method: 'Midtrans',
-    renewal_date: formatted,
-    status: 'active',
+    payment_method: sub.payment_method || 'Midtrans',
+    renewal_date: nextLabel,
+    next_billing: nextLabel,
+    status: sub.computed_status || sub.status || 'active',
+    source: 'subscription',
   };
+}
+
+/**
+ * Default when no subscription — honest Free, not fake Pro.
+ */
+export function getDefaultBillingInfo() {
+  return {
+    plan: 'Free',
+    billing_cycle: '—',
+    price: 0,
+    currency: 'IDR',
+    payment_method: '—',
+    renewal_date: null,
+    next_billing: null,
+    status: 'none',
+    source: 'default',
+  };
+}
+
+/**
+ * Prefer billing_info row; else derive from subscription.
+ */
+export async function getBillingForUser(userId, subscription = null) {
+  const { data: row } = await getBillingInfo(userId);
+  if (row) {
+    return {
+      data: {
+        plan: row.plan || row.plan_name,
+        billing_cycle: row.billing_cycle,
+        next_billing: row.next_billing || row.renewal_date,
+        renewal_date: row.renewal_date || row.next_billing,
+        status: row.status || 'active',
+        payment_method: row.payment_method,
+        source: 'billing_info',
+        ...row,
+      },
+      error: null,
+    };
+  }
+  if (subscription) {
+    return { data: billingFromSubscription(subscription), error: null };
+  }
+  return { data: getDefaultBillingInfo(), error: null };
 }

@@ -220,7 +220,7 @@ export async function validateVoucher(code, planSlug) {
 export function calculatePrice(originalPrice, voucher) {
   if (!voucher || !originalPrice) return { finalPrice: originalPrice || 0, discount: 0 };
   let discount = 0;
-  if (voucher.discount_type === 'percentage') {
+  if (voucher.discount_type === 'percentage' || voucher.discount_type === 'percent') {
     discount = Math.round(originalPrice * voucher.discount_value / 100);
   } else if (voucher.discount_type === 'fixed') {
     discount = Math.min(voucher.discount_value, originalPrice);

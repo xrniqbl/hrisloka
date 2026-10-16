@@ -109,7 +109,7 @@ describe('Authentication Flow', () => {
         p.length >= 8,
         /[A-Z]/.test(p),
         /[0-9]/.test(p),
-        /[!@#\$%^&*]/.test(p),
+        /[!@#$%^&*]/.test(p),
       ];
       return rules.filter(Boolean).length;
     };
@@ -143,7 +143,7 @@ describe('Employee Registration Flow', () => {
     const { data } = await supabase
       .from('companies')
       .select('id, name, is_active')
-      .eq('company_code', 'HRSLK-TEST01')
+      .eq('company_code', 'KK-TEST01')
       .maybeSingle();
 
     expect(data).not.toBeNull();

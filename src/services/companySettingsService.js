@@ -118,8 +118,58 @@ export async function saveCompanySettings(companyCode, settings) {
 
 // ── Notification Preferences (user-scoped — still verify auth user) ──────────
 
+/** UI keys used by Settings */
+export const DEFAULT_NOTIFICATION_PREFS = {
+  emailLeave: true,
+  emailPayroll: true,
+  emailReimbursement: true,
+  pushAttendance: true,
+  pushApproval: true,
+  pushAnnouncement: true,
+};
+
+/** Map UI camelCase ↔ DB snake_case columns */
+const PREF_UI_TO_DB = {
+  emailLeave: 'email_leave',
+  emailPayroll: 'email_payroll',
+  emailReimbursement: 'email_reimbursement',
+  pushAttendance: 'push_attendance',
+  pushApproval: 'push_approval',
+  pushAnnouncement: 'push_announcement',
+};
+
+const PREF_DB_TO_UI = Object.fromEntries(
+  Object.entries(PREF_UI_TO_DB).map(([ui, db]) => [db, ui]),
+);
+
+export function prefsFromDb(row) {
+  if (!row || typeof row !== 'object') return { ...DEFAULT_NOTIFICATION_PREFS };
+  const out = { ...DEFAULT_NOTIFICATION_PREFS };
+  // Prefer explicit UI keys if already stored as JSON blob
+  if (row.prefs && typeof row.prefs === 'object') {
+    return { ...out, ...row.prefs };
+  }
+  Object.entries(PREF_DB_TO_UI).forEach(([dbKey, uiKey]) => {
+    if (row[dbKey] !== undefined && row[dbKey] !== null) out[uiKey] = Boolean(row[dbKey]);
+  });
+  // Also accept camelCase columns
+  Object.keys(DEFAULT_NOTIFICATION_PREFS).forEach((k) => {
+    if (row[k] !== undefined && row[k] !== null) out[k] = Boolean(row[k]);
+  });
+  return out;
+}
+
+export function prefsToDb(prefs) {
+  const p = { ...DEFAULT_NOTIFICATION_PREFS, ...(prefs || {}) };
+  const row = { prefs: p };
+  Object.entries(PREF_UI_TO_DB).forEach(([ui, db]) => {
+    row[db] = Boolean(p[ui]);
+  });
+  return row;
+}
+
 export async function getNotificationPrefs(userId) {
-  if (!userId) return { data: null, error: null };
+  if (!userId) return { data: { ...DEFAULT_NOTIFICATION_PREFS }, error: null };
 
   // Only allow reading own prefs
   const { data: { user } } = await supabase.auth.getUser();
@@ -134,9 +184,23 @@ export async function getNotificationPrefs(userId) {
       .eq('user_id', userId)
       .maybeSingle();
     if (error) throw error;
-    return { data, error: null };
+    return { data: prefsFromDb(data), error: null };
   } catch {
-    return { data: null, error: null };
+    // Fallback: employees.notification_prefs jsonb if dedicated table missing
+    try {
+      const me = await resolveMyEmployee();
+      if (me?.id) {
+        const { data: emp } = await supabase
+          .from('employees')
+          .select('notification_prefs')
+          .eq('id', me.id)
+          .maybeSingle();
+        if (emp?.notification_prefs) {
+          return { data: prefsFromDb(emp.notification_prefs), error: null };
+        }
+      }
+    } catch { /* ignore */ }
+    return { data: { ...DEFAULT_NOTIFICATION_PREFS }, error: null };
   }
 }
 
@@ -148,19 +212,78 @@ export async function saveNotificationPrefs(userId, prefs) {
     return { data: null, error: { message: 'tenant isolation: hanya preferensi sendiri' } };
   }
 
+  const normalized = prefsToDb(prefs);
+
   try {
     const { data, error } = await supabase
       .from('notification_preferences')
       .upsert(
-        { user_id: userId, ...prefs, updated_at: new Date().toISOString() },
+        { user_id: userId, ...normalized, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' },
       )
       .select()
       .single();
-    return { data, error };
+    if (!error) return { data: prefsFromDb(data), error: null };
+  } catch { /* fall through */ }
+
+  // Fallback store on employee row
+  try {
+    const me = await resolveMyEmployee();
+    if (me?.id) {
+      const { data, error } = await supabase
+        .from('employees')
+        .update({ notification_prefs: prefsFromDb(prefs) })
+        .eq('id', me.id)
+        .select('notification_prefs')
+        .single();
+      if (!error) return { data: prefsFromDb(data?.notification_prefs), error: null };
+      return { data: null, error };
+    }
   } catch (err) {
     return { data: null, error: err };
   }
+
+  // Last resort: localStorage so UI still "saves"
+  try {
+    localStorage.setItem('hrisync_notifications', JSON.stringify(prefsFromDb(prefs)));
+  } catch { /* ignore */ }
+  return { data: prefsFromDb(prefs), error: null };
+}
+
+/**
+ * Check if a recipient (by auth user_id or employee row) allows a channel.
+ * channel: 'emailLeave' | 'emailPayroll' | 'emailReimbursement' | 'pushAttendance' | ...
+ * Defaults to true when prefs missing (safe: don't block delivery).
+ */
+export async function shouldNotify(authUserId, channel) {
+  if (!channel) return true;
+  if (!authUserId) return true;
+  try {
+    const { data } = await getNotificationPrefs(authUserId);
+    if (!data) return true;
+    if (data[channel] === undefined) return true;
+    return data[channel] !== false;
+  } catch {
+    return true;
+  }
+}
+
+/** Convenience: resolve employee.auth_user_id then check channel */
+export async function shouldNotifyEmployee(employeeId, channel) {
+  if (!employeeId) return true;
+  try {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('auth_user_id, notification_prefs')
+      .eq('id', employeeId)
+      .maybeSingle();
+    if (emp?.notification_prefs && typeof emp.notification_prefs === 'object') {
+      const p = prefsFromDb(emp.notification_prefs);
+      if (p[channel] === false) return false;
+    }
+    if (emp?.auth_user_id) return shouldNotify(emp.auth_user_id, channel);
+  } catch { /* ignore */ }
+  return true;
 }
 
 // ── Payroll Config ────────────────────────────────────────────────────────────

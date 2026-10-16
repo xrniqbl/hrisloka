@@ -48,7 +48,7 @@ export default function EmpWelcome() {
                 <path d="M2 17l10 5 10-5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
                 <path d="M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
               </svg>
-              <span>HRIS Loka</span>
+              <span>KiniKerja</span>
             </div>
 
             <div className="emp-welcome__titles">

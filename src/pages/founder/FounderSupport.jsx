@@ -1,5 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiMessageCircle, FiX, FiSend, FiSearch, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { CircleDot, Loader, CheckCircle2, Inbox } from 'lucide-react';
+import MetricStatCards from '../../components/MetricStatCards';
 import * as founderService from '../../services/founderService';
 import { useToast } from '../../components/Toast';
 import './founder.css';
@@ -63,7 +65,7 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
 }
 
 const FILTER_STATUS = ['all', 'open', 'in_progress', 'resolved', 'closed'];
-const PRIORITY_COLOR = { low: '#6B7280', medium: '#F59E0B', high: '#EF4444', critical: '#DC2626' };
+const PRIORITY_COLOR = { low: '#6B7280', medium: '#D97706', high: '#EF4444', critical: '#DC2626' };
 const formatRelative = (d) => {
   if (!d) return '';
   const diff = Date.now() - new Date(d).getTime();
@@ -88,7 +90,7 @@ export default function FounderSupport() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const { data, error } = await founderService.getAllComplaints();
       if (error) throw error;
@@ -98,8 +100,8 @@ export default function FounderSupport() {
     } finally {
       setLoading(false);
     }
-  };
-  useEffect(() => { fetchData(); }, []);
+  }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   if (loading) return <SkeletonPage cols={4} rows={5} hasStats={true} />;
 
@@ -150,20 +152,15 @@ export default function FounderSupport() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {[
-          { label: 'Open', count: complaints.filter(c => c.status === 'open').length, cls: 'open' },
-          { label: 'In Progress', count: complaints.filter(c => c.status === 'in_progress').length, cls: 'in_progress' },
-          { label: 'Resolved', count: complaints.filter(c => c.status === 'resolved').length, cls: 'resolved' },
-          { label: 'Total', count: complaints.length, cls: '' },
-        ].map(item => (
-          <div key={item.label} className="fp-stat">
-            <div className="fp-stat-value">{item.count}</div>
-            <div className="fp-stat-label">{item.label} Tickets</div>
-          </div>
-        ))}
-      </div>
+      <MetricStatCards
+        className="fp-metric-strip"
+        items={[
+          { key: 'open', label: 'Open', value: complaints.filter((c) => c.status === 'open').length, icon: CircleDot },
+          { key: 'progress', label: 'In Progress', value: complaints.filter((c) => c.status === 'in_progress').length, icon: Loader },
+          { key: 'resolved', label: 'Resolved', value: complaints.filter((c) => c.status === 'resolved').length, icon: CheckCircle2 },
+          { key: 'total', label: 'Total', value: complaints.length, icon: Inbox },
+        ]}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 20, height: 'calc(100vh - 320px)', minHeight: 500 }}>
         {/* Ticket List */}
@@ -208,7 +205,7 @@ export default function FounderSupport() {
                   cursor: 'pointer',
                   background: selected?.id === c.id ? 'var(--bg)' : 'none',
                   transition: 'background 0.12s',
-                  borderLeft: selected?.id === c.id ? '3px solid #F59E0B' : '3px solid transparent',
+                  borderLeft: selected?.id === c.id ? '3px solid var(--primary, #5654D4)' : '3px solid transparent',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
@@ -269,7 +266,7 @@ export default function FounderSupport() {
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Original message */}
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99,102,241,0.12)', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'color-mix(in srgb, var(--primary, #5654D4) 12%, transparent)', color: 'var(--primary, #5654D4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
                     {selected.contact_name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -289,7 +286,7 @@ export default function FounderSupport() {
                     <div style={{
                       width: 36, height: 36, borderRadius: 10, flexShrink: 0,
                       background: r.sender_type === 'founder' ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)',
-                      color: r.sender_type === 'founder' ? '#F59E0B' : '#6366F1',
+                      color: r.sender_type === 'founder' ? 'var(--primary, #5654D4)' : 'var(--muted, #6B7280)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
                     }}>
                       {r.sender_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '??'}

@@ -115,7 +115,7 @@ export default function EmpProfileSetup({ employeeId, employeeName, onComplete }
                 <rect x="4" y="2" width="16" height="8" rx="1" fill="white" fillOpacity="0.6"/>
               </svg>
             </div>
-            <span className="eps-logo-text">HRIS Loka</span>
+            <span className="eps-logo-text">KiniKerja</span>
           </div>
           <div className="eps-header-title">Lengkapi Profil Anda</div>
           <p className="eps-header-sub">

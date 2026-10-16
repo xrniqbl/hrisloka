@@ -12,6 +12,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import SignaturePad from 'signature_pad';
+import DOMPurify from 'dompurify';
 import {
   FiBold, FiItalic, FiUnderline, FiAlignLeft, FiAlignCenter, FiAlignRight,
   FiAlignJustify, FiList, FiSave, FiDownload, FiArrowLeft, FiRotateCcw,
@@ -20,6 +21,7 @@ import {
 import * as contractService from '../services/contractService';
 import { getAllCompanies } from '../services/companyService';
 import { generateContractPDF } from '../lib/contractPDF';
+import { useToast } from '../components/Toast';
 import './ContractManagement.css';
 
 const VARIABLES = [
@@ -48,6 +50,7 @@ const VARIABLES = [
 export default function ContractEditor({ isTemplate = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [contract, setContract] = useState(null);
   const [, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +103,7 @@ export default function ContractEditor({ isTemplate = false }) {
       setCompany(companiesRes.data[0]);
     }
     setLoading(false);
-  }, [id]);
+  }, [id, isTemplate, editor?.commands]);
 
   useEffect(() => { fetchContract(); }, [fetchContract]);
 
@@ -137,7 +140,8 @@ export default function ContractEditor({ isTemplate = false }) {
   const handleSave = async () => {
     if (!editor) return;
     setSaving(true);
-    const html = editor.getHTML();
+    // Sanitize rich-text HTML before persist (editor content is user-controlled)
+    const html = DOMPurify.sanitize(editor.getHTML(), { FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input'] });
     const updateFn = isTemplate
       ? contractService.updateTemplate
       : contractService.updateContract;
@@ -170,8 +174,10 @@ export default function ContractEditor({ isTemplate = false }) {
   const handleSaveSignature = async () => {
     if (!sigPadRef.current || sigPadRef.current.isEmpty()) {
       console.warn('[ContractEditor] Signature required');
+      toast.warning('Tanda tangan masih kosong — gambar dulu sebelum menyimpan.');
       return;
     }
+    try {
     const sigData = sigPadRef.current.toDataURL('image/png');
     await contractService.signContract(id, sigData, signFor);
     if (signFor === 'employee') setHasEmployeeSig(true);
@@ -181,6 +187,10 @@ export default function ContractEditor({ isTemplate = false }) {
     if ((signFor === 'employee' && hasCompanySig) || (signFor === 'company' && hasEmployeeSig)) {
       await contractService.updateContract(id, { status: 'signed' });
       setContract(c => ({ ...c, status: 'signed' }));
+    }
+    } catch (e) {
+      console.error('[ContractEditor] Signature save failed:', e?.message || e);
+      toast.warning('Tanda tangan belum tersimpan. Alur tetap lanjut — coba simpan ulang.');
     }
   };
 

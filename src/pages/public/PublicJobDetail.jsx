@@ -134,7 +134,7 @@ export default function PublicJobDetail() {
  </div>
 
  <div className="career-footer">
- Powered by <a href="/">HRIS Loka</a> — Platform HRIS Modern
+ Powered by <a href="/">KiniKerja</a> — Platform HRIS Modern
  </div>
  </div>
  );

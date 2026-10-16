@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
@@ -108,7 +108,7 @@ export default function EmpResetPassword() {
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" style={{ height: 36, objectFit: 'contain', maxWidth: '100%' }} />
+          <img src="/landing/kinikerjabluepanjang.png" alt="KiniKerja" style={{ height: 36, objectFit: 'contain', maxWidth: '100%' }} />
         </div>
 
         <div style={{

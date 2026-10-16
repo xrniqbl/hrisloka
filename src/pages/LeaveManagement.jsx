@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { FiPlus, FiCheck, FiX } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPanel, DialogFooter } from '@/components/ui/dialog';
 import { useBranch } from '../context/BranchContext';
 import { useRealtimeTable } from '../hooks/useRealtime';
+import { useToast } from '../components/Toast';
 import '../styles/shared.css';
 import '../styles/admin.css';
 
@@ -30,6 +31,9 @@ export default function LeaveManagement() {
   const [newLeave, setNewLeave] = useState({ type: 'cuti', startDate: '', endDate: '', reason: '', employeeId: '' });
   const [formError, setFormError] = useState('');
   const { selectedBranchId } = useBranch();
+  const { toast } = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
 
   const companyId = employee?.company_id;
 
@@ -49,6 +53,7 @@ export default function LeaveManagement() {
       console.error('[LeaveManagement] fetch failed:', err?.message || err);
       setLeaves([]);
       setFetchError(true);
+      toastRef.current.error('Gagal memuat pengajuan cuti. Coba muat ulang.');
     } finally {
       setLoading(false);
     }
@@ -67,7 +72,11 @@ export default function LeaveManagement() {
       companyId,
     );
     if (!error) fetchData();
-    else console.warn('[LeaveManagement] approve failed:', error.message);
+    else {
+      console.warn('[LeaveManagement] approve failed:', error.message);
+      setFormError('Gagal menyetujui cuti. Coba lagi.');
+      toast.error('Gagal menyetujui cuti. Coba lagi.');
+    }
   };
 
   const handleReject = async (id) => {
@@ -77,7 +86,11 @@ export default function LeaveManagement() {
       companyId,
     );
     if (!error) fetchData();
-    else console.warn('[LeaveManagement] reject failed:', error.message);
+    else {
+      console.warn('[LeaveManagement] reject failed:', error.message);
+      setFormError('Gagal menolak cuti. Coba lagi.');
+      toast.error('Gagal menolak cuti. Coba lagi.');
+    }
   };
 
   const handleSubmit = async () => {

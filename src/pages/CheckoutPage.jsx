@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,9 @@ import {
   FiCheckCircle, FiClock, FiCreditCard, FiSmartphone, FiDollarSign,
   FiArrowRight, FiZap, FiShield,
 } from 'react-icons/fi';
+// Centralized contact link (see src/lib/seo.js WA_NUMBER) — no hardcoded wa.me
+import { waEnterpriseLink } from '../lib/seo';
+import { useToast } from '../components/Toast';
 import './CheckoutPage.css';
 
 // -- Plan color map -------------------------------------------------------------
@@ -92,7 +95,20 @@ function BillingToggle({ billingCycle, onChange }) {
 }
 
 // ------------------- STEP 1 - PLAN SELECTION ----------------------------------
-function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingChange }) {
+function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingChange, plansError, onRetry }) {
+  if (!plans || plans.length === 0) {
+    return (
+      <div className="co-fadein" style={{ width: '100%', maxWidth: 560, textAlign: 'center', padding: '60px 20px' }}>
+        <div className="co-section-title">
+          <h1>Paket tidak tersedia, coba lagi</h1>
+          <p>{plansError || 'Gagal memuat daftar paket. Periksa koneksi lalu muat ulang.'}</p>
+        </div>
+        <button className="co-pay-btn primary" style={{ width: 'auto', padding: '13px 32px' }} onClick={onRetry}>
+          Muat Ulang
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="co-fadein" style={{ width: '100%', maxWidth: 960 }}>
       <div className="co-section-title">
@@ -119,12 +135,15 @@ function StepPlans({ plans, selected, onSelect, onNext, billingCycle, onBillingC
                 <div className="co-plan-price">
                   <div className="co-plan-price-amount" style={{ color }}>Custom</div>
                   <div className="co-plan-price-period">Harga sesuai kebutuhan</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>
+                    Enterprise via WhatsApp — checkout online khusus Starter/Pro
+                  </div>
                 </div>
                 <ul className="co-plan-features">
                   {(plan.features || []).map((f, i) => <li key={i}><FeatCheck />{f}</li>)}
                 </ul>
                 <a
-                  href="https://wa.me/6289512114437?text=Halo%2C%20saya%20tertarik%20dengan%20paket%20Enterprise%20KiniKerja."
+                  href={waEnterpriseLink()}
                   target="_blank" rel="noopener noreferrer"
                   className="co-plan-select-btn"
                   style={{ marginTop: 20, display: 'block', textDecoration: 'none', background: color, borderColor: color, color: '#fff', textAlign: 'center', borderRadius: 12, padding: '11px 16px', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
@@ -374,16 +393,22 @@ function StepPayment({ plan, onBack, onActivate, onMidtransPay, loading, billing
 // ------------------- STEP 3 - CONFIRMATION ------------------------------------
 function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [paymentStatus, setPaymentStatus] = useState(status);
   const [checking, setChecking] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const [countdown, setCountdown] = useState(6);
   const isActive = paymentStatus === 'active' || paymentStatus === 'paid';
+  const attemptsRef = useRef(0);
 
-  // Poll payment_orders until webhook marks paid (then subscription is active)
+  // Poll payment_orders until webhook marks paid (then subscription is active).
+  // Max ~45 retries × 4s ≈ 3 min, then show timeout state with retry button.
   useEffect(() => {
     if (isActive || !orderId) return;
 
     let cancelled = false;
     const checkStatus = async () => {
+      if (timedOut) return;
       setChecking(true);
       try {
         const { data, error } = await supabase
@@ -400,9 +425,13 @@ function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
           await onPaid?.(data);
         } else if (['cancelled', 'failed', 'expired'].includes(data.status)) {
           setPaymentStatus(data.status);
+        } else {
+          attemptsRef.current += 1;
+          if (attemptsRef.current >= 45) setTimedOut(true);
         }
       } catch (err) {
         console.error('[Payment Status Check] Error:', err);
+        toast.error('Gagal memeriksa status pembayaran. Pengecekan otomatis dilanjutkan.');
       } finally {
         if (!cancelled) setChecking(false);
       }
@@ -414,14 +443,17 @@ function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [isActive, orderId, onPaid]);
+  }, [isActive, orderId, onPaid, timedOut, toast]);
 
-  // After activation → owner setup wizard (creates company / invite code)
+  // After activation → owner setup wizard (creates company / invite code).
+  // 6s delay with visible countdown so user can read the receipt ("Lihat struk")
+  // instead of being yanked away.
   useEffect(() => {
-    if (isActive) {
-      const timer = setTimeout(() => navigate('/setup', { replace: true }), 2500);
-      return () => clearTimeout(timer);
-    }
+    if (!isActive) return;
+    setCountdown(6);
+    const tick = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
+    const timer = setTimeout(() => navigate('/setup', { replace: true }), 6000);
+    return () => { clearInterval(tick); clearTimeout(timer); };
   }, [isActive, navigate]);
 
   return (
@@ -434,8 +466,10 @@ function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
       </h2>
       <p className="co-step3-sub">
         {isActive
-          ? 'Selamat! Akun Anda sudah aktif. Lanjut setup perusahaan (~5 menit)…'
-          : checking ? 'Sedang memeriksa status pembayaran...' : 'Pembayaran sedang diverifikasi oleh Midtrans. Akun akan aktif otomatis setelah pembayaran dikonfirmasi.'}
+          ? `Selamat! Akun Anda sudah aktif. Lihat struk di atas — lanjut setup perusahaan (~5 menit) dalam ${countdown} detik…`
+          : timedOut
+            ? 'Pengecekan pembayaran habis waktu (3 menit). Jika Anda sudah membayar, klik Coba Lagi — status akan terverifikasi otomatis.'
+            : checking ? 'Sedang memeriksa status pembayaran...' : 'Pembayaran sedang diverifikasi oleh Midtrans. Akun akan aktif otomatis setelah pembayaran dikonfirmasi.'}
       </p>
       <div className="co-step3-info">
         {[
@@ -456,9 +490,15 @@ function StepConfirmation({ plan, pricePaid, status, orderId, onPaid }) {
         </button>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <button className="co-pay-btn primary" onClick={() => window.location.reload()} disabled={checking}>
-            {checking ? 'Memeriksa...' : 'Perbarui Halaman'}
-          </button>
+          {timedOut ? (
+            <button className="co-pay-btn primary" onClick={() => { attemptsRef.current = 0; setTimedOut(false); }} disabled={checking}>
+              {checking ? 'Memeriksa...' : 'Coba Lagi'}
+            </button>
+          ) : (
+            <button className="co-pay-btn primary" onClick={() => window.location.reload()} disabled={checking}>
+              {checking ? 'Memeriksa...' : 'Perbarui Halaman'}
+            </button>
+          )}
           <button className="co-pay-btn" style={{ background: 'none', border: '1.5px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }} onClick={() => navigate('/login')}>
             Kembali ke Login
           </button>
@@ -481,21 +521,37 @@ export default function CheckoutPage() {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [activating, setActivating] = useState(false);
   const [payError, setPayError] = useState('');
+  const [plansError, setPlansError] = useState('');
   const [confirmData, setConfirmData] = useState({ status: null, pricePaid: 0, orderId: null });
+  const { toast } = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
+
+  // Setiap kegagalan bayar: tampilkan inline payError SEKALIGUS toast,
+  // memakai pesan yang sama agar user selalu melihatnya.
+  const failPayment = useCallback((message) => {
+    setPayError(message);
+    toastRef.current.error(message);
+    setActivating(false);
+  }, []);
 
   // Load Midtrans Snap on mount
   useEffect(() => { loadSnapScript().catch(console.warn); }, []);
 
   // Load plans
-  useEffect(() => {
-    getAvailablePlans().then(({ data }) => {
+  const loadPlans = useCallback(() => {
+    setPlansLoading(true);
+    setPlansError('');
+    getAvailablePlans().then(({ data, error }) => {
       setPlans(data || []);
+      if (error || !data?.length) setPlansError(error?.message || '');
       const pro = data?.find(p => p.slug === 'pro');
       if (pro) setSelectedPlan(pro);
       else if (data?.[0]) setSelectedPlan(data[0]);
       setPlansLoading(false);
     });
   }, []);
+  useEffect(() => { loadPlans(); }, [loadPlans]);
 
   // Resume verify flow when Midtrans redirects back: /checkout?status=success&order_id=...
   useEffect(() => {
@@ -537,10 +593,10 @@ export default function CheckoutPage() {
     })();
   }, [searchParams]);
 
-  // Auth guard
-  const [authWait, setAuthWait] = useState(true);
-  useEffect(() => { const t = setTimeout(() => setAuthWait(false), 1500); return () => clearTimeout(t); }, []);
-  useEffect(() => { if (!authWait && !user) navigate('/login', { replace: true }); }, [authWait, user, navigate]);
+  // Auth guard — wait for AuthContext loading (not a fixed timer) so slow
+  // sessions aren't bounced to /login before auth resolves.
+  const { loading: authLoading } = useAuth();
+  useEffect(() => { if (!authLoading && !user) navigate('/login', { replace: true }); }, [authLoading, user, navigate]);
 
   const handlePaidRefresh = useCallback(async () => {
     try {
@@ -570,8 +626,7 @@ export default function CheckoutPage() {
     });
     if (error) {
       console.warn('[Checkout] activation warning:', error.message);
-      setPayError(error.message || 'Gagal mengaktifkan langganan. Coba lagi atau hubungi support.');
-      setActivating(false);
+      failPayment(error.message || 'Gagal mengaktifkan langganan. Coba lagi atau hubungi support.');
       return;
     }
     await refreshEmployee?.();
@@ -588,15 +643,13 @@ export default function CheckoutPage() {
     setPayError('');
     try {
       if (!import.meta.env.VITE_MIDTRANS_CLIENT_KEY) {
-        setPayError('Pembayaran belum dikonfigurasi (VITE_MIDTRANS_CLIENT_KEY). Hubungi administrator.');
-        setActivating(false);
+        failPayment('Pembayaran belum dikonfigurasi (VITE_MIDTRANS_CLIENT_KEY). Hubungi administrator.');
         return;
       }
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        setPayError('Sesi login berakhir. Silakan masuk kembali.');
-        setActivating(false);
+        failPayment('Sesi login berakhir. Silakan masuk kembali.');
         return;
       }
 
@@ -604,8 +657,7 @@ export default function CheckoutPage() {
         try {
           await loadSnapScript();
         } catch {
-          setPayError('Gagal memuat Midtrans Snap. Periksa koneksi atau nonaktifkan ad-blocker.');
-          setActivating(false);
+          failPayment('Gagal memuat Midtrans Snap. Periksa koneksi atau nonaktifkan ad-blocker.');
           return;
         }
       }
@@ -628,8 +680,7 @@ export default function CheckoutPage() {
           res.data?.error ||
           res.error?.message ||
           'Gagal membuat transaksi pembayaran. Pastikan Edge Function create-payment sudah di-deploy.';
-        setPayError(typeof msg === 'string' ? msg : 'Gagal membuat transaksi pembayaran.');
-        setActivating(false);
+        failPayment(typeof msg === 'string' ? msg : 'Gagal membuat transaksi pembayaran.');
         return;
       }
 
@@ -640,8 +691,7 @@ export default function CheckoutPage() {
       const serverMode = res.data?.midtrans_mode;
       const clientMode = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true' ? 'production' : 'sandbox';
       if (serverMode && serverMode !== clientMode) {
-        setPayError(MIDTRANS_MODE_MISMATCH);
-        setActivating(false);
+        failPayment(MIDTRANS_MODE_MISMATCH);
         return;
       }
 
@@ -661,6 +711,7 @@ export default function CheckoutPage() {
         onError: () => {
           setConfirmData({ status: 'failed', pricePaid: finalPrice, orderId });
           setPayError('Pembayaran gagal diproses Midtrans. Silakan coba lagi.');
+          toastRef.current.error('Pembayaran gagal diproses Midtrans. Silakan coba lagi.');
           setStep(3);
           setActivating(false);
         },
@@ -668,10 +719,9 @@ export default function CheckoutPage() {
       });
     } catch (err) {
       console.error('[Checkout] Snap error:', err.message);
-      setPayError(err.message || 'Terjadi kesalahan saat membuka pembayaran.');
-      setActivating(false);
+      failPayment(err.message || 'Terjadi kesalahan saat membuka pembayaran.');
     }
-  }, [selectedPlan, billingCycle]);
+  }, [selectedPlan, billingCycle, failPayment]);
 
   return (
     <div className="co-root">
@@ -688,7 +738,7 @@ export default function CheckoutPage() {
         <div className="co-topbar-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {user && (
             <button
-              onClick={async () => { try { await signOut(); navigate('/', { replace: true }); } catch(e) { console.error('[Checkout] signOut error:', e); } }}
+              onClick={async () => { try { await signOut(); navigate('/', { replace: true }); } catch(e) { console.error('[Checkout] signOut error:', e); toastRef.current.error('Gagal keluar. Coba lagi.'); } }}
               style={{
                 background: 'rgba(239,68,68,0.15)',
                 border: '1.5px solid rgba(239,68,68,0.4)',
@@ -761,6 +811,8 @@ export default function CheckoutPage() {
                 onNext={handleNextFromPlan}
                 billingCycle={billingCycle}
                 onBillingChange={setBillingCycle}
+                plansError={plansError}
+                onRetry={loadPlans}
               />
             )}
             {step === 2 && selectedPlan && (

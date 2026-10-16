@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import * as employeeService from '../services/employeeService';
 
 import { supabase } from '../lib/supabase';
+import { useToast } from '../components/Toast';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
@@ -81,6 +82,7 @@ function extractMerchant(text) {
 
 export default function ExpenseOCR() {
   const { employee } = useAuth();
+  const { toast } = useToast();
   const [expenses, setExpenses] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -137,7 +139,7 @@ export default function ExpenseOCR() {
   const closeModal = () => { setModal(null); setSelected(null); setReceiptFile(null); setReceiptPreview(null); setOcrResult(null); };
 
   // -- OCR: Run Tesseract on the uploaded image ------------------------------
-  const runOCR = useCallback(async (file) => {
+  const runOCR = useCallback(async  (file) => {
     setOcrLoading(true);
     setOcrProgress(0);
     setOcrResult(null);
@@ -172,9 +174,10 @@ export default function ExpenseOCR() {
     } catch (err) {
       console.error('OCR error:', err);
       setOcrResult({ error: 'Gagal membaca struk. Coba foto yang lebih jelas.' });
+      toast.error('Gagal membaca struk. Coba foto yang lebih jelas.');
     }
     setOcrLoading(false);
-  }, []);
+  }, [toast]);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -217,11 +220,11 @@ export default function ExpenseOCR() {
   };
 
   const handleApprove = async (id) => {
-    await reimbursementService.updateReimbursement(id, { status: 'approved' });
+    await reimbursementService.updateReimbursement(id, { status: 'approved' }, employee?.company_id);
     fetchData();
   };
   const handleReject = async (id) => {
-    await reimbursementService.updateReimbursement(id, { status: 'rejected' });
+    await reimbursementService.updateReimbursement(id, { status: 'rejected' }, employee?.company_id);
     fetchData();
   };
 

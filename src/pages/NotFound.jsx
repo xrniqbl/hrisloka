@@ -1,9 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/admin.css';
 
 export default function NotFound() {
   const location = useLocation();
+  const { user } = useAuth();
   const isPWA = location.pathname.startsWith('/app');
+  // Logged-out users have no guards to bounce through — send them to a
+  // useful public entry instead of a dead-end guarded route.
+  const homeHref = isPWA ? (user ? '/app/home' : '/app/welcome') : (user ? '/dashboard' : '/');
+  const homeLabel = isPWA ? (user ? 'Home' : 'Masuk PWA') : (user ? 'Dashboard' : 'Beranda');
 
   return (
     <div className="ep-loading-wrap">
@@ -26,12 +32,12 @@ export default function NotFound() {
         </p>
 
         <div className="btn-icon-row notfound-btns">
-          <Link to={isPWA ? '/app/home' : '/dashboard'} className="btn-primary" style={{ textDecoration: 'none' }}>
+          <Link to={homeHref} className="btn-primary" style={{ textDecoration: 'none' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
-            Kembali ke {isPWA ? 'Home' : 'Dashboard'}
+            Kembali ke {homeLabel}
           </Link>
           <button onClick={() => window.history.back()} className="btn-secondary">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

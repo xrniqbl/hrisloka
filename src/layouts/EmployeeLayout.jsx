@@ -44,12 +44,12 @@ import { useTranslation } from '../lib/i18n';
 import { isFounder, getRole } from '../lib/rbac';
 import { supabase } from '../lib/supabase';
 import { requestPersistentStorage } from '../lib/backgroundSync';
-import UpdatePrompt from '../components/UpdatePrompt';
 import EmpProfileSetup from '../pages/employee/EmpProfileSetup';
 import './EmployeeLayout.css';
 import { isDemoMode, DEMO_EMPLOYEE } from '../lib/demoGuard';
 import { markNoIndex } from '../lib/seo';
 import { safeGetItem, safeSetItem } from '../lib/safeStorage';
+import { sanitizeAppPath } from '../lib/safePath';
 
 const haptic = (ms = 10) => { try { navigator.vibrate?.(ms); } catch { /* intentionally empty */ } };
 
@@ -255,14 +255,24 @@ function QRScannerModal({ onClose, navigate }) {
     }
   }, [handleClose]);
 
-  // Try to route based on scanned URL
+  // Try to route based on scanned URL — only to known in-app paths.
+  // Unknown / non-app paths are refused (open in-app redirect guard);
+  // external URLs open in a new tab.
   const handleAction = () => {
     if (!result) return;
     try {
       const url = new URL(result);
       // Internal app link
       if (url.hostname === window.location.hostname) {
-        navigate(url.pathname + url.search);
+        const safe = sanitizeAppPath(url.pathname + url.search, '');
+        if (safe && (safe.startsWith('/app/') || safe === '/app')) {
+          navigate(safe);
+          handleClose();
+          return;
+        }
+        // Same-host but outside the PWA shell (e.g. /founder/..., /dashboard)
+        // — do NOT navigate in-app; open as a normal link instead.
+        window.open(url.pathname + url.search, '_blank', 'noopener');
         handleClose();
         return;
       }
@@ -340,7 +350,7 @@ function QRScannerModal({ onClose, navigate }) {
 
 export default function EmployeeLayout() {
 
-  const { user, employee, loading, isPWA, hasOnboarding } = useAuth();
+  const { user, employee, loading, isPWA, hasOnboarding, onboardingLoading } = useAuth();
   const { isEmpPathEnabled, loading: flagsLoading } = useFeatureFlags();
   const location = useLocation();
   const { locale } = useTranslation();
@@ -612,6 +622,14 @@ export default function EmployeeLayout() {
     // Guard: Google user with no employee record:
     // hasOnboarding = true  → registered a company but not in employees → block
     // hasOnboarding = false → brand new Google signup → send to checkout
+    // Wait for onboarding resolution to avoid a /checkout → /not-registered flash.
+    if (onboardingLoading) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)' }}>
+          <div style={{ width: 36, height: 36, border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      );
+    }
     if (!loading && !employee && user.app_metadata?.provider === 'google') {
       return <Navigate to={hasOnboarding ? '/not-registered' : '/checkout'} replace />;
     }
@@ -630,12 +648,17 @@ export default function EmployeeLayout() {
     }
 
     if (employee) {
-      const status = employee.account_status;
-      if (status === 'pending_verification' || (status && String(status).includes('pending'))) {
+      const status = String(employee.account_status || '');
+      // Catch-all: pending_verification, pending, pending_approval, ... —
+      // mirrors AuthRedirect in App.jsx (exact match would let
+      // e.g. pending_approval slip into the app).
+      if (status.includes('pending')) {
         return <Navigate to="/app/pending" replace />;
       }
-      if (status === 'rejected') return <Navigate to="/app/rejected" replace />;
-      if (!employee.company_id && !isFounder(user, employee)) {
+      if (status === 'rejected') {
+        return <Navigate to="/app/rejected" replace />;
+      }
+      if (!employee.company_id) {
         // Incomplete registration / orphaned account
         return <Navigate to="/app/pending" replace />;
       }
@@ -670,8 +693,8 @@ export default function EmployeeLayout() {
 
   return (
     <div className="emp-layout">
-      {/* App Update Prompt */}
-      <UpdatePrompt />
+      {/* UpdatePrompt already mounted at App root — do NOT mount twice
+          (double listeners → double reload paths on controllerchange). */}
       {/* Offline banners */}
       {isOffline && (
         <div className="offline-banner">

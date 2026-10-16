@@ -1,5 +1,5 @@
 /**
- * /api/send-push.js — Serverless push sender (VPS / Vercel)
+ * /api/send-push.js — VPS push sender (server/index.js)
  *
  * POST body:
  *   { employeeId, companyId?, title, body, url? }
@@ -10,16 +10,37 @@
  *   Authorization: Bearer <PUSH_API_SECRET>    — server/cron only
  */
 import { applyCors } from './_shared/cors.js';
+import { enforceJsonBodyLimit } from './_shared/securityHeaders.js';
+import crypto from 'node:crypto';
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_EMAIL = process.env.VAPID_EMAIL || 'mailto:kinikerja@gmail.com';
+const VAPID_EMAIL = process.env.VAPID_EMAIL || 'mailto:no-reply@kinikerja.id';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PUSH_API_SECRET = process.env.PUSH_API_SECRET;
 const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+// Fail-loud at module load: misconfigured VAPID means silent push failure
+// (web-push throws deep in sendNotification otherwise). Startup logs name
+// the missing variable explicitly.
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  console.error(
+    '[send-push] CONFIG ERROR: VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must both be set. ' +
+    'Push sends will return 503 until configured.',
+  );
+}
+
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (!a || !b) return false;
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
 
 const rateLimitMap = new Map();
 function checkRateLimit(ip) {
@@ -41,8 +62,8 @@ async function resolveCaller(req, admin) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!token) return { kind: 'none' };
 
-  // Server secret (cron / internal)
-  if (PUSH_API_SECRET && token === PUSH_API_SECRET) {
+  // Server secret (cron / internal) — timing-safe compare, no oracle
+  if (PUSH_API_SECRET && safeEqual(token, PUSH_API_SECRET)) {
     return { kind: 'secret' };
   }
 
@@ -73,12 +94,18 @@ async function resolveCaller(req, admin) {
 }
 
 export default async function handler(req, res) {
-  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
+  const originOk = applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+  // Reject oversized JSON bodies before auth (matches express 1mb limit)
+  if (!enforceJsonBodyLimit(req, res)) return;
+  // Browser requests must come from allowlisted Origin
+  if (req.headers.origin && !originOk) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+  // Socket address is the key — X-Forwarded-For is not trusted.
+  const ip = req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
@@ -124,12 +151,13 @@ export default async function handler(req, res) {
     }
     companyId = caller.companyId;
 
-    // Only HR/admin can broadcast or push to others
-    const isAdmin = ['super_admin', 'hr_admin', 'manager'].includes(caller.role);
-    if (broadcast && !isAdmin) {
+    // Only HR/admin can broadcast; managers included for single-push only
+    const canBroadcast = ['super_admin', 'hr_admin'].includes(caller.role);
+    const canPushOthers = ['super_admin', 'hr_admin', 'manager'].includes(caller.role);
+    if (broadcast && !canBroadcast) {
       return res.status(403).json({ error: 'Forbidden: broadcast requires HR/admin' });
     }
-    if (!broadcast && employeeId && String(employeeId) !== String(caller.employee?.id) && !isAdmin) {
+    if (!broadcast && employeeId && String(employeeId) !== String(caller.employee?.id) && !canPushOthers) {
       return res.status(403).json({ error: 'Forbidden' });
     }
   } else if (caller.kind === 'secret') {
@@ -229,7 +257,23 @@ export default async function handler(req, res) {
     );
 
     if (expiredEndpoints.length > 0) {
-      await admin.from('push_subscriptions').delete().in('endpoint', expiredEndpoints);
+      // Tenant-scoped cleanup: only delete endpoints belonging to employees
+      // of THIS company (endpoint strings are globally unique but a caller
+      // must never delete another tenant's rows, even on collision/confusion).
+      let cleanup = admin.from('push_subscriptions').delete().in('endpoint', expiredEndpoints);
+      if (companyId && employeeIds.length > 0) {
+        cleanup = cleanup.in('employee_id', employeeIds);
+      } else if (companyId) {
+        // No employee scope resolvable — refuse cross-tenant delete.
+        console.warn('[send-push] skipping expired-endpoint cleanup: no employee scope');
+        expiredEndpoints.length = 0;
+      } else {
+        console.warn('[send-push] skipping expired-endpoint cleanup: no company scope');
+        expiredEndpoints.length = 0;
+      }
+      if (expiredEndpoints.length > 0) {
+        await cleanup;
+      }
     }
 
     return res.status(200).json({

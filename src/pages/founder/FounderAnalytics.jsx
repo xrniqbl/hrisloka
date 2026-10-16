@@ -66,7 +66,7 @@ export default function FounderAnalytics() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   const handleRefresh = () => { setRefreshing(true); fetchData(); };

@@ -9,6 +9,7 @@ import { sendWhatsApp, buildPayslipMessage } from '../services/whatsappService';
 import { generatePayslipPDF } from '../lib/pdfGenerator';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import { useToast } from '../components/Toast';
 import '../styles/shared.css';
 import '../styles/admin.css';
 
@@ -17,6 +18,7 @@ const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 export default function Payslips() {
   const { t } = useTranslation();
   const { employee } = useAuth();
+  const { toast } = useToast();
  const [employees, setEmployees] = useState([]);
  const [sending, setSending] = useState(false);
  const [sendResult, setSendResult] = useState(null);
@@ -104,8 +106,10 @@ export default function Payslips() {
  if (!printWindow) { handleDownloadPDF(slip); return; }
  const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
  const emp = slip.employee || slip;
- const companyName = (() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'HRIS Loka'; } catch { return 'HRIS Loka'; } })();
- printWindow.document.write(`<!DOCTYPE html><html><head><title>Payslip - ${emp.name}</title>
+ const companyName = (() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'KiniKerja'; } catch { return 'KiniKerja'; } })();
+ // Escape user-controlled strings before interpolating into print HTML
+ const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+ printWindow.document.write(`<!DOCTYPE html><html><head><title>Payslip - ${esc(emp.name)}</title>
  <style>body{font-family:'Inter Tight',system-ui,sans-serif;padding:40px;max-width:700px;margin:0 auto;color:#1e293b}
  h1{font-size:20px;color:#635BFF;margin:0}h2{font-size:14px;color:#64748B;font-weight:500;margin:4px 0 0}
  .header{border-bottom:2px solid #635BFF;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between}
@@ -113,13 +117,13 @@ export default function Payslips() {
  .label{color:#64748B}.value{text-align:right;font-weight:600}.deduction{color:#DC2626}
  .total{background:#635BFF;color:#fff;padding:12px 16px;border-radius:8px;margin-top:16px;display:flex;justify-content:space-between;font-weight:700}
  @media print{body{padding:20px}}</style></head><body>
- <div class="header"><div><h1>${companyName}</h1><h2>Slip Gaji Karyawan</h2></div>
- <div style="text-align:right"><div style="font-weight:700;font-size:14px">Periode: ${slip.period || '-'}</div>
+ <div class="header"><div><h1>${esc(companyName)}</h1><h2>Slip Gaji Karyawan</h2></div>
+ <div style="text-align:right"><div style="font-weight:700;font-size:14px">Periode: ${esc(slip.period) || '-'}</div>
  <div style="font-size:11px;color:#64748B">Dicetak: ${new Date().toLocaleDateString('id-ID')}</div></div></div>
- <table><tr><td class="label">Nama</td><td class="value">${emp.name || '-'}</td></tr>
- <tr><td class="label">NIP</td><td class="value">${emp.nip || '-'}</td></tr>
- <tr><td class="label">Divisi</td><td class="value">${emp.division || '-'}</td></tr>
- <tr><td class="label">Jabatan</td><td class="value">${emp.position || '-'}</td></tr></table>
+ <table><tr><td class="label">Nama</td><td class="value">${esc(emp.name) || '-'}</td></tr>
+ <tr><td class="label">NIP</td><td class="value">${esc(emp.nip) || '-'}</td></tr>
+ <tr><td class="label">Divisi</td><td class="value">${esc(emp.division) || '-'}</td></tr>
+ <tr><td class="label">Jabatan</td><td class="value">${esc(emp.position) || '-'}</td></tr></table>
  <table><tr><td class="label">Gaji Pokok</td><td class="value">${formatCurrency(slip.baseSalary)}</td></tr>
  <tr><td class="label">Tunjangan</td><td class="value">${formatCurrency(slip.allowance)}</td></tr>
  ${slip.overtimePay ? `<tr><td class="label">Lembur (${slip.overtimeHours || 0} jam)</td><td class="value">${formatCurrency(slip.overtimePay)}</td></tr>` : ''}
@@ -134,6 +138,8 @@ export default function Payslips() {
   setSending(true);
   setSendResult(null);
   let successCount = 0;
+  let waPushFailCount = 0;
+  const notifyFailed = () => { waPushFailCount++; };
   const month = now.toLocaleDateString('id-ID', { month: 'long' });
   const year = now.getFullYear();
   for (const slip of payslips) {
@@ -158,15 +164,18 @@ export default function Payslips() {
       }
       // WhatsApp
       if (emp.phone) {
-        sendWhatsApp(emp.phone, buildPayslipMessage(emp.name, month, year, slip.takeHomePay)).catch((e) => console.warn('[Action failed]', e?.message || e));
+        sendWhatsApp(emp.phone, buildPayslipMessage(emp.name, month, year, slip.takeHomePay)).catch((e) => { console.warn('[Action failed]', e?.message || e); notifyFailed(); });
       }
       // Push
-      sendPayslipPush(emp.id, month, year).catch((e) => console.warn('[Action failed]', e?.message || e));
+      sendPayslipPush(emp.id, month, year).catch((e) => { console.warn('[Action failed]', e?.message || e); notifyFailed(); });
       successCount++;
     } catch { /* continue */ }
   }
   setSending(false);
   setSendResult(`Berhasil mengirim notifikasi ke ${successCount} karyawan`);
+  if (waPushFailCount > 0) {
+    toast.warning(`${waPushFailCount} slip gagal dikirim via WA/push. Slip tetap diterbitkan — coba kirim ulang.`);
+  }
   setTimeout(() => setSendResult(null), 5000);
  };
 
@@ -255,7 +264,7 @@ export default function Payslips() {
  <div className="modal-body">
  {/* Company Header */}
  <div className="payslip-company-header">
- <div className="payslip-company-name">{(() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'HRIS Loka'; } catch { return 'HRIS Loka'; } })()}</div>
+ <div className="payslip-company-name">{(() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'KiniKerja'; } catch { return 'KiniKerja'; } })()}</div>
  <div className="payslip-company-sub">PT. Solusi Teknologi Indonesia</div>
  <div className="payslip-period-badge">
  Periode: {selected.period}
@@ -330,7 +339,7 @@ export default function Payslips() {
 
  {/* Footer Note */}
  <div className="payslip-footer-note">
- Dokumen ini dibuat secara otomatis oleh sistem HRIS Loka
+ Dokumen ini dibuat secara otomatis oleh sistem KiniKerja
  </div>
  </div>
  <div className="modal-footer">

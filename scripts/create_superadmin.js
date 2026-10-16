@@ -1,18 +1,45 @@
 /**
- * HRIS Loka — Create Founder/Superadmin User
+ * KiniKerja — Create Founder/Superadmin User
  * Jalankan: node scripts/create_superadmin.js
- * 
+ *
  * Isi SERVICE_ROLE_KEY dari: Supabase Dashboard → Settings → API → service_role
+ *
+ * SEMUA kredensial dibaca dari environment / argumen — JANGAN hardcode password di sini.
+ *   SUPABASE_URL              (wajib)
+ *   SUPABASE_SERVICE_ROLE_KEY (wajib)
+ *   FOUNDER_EMAIL             (default: founder@kinikerja.com)
+ *   FOUNDER_PASSWORD          (wajib — akan diminta jika kosong)
  */
 
-const SUPABASE_URL = 'https://gfimdkypxiflnmklfsnk.supabase.co';
-const SERVICE_ROLE_KEY = 'ISI_SERVICE_ROLE_KEY_DISINI'; // ← isi dari dashboard
+import readline from 'readline/promises';
+import { stdin, stdout } from 'process';
 
-const EMAIL = 'hrisloka@gmail.com';
-const PASSWORD = 'HrisLoka@2026!';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const EMAIL = process.env.FOUNDER_EMAIL || 'founder@kinikerja.com';
+
+async function getPassword() {
+  if (process.env.FOUNDER_PASSWORD) return process.env.FOUNDER_PASSWORD;
+  const rl = readline.createInterface({ input: stdin, output: stdout });
+  const pw = await rl.question('Masukkan password founder (disembunyikan): ');
+  rl.close();
+  return pw.trim();
+}
 
 async function createFounder() {
-  console.log('🚀 Membuat akun Founder HRIS Loka...\n');
+  // Validasi konfigurasi SEBELUM request — beri pesan jelas, bukan 401 samar.
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    console.error('\n❌ Konfigurasi tidak lengkap. Set env var berikut sebelum menjalankan script:');
+    console.error('   SUPABASE_URL              — URL project Supabase');
+    console.error('   SUPABASE_SERVICE_ROLE_KEY  — service_role key dari Dashboard > Settings > API');
+    console.error('   FOUNDER_EMAIL              — (opsional, default founder@kinikerja.com)');
+    console.error('   FOUNDER_PASSWORD           — (wajib, atau akan diminta interaktif)\n');
+    process.exit(1);
+  }
+
+  const PASSWORD = await getPassword();
+
+  console.log('🚀 Membuat akun Founder KiniKerja...\n');
 
   // 1. Buat auth user
   const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
@@ -26,7 +53,7 @@ async function createFounder() {
       email: EMAIL,
       password: PASSWORD,
       email_confirm: true, // langsung konfirmasi tanpa email
-      user_metadata: { name: 'HRIS Loka Founder' },
+      user_metadata: { name: 'KiniKerja Founder' },
     }),
   });
 
@@ -40,10 +67,16 @@ async function createFounder() {
         headers: { 'apikey': SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SERVICE_ROLE_KEY}` },
       });
       const listData = await listRes.json();
-      const existing = listData.users?.find(u => u.email === EMAIL);
+      if (!listData.users) {
+        console.error('❌ Gagal mengambil daftar user. Cek SUPABASE_SERVICE_ROLE_KEY.');
+        return;
+      }
+      const existing = listData.users.find(u => u.email === EMAIL);
       if (existing) {
         console.log(`✅ User ditemukan: ${existing.id}`);
         await upsertEmployee(existing.id);
+      } else {
+        console.error('❌ User terdaftar tapi tidak ditemukan di list.');
       }
     } else {
       console.error('❌ Error buat user:', JSON.stringify(data, null, 2));
@@ -67,8 +100,8 @@ async function upsertEmployee(userId) {
     },
     body: JSON.stringify({
       auth_user_id: userId,
-      email: 'hrisloka@gmail.com',
-      name: 'HRIS Loka',
+      email: EMAIL,
+      name: 'KiniKerja',
       role: 'founder',
       status: 'active',
     }),
@@ -84,8 +117,8 @@ async function upsertEmployee(userId) {
   console.log('\n══════════════════════════════════════════');
   console.log('✅ AKUN FOUNDER SIAP DIGUNAKAN');
   console.log('══════════════════════════════════════════');
-  console.log(`📧 Email    : hrisloka@gmail.com`);
-  console.log(`🔑 Password : ${PASSWORD}`);
+  console.log(`📧 Email    : ${EMAIL}`);
+  console.log(`🔑 Password : (disembunyikan — gunakan yang Anda masukkan)`);
   console.log(`👑 Role     : founder (akses penuh)`);
   console.log(`🌐 Login di : http://localhost:5173/login`);
   console.log('══════════════════════════════════════════\n');

@@ -112,15 +112,31 @@ export async function updateLeave(id, updates, companyId = null) {
     const approved = updates.status === 'approved';
 
     if (emp?.email) {
-      sendLeaveApprovalEmail({
-        employeeName: emp.name,
-        employeeEmail: emp.email,
-        status: updates.status,
-        leaveType: data.type,
-        startDate,
-        endDate,
-        notes: data.rejection_reason || '',
-      }).catch(e => console.warn('[leaveService] email error:', e));
+      try {
+        const { shouldNotifyEmployee } = await import('./companySettingsService');
+        const allow = await shouldNotifyEmployee(data.employee_id, 'emailLeave');
+        if (allow) {
+          sendLeaveApprovalEmail({
+            employeeName: emp.name,
+            employeeEmail: emp.email,
+            status: updates.status,
+            leaveType: data.type,
+            startDate,
+            endDate,
+            notes: data.rejection_reason || '',
+          }).catch(e => console.warn('[leaveService] email error:', e));
+        }
+      } catch {
+        sendLeaveApprovalEmail({
+          employeeName: emp.name,
+          employeeEmail: emp.email,
+          status: updates.status,
+          leaveType: data.type,
+          startDate,
+          endDate,
+          notes: data.rejection_reason || '',
+        }).catch(e => console.warn('[leaveService] email error:', e));
+      }
     }
 
     if (emp?.phone) {

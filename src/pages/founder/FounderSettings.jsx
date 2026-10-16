@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FiSave, FiCheck, FiGlobe, FiShield, FiSettings, FiAlertTriangle } from 'react-icons/fi';
 import { useToast } from '../../components/Toast';
 import { useFeatureFlags } from '../../context/FeatureFlagContext';
@@ -12,11 +12,11 @@ const TABS = [
 ];
 
 const DEFAULT_PLATFORM = {
-  name: 'HRIS Loka',
+  name: 'KiniKerja',
   tagline: 'Platform HRIS Modern untuk Indonesia',
-  support_email: 'support@hrisloka.id',
-  website: 'https://hrisloka.id',
-  primary_color: '#635BFF',
+  support_email: 'support@kinikerja.id',
+  website: 'https://kinikerja.id',
+  primary_color: '#5654D4',
 };
 
 const DEFAULT_MAINTENANCE = {
@@ -54,7 +54,7 @@ function Toggle({ checked, onChange }) {
   return (
     <label style={{ position: 'relative', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
       <input type="checkbox" checked={checked} onChange={onChange} style={{ display: 'none' }} />
-      <div style={{ width: 44, height: 24, borderRadius: 12, background: checked ? 'var(--primary, #635BFF)' : '#D1D5DB', transition: 'background 0.2s' }}>
+      <div style={{ width: 44, height: 24, borderRadius: 12, background: checked ? 'var(--primary, #5654D4)' : '#D1D5DB', transition: 'background 0.2s' }}>
         <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: checked ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
       </div>
     </label>
@@ -209,7 +209,7 @@ export default function FounderSettings() {
               display: 'flex', alignItems: 'center', gap: 7, padding: '8px 18px',
               borderRadius: 7, border: 'none', cursor: 'pointer',
               fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
-              background: activeTab === tab.key ? 'var(--primary, #635BFF)' : 'none',
+              background: activeTab === tab.key ? 'var(--primary, #5654D4)' : 'none',
               color: activeTab === tab.key ? '#fff' : 'var(--text-secondary)',
               transition: 'all 0.15s',
             }}

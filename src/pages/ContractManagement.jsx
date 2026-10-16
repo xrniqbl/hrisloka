@@ -24,6 +24,7 @@ import './ContractManagement.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import { useToast } from '../components/Toast';
 
 const CONTRACT_TYPES = {
   pkwt: { label: 'PKWT', color: '#4F46E5', bg: '#F0EEFF' },
@@ -43,6 +44,7 @@ const STATUS_MAP = {
 export default function ContractManagement() {
   const { t } = useTranslation();
   const { employee } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [tab, setTab] = useState('contracts'); // 'contracts' | 'templates'
@@ -348,7 +350,10 @@ export default function ContractManagement() {
                               try {
                               setPdfLoading(c.id);
                               await generateContractPDF(c.html_content, c.contract_number);
-                              } catch (e) { console.error('[Contract] PDF error:', e); } finally {
+                              } catch (e) {
+                                console.error('[Contract] PDF error:', e);
+                                toast.error('Gagal membuat PDF kontrak. Coba lagi.');
+                              } finally {
                                 setPdfLoading(null);
                               }
                             }}

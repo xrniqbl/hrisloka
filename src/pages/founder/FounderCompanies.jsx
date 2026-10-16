@@ -1,6 +1,9 @@
-﻿import { useState, useEffect } from 'react';
-import { FiPlus, FiSearch, FiX, FiEdit2, FiToggleLeft, FiToggleRight, FiCopy, FiUsers, FiGlobe } from 'react-icons/fi';
+import { useState, useEffect, useCallback } from 'react';
+import { FiPlus, FiSearch, FiX, FiEdit2, FiToggleLeft, FiToggleRight, FiCopy } from 'react-icons/fi';
+import { Building2, CheckCircle2, Users } from 'lucide-react';
+import MetricStatCards from '../../components/MetricStatCards';
 import * as founderService from '../../services/founderService';
+import { supabase } from '../../lib/supabase';
 import { useToast } from '../../components/Toast';
 import './founder.css';
 
@@ -73,7 +76,7 @@ export default function FounderCompanies() {
   const [saving, setSaving] = useState(false);
   const [newCompanyCode, setNewCompanyCode] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [{ data: companiesData }, { data: planData }] = await Promise.all([
         founderService.getCompaniesWithStats(),
@@ -86,9 +89,9 @@ export default function FounderCompanies() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   if (loading) return <SkeletonPage cols={7} rows={6} />;
 
@@ -117,7 +120,6 @@ export default function FounderCompanies() {
     setSaving(true);
     try {
       if (editing) {
-        const { supabase } = await import('../../lib/supabase');
         const { data } = await supabase.from('companies').update({
           name: form.name, industry: form.industry, phone: form.phone,
           website: form.website, address: form.address,
@@ -153,7 +155,6 @@ export default function FounderCompanies() {
 
   const handleToggleActive = async (company) => {
     try {
-      const { supabase } = await import('../../lib/supabase');
       const { data } = await supabase.from('companies').update({ is_active: !company.is_active }).eq('id', company.id).select().single();
       if (data) setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, is_active: !company.is_active } : c));
     } catch {
@@ -183,29 +184,22 @@ export default function FounderCompanies() {
         </div>
       </div>
 
-      {/* Quick stats - data real dari Supabase */}
-      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{companies.length}</div>
-          <div className="fp-stat-label">Total Companies</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{companies.filter(c => c.is_active).length}</div>
-          <div className="fp-stat-label">Active</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{companies.reduce((sum, c) => sum + (c.employee_count || 0), 0)}</div>
-          <div className="fp-stat-label">Total Employees Managed</div>
-        </div>
-      </div>
+      <MetricStatCards
+        className="fp-metric-strip"
+        items={[
+          { key: 'total', label: 'Total Companies', value: companies.length, icon: Building2 },
+          { key: 'active', label: 'Active', value: companies.filter((c) => c.is_active).length, icon: CheckCircle2 },
+          { key: 'emps', label: 'Employees Managed', value: companies.reduce((sum, c) => sum + (c.employee_count || 0), 0), icon: Users },
+        ]}
+      />
 
       <div className="fp-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+        <div className="fp-toolbar">
           <div className="fp-search">
             <FiSearch className="fp-search-icon" />
             <input placeholder="Search by name, code, or industry..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>{filtered.length} companies</span>
+          <span className="fp-toolbar-meta">{filtered.length} companies</span>
         </div>
 
         <div className="fp-table-wrap">

@@ -12,13 +12,16 @@ export async function getAllKPI(companyId) {
   return { data: data || [], error };
 }
 
-// Get KPI for specific employee
-export async function getEmployeeKPI(employeeId) {
-  const { data, error } = await supabase
+// Get KPI for specific employee — optional companyId scope (defense in depth).
+// kpi_records HAS company_id, so read scoping applies directly; when it is
+// absent the employee→company join is used as fallback. RLS remains primary.
+export async function getEmployeeKPI(employeeId, companyId = null) {
+  let query = supabase
     .from('kpi_records')
     .select('*, kpi_metrics(*)')
-    .eq('employee_id', employeeId)
-    .order('period', { ascending: false });
+    .eq('employee_id', employeeId);
+  if (companyId) query = query.eq('company_id', companyId);
+  const { data, error } = await query.order('period', { ascending: false });
   return { data: data || [], error };
 }
 

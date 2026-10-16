@@ -36,6 +36,15 @@ export const supabase = createClient(
   supabaseAnonKey || 'test-anon-key',
 );
 
+// Fail-fast in production builds: a misbuilt prod bundle must never silently
+// talk to localhost. The fatal overlay above already covers dev; this throws
+// only when a production bundle somehow ships without env.
+if (missingEnv && typeof import.meta !== 'undefined' && import.meta.env?.PROD) {
+  throw new Error(
+    '[Supabase] Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY in production build.',
+  );
+}
+
 export const supabaseConfigError = missingEnv
   ? 'VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY belum dikonfigurasi.'
   : null;

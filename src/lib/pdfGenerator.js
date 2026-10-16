@@ -22,7 +22,7 @@ export async function generatePayslipPDF(employee, payrollData) {
  doc.setTextColor(255, 255, 255);
  doc.setFontSize(20);
  doc.setFont('helvetica', 'bold');
- doc.text('HRIS Loka', marginL, 18);
+ doc.text('KiniKerja', marginL, 18);
 
  doc.setFontSize(10);
  doc.setFont('helvetica', 'normal');
@@ -206,7 +206,7 @@ export async function generatePayslipPDF(employee, payrollData) {
 
  doc.setTextColor(170, 170, 170);
  doc.setFontSize(7);
- doc.text('Dokumen ini dibuat secara otomatis oleh sistem HRIS Loka dan tidak memerlukan tanda tangan.', W / 2, y, { align: 'center' });
+ doc.text('Dokumen ini dibuat secara otomatis oleh sistem KiniKerja dan tidak memerlukan tanda tangan.', W / 2, y, { align: 'center' });
  doc.text(`Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, W / 2, y + 8, { align: 'center' });
 
  const fileName = `Payslip_${employee.name}_${payrollData.month}_${payrollData.year}.pdf`;

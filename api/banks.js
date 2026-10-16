@@ -1,9 +1,10 @@
 /**
- * /api/banks.js — Vercel Serverless Function
+ * /api/banks.js — VPS API handler (server/index.js)
  * Returns available Indonesian bank list via api.co.id
  * Bank API key stays server-side (process.env.BANK_VALIDATION_API_KEY)
  */
 import { applyCors } from './_shared/cors.js';
+import { enforceJsonBodyLimit } from './_shared/securityHeaders.js';
 
 
 // Simple in-memory rate limit: max 30 req/min per IP.
@@ -27,11 +28,18 @@ function checkRateLimit(ip) {
 
 // Cache server-side: daftar bank jarang berubah — upstream dipanggil maksimal
 // 1x per 24 jam per instance (hemat kuota berbayar walau endpoint publik).
+// SHORT-TTL NOTE: in-memory cache is per serverless instance, so cold starts
+// each fetch upstream once — fan-out is bounded by the 24h TTL (not per
+// request), and failures below use a 5-min negative cache to avoid retry
+// storms draining paid quota. No new infra (no shared store) by design.
 let bankCache = { data: null, fetchedAt: 0 };
 const BANK_CACHE_TTL = 24 * 60 * 60 * 1000;
+// Negative cache: suppress upstream retry for 5 min after a failure.
+let bankFailureAt = 0;
+const BANK_FAILURE_TTL = 5 * 60 * 1000;
 
 export default async function handler(req, res) {
-  applyCors(req, res, { methods: 'GET, OPTIONS', headers: 'Content-Type' });
+  const originOk = applyCors(req, res, { methods: 'GET, OPTIONS', headers: 'Content-Type' });
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -39,9 +47,15 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  // Rate limiting
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+  // Browser requests must come from an allowlisted origin — the return value
+  // was previously ignored, so disallowed origins were served anyway.
+  if (req.headers.origin && !originOk) {
+    return res.status(403).json({ is_success: false, message: 'Origin not allowed' });
+  }
+  // Reject oversized bodies even on GET (defensive; matches express 1mb limit)
+  if (!enforceJsonBodyLimit(req, res)) return;
+  // Rate limiting (socket address is the key — X-Forwarded-For is not trusted)
+  const ip = req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ is_success: false, message: 'Too many requests. Try again later.' });
   }
@@ -51,6 +65,15 @@ export default async function handler(req, res) {
     if (bankCache.data && Date.now() - bankCache.fetchedAt < BANK_CACHE_TTL) {
       res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
       return res.status(200).json({ is_success: true, data: bankCache.data, cached: true });
+    }
+    // Negative cache: recent upstream failure → serve stale cache or 502
+    // without re-hitting paid quota.
+    if (Date.now() - bankFailureAt < BANK_FAILURE_TTL) {
+      if (bankCache.data) {
+        res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+        return res.status(200).json({ is_success: true, data: bankCache.data, cached: true });
+      }
+      return res.status(502).json({ is_success: false, message: 'Bank service unavailable' });
     }
 
     const apiKey = process.env.BANK_VALIDATION_API_KEY || '';
@@ -71,6 +94,7 @@ export default async function handler(req, res) {
     if (!response.ok || data?.is_success === false) {
       // Normalisasi: jangan teruskan body/status upstream mentah (bisa bocorkan hint key)
       console.warn('[banks] upstream error:', response.status);
+      bankFailureAt = Date.now();
       // Fallback ke cache basi bila ada, agar form tetap fungsi
       if (bankCache.data) {
         res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
@@ -84,6 +108,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     return res.status(200).json({ is_success: true, data: banks });
   } catch {
+    bankFailureAt = Date.now();
     res.status(500).json({ is_success: false, message: 'Bank service unavailable' });
   }
 }

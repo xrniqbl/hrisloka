@@ -28,29 +28,44 @@ export function FeatureFlagProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const next = await loadFeatureFlags();
-    setFlags(next);
-    setLoading(false);
-    return next;
+    try {
+      const next = await loadFeatureFlags();
+      setFlags(next);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     let cancelled = false;
+    // Fail-open timeout: a hung platform_settings query must never trap the
+    // app on an infinite spinner (guards render PageLoader while loading).
+    const timeout = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 15000);
     loadFeatureFlags().then((next) => {
       if (!cancelled) {
         setFlags(next);
         setLoading(false);
+        clearTimeout(timeout);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setLoading(false);
+        clearTimeout(timeout);
       }
     });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, []);
 
   const value = useMemo(() => ({
     flags,
     loading,
-    isEnabled: (key) => isFeatureEnabled(flags, key),
-    isPathEnabled: (path) => isPathFeatureEnabled(flags, path, FEATURE_ROUTE_MAP),
-    isEmpPathEnabled: (path) => isPathFeatureEnabled(flags, path, FEATURE_EMP_ROUTE_MAP),
+    // Fail-closed while loading: provider default is all-true, so gate on
+    // loading to avoid leaking features on first paint.
+    isEnabled: (key) => (loading ? false : isFeatureEnabled(flags, key)),
+    isPathEnabled: (path) => (loading ? false : isPathFeatureEnabled(flags, path, FEATURE_ROUTE_MAP)),
+    isEmpPathEnabled: (path) => (loading ? false : isPathFeatureEnabled(flags, path, FEATURE_EMP_ROUTE_MAP)),
     refresh,
   }), [flags, loading, refresh]);
 

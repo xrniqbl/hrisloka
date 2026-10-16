@@ -15,18 +15,23 @@ const initialForm = {
  eduLevel: '', eduMajor: '', eduUniversity: '', eduYear: '',
 };
 
-export default function EmployeeModal({ isOpen, onClose, onSave, employee = null, divisions = [] }) {
- const [form, setForm] = useState(employee ? {
- name: employee.name || '', email: employee.email || '', phone: employee.phone || '',
- division: employee.division || '', position: employee.position || '', status: employee.status || 'permanent',
- joinDate: employee.join_date || employee.joinDate || '', birthDate: employee.birth_date || employee.birthDate || '', address: employee.address || '', nik: employee.nik || '',
- contractStart: employee.contract_start || employee.contractStart || '', contractEnd: employee.contract_end || employee.contractEnd || '',
- baseSalary: employee.base_salary || employee.baseSalary || '', allowance: employee.allowance || '',
- emergencyName: employee.emergency_name || employee.emergencyContact?.name || '', emergencyRelation: employee.emergency_relation || employee.emergencyContact?.relation || '', emergencyPhone: employee.emergency_phone || employee.emergencyContact?.phone || '',
- bankName: employee.bank_name || employee.bankAccount?.bank || '', bankNumber: employee.bank_number || employee.bankAccount?.number || '', bankHolder: employee.bank_holder || employee.bankAccount?.holder || '',
- eduLevel: employee.edu_level || employee.education?.level || '', eduMajor: employee.edu_major || employee.education?.major || '', eduUniversity: employee.edu_university || employee.education?.university || '', eduYear: employee.edu_year || employee.education?.year || '',
- } : initialForm);
+// Fallback departments (matches departments_setup.sql seed data)
+// Module-scoped so it stays stable across renders (safe as an effect dep).
+const FALLBACK_DEPTS = [
+ { id: 1, name: 'Human Resources & General Affairs' },
+ { id: 2, name: 'Finance & Accounting' },
+ { id: 3, name: 'Information Technology' },
+ { id: 4, name: 'Legal & Compliance' },
+ { id: 5, name: 'Sales & Business Development' },
+ { id: 6, name: 'Marketing & Communications' },
+ { id: 7, name: 'Customer Service' },
+ { id: 8, name: 'Product & Design' },
+ { id: 9, name: 'Operations & Logistics' },
+ { id: 10, name: 'Production & Manufacturing' },
+];
 
+export default function EmployeeModal({ isOpen, onClose, onSave, employee = null, divisions = [] }) {
+ const [form, setForm] = useState(initialForm);
  const [activeTab, setActiveTab] = useState('personal');
  const [previewAvatar, setPreviewAvatar] = useState(() => {
    // If editing existing employee with photo, show it; else pick a default
@@ -49,19 +54,6 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
  const [bankList, setBankList] = useState(COMMON_BANKS);
  const [bankSearch, setBankSearch] = useState('');
 
- // Fallback departments (matches departments_setup.sql seed data)
- const FALLBACK_DEPTS = [
- { id: 1, name: 'Human Resources & General Affairs' },
- { id: 2, name: 'Finance & Accounting' },
- { id: 3, name: 'Information Technology' },
- { id: 4, name: 'Legal & Compliance' },
- { id: 5, name: 'Sales & Business Development' },
- { id: 6, name: 'Marketing & Communications' },
- { id: 7, name: 'Customer Service' },
- { id: 8, name: 'Product & Design' },
- { id: 9, name: 'Operations & Logistics' },
- { id: 10, name: 'Production & Manufacturing' },
- ];
 
  useEffect(() => {
  if (!isOpen) return;
@@ -81,24 +73,48 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
  });
  }, [isOpen]);
 
- // Reset form when employee prop changes (e.g., editing a different employee)
+ // Reset form when modal opens or employee changes
  useEffect(() => {
- if (isOpen) {
- setForm(employee ? {
- name: employee.name || '', email: employee.email || '', phone: employee.phone || '',
- division: employee.division || '', position: employee.position || '', status: employee.status || 'permanent',
- joinDate: employee.join_date || employee.joinDate || '', birthDate: employee.birth_date || employee.birthDate || '', address: employee.address || '', nik: employee.nik || '',
- contractStart: employee.contract_start || employee.contractStart || '', contractEnd: employee.contract_end || employee.contractEnd || '',
- baseSalary: employee.base_salary || employee.baseSalary || '', allowance: employee.allowance || '',
- emergencyName: employee.emergency_name || employee.emergencyContact?.name || '', emergencyRelation: employee.emergency_relation || employee.emergencyContact?.relation || '', emergencyPhone: employee.emergency_phone || employee.emergencyContact?.phone || '',
- bankName: employee.bank_name || employee.bankAccount?.bank || '', bankNumber: employee.bank_number || employee.bankAccount?.number || '', bankHolder: employee.bank_holder || employee.bankAccount?.holder || '',
- eduLevel: employee.edu_level || employee.education?.level || '', eduMajor: employee.edu_major || employee.education?.major || '', eduUniversity: employee.edu_university || employee.education?.university || '', eduYear: employee.edu_year || employee.education?.year || '',
- gender: employee.gender || '',
- } : initialForm);
- setPreviewAvatar(employee?.photo_url || getDefaultAvatar(employee?.gender || ''));
- setActiveTab('personal');
- }
- }, [isOpen, employee]);
+ if (!isOpen) return;
+
+ const newForm = employee ? {
+   name: employee.name || '',
+   email: employee.email || '',
+   phone: employee.phone || '',
+   division: employee.division || '',
+   position: employee.position || '',
+   status: employee.status || 'permanent',
+   joinDate: employee.join_date || employee.joinDate || '',
+   birthDate: employee.birth_date || employee.birthDate || '',
+   address: employee.address || '',
+   nik: employee.nik || '',
+   contractStart: employee.contract_start || employee.contractStart || '',
+   contractEnd: employee.contract_end || employee.contractEnd || '',
+   baseSalary: employee.base_salary || employee.baseSalary || '',
+   allowance: employee.allowance || '',
+   emergencyName: employee.emergency_name || employee.emergencyContact?.name || '',
+   emergencyRelation: employee.emergency_relation || employee.emergencyContact?.relation || '',
+   emergencyPhone: employee.emergency_phone || employee.emergencyContact?.phone || '',
+   bankName: employee.bank_name || employee.bankAccount?.bank || '',
+   bankNumber: employee.bank_number || employee.bankAccount?.number || '',
+   bankHolder: employee.bank_holder || employee.bankAccount?.holder || '',
+   eduLevel: employee.edu_level || employee.education?.level || '',
+   eduMajor: employee.edu_major || employee.education?.major || '',
+   eduUniversity: employee.edu_university || employee.education?.university || '',
+   eduYear: employee.edu_year || employee.education?.year || '',
+   gender: employee.gender || '',
+ } : initialForm;
+
+ const avatar = employee?.photo_url || getDefaultAvatar(employee?.gender || '');
+
+ // Use setTimeout to avoid cascading renders from synchronous setState in effect
+    const timer = setTimeout(() => {
+      setForm(newForm);
+      setPreviewAvatar(avatar);
+      setActiveTab('personal');
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [isOpen, employee]);
 
  if (!isOpen) return null;
 
@@ -276,7 +292,7 @@ export default function EmployeeModal({ isOpen, onClose, onSave, employee = null
  </div>
  )}
 
- {/* Bank — Dynamic 130+ banks from API.co.id */}
+ {/* Bank - Dynamic 130+ banks from API.co.id */}
  {activeTab === 'bank' && (
  <div className="form-grid">
  <div className="form-group">

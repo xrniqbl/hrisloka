@@ -13,8 +13,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { getMyLeaves, submitLeave, cancelLeave } from '../../services/leaveService';
-import { getMyReimbursements, submitReimbursement } from '../../services/reimbursementService';
-import { getMyOvertime, submitOvertime } from '../../services/overtimeService';
+import { getMyReimbursements, submitReimbursement, deleteReimbursement, uploadReimbursementReceipt } from '../../services/reimbursementService';
+import { getMyOvertime, submitOvertime, deleteOvertime } from '../../services/overtimeService';
 import { getEmployeeProjects } from '../../services/projectService';
 import BottomSheet from '../../components/BottomSheet';
 import { useRealtimeMultiple } from '../../hooks/useRealtime';
@@ -64,8 +64,9 @@ export default function EmpSubmissions() {
   const [myProjects, setMyProjects] = useState([]);
 
   const [cutiForm, setCutiForm]     = useState({ type: 'Cuti Tahunan', startDate: '', endDate: '', reason: '' });
-  const [reimbForm, setReimbForm]   = useState({ category: 'Transportasi', amount: '', notes: '', date: '' });
+  const [reimbForm, setReimbForm]   = useState({ category: 'Transportasi', amount: '', notes: '', date: '', receipt_url: '' });
   const [lemburForm, setLemburForm] = useState({ date: '', hours: '', reason: '', projectId: '' });
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   const load = useCallback(async () => {
     if (isDemoMode()) {
@@ -204,6 +205,7 @@ export default function EmpSubmissions() {
       amount: reimbForm.amount,
       notes: reimbForm.notes,
       date,
+      receiptUrl: reimbForm.receipt_url || null,
     });
     setSubmitting(false);
     if (error) {
@@ -211,7 +213,7 @@ export default function EmpSubmissions() {
       toast?.error?.(error.message);
       return;
     }
-    setReimbForm({ category: 'Transportasi', amount: '', notes: '', date: '' });
+    setReimbForm({ category: 'Transportasi', amount: '', notes: '', date: '', receipt_url: '' });
     await refresh();
     closeSheet();
     toast?.success(locale === 'en' ? 'Reimbursement submitted!' : 'Pengajuan reimburse berhasil!');
@@ -278,6 +280,36 @@ export default function EmpSubmissions() {
     }
     await refresh();
     toast?.success(locale === 'en' ? 'Leave cancelled.' : 'Pengajuan dibatalkan.');
+  };
+
+  // Withdraw a pending overtime / reimbursement request (owner-only, service
+  // enforces employee_id ownership). Reuses the same confirm dialog + spinner.
+  const handleCancelOther = async (id) => {
+    setConfirmCancelId(null);
+    setCancellingId(id);
+
+    const isOvertime = activeTab === 'lembur';
+    if (isDemoMode()) {
+      if (isOvertime) {
+        setOvertimes((prev) => prev.map((o) => (o.id === id ? { ...o, status: 'cancelled' } : o)));
+      } else {
+        setReimburses((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' } : r)));
+      }
+      setCancellingId(null);
+      toast?.success(locale === 'en' ? 'Request withdrawn.' : 'Pengajuan dibatalkan.');
+      return;
+    }
+
+    const { error } = isOvertime
+      ? await deleteOvertime(id, emp?.company_id)
+      : await deleteReimbursement(id, emp?.id);
+    setCancellingId(null);
+    if (error) {
+      toast?.error?.(error.message || (locale === 'en' ? 'Cancel failed' : 'Gagal membatalkan'));
+      return;
+    }
+    await refresh();
+    toast?.success(locale === 'en' ? 'Request withdrawn.' : 'Pengajuan dibatalkan.');
   };
 
   const tabs = [
@@ -453,10 +485,12 @@ export default function EmpSubmissions() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                     <StatusBadge status={item.status} locale={locale} />
-                    {activeTab === 'cuti' && item.status === 'pending' && (
+                    {item.status === 'pending' && (
                       <button
                         onClick={() => setConfirmCancelId(item.id)}
                         disabled={cancellingId === item.id}
+                        title={locale === 'en' ? 'Withdraw request' : 'Tarik pengajuan'}
+                        aria-label={locale === 'en' ? 'Withdraw request' : 'Tarik pengajuan'}
                         style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(220,38,38,0.08)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#DC2626' }}
                       >
                         {cancellingId === item.id ? <HiArrowPath size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : <HiXMark size={12} />}
@@ -518,6 +552,31 @@ export default function EmpSubmissions() {
           </div>
           <div><label className="emp-field-label">{locale === 'en' ? 'Amount (Rp)' : 'Jumlah (Rp)'}</label><input type="number" placeholder="0" value={reimbForm.amount} onChange={e => setReimbForm({ ...reimbForm, amount: e.target.value })} className="emp-field-input" /></div>
           <div><label className="emp-field-label">{locale === 'en' ? 'Date' : 'Tanggal'}</label><input type="date" value={reimbForm.date} onChange={e => setReimbForm({ ...reimbForm, date: e.target.value })} className="emp-field-input" /></div>
+          <div>
+            <label className="emp-field-label">{locale === 'en' ? 'Receipt (optional)' : 'Struk (opsional)'}</label>
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              disabled={uploadingReceipt}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !emp?.id) return;
+                setUploadingReceipt(true);
+                try {
+                  const { url, error } = await uploadReimbursementReceipt(file, emp.id);
+                  if (error) throw error;
+                  setReimbForm((f) => ({ ...f, receipt_url: url }));
+                  toast?.success(locale === 'en' ? 'Receipt attached!' : 'Struk terlampir!');
+                } catch {
+                  toast?.error(locale === 'en' ? 'Upload failed' : 'Gagal mengunggah');
+                }
+                setUploadingReceipt(false);
+              }}
+              className="emp-field-input"
+            />
+            {uploadingReceipt && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{locale === 'en' ? 'Uploading…' : 'Mengunggah…'}</div>}
+            {reimbForm.receipt_url && <div style={{ fontSize: 12, color: '#16A34A', marginTop: 4, fontWeight: 600 }}>✓ {locale === 'en' ? 'Receipt attached' : 'Struk terlampir'}</div>}
+          </div>
           <div><label className="emp-field-label">{locale === 'en' ? 'Description' : 'Catatan'}</label><textarea placeholder={locale === 'en' ? 'Expense detail...' : 'Detail pengeluaran...'} value={reimbForm.notes} onChange={e => setReimbForm({ ...reimbForm, notes: e.target.value })} className="emp-field-textarea" /></div>
         </div>
       </BottomSheet>
@@ -567,7 +626,7 @@ export default function EmpSubmissions() {
             }}
           >
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
-              {locale === 'en' ? 'Cancel this leave request?' : 'Batalkan pengajuan cuti ini?'}
+              {locale === 'en' ? 'Withdraw this request?' : 'Tarik pengajuan ini?'}
             </div>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
               {locale === 'en' ? 'This request will be withdrawn and cannot be undone.' : 'Pengajuan akan ditarik dan tidak dapat dikembalikan.'}
@@ -580,7 +639,7 @@ export default function EmpSubmissions() {
                 {locale === 'en' ? 'Keep request' : 'Kembali'}
               </button>
               <button
-                onClick={() => handleCancelLeave(confirmCancelId)}
+                onClick={() => (activeTab === 'cuti' ? handleCancelLeave(confirmCancelId) : handleCancelOther(confirmCancelId))}
                 disabled={cancellingId === confirmCancelId}
                 style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               >

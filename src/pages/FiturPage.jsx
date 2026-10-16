@@ -1,27 +1,27 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { updateSEOTags, injectSchema } from '../lib/seo';
 
 const FEATURES_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'ItemList',
-  name: 'Fitur Lengkap HRIS Loka - Software HR Indonesia',
-  description: 'Daftar fitur lengkap platform manajemen SDM HRIS Loka untuk perusahaan Indonesia',
-  url: 'https://hrisloka.com/fitur',
+  name: 'Fitur Lengkap KiniKerja - Software HR Indonesia',
+  description: 'Daftar fitur lengkap platform manajemen SDM KiniKerja untuk perusahaan Indonesia',
+  url: 'https://kinikerja.id/fitur',
   numberOfItems: 12,
   itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Absensi GPS Real-time', description: 'Absensi karyawan berbasis GPS dengan geofencing, anti-spoofing, face recognition, dan laporan kehadiran otomatis.', url: 'https://hrisloka.com/fitur#absensi' },
-    { '@type': 'ListItem', position: 2, name: 'Penggajian Otomatis', description: 'Kalkulasi gaji, tunjangan, lembur, potongan BPJS, PPh 21 otomatis dengan slip gaji digital.', url: 'https://hrisloka.com/fitur#penggajian' },
-    { '@type': 'ListItem', position: 3, name: 'Manajemen Karyawan', description: 'Database karyawan terpusat dengan profil lengkap, kontrak digital, struktur organisasi, dan riwayat employment.', url: 'https://hrisloka.com/fitur#karyawan' },
-    { '@type': 'ListItem', position: 4, name: 'Penilaian Kinerja KPI', description: 'Sistem evaluasi 360 derajat, OKR tracking, dan laporan performa karyawan berbasis data.', url: 'https://hrisloka.com/fitur#kpi' },
-    { '@type': 'ListItem', position: 5, name: 'Rekrutmen & Onboarding', description: 'Pipeline rekrutmen end-to-end: job posting, screening, wawancara, hingga onboarding karyawan baru.', url: 'https://hrisloka.com/fitur#rekrutmen' },
-    { '@type': 'ListItem', position: 6, name: 'AI Capability Mapping', description: 'Pemetaan kompetensi karyawan berbasis Artificial Intelligence untuk perencanaan talent yang lebih strategis.', url: 'https://hrisloka.com/fitur#ai' },
-    { '@type': 'ListItem', position: 7, name: 'Analitik HR Real-time', description: 'Dashboard analytics dengan visualisasi data kehadiran, produktivitas, turnover, dan biaya SDM.', url: 'https://hrisloka.com/fitur#analitik' },
-    { '@type': 'ListItem', position: 8, name: 'Manajemen Cuti Digital', description: 'Pengajuan dan approval cuti online dengan kalender tim, saldo cuti otomatis, dan notifikasi real-time.', url: 'https://hrisloka.com/fitur#cuti' },
-    { '@type': 'ListItem', position: 9, name: 'Reimbursement & Lembur', description: 'Pengajuan reimburse dengan foto struk OCR otomatis dan perhitungan lembur sesuai regulasi Ketenagakerjaan.', url: 'https://hrisloka.com/fitur#reimbursement' },
-    { '@type': 'ListItem', position: 10, name: 'Helpdesk & Pengumuman', description: 'Sistem tiket helpdesk internal dan manajemen pengumuman untuk komunikasi perusahaan yang efisien.', url: 'https://hrisloka.com/fitur#helpdesk' },
-    { '@type': 'ListItem', position: 11, name: 'Notifikasi WhatsApp & Email', description: 'Notifikasi otomatis via WhatsApp dan email untuk approval cuti, payslip, reminder, dan pemberitahuan HR.', url: 'https://hrisloka.com/fitur#notifikasi' },
-    { '@type': 'ListItem', position: 12, name: 'Aplikasi Mobile PWA', description: 'Progressive Web App yang bisa diinstal di Android dan iOS tanpa Play Store. Akses semua fitur dari smartphone.', url: 'https://hrisloka.com/fitur#mobile' },
+    { '@type': 'ListItem', position: 1, name: 'Absensi GPS Real-time', description: 'Absensi karyawan berbasis GPS dengan geofencing, anti-spoofing, face recognition, dan laporan kehadiran otomatis.', url: 'https://kinikerja.id/fitur#absensi' },
+    { '@type': 'ListItem', position: 2, name: 'Penggajian Otomatis', description: 'Kalkulasi gaji, tunjangan, lembur, potongan BPJS, PPh 21 otomatis dengan slip gaji digital.', url: 'https://kinikerja.id/fitur#penggajian' },
+    { '@type': 'ListItem', position: 3, name: 'Manajemen Karyawan', description: 'Database karyawan terpusat dengan profil lengkap, kontrak digital, struktur organisasi, dan riwayat employment.', url: 'https://kinikerja.id/fitur#karyawan' },
+    { '@type': 'ListItem', position: 4, name: 'Penilaian Kinerja KPI', description: 'Sistem evaluasi 360 derajat, OKR tracking, dan laporan performa karyawan berbasis data.', url: 'https://kinikerja.id/fitur#kpi' },
+    { '@type': 'ListItem', position: 5, name: 'Rekrutmen & Onboarding', description: 'Pipeline rekrutmen end-to-end: job posting, screening, wawancara, hingga onboarding karyawan baru.', url: 'https://kinikerja.id/fitur#rekrutmen' },
+    { '@type': 'ListItem', position: 6, name: 'AI Capability Mapping', description: 'Pemetaan kompetensi karyawan berbasis Artificial Intelligence untuk perencanaan talent yang lebih strategis.', url: 'https://kinikerja.id/fitur#ai' },
+    { '@type': 'ListItem', position: 7, name: 'Analitik HR Real-time', description: 'Dashboard analytics dengan visualisasi data kehadiran, produktivitas, turnover, dan biaya SDM.', url: 'https://kinikerja.id/fitur#analitik' },
+    { '@type': 'ListItem', position: 8, name: 'Manajemen Cuti Digital', description: 'Pengajuan dan approval cuti online dengan kalender tim, saldo cuti otomatis, dan notifikasi real-time.', url: 'https://kinikerja.id/fitur#cuti' },
+    { '@type': 'ListItem', position: 9, name: 'Reimbursement & Lembur', description: 'Pengajuan reimburse dengan foto struk OCR otomatis dan perhitungan lembur sesuai regulasi Ketenagakerjaan.', url: 'https://kinikerja.id/fitur#reimbursement' },
+    { '@type': 'ListItem', position: 10, name: 'Helpdesk & Pengumuman', description: 'Sistem tiket helpdesk internal dan manajemen pengumuman untuk komunikasi perusahaan yang efisien.', url: 'https://kinikerja.id/fitur#helpdesk' },
+    { '@type': 'ListItem', position: 11, name: 'Notifikasi WhatsApp & Email', description: 'Notifikasi otomatis via WhatsApp dan email untuk approval cuti, payslip, reminder, dan pemberitahuan HR.', url: 'https://kinikerja.id/fitur#notifikasi' },
+    { '@type': 'ListItem', position: 12, name: 'Aplikasi Mobile PWA', description: 'Progressive Web App yang bisa diinstal di Android dan iOS tanpa Play Store. Akses semua fitur dari smartphone.', url: 'https://kinikerja.id/fitur#mobile' },
   ],
 };
 
@@ -59,9 +59,9 @@ const s = {
 export default function FiturPage() {
   useEffect(() => {
     updateSEOTags({
-      title: 'Fitur HRIS Loka - Absensi GPS, Penggajian Otomatis, KPI, Rekrutmen',
-      description: 'Fitur lengkap HRIS Loka: absensi GPS real-time dengan face recognition, penggajian otomatis BPJS & PPh 21, penilaian KPI, rekrutmen digital, AI Capability Mapping. Platform HR #1 Indonesia.',
-      canonical: 'https://hrisloka.com/fitur',
+      title: 'Fitur KiniKerja - Absensi GPS, Penggajian Otomatis, KPI, Rekrutmen',
+      description: 'Fitur lengkap KiniKerja: absensi GPS real-time dengan face recognition, penggajian otomatis BPJS & PPh 21, penilaian KPI, rekrutmen digital, AI Capability Mapping. Platform HR #1 Indonesia.',
+      canonical: 'https://kinikerja.id/fitur',
       keywords: 'fitur HRIS Indonesia, absensi GPS karyawan, penggajian otomatis, penilaian KPI, rekrutmen digital, software HR lengkap, HRIS cloud Indonesia',
     });
     injectSchema('features-list', FEATURES_SCHEMA);
@@ -70,7 +70,7 @@ export default function FiturPage() {
   return (
     <div style={s.page}>
       <nav style={s.nav}>
-        <Link to="/" style={{ fontSize: 20, fontWeight: 600, color: '#635BFF', textDecoration: 'none' }}>HRIS Loka</Link>
+        <Link to="/" style={{ fontSize: 20, fontWeight: 600, color: '#635BFF', textDecoration: 'none' }}>KiniKerja</Link>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
           <Link to="/fitur" style={{ fontSize: 14, color: '#635BFF', fontWeight: 700, textDecoration: 'none', borderBottom: '2px solid #635BFF', paddingBottom: 2 }}>Fitur</Link>
           <Link to="/harga" style={{ fontSize: 14, color: '#64748B', fontWeight: 600, textDecoration: 'none' }}>Harga</Link>
@@ -80,7 +80,7 @@ export default function FiturPage() {
 
       <header style={s.hero}>
         <h1 style={s.h1}>Semua Fitur HR dalam<br /><span style={{ color: '#635BFF' }}>Satu Platform</span></h1>
-        <p style={s.lead}>HRIS Loka mengintegrasikan seluruh proses HR - dari absensi, penggajian, KPI, hingga rekrutmen - dalam satu sistem yang mudah digunakan oleh tim HR dan karyawan.</p>
+        <p style={s.lead}>KiniKerja mengintegrasikan seluruh proses HR - dari absensi, penggajian, KPI, hingga rekrutmen - dalam satu sistem yang mudah digunakan oleh tim HR dan karyawan.</p>
         <div style={s.pills}>
           {['Absensi GPS Real-time', 'Penggajian Otomatis', 'Penilaian KPI', 'Rekrutmen Digital', 'AI Capability Mapping', 'Analitik HR'].map(p => (
             <span key={p} style={s.pill}>{p}</span>
@@ -122,7 +122,7 @@ export default function FiturPage() {
 
         {/* CTA */}
         <div style={s.cta}>
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Mulai Gunakan HRIS Loka Hari Ini</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Mulai Gunakan KiniKerja Hari Ini</h2>
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 16, marginBottom: 8 }}>Gratis hingga 10 karyawan. Trial 14 hari untuk paket berbayar.</p>
           <Link to="/login" style={s.ctaBtn}>Daftar Gratis Sekarang &rarr;</Link>
           <div style={{ marginTop: 20 }}>

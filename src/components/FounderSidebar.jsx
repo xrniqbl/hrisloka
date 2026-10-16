@@ -82,7 +82,7 @@ export default function FounderSidebar({ openComplaints = 0 }) {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    navigate('/login');
   };
 
   return (
@@ -97,7 +97,7 @@ export default function FounderSidebar({ openComplaints = 0 }) {
         >
           <Icon icon={mobileOpen ? X : Menu} size="md" color="inherit" />
         </button>
-        <span className="founder-mobile-brand">HRIS Loka</span>
+        <span className="founder-mobile-brand">KiniKerja</span>
       </div>
 
       <div
@@ -111,14 +111,22 @@ export default function FounderSidebar({ openComplaints = 0 }) {
         aria-label="Founder navigation"
       >
         <div className="founder-sidebar-brand">
-          <img
-            src="/landing/hrislokalogo.jpeg"
-            alt="HRIS Loka"
-            className="founder-sidebar-logo"
-          />
+          <button
+            type="button"
+            onClick={() => handleNav('/founder/dashboard')}
+            title="KiniKerja — Founder Dashboard"
+            aria-label="KiniKerja — Founder Dashboard"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          >
+            <img
+              src="/landing/kinikerjalogo.jpeg"
+              alt="KiniKerja"
+              className="founder-sidebar-logo"
+            />
+          </button>
           {!collapsed && (
             <div>
-              <div className="founder-sidebar-brand-text">HRIS Loka</div>
+              <div className="founder-sidebar-brand-text">KiniKerja</div>
               <div className="founder-sidebar-badge">
                 <Icon icon={Shield} size="xsm" color="inherit" />
                 Founder Portal

@@ -69,9 +69,10 @@ export default function EmpRegister() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert('Ukuran foto maksimal 5MB.');
+      setGlobalError('Ukuran foto maksimal 5MB.');
       return;
     }
+    setGlobalError('');
     setPhotoFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setPhotoPreview(ev.target.result);
@@ -133,9 +134,9 @@ export default function EmpRegister() {
       }
 
       // Mark splash seen so pending screen isn't blocked by welcome funnel
-      try { sessionStorage.setItem('hrisloka_splash_seen', '1'); } catch { /* */ }
+      try { sessionStorage.setItem('kinikerja_splash_seen', '1'); } catch { /* */ }
       if (needsEmailConfirm) {
-        try { sessionStorage.setItem('hrisloka_reg_email_hint', email.trim().toLowerCase()); } catch { /* */ }
+        try { sessionStorage.setItem('kinikerja_reg_email_hint', email.trim().toLowerCase()); } catch { /* */ }
       }
       navigate('/app/pending', { replace: true });
     } catch (err) {
@@ -156,7 +157,7 @@ export default function EmpRegister() {
         <div className="emp-reg__top">
           <Link to="/app/welcome" className="emp-reg__back">← Kembali</Link>
           <div>
-            <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" className="emp-reg__logo" />
+            <img src="/landing/kinikerjabluepanjang.png" alt="KiniKerja" className="emp-reg__logo" />
           </div>
         </div>
 
@@ -207,7 +208,7 @@ export default function EmpRegister() {
                       setCompanyInfo(null);
                       setCodeError('');
                     }}
-                    placeholder="HRSLK-XXXXXX"
+                    placeholder="KK-XXXXXX"
                     onKeyDown={(e) => e.key === 'Enter' && handleCheckCode()}
                     maxLength={20}
                   />
@@ -247,8 +248,8 @@ export default function EmpRegister() {
 
               {!companyInfo && (
                 <div className="emp-reg__alert emp-reg__alert--info">
-                  Kode diperoleh dari HR/admin. Format: <strong>HRSLK-XXXXXX</strong>. Hanya untuk
-                  perusahaan terdaftar di HRIS Loka.
+                  Kode diperoleh dari HR/admin. Format: <strong>KK-XXXXXX</strong>. Hanya untuk
+                  perusahaan terdaftar di KiniKerja.
                 </div>
               )}
 

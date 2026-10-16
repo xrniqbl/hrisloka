@@ -1,4 +1,6 @@
 -- ============================================================
+-- WARNING: DESTRUCTIVE — drops/recreates company_id columns, data loss
+-- if run after data exists; prefer a backfill migration instead.
 -- Fix company_id columns that were created as UUID by mistake
 -- (companies.id is SERIAL/INTEGER in this project)
 -- ============================================================

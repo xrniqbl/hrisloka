@@ -33,3 +33,4 @@ cybersecurity-skills/
 
 # Never commit VAPID private keys
 vapid-keys.json
+.vapid-rotation/

@@ -75,7 +75,7 @@ export default function EmpDashboard() {
       setRecentAnnouncements([
         {
           id: 1,
-          title: 'Selamat datang di Demo HRIS Loka!',
+          title: 'Selamat datang di Demo KiniKerja!',
           created_at: new Date().toISOString(),
         },
         {
@@ -201,7 +201,9 @@ export default function EmpDashboard() {
   ]);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    // 30s interval: per-minute clock doesn't need per-second re-renders
+    // (which would also re-render charts). Fine-grained clock lives in EmpAbsen.
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
 

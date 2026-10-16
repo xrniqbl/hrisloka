@@ -1,5 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiBell, FiSend, FiX, FiTrash2, FiUsers, FiInfo, FiAlertTriangle, FiTag } from 'react-icons/fi';
+import { Megaphone, Sparkles, Users } from 'lucide-react';
+import MetricStatCards from '../../components/MetricStatCards';
 import * as founderService from '../../services/founderService';
 import { useToast } from '../../components/Toast';
 import './founder.css';
@@ -64,8 +66,8 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
 
 const EMPTY_FORM = { title: '', message: '', type: 'info', target: 'all', target_plan_id: '', target_company_id: '', action_url: '', action_label: '' };
 const TYPES = [
-  { value: 'info', label: 'Info', icon: 'ℹ️', color: '#635BFF' },
-  { value: 'promo', label: 'Promo', icon: '🎉', color: '#F59E0B' },
+  { value: 'info', label: 'Info', icon: 'ℹ️', color: '#5654D4' },
+  { value: 'promo', label: 'Promo', icon: '🎉', color: '#7C75FF' },
   { value: 'update', label: 'Update', icon: '🔄', color: '#8B5CF6' },
   { value: 'warning', label: 'Warning', icon: '⚠️', color: '#EF4444' },
   { value: 'maintenance', label: 'Maintenance', icon: '🔧', color: '#6B7280' },
@@ -96,7 +98,7 @@ export default function FounderBroadcast() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [preview, setPreview] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const { data, error } = await founderService.getAllBroadcasts();
       if (error) throw error;
@@ -106,8 +108,8 @@ export default function FounderBroadcast() {
     } finally {
       setLoading(false);
     }
-  };
-  useEffect(() => { fetchData(); }, []);
+  }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   if (loading) return <SkeletonPage cols={5} rows={5} hasStats={false} />;
 
@@ -160,21 +162,14 @@ export default function FounderBroadcast() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{broadcasts.length}</div>
-          <div className="fp-stat-label">Total Broadcasts</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{broadcasts.filter(b => b.type === 'promo').length}</div>
-          <div className="fp-stat-label">Promo Broadcasts</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{broadcasts.filter(b => b.target === 'all').length}</div>
-          <div className="fp-stat-label">Sent to All Subscribers</div>
-        </div>
-      </div>
+      <MetricStatCards
+        className="fp-metric-strip"
+        items={[
+          { key: 'total', label: 'Total Broadcasts', value: broadcasts.length, icon: Megaphone },
+          { key: 'promo', label: 'Promo Broadcasts', value: broadcasts.filter((b) => b.type === 'promo').length, icon: Sparkles },
+          { key: 'all', label: 'Sent to All', value: broadcasts.filter((b) => b.target === 'all').length, icon: Users },
+        ]}
+      />
 
       {/* Broadcast history */}
       <div className="fp-card">
@@ -314,7 +309,7 @@ export default function FounderBroadcast() {
                 <div style={{ padding: 14, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', marginTop: 4 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Preview</div>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${typeConfig[form.type]?.color || '#635BFF'}18`, color: typeConfig[form.type]?.color || '#635BFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${typeConfig[form.type]?.color || '#5654D4'}18`, color: typeConfig[form.type]?.color || '#5654D4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {TYPES.find(t => t.value === form.type)?.icon}
                     </div>
                     <div>

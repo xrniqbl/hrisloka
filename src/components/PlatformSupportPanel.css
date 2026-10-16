@@ -1,0 +1,291 @@
+/* Owner platform support — compact clean panel */
+
+.psp-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.psp-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #E8E8EE);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.psp-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.psp-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, #111827);
+  letter-spacing: -0.02em;
+}
+
+.psp-desc,
+.psp-meta,
+.psp-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted, #6B7280);
+  line-height: 1.45;
+}
+
+.psp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.psp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.psp-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.psp-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #6B7280);
+}
+
+.psp-input,
+.psp-select,
+.psp-textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #E8E8EE);
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text, #111827);
+  background: var(--surface, #fff);
+  box-sizing: border-box;
+  outline: none;
+}
+.psp-textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+.psp-input:focus,
+.psp-select:focus,
+.psp-textarea:focus {
+  border-color: color-mix(in srgb, var(--primary, #5654D4) 50%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #5654D4) 12%, transparent);
+}
+
+.psp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.psp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.psp-btn-primary {
+  background: var(--primary, #5654D4);
+  color: #fff;
+  align-self: flex-start;
+}
+.psp-btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover, #4543C0);
+}
+.psp-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border, #E8E8EE);
+  color: var(--muted, #6B7280);
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.psp-error {
+  margin: 0;
+  font-size: 12.5px;
+  color: #DC2626;
+}
+.psp-success {
+  margin: 0;
+  font-size: 12.5px;
+  color: #059669;
+}
+
+.psp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.psp-list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #E8E8EE);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.psp-list-item:hover {
+  border-color: color-mix(in srgb, var(--primary, #5654D4) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary, #5654D4) 4%, var(--surface));
+}
+
+.psp-list-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.psp-list-subject {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #111827);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.psp-list-date {
+  font-size: 11px;
+  color: var(--muted, #6B7280);
+}
+
+.psp-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  color: var(--muted, #6B7280);
+}
+.psp-badge--open {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+}
+.psp-badge--in_progress {
+  background: rgba(245, 158, 11, 0.12);
+  color: #D97706;
+}
+.psp-badge--resolved,
+.psp-badge--closed {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.psp-cat {
+  text-transform: capitalize;
+}
+
+.psp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: var(--primary, #5654D4);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.psp-thread-head {
+  margin-bottom: 12px;
+}
+
+.psp-msg-block {
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text, #111827);
+}
+.psp-msg-block p {
+  margin: 4px 0 0;
+}
+.psp-msg-block--client {
+  background: color-mix(in srgb, var(--bg, #F7F7FB) 80%, var(--surface));
+  border: 1px solid var(--border, #E8E8EE);
+}
+.psp-msg-block--founder {
+  background: color-mix(in srgb, var(--primary, #5654D4) 7%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--primary, #5654D4) 16%, transparent);
+}
+.psp-msg-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted, #6B7280);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.psp-reply-box {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.psp-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--muted, #6B7280);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .psp-row {
+    grid-template-columns: 1fr;
+  }
+}

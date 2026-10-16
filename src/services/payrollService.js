@@ -25,6 +25,47 @@ export async function getMyPayroll(employeeId) {
   return { data: data || [], error };
 }
 
+// Get payroll history for one employee (PWA) — scoped by employee ownership.
+// Schema uses `period` (YYYY-MM); falls back to created_at ordering like the
+// legacy PWA query when the period column is unavailable.
+export async function getMyPayrollHistory(employeeId, limit = 12) {
+  if (!employeeId) return { data: [], error: null };
+  const h1 = await supabase
+    .from('payroll_records')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .order('period', { ascending: false })
+    .limit(limit);
+  if (!h1.error) return { data: h1.data || [], error: null };
+  const h2 = await supabase
+    .from('payroll_records')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return { data: h2.data || [], error: h2.error };
+}
+
+// Get one employee's payroll row for a YYYY-MM month (PWA) — tries exact
+// `period` match first, then a period/month text fallback.
+export async function getMyPayrollByPeriod(employeeId, monthStr) {
+  if (!employeeId) return { data: null, error: null };
+  const q1 = await supabase
+    .from('payroll_records')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .eq('period', monthStr)
+    .maybeSingle();
+  if (!q1.error && q1.data) return { data: q1.data, error: null };
+  const q2 = await supabase
+    .from('payroll_records')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .or(`period.ilike.%${monthStr}%,month.ilike.%${monthStr}%`)
+    .maybeSingle();
+  return { data: q2.data || null, error: q2.error };
+}
+
 // Save payroll record — verify employee belongs to the caller's company
 export async function savePayroll(record, companyId) {
   if (companyId) {

@@ -7,6 +7,10 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores([
     'dist',
+    'coverage',
+    'test-results',
+    '.vercel',
+    '*.log',
     'node_modules',
     'server/node_modules',
     // Root one-off migration/utility scripts (not app runtime)
@@ -17,7 +21,7 @@ export default defineConfig([
   ]),
   // API, server, and scripts (Node.js environment)
   {
-    files: ['api/**/*.js', 'server/**/*.js', 'scripts/**/*.{js,cjs}', 'deploy/**/*.cjs', '*.js'],
+    files: ['api/**/*.js', 'server/**/*.js', 'scripts/**/*.{js,cjs}', 'deploy/**/*.cjs', '*.js', '*.cjs'],
     extends: [js.configs.recommended],
     languageOptions: {
       ecmaVersion: 2020,
@@ -34,7 +38,9 @@ export default defineConfig([
   // Vitest
   {
     files: ['src/test/**/*.{js,jsx}'],
+    extends: [js.configs.recommended],
     languageOptions: {
+      parserOptions: { ecmaFeatures: { jsx: true } },
       globals: {
         ...globals.browser,
         ...globals.node,

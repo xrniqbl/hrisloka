@@ -10,15 +10,36 @@ export async function getOnboardingTasks(employeeId) {
     .order('sort_order', { ascending: true });
 }
 
-export async function updateTaskStatus(id, status) {
-  return supabase.from('onboarding_tasks').update({
+export async function updateTaskStatus(id, status, employeeId = null) {
+  let query = supabase.from('onboarding_tasks').update({
     status,
     completed_at: status === 'done' ? new Date().toISOString() : null,
   }).eq('id', id);
+  if (employeeId) query = query.eq('employee_id', employeeId);
+  return query;
 }
 
 export async function createOnboardingTask(data) {
   return supabase.from('onboarding_tasks').insert(data).select().single();
+}
+
+// ── Onboarding Tasks (Admin — per company, via employee join) ────
+export async function getAllOnboardingTasks(companyId) {
+  if (!guardCompanyId(companyId, 'getAllOnboardingTasks')) {
+    return { data: [], error: null };
+  }
+  return supabase
+    .from('onboarding_tasks')
+    .select('*, employees!inner(name, division, position, company_id)')
+    .eq('employees.company_id', companyId)
+    .order('sort_order', { ascending: true });
+}
+
+export async function createOnboardingTasks(tasks) {
+  if (!Array.isArray(tasks) || tasks.length === 0) {
+    return { data: null, error: { message: 'tasks required' } };
+  }
+  return supabase.from('onboarding_tasks').insert(tasks).select();
 }
 
 // Bulk create tasks for a new employee from company checklist template

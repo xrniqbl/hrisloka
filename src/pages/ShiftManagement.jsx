@@ -49,7 +49,7 @@ export default function ShiftManagement() {
   setEmployees(empData || []);
   setAssignments(assignData || []);
   setLoading(false);
- }, [employee?.company_id, selectedBranchId, companyId]);
+ }, [selectedBranchId, companyId]);
 
  useEffect(() => { fetchData(); }, [fetchData]);
  useRealtimeTable('shifts', fetchData, { companyId, enabled: !!companyId });

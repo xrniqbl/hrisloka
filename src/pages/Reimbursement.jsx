@@ -18,10 +18,12 @@ import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 import FormDateField from '../components/FormDateField';
+import { useToast } from '../components/Toast';
 
 export default function Reimbursement() {
   const { t } = useTranslation();
   const { employee } = useAuth();
+  const { toast } = useToast();
   const [records, setRecords] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,10 @@ export default function Reimbursement() {
       employee?.company_id,
     );
     if (!error) fetchData();
-    else console.warn('[Reimbursement] approve failed:', error.message);
+    else {
+      console.warn('[Reimbursement] approve failed:', error.message);
+      toast.error('Gagal menyetujui reimbursement. Coba lagi.');
+    }
   };
 
   const handleReject = async (id) => {
@@ -76,7 +81,10 @@ export default function Reimbursement() {
       employee?.company_id,
     );
     if (!error) fetchData();
-    else console.warn('[Reimbursement] reject failed:', error.message);
+    else {
+      console.warn('[Reimbursement] reject failed:', error.message);
+      toast.error('Gagal menolak reimbursement. Coba lagi.');
+    }
   };
 
   const handleSubmit = async () => {

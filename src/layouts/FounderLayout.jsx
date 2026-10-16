@@ -41,14 +41,28 @@ function useFounderAuth() {
   const { user, employee, loading, session } = useAuth();
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
+  // Ops-visible reason shown on the deny screen (not just console).
+  const [denyReason, setDenyReason] = useState(null);
 
   useEffect(() => {
     if (loading) return;
 
     const runCheck = async () => {
       setVerifying(true);
+      setDenyReason(null);
       try {
+        // Fail visibly when the founder email is not configured — otherwise
+        // every login lands on a cryptic deny screen with no recovery path.
+        if (!ALLOWED_FOUNDER_EMAIL) {
+          console.warn('[FounderLayout] VITE_FOUNDER_EMAIL is not set — founder portal is inaccessible.');
+          setDenyReason('missing_env');
+          setVerified(false);
+          setVerifying(false);
+          return;
+        }
+
         if (!user || !session) {
+          setDenyReason('no_session');
           setVerified(false);
           setVerifying(false);
           return;
@@ -60,6 +74,7 @@ function useFounderAuth() {
         } = await supabase.auth.getUser();
         if (sessionError || !liveUser) {
           console.warn('[FounderLayout] Live session check failed:', sessionError?.message);
+          setDenyReason('session_invalid');
           setVerified(false);
           setVerifying(false);
           return;
@@ -71,14 +86,38 @@ function useFounderAuth() {
 
         if (!emailMatch) {
           console.warn('[FounderLayout] Unauthorized access attempt by:', liveUser.email);
+          setDenyReason('email_mismatch');
           setVerified(false);
           setVerifying(false);
           return;
         }
 
+        // DB role double-gate: the employees row must also carry role=founder.
+        // Surfaces as 'role_missing' on the deny screen with a recovery hint
+        // (instead of a silent console-only block).
+        try {
+          const { data: row } = await supabase
+            .from('employees')
+            .select('role')
+            .eq('auth_user_id', liveUser.id)
+            .maybeSingle();
+          if (row && row.role !== 'founder') {
+            console.warn('[FounderLayout] DB role is not founder:', row.role);
+            setDenyReason('role_missing');
+            setVerified(false);
+            setVerifying(false);
+            return;
+          }
+        } catch (roleErr) {
+          // Lookup failure (RLS/network) — don't hard-block on infrastructure
+          // noise; fall through to the context check below.
+          console.warn('[FounderLayout] Role lookup failed:', roleErr?.message || roleErr);
+        }
+
         const contextEmailMatch = isFounder(user, employee);
         if (!contextEmailMatch) {
           console.warn('[FounderLayout] Context email mismatch - possible session tampering.');
+          setDenyReason('context_mismatch');
           setVerified(false);
           setVerifying(false);
           return;
@@ -87,6 +126,7 @@ function useFounderAuth() {
         setVerified(true);
       } catch (err) {
         console.error('[FounderLayout] Security check exception:', err);
+        setDenyReason('check_error');
         setVerified(false);
       } finally {
         setVerifying(false);
@@ -96,18 +136,18 @@ function useFounderAuth() {
     runCheck();
   }, [user, employee, loading, session]);
 
-  return { verifying: loading || verifying, verified };
+  return { verifying: loading || verifying, verified, denyReason };
 }
 
 export default function FounderLayout() {
   const { user, employee, signOut } = useAuth();
-  const { verifying, verified } = useFounderAuth();
+  const { verifying, verified, denyReason } = useFounderAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [openComplaints, setOpenComplaints] = useState(0);
 
   useEffect(() => {
-    markNoIndex('HRIS Loka — Founder');
+    markNoIndex('KiniKerja — Founder');
   }, []);
 
   // Theme follows Settings / localStorage (same as HR shell — no topbar toggle)
@@ -169,6 +209,7 @@ export default function FounderLayout() {
   if (!verified) {
     return (
       <FounderAccessDenied
+        reason={denyReason}
         onSignOut={async () => {
           await signOut();
           navigate('/login', { replace: true });
@@ -209,7 +250,17 @@ export default function FounderLayout() {
   );
 }
 
-function FounderAccessDenied({ onSignOut }) {
+const DENY_HINTS = {
+  missing_env: 'VITE_FOUNDER_EMAIL belum dikonfigurasi di environment. Minta admin mengatur env tersebut lalu redeploy.',
+  no_session: 'Anda belum login. Silakan login dengan akun founder lalu buka kembali halaman ini.',
+  session_invalid: 'Sesi tidak valid atau kedaluwarsa. Silakan logout lalu login ulang.',
+  email_mismatch: 'Email akun ini bukan email founder terdaftar. Login dengan akun founder yang benar.',
+  role_missing: 'Email cocok tetapi baris employees Anda belum ber-role founder. Minta admin menjalankan: UPDATE employees SET role = \'founder\' WHERE auth_user_id = \'<uid-anda>\'.',
+  context_mismatch: 'Konteks sesi tidak cocok (kemungkinan session tampering). Logout lalu login ulang.',
+  check_error: 'Pemeriksaan keamanan gagal karena kesalahan teknis. Coba muat ulang; jika berlanjut, hubungi support.',
+};
+
+function FounderAccessDenied({ onSignOut, reason }) {
   return (
     <div className="founder-access-denied">
       <div className="founder-access-denied-card">
@@ -225,6 +276,11 @@ function FounderAccessDenied({ onSignOut }) {
           Area ini hanya untuk akun founder platform. Kredensial Anda tidak
           memenuhi level otorisasi yang diperlukan.
         </p>
+        {reason && DENY_HINTS[reason] && (
+          <p className="founder-access-denied-desc" style={{ marginTop: 8, fontSize: 13 }}>
+            <strong>Alasan:</strong> {DENY_HINTS[reason]}
+          </p>
+        )}
         <div className="founder-access-denied-notice">
           <Icon icon={Shield} size="sm" color="inherit" />
           <span>

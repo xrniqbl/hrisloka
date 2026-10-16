@@ -11,6 +11,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import FormDateField from '../components/FormDateField';
 
 
 const PRIORITY_COLORS = { low: '#6B7280', medium: '#635BFF', high: '#F59E0B', critical: '#EF4444' };
@@ -43,7 +44,7 @@ export default function ProjectManagement() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('projects', fetchData, { companyId: currentUser?.company_id });
+ useRealtimeTable('projects', fetchData, { companyId: employee?.company_id });
 
  useEffect(() => {
  if (!employee?.company_id) {
@@ -371,11 +372,11 @@ export default function ProjectManagement() {
  </div>
  <div className="form-group">
  <label className="form-label">Tanggal Mulai <span className="required">*</span></label>
- <input type="date" className="form-input" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
+ <FormDateField value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} placeholder="Tanggal mulai" />
  </div>
  <div className="form-group">
  <label className="form-label">Tanggal Selesai</label>
- <input type="date" className="form-input" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
+ <FormDateField value={form.endDate} onChange={(v) => setForm({ ...form, endDate: v })} placeholder="Tanggal selesai" />
  </div>
  <div className="form-group">
  <label className="form-label">Tarif per Jam (Rp)</label>

@@ -1,4 +1,4 @@
-﻿import '@testing-library/jest-dom';
+import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
 // Mock window.matchMedia
@@ -55,3 +55,12 @@ vi.mock('../lib/supabase', () => ({
 
 // Mock window.fetch for API calls
 global.fetch = vi.fn();
+
+// jsdom does not provide Web Crypto; use Node's implementation for webhook tests.
+if (!globalThis.crypto?.subtle) {
+  const { webcrypto } = await import('node:crypto');
+  Object.defineProperty(globalThis, 'crypto', {
+    value: webcrypto,
+    configurable: true,
+  });
+}

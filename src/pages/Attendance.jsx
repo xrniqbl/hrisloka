@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '../lib/i18n';
 import { FiClock, FiMapPin, FiCamera, FiCheckCircle, FiDownload, FiAlertCircle, FiLoader } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,7 @@ import { toLocalDateKey } from '../lib/dateFormat';
 import BranchFilter from '../components/BranchFilter';
 import { useBranch } from '../context/BranchContext';
 import { useRealtimeTable } from '../hooks/useRealtime';
+import { useToast } from '../components/Toast';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -18,12 +19,16 @@ import EmptyState from '../components/EmptyState';
 export default function Attendance() {
   const { t } = useTranslation();
   const { employee } = useAuth();
+  const { toast } = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
   const [clockedIn, setClockedIn] = useState(false);
   const [todayLogs, setTodayLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myTodayAttendance, setMyTodayAttendance] = useState(null);
   const [gpsStatus, setGpsStatus] = useState('idle');
   const [gpsCoords, setGpsCoords] = useState(null);
+  const [clockError, setClockError] = useState('');
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -47,11 +52,15 @@ export default function Attendance() {
     try {
       const { data: allAtt } = await attendanceService.getAllAttendanceToday(selectedBranchId, employee?.company_id);
       if (allAtt && allAtt.length > 0) setTodayLogs(allAtt);
+      else setTodayLogs([]); // clear stale rows when fetch returns empty
       if (employee) {
         const { data: myAtt } = await attendanceService.getTodayAttendance(employee.id);
         if (myAtt) { setMyTodayAttendance(myAtt); setClockedIn(!!myAtt.clock_in && !myAtt.clock_out); }
       }
-    } catch (e) { console.error('Attendance fetch error:', e); }
+    } catch (e) {
+      console.error('Attendance fetch error:', e);
+      toastRef.current.error('Gagal memuat data absensi. Coba muat ulang.');
+    }
     setLoading(false);
   }, [employee, selectedBranchId]);
 
@@ -60,6 +69,7 @@ export default function Attendance() {
 
   const handleClockToggle = async () => {
     if (!employee) return;
+    setClockError('');
     if (!clockedIn && !myTodayAttendance?.clock_in) {
       const { error } = await attendanceService.clockIn(employee.id, {
         latitude: gpsCoords?.lat ?? null,
@@ -68,9 +78,11 @@ export default function Attendance() {
         locationId: employee?.branch_id || 1,
       });
       if (!error) fetchData();
+      else setClockError(error.message || 'Gagal clock-in. Coba lagi.');
     } else if (clockedIn) {
       const { error } = await attendanceService.clockOut(myTodayAttendance.id, employee.id);
       if (!error) fetchData();
+      else setClockError(error.message || 'Gagal clock-out. Coba lagi.');
     }
   };
 
@@ -129,6 +141,11 @@ export default function Attendance() {
               GPS tidak tersedia. Clock-in akan dicatat tanpa validasi lokasi.
             </div>
           )}
+          {clockError && (
+            <div className="attendance-gps-warning" role="alert" style={{ borderColor: 'var(--danger)' }}>
+              {clockError}
+            </div>
+          )}
         </div>
         {myTodayAttendance?.clock_in && (
           <div className="attendance-checkin-notice">
@@ -147,13 +164,11 @@ export default function Attendance() {
             <TableHeader>
               <TableRow>
             
-              <tr>
                                 <TableHead>Karyawan</TableHead>
                                 <TableHead>Clock In</TableHead>
                                 <TableHead>Clock Out</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Lokasi</TableHead>
-              </tr>
             
                           </TableRow>
             </TableHeader>
@@ -165,7 +180,7 @@ export default function Attendance() {
               <TableRow key={att.id}>
                 <TableCell>
                   <div className="employee-cell">
-                        <div className="employee-avatar">{empName.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+                        <div className="employee-avatar">{(empName || '').split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
                         <div>
                           <div className="employee-name">{empName}</div>
                           <div className="employee-dept">{empDiv}</div>

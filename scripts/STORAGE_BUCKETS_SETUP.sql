@@ -22,24 +22,52 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ── RLS / policies storage ─────────────────────────────────────────────────
--- Kebijakan dasar: user ter-autentikasi boleh upload ke foldernya sendiri;
--- pembacaan sesuai sifat bucket (public/private).
+-- Scoped by owner prefix: object path must start with auth.uid()
+-- (storage.foldername(name))[1] = auth.uid()::text. No cross-user read/write
+-- inside private buckets. Anon gets nothing on private buckets.
 
--- documents (private): hanya owner company yang boleh baca/tulis
+-- documents (private): owner-prefix scoped, 4 policies
 DROP POLICY IF EXISTS "documents_auth_all" ON storage.objects;
-CREATE POLICY "documents_auth_all" ON storage.objects
-  FOR ALL TO authenticated
-  USING (bucket_id = 'documents')
-  WITH CHECK (bucket_id = 'documents');
+DROP POLICY IF EXISTS "documents_select_owner" ON storage.objects;
+DROP POLICY IF EXISTS "documents_insert_owner" ON storage.objects;
+DROP POLICY IF EXISTS "documents_update_owner" ON storage.objects;
+DROP POLICY IF EXISTS "documents_delete_owner" ON storage.objects;
+CREATE POLICY "documents_select_owner" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "documents_insert_owner" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "documents_update_owner" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text)
+  WITH CHECK (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "documents_delete_owner" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
 
--- receipts (private): user ter-autentikasi
+-- receipts (private): owner-prefix scoped, 4 policies
 DROP POLICY IF EXISTS "receipts_auth_all" ON storage.objects;
-CREATE POLICY "receipts_auth_all" ON storage.objects
-  FOR ALL TO authenticated
-  USING (bucket_id = 'receipts')
-  WITH CHECK (bucket_id = 'receipts');
+DROP POLICY IF EXISTS "receipts_select_owner" ON storage.objects;
+DROP POLICY IF EXISTS "receipts_insert_owner" ON storage.objects;
+DROP POLICY IF EXISTS "receipts_update_owner" ON storage.objects;
+DROP POLICY IF EXISTS "receipts_delete_owner" ON storage.objects;
+CREATE POLICY "receipts_select_owner" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "receipts_insert_owner" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "receipts_update_owner" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text)
+  WITH CHECK (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY "receipts_delete_owner" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'receipts' AND (storage.foldername(name))[1] = auth.uid()::text);
 
--- resumes (public bucket): siapa pun boleh baca, authenticated boleh upload
+-- resumes (public bucket): public read; public apply form uploads via anon,
+-- so keep INSERT TO anon,authenticated (do NOT restrict to owner prefix here)
 DROP POLICY IF EXISTS "resumes_public_read" ON storage.objects;
 CREATE POLICY "resumes_public_read" ON storage.objects
   FOR SELECT TO public
@@ -47,10 +75,10 @@ CREATE POLICY "resumes_public_read" ON storage.objects
 
 DROP POLICY IF EXISTS "resumes_auth_write" ON storage.objects;
 CREATE POLICY "resumes_auth_write" ON storage.objects
-  FOR INSERT TO authenticated
+  FOR INSERT TO anon, authenticated
   WITH CHECK (bucket_id = 'resumes');
 
--- profile_photos + avatars (public buckets): baca publik, tulis authenticated
+-- profile_photos + avatars (public buckets): public read; write owner-prefix scoped
 DROP POLICY IF EXISTS "profile_photos_public_read" ON storage.objects;
 CREATE POLICY "profile_photos_public_read" ON storage.objects
   FOR SELECT TO public
@@ -59,17 +87,26 @@ CREATE POLICY "profile_photos_public_read" ON storage.objects
 DROP POLICY IF EXISTS "profile_photos_auth_write" ON storage.objects;
 CREATE POLICY "profile_photos_auth_write" ON storage.objects
   FOR INSERT TO authenticated
-  WITH CHECK (bucket_id IN ('profile_photos', 'avatars'));
+  WITH CHECK (bucket_id IN ('profile_photos', 'avatars') AND (storage.foldername(name))[1] = auth.uid()::text);
 
 DROP POLICY IF EXISTS "profile_photos_auth_update" ON storage.objects;
 CREATE POLICY "profile_photos_auth_update" ON storage.objects
   FOR UPDATE TO authenticated
-  USING (bucket_id IN ('profile_photos', 'avatars'))
-  WITH CHECK (bucket_id IN ('profile_photos', 'avatars'));
+  USING (bucket_id IN ('profile_photos', 'avatars') AND (storage.foldername(name))[1] = auth.uid()::text)
+  WITH CHECK (bucket_id IN ('profile_photos', 'avatars') AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "profile_photos_auth_delete" ON storage.objects;
+CREATE POLICY "profile_photos_auth_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id IN ('profile_photos', 'avatars') AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- ============================================================================
 -- VERIFIKASI: jalankan dari SQL Editor
 --   SELECT id, public FROM storage.buckets ORDER BY id;
 --   → 5 baris: avatars, documents, profile_photos, receipts, resumes
+--   SELECT policyname, cmd, roles FROM pg_policies
+--    WHERE schemaname='storage' AND tablename='objects' ORDER BY 1;
+--   → documents/receipts SELECT/INSERT/UPDATE/DELETE each carry the
+--     (storage.foldername(name))[1] = auth.uid()::text prefix check
 -- Atau dari REST: GET /storage/v1/bucket (pakai service role key)
 -- ============================================================================

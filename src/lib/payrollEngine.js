@@ -1,5 +1,5 @@
 /**
- * HRIS Loka Payroll Calculation Engine
+ * KiniKerja Payroll Calculation Engine
  * Regulasi: UU HPP No.7/2021, PP 64/2020, Permenaker 1/2024
  * All amounts in IDR (Rupiah)
  */
@@ -25,22 +25,6 @@ export function calculateTotalOvertimePay(baseSalary, overtimeRecords = []) {
   return overtimeRecords
     .filter(r => r.status === 'approved')
     .reduce((sum, record) => sum + calculateOvertimePay(baseSalary, record.hours, record.rate), 0);
-}
-
-/**
- * Calculate BPJS (backward compat wrapper)
- * @deprecated Gunakan calcBPJS dari payrollConfig.js untuk config-aware calculation
- */
-export function calculateBPJS(baseSalary) {
-  return calcBPJS(baseSalary, loadPayrollConfig());
-}
-
-/**
- * Calculate PPh 21 (backward compat wrapper)
- * @deprecated Gunakan calcPPh21 dari payrollConfig.js
- */
-export function calculatePPh21(annualTaxableIncome) {
-  return calcPPh21(annualTaxableIncome);
 }
 
 /**

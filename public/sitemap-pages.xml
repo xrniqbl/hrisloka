@@ -4,55 +4,55 @@
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
 
   <!-- ════════════════════════════════════════════════════
-       HRIS Loka — Pages Sitemap
-       https://hrisloka.com/sitemap-pages.xml
+       KiniKerja — Pages Sitemap
+       https://kinikerja.id/sitemap-pages.xml
        Diperbarui: 2026-05-28
        ════════════════════════════════════════════════════ -->
 
   <!-- ── 1. HOMEPAGE / LANDING (Priority Tertinggi) ── -->
   <url>
-    <loc>https://hrisloka.com/</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kinikerja.id/"/>
   </url>
 
   <!-- ── 2. LANDING PAGE (explicit route) ── -->
   <url>
-    <loc>https://hrisloka.com/landing</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/landing</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/landing"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/landing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kinikerja.id/landing"/>
   </url>
 
   <!-- ── 3. INSTALL / PANDUAN APLIKASI PWA ── -->
-  <!-- Target keyword: "cara install aplikasi HRIS", "download HRIS Loka", "HRIS mobile app" -->
+  <!-- Target keyword: "cara install aplikasi HRIS", "download KiniKerja", "HRIS mobile app" -->
   <url>
-    <loc>https://hrisloka.com/install</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/install</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/install"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/install"/>
   </url>
 
   <!-- ── 4. LOGIN / MASUK ── -->
   <!-- Termasuk agar Google indexing login page (brand name search) -->
   <url>
-    <loc>https://hrisloka.com/login</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/login</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 
   <!-- ── 5. CHECKOUT ── -->
-  <!-- Untuk indexing "beli HRIS Loka", "harga HRIS Loka" -->
+  <!-- Untuk indexing "beli KiniKerja", "harga KiniKerja" -->
   <url>
-    <loc>https://hrisloka.com/checkout</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/checkout</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -62,155 +62,78 @@
   <!-- 🔵 HARGA DEDICATED PAGE -->
   <!-- Target: "harga HRIS Indonesia", "biaya software HR", "paket HRIS gratis", "HRIS murah" -->
   <url>
-    <loc>https://hrisloka.com/harga</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/harga</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.92</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/harga"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/harga"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/harga"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kinikerja.id/harga"/>
   </url>
 
   <!-- 🔵 FITUR DEDICATED PAGE -->
   <!-- Target: "fitur HRIS Indonesia", "absensi GPS karyawan", "penggajian otomatis BPJS" -->
   <url>
-    <loc>https://hrisloka.com/fitur</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/fitur</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.92</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/fitur"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://hrisloka.com/fitur"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/fitur"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kinikerja.id/fitur"/>
   </url>
 
-  <!-- Fitur sub-sections -->
-  <url>
-    <loc>https://hrisloka.com/fitur#absensi</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://hrisloka.com/fitur#penggajian</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://hrisloka.com/fitur#kpi</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.70</priority>
-  </url>
-  <url>
-    <loc>https://hrisloka.com/fitur#rekrutmen</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.70</priority>
-  </url>
+  <!-- Fitur sub-sections: fragment (#) URLs are NOT valid in sitemaps —
+       Google ignores them, so they were removed. The canonical /fitur
+       entry above already covers these sections. -->
 
   <!-- 🔵 KEBIJAKAN PRIVASI — E-E-A-T Trust Signal -->
   <url>
-    <loc>https://hrisloka.com/privacy</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/privacy</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.30</priority>
   </url>
 
-  <!-- ── HASH ANCHORS (existing landing page sections) ── -->
-
-  <!-- Target: "fitur HRIS Indonesia", "fitur software HR", "manajemen karyawan digital" -->
-  <url>
-    <loc>https://hrisloka.com/landing#features</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.70</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#features"/>
-  </url>
-
-  <!-- Target: "harga HRIS Loka", "biaya software HR Indonesia", "paket HRIS gratis" -->
-  <url>
-    <loc>https://hrisloka.com/landing#pricing</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.75</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#pricing"/>
-  </url>
-
-  <!-- Target: "cara kerja HRIS", "implementasi HRIS", "setup HRIS cepat" -->
-  <url>
-    <loc>https://hrisloka.com/landing#how-it-works</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.60</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#how-it-works"/>
-  </url>
-
-  <!-- Target: "teknologi HRIS cloud", "HRIS berbasis cloud", "HR software SaaS" -->
-  <url>
-    <loc>https://hrisloka.com/landing#technology</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.55</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#technology"/>
-  </url>
-
-  <!-- Target: "review HRIS Loka", "testimoni software HR Indonesia" -->
-  <url>
-    <loc>https://hrisloka.com/landing#testimonials</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.55</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#testimonials"/>
-  </url>
-
-  <!-- Target: "integrasi HRIS", "HRIS Google Workspace", "HRIS WhatsApp" -->
-  <url>
-    <loc>https://hrisloka.com/landing#integrations</loc>
-    <lastmod>2026-05-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.50</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/landing#integrations"/>
-  </url>
-
+  <!-- ── FRAGMENT URLs removed: # anchors are invalid in sitemaps (Google ignores them). Canonical /landing + /fitur entries above cover this content. -->
 
   <!-- ── BLOG PAGES (content marketing / keyword targeting) ── -->
 
   <!-- Target: "blog HR Indonesia", "panduan HRIS", "tips manajemen SDM" -->
   <url>
-    <loc>https://hrisloka.com/blog</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/blog</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.88</priority>
-    <xhtml:link rel="alternate" hreflang="id" href="https://hrisloka.com/blog"/>
+    <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/blog"/>
   </url>
 
   <!-- Target: "apa itu HRIS", "HRIS adalah", "sistem HR digital" -->
   <url>
-    <loc>https://hrisloka.com/blog/apa-itu-hris</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/blog/apa-itu-hris</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
 
   <!-- Target: "absensi karyawan digital", "sistem absensi online", "absensi GPS" -->
   <url>
-    <loc>https://hrisloka.com/blog/absensi-karyawan-digital</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/blog/absensi-karyawan-digital</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.82</priority>
   </url>
 
   <!-- Target: "penggajian otomatis", "hitung gaji BPJS PPh21", "payroll Indonesia" -->
   <url>
-    <loc>https://hrisloka.com/blog/penggajian-otomatis-bpjs</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/blog/penggajian-otomatis-bpjs</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.82</priority>
   </url>
 
   <!-- Target: "software HR terbaik Indonesia", "HRIS terbaik", "aplikasi HR perusahaan" -->
   <url>
-    <loc>https://hrisloka.com/blog/software-hr-terbaik-indonesia</loc>
-    <lastmod>2026-05-28</lastmod>
+    <loc>https://kinikerja.id/blog/software-hr-terbaik-indonesia</loc>
+    <lastmod>2026-10-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>

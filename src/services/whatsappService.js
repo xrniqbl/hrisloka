@@ -46,7 +46,7 @@ export async function sendWhatsApp(to, message) {
 export function buildLeaveStatusMessage(employeeName, status, leaveType, startDate, endDate) {
   const statusEmoji = status === 'approved' ? '✅' : '❌';
   const statusText = status === 'approved' ? 'DISETUJUI' : 'DITOLAK';
-  return `🏢 *HRIS Loka — Notifikasi Cuti*
+  return `🏢 *KiniKerja — Notifikasi Cuti*
 
 Halo, *${employeeName}*!
 
@@ -61,11 +61,11 @@ ${status === 'approved'
     ? 'Selamat menikmati cuti kamu! 🌟'
     : 'Silakan hubungi HRD untuk informasi lebih lanjut.'}
 
-_HRIS Loka — Smart HR Platform_`;
+_KiniKerja — Smart HR Platform_`;
 }
 
 export function buildPayslipMessage(employeeName, month, year, netSalary) {
-  return `🏢 *HRIS Loka — Slip Gaji Tersedia*
+  return `🏢 *KiniKerja — Slip Gaji Tersedia*
 
 Halo, *${employeeName}*!
 
@@ -74,41 +74,41 @@ Slip gaji kamu untuk periode *${month} ${year}* sudah tersedia di aplikasi.
 💰 *Total Diterima:*
 *Rp ${Number(netSalary).toLocaleString('id-ID')}*
 
-Buka aplikasi HRIS Loka untuk melihat rincian lengkap dan download slip gaji.
+Buka aplikasi KiniKerja untuk melihat rincian lengkap dan download slip gaji.
 
-_HRIS Loka — Smart HR Platform_`;
+_KiniKerja — Smart HR Platform_`;
 }
 
 export function buildClockInReminderMessage(employeeName) {
   const jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  return `🕐 *HRIS Loka — Pengingat Absensi*
+  return `🕐 *KiniKerja — Pengingat Absensi*
 
 Halo, *${employeeName}*!
 
 Jangan lupa absen masuk hari ini ya! 👋
 
 Sekarang pukul *${jam} WIB*.
-Segera buka aplikasi HRIS Loka untuk clock-in.
+Segera buka aplikasi KiniKerja untuk clock-in.
 
-_HRIS Loka — Smart HR Platform_`;
+_KiniKerja — Smart HR Platform_`;
 }
 
 export function buildApprovalReminderMessage(managerName, pendingCount, type) {
-  return `📋 *HRIS Loka — Perlu Persetujuan*
+  return `📋 *KiniKerja — Perlu Persetujuan*
 
 Halo, *${managerName}*!
 
 Ada *${pendingCount} pengajuan ${type}* yang menunggu persetujuan kamu.
 
-Buka portal HRIS Loka untuk memproses pengajuan tersebut.
+Buka portal KiniKerja untuk memproses pengajuan tersebut.
 
-_HRIS Loka — Smart HR Platform_`;
+_KiniKerja — Smart HR Platform_`;
 }
 
 export function buildReimbursementMessage(employeeName, status, amount, category) {
   const statusEmoji = status === 'approved' ? '✅' : status === 'paid' ? '💰' : '❌';
   const statusText = status === 'approved' ? 'DISETUJUI' : status === 'paid' ? 'DIBAYARKAN' : 'DITOLAK';
-  return `🏢 *HRIS Loka — Notifikasi Reimburse*
+  return `🏢 *KiniKerja — Notifikasi Reimburse*
 
 Halo, *${employeeName}*!
 
@@ -118,7 +118,7 @@ Pengajuan reimbursement kamu telah *${statusText}* ${statusEmoji}
 • Kategori: ${category}
 • Jumlah: Rp ${Number(amount).toLocaleString('id-ID')}
 
-_HRIS Loka — Smart HR Platform_`;
+_KiniKerja — Smart HR Platform_`;
 }
 
 /**
@@ -137,6 +137,6 @@ export async function isWhatsAppConfigured() {
  * Test connection — send a test message (requires logged-in session).
  */
 export async function testWhatsAppConnection(phoneNumber) {
-  const message = `✅ *Test Berhasil!*\n\nKoneksi WhatsApp HRIS Loka berhasil dikonfigurasi.\n\n_Pesan ini dikirim dari HRIS Loka Integration Hub._`;
+  const message = `✅ *Test Berhasil!*\n\nKoneksi WhatsApp KiniKerja berhasil dikonfigurasi.\n\n_Pesan ini dikirim dari KiniKerja Integration Hub._`;
   return sendWhatsApp(phoneNumber, message);
 }

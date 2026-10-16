@@ -1,391 +1,274 @@
-const CACHE_NAME = 'KiniKerja-v5';
-// Separate cache for face AI models — these are large (7MB) and never change
-const FACE_MODEL_CACHE = 'face-models-v1';
-// Background sync queue name
-const SYNC_QUEUE = 'attendance-sync';
-// Max cached entries to prevent unbounded growth
-const MAX_CACHE_ENTRIES = 200;
-// Max retry attempts for background sync
-const MAX_SYNC_RETRIES = 5;
-const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png',
-];
-
-// Install — cache static assets
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS);
-        })
-    );
-    self.skipWaiting();
-});
-
-// Activate — clean old caches AND evict stale entries within current cache
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        Promise.all([
-            // Delete old versioned caches
-            caches.keys().then((keys) =>
-                Promise.all(
-                    keys
-                      .filter((key) => key !== CACHE_NAME && key !== FACE_MODEL_CACHE)
-                      .map((key) => caches.delete(key))
-                )
-            ),
-            // Evict stale entries within the current cache to prevent unbounded growth
-            trimCache(CACHE_NAME, MAX_CACHE_ENTRIES),
-        ])
-    );
-    self.clients.claim();
-
-    // Notify all clients that a new SW is active (for update prompt)
-    self.clients.matchAll({ type: 'window' }).then((clients) => {
-        clients.forEach((client) => {
-            client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME });
-        });
-    });
-});
-
-// Fetch — network-first for navigations, cache-first for assets
-self.addEventListener('fetch', (event) => {
-    const { request } = event;
-    const url = new URL(request.url);
-
-    // Skip non-GET requests
-    if (request.method !== 'GET') return;
-
-    // Skip non-http/https schemes (e.g. chrome-extension://)
-    if (!url.protocol.startsWith('http')) return;
-
-    // Skip Vite internal requests and HMR
-    if (url.pathname.includes('/@vite/') || url.pathname.includes('/@id/') || url.search.includes('token=')) return;
-
-    // Skip ALL caching in development (localhost)
-    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return;
-
-    // Navigation requests — network first, fallback to cache
-    if (request.mode === 'navigate') {
-        event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                    return response;
-                })
-                .catch(() => caches.match('/index.html'))
-        );
-        return;
-    }
-
-    // Static assets — cache first, fallback to network
-    if (
-        request.destination === 'style' ||
-        request.destination === 'script' ||
-        request.destination === 'image' ||
-        request.destination === 'font'
-    ) {
-        event.respondWith(
-            caches.match(request).then((cached) => {
-                if (cached) return cached;
-                return fetch(request).then((response) => {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                    return response;
-                });
-            })
-        );
-        return;
-    }
-
-    // Face AI models — aggressive cache-first (these are huge, CDN-served, immutable)
-    if (url.pathname.startsWith('/models/')) {
-        event.respondWith(
-            caches.open(FACE_MODEL_CACHE).then((cache) =>
-                cache.match(request).then((cached) => {
-                    if (cached) return cached;
-                    return fetch(request).then((response) => {
-                        // Only cache successful responses
-                        if (response.ok) cache.put(request, response.clone());
-                        return response;
-                    });
-                })
-            )
-        );
-        return;
-    }
-
-    // Everything else — network first
-    event.respondWith(
-        fetch(request)
-            .then((response) => {
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                return response;
-            })
-            .catch(() => caches.match(request))
-    );
-});
-
-// ── Background Sync — retry failed attendance clock-ins ──────────────────────
-self.addEventListener('sync', (event) => {
-    if (event.tag === SYNC_QUEUE) {
-        event.waitUntil(replayAttendanceQueue());
-    }
-});
-
-async function replayAttendanceQueue() {
-    try {
-        const authToken = await getAuthTokenFromClients();
-        const db = await openSyncDB();
-        const tx = db.transaction('sync_queue', 'readwrite');
-        const store = tx.objectStore('sync_queue');
-        const items = await getAllFromStore(store);
-
-        for (const item of items) {
-            // Check retry count — remove items that exceed max retries
-            const retries = item.retries || 0;
-            if (retries >= MAX_SYNC_RETRIES) {
-                console.warn(`[SW] Background sync: max retries (${MAX_SYNC_RETRIES}) reached for item ${item.id}, removing`);
-                await deleteFromStore(db, item.id);
-                continue;
-            }
-
-            // The API verifies the JWT fail-closed — without a token the replay
-            // cannot succeed; keep the item queued for a later attempt.
-            if (!authToken) {
-                await updateRetryCount(db, item.id, retries + 1);
-                continue;
-            }
-
-            try {
-                const res = await fetch(item.url, {
-                    method: item.method,
-                    headers: { ...(item.headers || {}), Authorization: `Bearer ${authToken}` },
-                    body: item.body,
-                });
-                if (res.ok) {
-                    // Remove from queue on success
-                    await deleteFromStore(db, item.id);
-                    console.log('[SW] Background sync: success for', item.id);
-                } else {
-                    // Increment retry count
-                    await updateRetryCount(db, item.id, retries + 1);
-                }
-            } catch {
-                // Increment retry count on failure
-                await updateRetryCount(db, item.id, retries + 1);
-                console.log(`[SW] Background sync: retry ${retries + 1}/${MAX_SYNC_RETRIES} failed for`, item.id);
-            }
-        }
-    } catch (err) {
-        console.error('[SW] Background sync error:', err);
-    }
-}
-
-/**
- * Ask open app windows for the current Supabase access token.
- * The service worker has no access to localStorage, so the app answers
- * via postMessage (see backgroundSync.js listener).
+/* KiniKerja service worker — app shell offline + user-accepted updates.
+ *
+ * Strategy:
+ * - Navigations (HTML): network-first, fallback to cached shell, fallback to
+ *   offline page. Never serves stale HTML after a deploy — fresh network wins
+ *   when online, so updates are always visible.
+ * - Hashed Vite assets (/assets/*.[hash].*): cache-first (immutable), populate
+ *   in background.
+ * - API / Supabase / Midtrans / auth: network-only, never cached.
+ * - Everything else (icons, landing images, manifest): stale-while-revalidate.
+ *
+ * Updates are NEVER forced: a new worker stays in "waiting" until the user
+ * clicks "Muat Ulang" in UpdatePrompt.jsx, which posts { type: 'SKIP_WAITING' }.
+ * See public/register-sw.js for the registration / prompt wiring.
  */
-async function getAuthTokenFromClients() {
-    try {
-        const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-        if (!clientList.length) return null;
-        return await new Promise((resolve) => {
-            let settled = false;
-            const finish = (token) => {
-                if (settled) return;
-                settled = true;
-                clearTimeout(timer);
-                self.removeEventListener('message', onMessage);
-                resolve(token || null);
-            };
-            const timer = setTimeout(() => finish(null), 3000);
-            const onMessage = (event) => {
-                if (event.data && event.data.type === 'SYNC_AUTH_TOKEN') finish(event.data.token);
-            };
-            self.addEventListener('message', onMessage);
-            clientList.forEach((client) => client.postMessage({ type: 'REQUEST_SYNC_AUTH_TOKEN' }));
-        });
-    } catch {
-        return null;
-    }
+
+const SHELL_CACHE = 'kinikerja-shell-v1';
+const ASSET_CACHE = 'kinikerja-assets-v1';
+const OFFLINE_URLS = ['/', '/app/splash', '/app/welcome'];
+
+self.addEventListener('install', (event) => {
+  // Do NOT skipWaiting here — wait for explicit user acceptance.
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((cache) =>
+      // Best-effort: failure (offline first install) must not break install.
+      Promise.allSettled(
+        OFFLINE_URLS.map((url) =>
+          fetch(url, { credentials: 'same-origin' }).then((res) => {
+            if (res && res.ok) return cache.put(url, res.clone());
+            return null;
+          }),
+        ),
+      ),
+    ),
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.map((k) => {
+          if (k !== SHELL_CACHE && k !== ASSET_CACHE) return caches.delete(k);
+          return null;
+        }),
+      );
+      await self.clients.claim();
+      // Notify open pages that a new worker took over (post-update path).
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clients) {
+        try {
+          client.postMessage({ type: 'SW_UPDATED' });
+        } catch {
+          /* ignore */
+        }
+      }
+    })(),
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+function isApiRequest(url) {
+  return (
+    url.pathname.startsWith('/api') ||
+    url.hostname.includes('supabase') ||
+    url.hostname.includes('midtrans') ||
+    url.hostname.includes('fonnte') ||
+    url.hostname.includes('brevo')
+  );
 }
 
-function deleteFromStore(db, id) {
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction('sync_queue', 'readwrite');
-        tx.objectStore('sync_queue').delete(id);
-        tx.oncomplete = resolve;
-        tx.onerror = reject;
-    });
+function isHashedAsset(url) {
+  return url.pathname.startsWith('/assets/') && /\.[0-9a-zA-Z_-]{8}\.(js|css)/.test(url.pathname);
 }
 
-function updateRetryCount(db, id, retries) {
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction('sync_queue', 'readwrite');
-        const store = tx.objectStore('sync_queue');
-        const getReq = store.get(id);
-        getReq.onsuccess = () => {
-            const item = getReq.result;
-            if (item) {
-                item.retries = retries;
-                store.put(item);
-            }
-        };
-        tx.oncomplete = resolve;
-        tx.onerror = reject;
-    });
-}
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
+  if (url.origin !== self.location.origin) return;
+  if (isApiRequest(url)) return; // network-only: never cache API/auth
+
+  // Navigations: network-first → cached shell → cached '/' (offline)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(request);
+          const cache = await caches.open(SHELL_CACHE);
+          cache.put(request.url, fresh.clone()).catch(() => {});
+          return fresh;
+        } catch {
+          const cached = await caches.match(request.url, { ignoreSearch: true });
+          if (cached) return cached;
+          const shell = await caches.match('/');
+          if (shell) return shell;
+          return new Response('Anda sedang offline. Sambungkan internet lalu coba lagi.', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          });
+        }
+      })(),
+    );
+    return;
+  }
+
+  // Hashed build assets: cache-first (content-addressed, immutable)
+  if (isHashedAsset(url)) {
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        try {
+          const fresh = await fetch(request);
+          if (fresh && fresh.ok) {
+            const cache = await caches.open(ASSET_CACHE);
+            cache.put(request, fresh.clone()).catch(() => {});
+          }
+          return fresh;
+        } catch {
+          return cached || Response.error();
+        }
+      })(),
+    );
+    return;
+  }
+
+  // Static files (icons, landing, manifest, models): stale-while-revalidate
+  event.respondWith(
+    (async () => {
+      const cached = await caches.match(request);
+      const network = fetch(request)
+        .then((fresh) => {
+          if (fresh && fresh.ok) {
+            const copy = fresh.clone();
+            caches.open(ASSET_CACHE).then((cache) => cache.put(request, copy).catch(() => {}));
+          }
+          return fresh;
+        })
+        .catch(() => null);
+      return cached || (await network) || Response.error();
+    })(),
+  );
+});
+
+// ─── Background Sync: replay offline clock-in queue ─────────────────────────
+// backgroundSync.js (page) stores failed clock-ins in IndexedDB
+// 'kinikerja_sync'/'sync_queue' and registers the 'attendance-sync' tag.
+// The worker replays each entry with a FRESH session token obtained via the
+// REQUEST_SYNC_AUTH_TOKEN postMessage bridge (tokens can't be stored — they
+// expire; backgroundSync.js attaches them at replay time).
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'attendance-sync') {
+    event.waitUntil(replayAttendanceQueue());
+  }
+});
 
 function openSyncDB() {
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open('kinikerja_sync', 1);
-        req.onupgradeneeded = () => {
-            const db = req.result;
-            if (!db.objectStoreNames.contains('sync_queue')) {
-                db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
-            }
-        };
-        req.onsuccess = () => {
-            const db = req.result;
-            // Legacy pre-rebrand DB ('hrisloka_sync') may still hold queued
-            // clock-ins written by an older app version — replay those too.
-            migrateLegacySyncQueue(db).finally(() => resolve(db));
-        };
-        req.onerror = () => reject(req.error);
-    });
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('kinikerja_sync', 1);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-// One-time migration: copy pending items from the pre-rebrand
-// 'hrisloka_sync' database, then delete it. Best-effort — failures
-// must never block the sync replay itself.
-function migrateLegacySyncQueue(db) {
-    return new Promise((resolve) => {
-        let legacyItems = [];
-        let legacyReq;
-        try {
-            legacyReq = indexedDB.open('hrisloka_sync', 1);
-        } catch { resolve(); return; }
-        legacyReq.onsuccess = () => {
-            const legacyDb = legacyReq.result;
-            try {
-                if (!legacyDb.objectStoreNames.contains('sync_queue') || legacyDb.objectStoreNames.length === 0) {
-                    legacyDb.close();
-                    try { indexedDB.deleteDatabase('hrisloka_sync'); } catch { /* ignore */ }
-                    resolve();
-                    return;
-                }
-                const tx = legacyDb.transaction('sync_queue', 'readonly');
-                const getReq = tx.objectStore('sync_queue').getAll();
-                getReq.onsuccess = () => {
-                    legacyItems = getReq.result || [];
-                    legacyDb.close();
-                    if (!legacyItems.length) {
-                        try { indexedDB.deleteDatabase('hrisloka_sync'); } catch { /* ignore */ }
-                        resolve();
-                        return;
-                    }
-                    try {
-                        const wtx = db.transaction('sync_queue', 'readwrite');
-                        const store = wtx.objectStore('sync_queue');
-                        for (const item of legacyItems) {
-                            const { id: _dropped, ...rest } = item || {};
-                            store.add(rest);
-                        }
-                        wtx.oncomplete = () => {
-                            try { indexedDB.deleteDatabase('hrisloka_sync'); } catch { /* ignore */ }
-                            resolve();
-                        };
-                        wtx.onerror = () => resolve();
-                    } catch { resolve(); }
-                };
-                getReq.onerror = () => { try { legacyDb.close(); } catch { /* ignore */ } resolve(); };
-            } catch { try { legacyDb.close(); } catch { /* ignore */ } resolve(); }
-        };
-        legacyReq.onerror = () => resolve();
-        legacyReq.onblocked = () => resolve();
-    });
-}
-
-function getAllFromStore(store) {
-    return new Promise((resolve, reject) => {
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => reject(req.error);
-    });
-}
-
-// ── Push Notifications ───────────────────────────────────────────────────────
-self.addEventListener('push', (event) => {
-    const data = event.data ? event.data.json() : {};
-    const title = data.title || 'KiniKerja';
-    const options = {
-        body: data.body || 'Ada notifikasi baru untuk Anda.',
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
-        vibrate: [100, 50, 100],
-        data: {
-            url: data.url || '/app/home',
-        },
-        // Show notification badge on app icon (Badge API)
-        tag: data.tag || 'kinikerja-notification',
-        renotify: true,
+async function requestPageToken(clientId) {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const target = clients.find((c) => c.id === clientId) || clients[0];
+  if (!target) return null;
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => resolve(null), 8000);
+    const onMessage = (event) => {
+      if (event.data && event.data.type === 'SYNC_AUTH_TOKEN') {
+        clearTimeout(timeout);
+        self.removeEventListener('message', onMessage);
+        resolve(event.data.token || null);
+      }
     };
-    event.waitUntil(
-        self.registration.showNotification(title, options).then(() => {
-            // Update badge count if supported
-            if (navigator.setAppBadge) {
-                navigator.setAppBadge().catch(() => {});
-            }
-        })
-    );
-});
-
-// ── Cache Eviction — trim cache to maxEntries (LRU: evict oldest) ─────────
-async function trimCache(cacheName, maxEntries) {
+    self.addEventListener('message', onMessage);
     try {
-        const cache = await caches.open(cacheName);
-        const keys = await cache.keys();
-        if (keys.length <= maxEntries) return;
-        // Delete oldest entries (first in cache = oldest)
-        const toDelete = keys.length - maxEntries;
-        for (let i = 0; i < toDelete; i++) {
-            await cache.delete(keys[i]);
-        }
-        console.log(`[SW] Cache trimmed: removed ${toDelete} stale entries from ${cacheName}`);
-    } catch (err) {
-        console.warn('[SW] Cache trim error:', err);
+      target.postMessage({ type: 'REQUEST_SYNC_AUTH_TOKEN' });
+    } catch {
+      clearTimeout(timeout);
+      self.removeEventListener('message', onMessage);
+      resolve(null);
     }
+  });
 }
 
-// Notification Click — open the relevant page
-// SECURITY: URL dari payload push tidak dipercaya mentah — hanya path relatif
-// internal (/app/*, /checkout/*, /login/*) yang dibuka (cegah open-redirect).
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-    const raw = event.notification.data?.url || '/app/home';
-    const url = /^(\/app(\/|$|\?)|\/checkout(\/|$|\?)|\/login(\/|$|\?))/.test(raw)
-        ? raw.slice(0, 200)
-        : '/app/home';
-    event.waitUntil(
-        self.clients.matchAll({ type: 'window' }).then((clients) => {
-            for (const client of clients) {
-                if (client.url.includes(url) && 'focus' in client) return client.focus();
-            }
-            return self.clients.openWindow(url);
-        })
-    );
-});
+async function replayAttendanceQueue() {
+  let db;
+  try {
+    db = await openSyncDB();
+  } catch {
+    return;
+  }
+  let items = [];
+  try {
+    items = await new Promise((resolve, reject) => {
+      const tx = db.transaction('sync_queue', 'readonly');
+      const req = tx.objectStore('sync_queue').getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    try { db.close(); } catch { /* ignore */ }
+    return;
+  }
+  if (!items.length) {
+    try { db.close(); } catch { /* ignore */ }
+    return;
+  }
 
-// ── Message handler — for app update coordination ────────────────────────────
-self.addEventListener('message', (event) => {
-    if (event.data?.type === 'SKIP_WAITING') {
-        self.skipWaiting();
+  // Fresh token per replay run (one bridge round-trip, reused across items).
+  const token = await requestPageToken();
+  for (const item of items) {
+    if ((item.retries || 0) >= 5) {
+      try {
+        const tx = db.transaction('sync_queue', 'readwrite');
+        tx.objectStore('sync_queue').delete(item.id);
+        await new Promise((resolve) => { tx.oncomplete = resolve; tx.onerror = resolve; });
+      } catch { /* ignore */ }
+      continue;
     }
-});
+    try {
+      const headers = { ...(item.headers || {}) };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(item.url, {
+        method: item.method || 'POST',
+        headers,
+        body: item.body,
+      });
+      if (res.ok) {
+        const tx = db.transaction('sync_queue', 'readwrite');
+        tx.objectStore('sync_queue').delete(item.id);
+        await new Promise((resolve) => { tx.oncomplete = resolve; tx.onerror = resolve; });
+      } else {
+        await bumpRetries(db, item);
+      }
+    } catch {
+      await bumpRetries(db, item);
+    }
+  }
+  try { db.close(); } catch { /* ignore */ }
+}
+
+async function bumpRetries(db, item) {
+  try {
+    const tx = db.transaction('sync_queue', 'readwrite');
+    const store = tx.objectStore('sync_queue');
+    const rec = await new Promise((resolve) => {
+      const req = store.get(item.id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+    if (rec) {
+      rec.retries = (rec.retries || 0) + 1;
+      store.put(rec);
+    }
+    await new Promise((resolve) => { tx.oncomplete = resolve; tx.onerror = resolve; });
+  } catch { /* ignore */ }
+}

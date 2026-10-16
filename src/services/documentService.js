@@ -1,8 +1,9 @@
 import { supabase } from '../lib/supabase';
 import { guardCompanyId } from '../lib/tenantGuard';
 
-/** Preferred private bucket names (first match wins) */
-const BUCKET_CANDIDATES = ['employee_docs', 'employee-documents', 'documents'];
+/** Primary private bucket (created by scripts/STORAGE_BUCKETS_SETUP.sql). Legacy names kept commented for reference. */
+const BUCKET_CANDIDATES = ['documents'];
+// Legacy fallbacks (no longer probed): 'employee_docs', 'employee-documents'
 
 /**
  * Resolve a stored document reference into a viewable URL.
@@ -75,7 +76,7 @@ export async function uploadDocument(file, employeeId, type, _opts = {}) {
       data: null,
       error: lastUploadErr || {
         message:
-          'Gagal upload. Buat bucket Storage privat: employee_docs (disarankan) di Supabase.',
+          'Gagal upload. Buat bucket Storage privat: documents (disarankan) di Supabase.',
       },
     };
   }
@@ -167,10 +168,21 @@ export async function getAllDocuments(companyId) {
 }
 
 /**
- * Get documents for one employee (PWA)
+ * Get documents for one employee (PWA) — optional companyId scope.
+ * employee_documents/documents have no company_id column (RLS scopes via
+ * employees); when companyId is given the employee must belong to it.
  */
-export async function getEmployeeDocuments(employeeId) {
+export async function getEmployeeDocuments(employeeId, companyId = null) {
   if (!employeeId) return { data: [], error: null };
+  if (companyId) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', employeeId)
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (!emp) return { data: [], error: null };
+  }
   const primary = await supabase
     .from('employee_documents')
     .select('*')
@@ -186,34 +198,40 @@ export async function getEmployeeDocuments(employeeId) {
 }
 
 /**
- * Update document status (Approve/Reject) — optional company ownership
+ * Update document status (Approve/Reject) — companyId REQUIRED for writes
+ * (defense in depth). Silent unscoped writes are refused, including the
+ * legacy `documents` fallback; RLS remains the primary enforcement.
  */
 export async function updateDocumentStatus(id, status, companyId = null) {
-  if (companyId) {
-    const { data: owned } = await supabase
+  if (!guardCompanyId(companyId, 'updateDocumentStatus')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const { data: owned } = await supabase
+    .from('employee_documents')
+    .select('id, employees!inner(company_id)')
+    .eq('id', id)
+    .eq('employees.company_id', companyId)
+    .maybeSingle();
+  if (owned) {
+    return supabase
       .from('employee_documents')
-      .select('id, employees!inner(company_id)')
+      .update({ status, reviewed_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('employees.company_id', companyId)
-      .maybeSingle();
-    if (owned) {
-      return supabase
-        .from('employee_documents')
-        .update({ status, reviewed_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-    }
+      .select()
+      .single();
   }
 
-  const empUpd = await supabase
-    .from('employee_documents')
-    .update({ status, reviewed_at: new Date().toISOString() })
+  // Ownership check failed for employee_documents — only fall through to the
+  // legacy `documents` table with the same company-ownership proof.
+  const { data: legacyOwned } = await supabase
+    .from('documents')
+    .select('id, employees!inner(company_id)')
     .eq('id', id)
-    .select()
+    .eq('employees.company_id', companyId)
     .maybeSingle();
-  if (empUpd.data && !empUpd.error) return empUpd;
-
+  if (!legacyOwned) {
+    return { data: null, error: { message: 'Document not found in your company' } };
+  }
   return supabase.from('documents').update({ status }).eq('id', id).select().single();
 }
 

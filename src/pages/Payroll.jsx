@@ -354,7 +354,7 @@ export default function Payroll() {
             <TableCell>
               <div className="employee-cell">
                 <div className="employee-avatar sm">
-                  {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  {(emp.name || '').split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
                 <div>
                   <div className="employee-name">{emp.name}</div>

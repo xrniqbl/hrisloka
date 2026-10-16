@@ -1,0 +1,104 @@
+.pbb-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--primary, #5654D4) 18%, var(--border, #E8E8EE));
+  background: color-mix(in srgb, var(--primary, #5654D4) 7%, var(--surface, #fff));
+  color: var(--text, #111827);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.pbb-banner--warning,
+.pbb-banner--maintenance {
+  border-color: color-mix(in srgb, #D97706 25%, var(--border));
+  background: color-mix(in srgb, #D97706 8%, var(--surface));
+}
+
+.pbb-banner--promo {
+  border-color: color-mix(in srgb, var(--primary, #5654D4) 28%, var(--border));
+  background: color-mix(in srgb, var(--primary, #5654D4) 10%, var(--surface));
+}
+
+.pbb-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--primary, #5654D4) 12%, transparent);
+  color: var(--primary, #5654D4);
+}
+
+.pbb-banner--warning .pbb-icon,
+.pbb-banner--maintenance .pbb-icon {
+  background: rgba(217, 119, 6, 0.12);
+  color: #D97706;
+}
+
+.pbb-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pbb-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pbb-msg {
+  font-size: 12.5px;
+  color: var(--muted, #6B7280);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pbb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary, #5654D4);
+  text-decoration: none;
+  width: fit-content;
+}
+.pbb-link:hover {
+  text-decoration: underline;
+}
+
+.pbb-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted, #6B7280);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pbb-close:hover {
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .pbb-banner {
+    margin-bottom: 12px;
+  }
+}

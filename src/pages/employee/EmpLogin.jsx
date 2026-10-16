@@ -83,8 +83,8 @@ export default function EmpLogin() {
   }
 
   if (!authLoading && user) {
-    const status = employee?.account_status;
-    if (status === 'pending_verification') return <Navigate to="/app/pending" replace />;
+    const status = String(employee?.account_status || '');
+    if (status.includes('pending')) return <Navigate to="/app/pending" replace />;
     if (status === 'rejected') return <Navigate to="/app/rejected" replace />;
     return <Navigate to="/app/home" replace />;
   }
@@ -137,7 +137,7 @@ export default function EmpLogin() {
       return;
     }
 
-    if (emp?.account_status === 'pending_verification') {
+    if (emp?.account_status && String(emp.account_status).includes('pending')) {
       navigate('/app/pending', { replace: true });
     } else if (emp?.account_status === 'rejected') {
       navigate('/app/rejected', { replace: true });
@@ -153,7 +153,7 @@ export default function EmpLogin() {
         setError(`Status akun: ${emp.account_status}. Hubungi HR.`);
       }
     } else {
-      try { sessionStorage.setItem('hrisloka_splash_seen', '1'); } catch { /* */ }
+      try { sessionStorage.setItem('kinikerja_splash_seen', '1'); } catch { /* */ }
       navigate('/app/home', { replace: true });
     }
     setLoading(false);
@@ -221,9 +221,9 @@ export default function EmpLogin() {
             ← Kembali
           </Link>
           <div className="emp-login__brand-icon" aria-hidden>
-            <img src="/landing/hrislokalogo.jpeg" alt="" />
+            <img src="/landing/kinikerjalogo.jpeg" alt="" />
           </div>
-          <h1 className="emp-login__title">HRIS Loka</h1>
+          <h1 className="emp-login__title">KiniKerja</h1>
           <p className="emp-login__subtitle">
             {forgotMode
               ? 'Reset password akun karyawan Anda'

@@ -1,0 +1,90 @@
+/* Compact monochrome KPI strip — theme tokens for light/dark contrast */
+
+.metric-stat-grid {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.metric-stat-card {
+  min-height: 0 !important;
+  border: 1px solid var(--border, #E8E8EE) !important;
+  border-radius: 10px !important;
+  background: var(--surface, #FFFFFF) !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.metric-stat-inner {
+  width: 100%;
+  padding: 8px 12px;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.metric-stat-left {
+  min-width: 0;
+}
+
+.metric-stat-card--clickable {
+  cursor: pointer;
+}
+
+.metric-stat-card--clickable:hover {
+  border-color: var(--border-strong, #D4D4DC) !important;
+  background: color-mix(in srgb, var(--bg, #FAFAFB) 70%, var(--surface, #fff)) !important;
+}
+
+.metric-stat-card--clickable:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary, #5654D4) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.metric-stat-card--active {
+  border-color: color-mix(in srgb, var(--primary, #5654D4) 40%, var(--border, #E8E8EE)) !important;
+  background: color-mix(in srgb, var(--primary, #5654D4) 8%, var(--surface, #fff)) !important;
+}
+
+.metric-stat-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--muted, #6B7280) 12%, transparent);
+  color: var(--muted, #6B7280);
+}
+
+.metric-stat-label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--muted, #6B7280) !important;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #111827);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .metric-stat-inner {
+    padding: 8px 10px;
+    min-height: 38px;
+  }
+  .metric-stat-value {
+    font-size: 14px;
+  }
+  .metric-stat-label {
+    font-size: 11px !important;
+  }
+}

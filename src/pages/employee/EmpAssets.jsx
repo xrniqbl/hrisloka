@@ -7,7 +7,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
-import { supabase } from '../../lib/supabase';
+import { getMyAssets } from '../../services/assetService';
 import { useTranslation } from '../../lib/i18n';
 import { isDemoMode, DEMO_EMPLOYEE, DEMO_PROFILE_DATA } from '../../lib/demoGuard';
 import EmpEmptyState from '../../components/EmpEmptyState';
@@ -41,11 +41,7 @@ export default function EmpAssets() {
     const { data: empData } = await getEmployeeByEmail(email);
     if (empData) {
       setEmp(empData);
-      const { data } = await supabase
-        .from('assets')
-        .select('*')
-        .eq('assigned_to', empData.id)
-        .order('created_at', { ascending: false });
+      const { data } = await getMyAssets(empData.id, empData.company_id);
       setAssets(data || []);
     }
     setLoading(false);

@@ -1,5 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiCopy, FiEdit2, FiTrash2, FiX, FiCheck, FiSearch } from 'react-icons/fi';
+import { Tag, Ticket, Ban } from 'lucide-react';
+import MetricStatCards from '../../components/MetricStatCards';
 import * as founderService from '../../services/founderService';
 import { useToast } from '../../components/Toast';
 import './founder.css';
@@ -78,7 +80,7 @@ export default function FounderVouchers() {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const { data, error } = await founderService.getAllVouchers();
       if (error) throw error;
@@ -88,8 +90,8 @@ export default function FounderVouchers() {
     } finally {
       setLoading(false);
     }
-  };
-  useEffect(() => { fetchData(); }, []);
+  }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   if (loading) return <SkeletonPage cols={6} rows={6} hasStats={false} />;
 
@@ -167,29 +169,22 @@ export default function FounderVouchers() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="fp-stats mb" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{vouchers.filter(v => v.is_active).length}</div>
-          <div className="fp-stat-label">Active Vouchers</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{vouchers.reduce((sum, v) => sum + (v.used_count || 0), 0)}</div>
-          <div className="fp-stat-label">Total Redemptions</div>
-        </div>
-        <div className="fp-stat">
-          <div className="fp-stat-value">{vouchers.filter(v => isExpired(v) || isExhausted(v)).length}</div>
-          <div className="fp-stat-label">Expired / Exhausted</div>
-        </div>
-      </div>
+      <MetricStatCards
+        className="fp-metric-strip"
+        items={[
+          { key: 'active', label: 'Active Vouchers', value: vouchers.filter((v) => v.is_active).length, icon: Tag },
+          { key: 'redeem', label: 'Total Redemptions', value: vouchers.reduce((sum, v) => sum + (v.used_count || 0), 0), icon: Ticket },
+          { key: 'expired', label: 'Expired / Exhausted', value: vouchers.filter((v) => isExpired(v) || isExhausted(v)).length, icon: Ban },
+        ]}
+      />
 
       <div className="fp-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+        <div className="fp-toolbar">
           <div className="fp-search">
             <FiSearch className="fp-search-icon" />
             <input placeholder="Search by code or description..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-secondary)' }}>{filtered.length} vouchers</span>
+          <span className="fp-toolbar-meta">{filtered.length} vouchers</span>
         </div>
 
         <div className="fp-table-wrap">
@@ -252,7 +247,7 @@ export default function FounderVouchers() {
                       </div>
                       {v.max_uses && (
                         <div style={{ marginTop: 4, height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden', width: 80 }}>
-                          <div style={{ height: '100%', background: '#F59E0B', borderRadius: 2, width: `${Math.min(100, (v.used_count / v.max_uses) * 100)}%` }} />
+                          <div style={{ height: '100%', background: 'var(--primary, #5654D4)', borderRadius: 2, width: `${Math.min(100, (v.used_count / v.max_uses) * 100)}%` }} />
                         </div>
                       )}
                     </td>

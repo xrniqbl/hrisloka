@@ -162,9 +162,10 @@ export default function Sidebar() {
 
   const [viewAsRole, setViewAsRole] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = safeGetItem('HRIS Loka_viewAs');
+      // Legacy 'HRIS Loka_viewAs' still read once for pre-rebrand tenants.
+      const saved = safeGetItem('KiniKerja_viewAs') || safeGetItem('HRIS Loka_viewAs');
       if (!saved || !['super_admin', 'hr_admin'].includes(saved)) {
-        safeSetItem('HRIS Loka_viewAs', 'super_admin');
+        safeSetItem('KiniKerja_viewAs', 'super_admin');
         return 'super_admin';
       }
       return saved;
@@ -208,7 +209,7 @@ export default function Sidebar() {
 
   const handleViewAs = (role) => {
     setViewAsRole(role);
-    safeSetItem('HRIS Loka_viewAs', role);
+    safeSetItem('KiniKerja_viewAs', role);
     setShowRoleSwitcher(false);
   };
 
@@ -218,10 +219,10 @@ export default function Sidebar() {
     items.reduce((acc, item) => {
       if (item.children) {
         const filtered = item.children.filter(
-          (child) => hasSidebarAccess(activeRole, child.path) && isPathEnabled(child.path),
+          (child) => hasSidebarAccess(activeRole, child.path, founderUser) && isPathEnabled(child.path),
         );
         if (filtered.length > 0) acc.push({ ...item, children: filtered });
-      } else if (hasSidebarAccess(activeRole, item.path) && isPathEnabled(item.path)) {
+      } else if (hasSidebarAccess(activeRole, item.path, founderUser) && isPathEnabled(item.path)) {
         acc.push(item);
       }
       return acc;
@@ -229,12 +230,12 @@ export default function Sidebar() {
 
   const visibleNav = filterByRole(navItems);
 
-  const toggleSubmenu = (label) => {
+  const toggleSubmenu = (key) => {
     if (collapsed) {
       setCollapsed(false);
-      setTimeout(() => setExpandedMenus((prev) => ({ ...prev, [label]: true })), 50);
+      setTimeout(() => setExpandedMenus((prev) => ({ ...prev, [key]: true })), 50);
     } else {
-      setExpandedMenus((prev) => ({ ...prev, [label]: !prev[label] }));
+      setExpandedMenus((prev) => ({ ...prev, [key]: !prev[key] }));
     }
   };
 
@@ -259,7 +260,7 @@ export default function Sidebar() {
         >
           <Icon icon={mobileOpen ? X : Menu} size="md" color="inherit" />
         </button>
-        <span className="mobile-brand">HRIS Loka</span>
+        <span className="mobile-brand">KiniKerja</span>
       </div>
 
       <div
@@ -275,7 +276,7 @@ export default function Sidebar() {
         {/* Org header — matches SolveHR “Your Organization / Maple Inc.” */}
         <div className="sidebar-brand">
           <img
-            src="/landing/hrislokalogo.jpeg"
+            src="/landing/kinikerjalogo.jpeg"
             alt=""
             className="sidebar-brand-logo"
           />
@@ -283,7 +284,7 @@ export default function Sidebar() {
             <div className="sidebar-org-meta">
               <span className="sidebar-org-label">Your Organization</span>
               <span className="sidebar-brand-text">
-                {isDemo ? 'Demo Company' : employee?.company_name || 'HRIS Loka'}
+                {isDemo ? 'Demo Company' : employee?.company_name || 'KiniKerja'}
               </span>
             </div>
           )}
@@ -303,22 +304,25 @@ export default function Sidebar() {
             <div className="nav-section-label">{t('nav.main_menu') || 'Menu'}</div>
           )}
 
-          {visibleNav.map((item) => (
-            <div className="nav-item" key={item.label}>
+          {visibleNav.map((item) => {
+            // Stable key by path (not translated label) so ID/EN switch keeps state
+            const itemKey = item.path || item.children?.[0]?.path || item.label;
+            return (
+              <div className="nav-item" key={itemKey}>
               {item.children ? (
                 <>
                   <button
                     type="button"
                     className={`nav-link ${isChildActive(item.children) ? 'active' : ''}`}
-                    onClick={() => toggleSubmenu(item.label)}
+                    onClick={() => toggleSubmenu(itemKey)}
                     title={collapsed ? item.label : ''}
-                    aria-expanded={!!expandedMenus[item.label]}
+                    aria-expanded={!!expandedMenus[itemKey]}
                   >
                     <NavIcon icon={item.icon} />
                     {!collapsed && <span className="nav-link-text">{item.label}</span>}
                     {!collapsed && (
                       <span
-                        className={`nav-link-arrow ${expandedMenus[item.label] ? 'open' : ''}`}
+                        className={`nav-link-arrow ${expandedMenus[itemKey] ? 'open' : ''}`}
                       >
                         <Icon icon={ChevronRight} size="sm" color="inherit" />
                       </span>
@@ -326,7 +330,7 @@ export default function Sidebar() {
                   </button>
                   {!collapsed && (
                     <div
-                      className={`nav-submenu ${expandedMenus[item.label] ? 'open' : ''}`}
+                      className={`nav-submenu ${expandedMenus[itemKey] ? 'open' : ''}`}
                     >
                       {item.children.map((child) => (
                         <button
@@ -356,9 +360,10 @@ export default function Sidebar() {
                   <NavIcon icon={item.icon} />
                   {!collapsed && <span className="nav-link-text">{item.label}</span>}
                 </button>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer">

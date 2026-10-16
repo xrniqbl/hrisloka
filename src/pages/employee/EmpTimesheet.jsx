@@ -1,7 +1,8 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { HiClock, HiPaperAirplane, HiCalendarDays } from 'react-icons/hi2';
+import { useState, useEffect, useCallback } from 'react';
+import { HiClock, HiPaperAirplane, HiCalendarDays, HiXMark, HiArrowPath } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { getEmployeeByEmail } from '../../services/employeeService';
+import { getMyTimesheets, logTimesheet, deleteTimesheet } from '../../services/projectService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import { useRealtimeTable } from '../../hooks/useRealtime';
@@ -18,6 +19,8 @@ export default function EmpTimesheet() {
   const [entries, setEntries] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], hours: '', project: '', task: '', notes: '' });
 
   const load = useCallback(async () => {
@@ -29,12 +32,12 @@ export default function EmpTimesheet() {
     }
     let e = authEmployee;
     if (!e?.id && user?.email) {
-      const { data } = await supabase.from('employees').select('*').eq('email', user.email).maybeSingle();
+      const { data } = await getEmployeeByEmail(user.email);
       e = data;
     }
     if (e) {
       setEmp(e);
-      const { data: t } = await supabase.from('timesheets').select('*').eq('employee_id', e.id).order('date', { ascending: false }).limit(30);
+      const { data: t } = await getMyTimesheets(e.id, null, null, 30);
       setEntries(t || []);
     }
     setLoading(false);
@@ -70,8 +73,7 @@ export default function EmpTimesheet() {
       return;
     }
 
-    const { error } = await supabase.from('timesheets').insert({
-      employee_id: emp.id,
+    const { error } = await logTimesheet(emp.id, {
       date: form.date,
       hours,
       project: form.project || null,
@@ -88,6 +90,27 @@ export default function EmpTimesheet() {
       console.error('[EmpTimesheet] insert error:', error);
     }
     setSubmitting(false);
+  };
+
+  // Delete own entry (service is owner-agnostic delete by id; entries listed
+  // here are always the current employee's via getMyTimesheets).
+  const handleDelete = async (id) => {
+    setConfirmDeleteId(null);
+    setDeletingId(id);
+    if (isDemoMode()) {
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+      setDeletingId(null);
+      toast?.success(locale === 'en' ? 'Entry deleted.' : 'Catatan dihapus.');
+      return;
+    }
+    const { error } = await deleteTimesheet(id);
+    setDeletingId(null);
+    if (error) {
+      toast?.error(error.message || (locale === 'en' ? 'Delete failed' : 'Gagal menghapus'));
+      return;
+    }
+    toast?.success(locale === 'en' ? 'Entry deleted.' : 'Catatan dihapus.');
+    load();
   };
 
   // Realtime: refresh when timesheets table changes
@@ -134,15 +157,70 @@ export default function EmpTimesheet() {
         />
       ) : entries.slice(0, 15).map(e => (
         <div key={e.id} className="emp-card" style={{ padding: '12px 16px', marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700 }}>{e.task}</div>
               <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{e.project && `${e.project}  `}{new Date(e.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</div>
             </div>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>{e.hours}h</span>
+            <button
+              onClick={() => setConfirmDeleteId(e.id)}
+              disabled={deletingId === e.id}
+              title={locale === 'en' ? 'Delete entry' : 'Hapus catatan'}
+              aria-label={locale === 'en' ? 'Delete entry' : 'Hapus catatan'}
+              style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(220,38,38,0.08)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#DC2626', flexShrink: 0 }}
+            >
+              {deletingId === e.id ? <HiArrowPath size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : <HiXMark size={12} />}
+            </button>
           </div>
         </div>
       ))}
+
+      {/* Delete confirmation (in-app dialog) */}
+      {confirmDeleteId != null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirmDeleteId(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 10001,
+            background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(2px)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 420, background: 'var(--surface, #fff)',
+              borderRadius: '16px 16px 0 0', padding: '20px 18px calc(20px + env(safe-area-inset-bottom))',
+              boxShadow: '0 -8px 30px rgba(0,0,0,0.18)',
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
+              {locale === 'en' ? 'Delete this entry?' : 'Hapus catatan ini?'}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+              {locale === 'en' ? 'This cannot be undone.' : 'Tindakan ini tidak dapat dibatalkan.'}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)', background: 'transparent', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {locale === 'en' ? 'Keep' : 'Kembali'}
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDeleteId)}
+                disabled={deletingId === confirmDeleteId}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                {deletingId === confirmDeleteId && <HiArrowPath size={14} style={{ animation: 'spin 0.8s linear infinite' }} />}
+                {locale === 'en' ? 'Yes, delete' : 'Ya, Hapus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={() => setShowForm(false)}>

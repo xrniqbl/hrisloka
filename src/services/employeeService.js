@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import { guardCompanyId } from '../lib/tenantGuard';
+import { getDefaultAvatar } from '../lib/avatarConfig.js';
+import { guardCompanyId, resolveMyEmployee } from '../lib/tenantGuard';
 
 // Get employee by auth user ID
 export async function getMyProfile(authUserId) {
@@ -110,7 +111,6 @@ export async function createEmployee(employeeData) {
   // Auto-assign avatar based on gender if no photo set
   const data_with_avatar = { ...employeeData };
   if (!data_with_avatar.photo_url) {
-    const { getDefaultAvatar } = await import('../lib/avatarConfig.js');
     data_with_avatar.photo_url = getDefaultAvatar(employeeData.gender);
   }
 
@@ -166,27 +166,69 @@ export async function updateEmployeeDirectFields(id, fields, authUserId) {
   return { data, error };
 }
 
-// Upload profile photo to Supabase Storage
-export async function uploadProfilePhoto(employeeId, file) {
-  const fileExt = file.name.split('.').pop();
-  const filePath = `${employeeId}/avatar_${Date.now()}.${fileExt}`;
+/**
+ * Upload profile photo. Tries profile_photos first, then avatars bucket.
+ * Also accepts auth user id path for AvatarPicker (no employee row yet).
+ */
+export async function uploadProfilePhoto(employeeIdOrUserId, file, { updateEmployee = true } = {}) {
+  if (!file) return { error: { message: 'File tidak ditemukan' }, url: null };
+  if (!file.type?.startsWith('image/')) {
+    return { error: { message: 'File harus berupa gambar (JPG/PNG/WEBP)' }, url: null };
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: { message: 'Ukuran foto maksimal 5MB' }, url: null };
+  }
 
-  const { error: uploadErr } = await supabase.storage
-    .from('profile_photos')
-    .upload(filePath, file, { upsert: true });
-  if (uploadErr) return { error: uploadErr };
+  const me = await resolveMyEmployee();
+  const targetId = String(employeeIdOrUserId || '');
+  const isMyEmployee = Boolean(me?.id && targetId === String(me.id));
+  const isMyAuthUser = Boolean(me?.auth_user_id && targetId === String(me.auth_user_id));
+  if (!me || (!isMyEmployee && !isMyAuthUser)) {
+    return { data: null, error: { message: 'Tidak diizinkan mengunggah foto untuk profil lain' }, url: null };
+  }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('profile_photos')
-    .getPublicUrl(filePath);
+  const fileExt = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const filePath = `${me.id}/avatar_${Date.now()}.${fileExt}`;
+  const buckets = ['profile_photos', 'avatars'];
 
-  const { data, error } = await supabase
-    .from('employees')
-    .update({ photo_url: publicUrl })
-    .eq('id', employeeId)
-    .select()
-    .single();
-  return { data, error, url: publicUrl };
+  let publicUrl = null;
+  let lastErr = null;
+  for (const bucket of buckets) {
+    const { error: uploadErr } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, { upsert: true, contentType: file.type || `image/${fileExt}` });
+    if (uploadErr) {
+      lastErr = uploadErr;
+      continue;
+    }
+    const { data: { publicUrl: url } } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    publicUrl = url;
+    break;
+  }
+
+  if (!publicUrl) {
+    return {
+      error: lastErr || { message: 'Gagal upload. Pastikan bucket Storage profile_photos ada di Supabase.' },
+      url: null,
+    };
+  }
+
+  // Persist on employees.photo_url when id is an employee id
+  if (updateEmployee && employeeIdOrUserId) {
+    const { data, error } = await supabase
+      .from('employees')
+      .update({ photo_url: publicUrl })
+      .eq('id', employeeIdOrUserId)
+      .select()
+      .maybeSingle();
+    // Non-fatal if row not found (auth user id only)
+    if (error && !/0 rows|PGRST116|no rows/i.test(error.message || '')) {
+      return { data: null, error, url: publicUrl };
+    }
+    return { data, error: null, url: publicUrl };
+  }
+
+  return { data: null, error: null, url: publicUrl };
 }
 
 // Update employee role (Super Admin only) — MANDATORY company_id for tenant isolation

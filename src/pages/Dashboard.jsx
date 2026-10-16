@@ -1,8 +1,9 @@
-﻿import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranch } from '../context/BranchContext';
 import { useRealtimeMultiple } from '../hooks/useRealtime';
+import { useTranslation } from '../lib/i18n';
 import * as employeeService from '../services/employeeService';
 import * as attendanceService from '../services/attendanceService';
 import * as leaveService from '../services/leaveService';
@@ -13,6 +14,8 @@ import * as jobService from '../services/jobService';
 import * as trainingService from '../services/trainingService';
 import * as projectService from '../services/projectService';
 import BranchFilter from '../components/BranchFilter';
+import UserAvatar from '../components/UserAvatar';
+import { useToast } from '../components/Toast';
 import {
   KPICards, ActivityTimeline,
   PendingApprovals, EmployeeDirectory, UpcomingEvents, EmployeeSlideOver,
@@ -26,8 +29,7 @@ import EmployeeCard from '../components/dashboard/EmployeeCard';
 import './DashboardV2.css';
 
 export default function Dashboard() {
-  const { employee: currentUser } = useAuth();
-  const { user, employee } = useAuth();
+  const { employee: currentUser, user, employee, subscription } = useAuth();
   const { selectedBranchId } = useBranch();
   const navigate = useNavigate();
   const companyId = employee?.company_id;
@@ -94,12 +96,20 @@ export default function Dashboard() {
     setLoading(false);
   }, [companyId, selectedBranchId]);
 
-  // Billing fetch
+  // Billing: prefer billing_info, else real subscription (never fake Pro)
   useEffect(() => {
-    if (user?.id) {
-      billingService.getBillingInfo(user.id).then(({ data }) => setBilling(data)).catch((e) => console.warn('[Dashboard] billing fetch failed:', e?.message));
-    }
-  }, [user?.id]);
+    if (!user?.id) return;
+    billingService
+      .getBillingForUser(user.id, subscription)
+      .then(({ data }) => setBilling(data))
+      .catch((e) => {
+        console.warn('[Dashboard] billing fetch failed:', e?.message);
+        setBilling(
+          billingService.billingFromSubscription(subscription) ||
+            billingService.getDefaultBillingInfo(),
+        );
+      });
+  }, [user?.id, subscription]);
 
   // Attendance trend fetch
   useEffect(() => {
@@ -144,6 +154,7 @@ export default function Dashboard() {
   const recentEmployees = useMemo(() => employees.slice(0, 8), [employees]);
 
   // Handlers
+  const { toast } = useToast();
   const handleApprove = async (type, id) => {
     const companyId = employee?.company_id;
     if (!companyId) return;
@@ -151,8 +162,9 @@ export default function Dashboard() {
       if (type === 'leave') await leaveService.updateLeaveStatus(id, 'approved', employee?.id, companyId);
       else if (type === 'overtime') await overtimeService.approveOvertime(id, employee?.id, companyId);
       else if (type === 'reimbursement') await reimbursementService.updateReimbursement(id, { status: 'approved', approved_by: employee?.id }, companyId);
-      fetchData();
-    } catch (err) { console.error('Approve error:', err); }
+      await fetchData();
+      toast.success('Pengajuan disetujui.');
+    } catch (err) { console.error('Approve error:', err); toast.error('Gagal menyetujui pengajuan. Coba lagi.'); }
   };
 
   const handleReject = async (type, id) => {
@@ -162,8 +174,9 @@ export default function Dashboard() {
       if (type === 'leave') await leaveService.updateLeaveStatus(id, 'rejected', employee?.id, companyId);
       else if (type === 'overtime') await overtimeService.rejectOvertime(id, companyId);
       else if (type === 'reimbursement') await reimbursementService.updateReimbursement(id, { status: 'rejected', approved_by: employee?.id }, companyId);
-      fetchData();
-    } catch (err) { console.error('Reject error:', err); }
+      await fetchData();
+      toast.success('Pengajuan ditolak.');
+    } catch (err) { console.error('Reject error:', err); toast.error('Gagal menolak pengajuan. Coba lagi.'); }
   };
 
   const handleSelectEmployee = (emp) => {
@@ -171,9 +184,28 @@ export default function Dashboard() {
     setSlideoverOpen(true);
   };
 
+  const { t } = useTranslation();
+  const greetingName =
+    employee?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || t('dashboard.greeting_fallback');
+  const greetingHour = new Date().getHours();
+  const greetingText =
+    greetingHour < 12
+      ? t('dashboard.good_morning')
+      : greetingHour < 17
+        ? t('dashboard.good_afternoon')
+        : t('dashboard.good_evening');
+  const greetingAvatar = employee?.photo_url || user?.user_metadata?.avatar_url || null;
+
   if (loading) {
     return (
       <div className="dashboard-v2">
+        <div className="dash-greeting dash-greeting--skeleton">
+          <div className="dash-skeleton" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+          <div>
+            <div className="dash-skeleton" style={{ width: 100, height: 14, marginBottom: 8 }} />
+            <div className="dash-skeleton" style={{ width: 160, height: 22 }} />
+          </div>
+        </div>
         <KPICards loading={true} />
       </div>
     );
@@ -181,13 +213,28 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-v2">
-      {/* Toolbar only — greeting removed for cleaner shell */}
-      <div className="dash-toolbar">
-        <BranchFilter />
-        <WidgetSettings widgets={widgets} toggleWidget={toggleWidget} />
+      {/* Greeting — avatar with safe fallback (no broken image icon) */}
+      <div className="dash-greeting-row">
+        <div className="dash-greeting">
+          <UserAvatar
+            src={greetingAvatar}
+            name={greetingName}
+            alt={greetingName}
+            size={48}
+            className="dash-greeting-avatar"
+          />
+          <div className="dash-greeting-text">
+            <p className="dash-greeting-sub">{greetingText}</p>
+            <h2 className="dash-greeting-name">{greetingName}</h2>
+          </div>
+        </div>
+        <div className="dash-toolbar">
+          <BranchFilter />
+          <WidgetSettings widgets={widgets} toggleWidget={toggleWidget} />
+        </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI strip */}
       <KPICards
         employees={employees}
         todayAttendance={todayAttendance}
@@ -198,17 +245,18 @@ export default function Dashboard() {
         loading={false}
       />
 
-      {/* Row 1: Time Off | Running Project - matches dbupdate.png */}
+      {/* Row 1: Time Off | Running Project | Meetings — photo 3-col */}
       <div className="dash-section">
-        <div className="dash-grid-2col">
+        <div className="dash-grid-3col">
           <TimeOffCard leaves={leaves} loading={false} />
           <RunningProjectCard projects={projects} loading={false} />
+          <MeetingsCard trainings={trainings} loading={false} />
         </div>
       </div>
 
-      {/* Row 2: My Task | New Join Employee - matches dbupdate.png */}
+      {/* Row 2: My Task (wide) | Employee — photo layout */}
       <div className="dash-section">
-        <div className="dash-grid-2">
+        <div className="dash-grid-2col-tasks">
           <MyTaskCard
             leaves={leaves}
             overtimeRecords={overtimeRecords}
@@ -226,15 +274,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Meetings */}
-      <div className="dash-section">
-        <MeetingsCard trainings={trainings} loading={false} />
-      </div>
-
       {/* Activity Timeline */}
       <ActivityTimeline employees={employees} todayAttendance={todayAttendance} loading={false} />
 
-      {/* Two Column: Approvals + Directory */}
+      {/* Approvals + Directory */}
       <div className="dash-section">
         <div className="dash-grid-2col">
           <PendingApprovals
@@ -258,7 +301,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Charts */}
       <ChartsSection
         trendData={trendData}
         employees={employees}
@@ -268,16 +310,12 @@ export default function Dashboard() {
         widgets={widgets}
       />
 
-      {/* Billing */}
       <BillingSection billing={billing} showPayment={showPayment} setShowPayment={setShowPayment} navigate={navigate} />
 
-      {/* Recent Employees */}
       <RecentEmployeesTable recentEmployees={recentEmployees} todayAttendance={todayAttendance} onSelectEmployee={handleSelectEmployee} />
 
-      {/* Notifications */}
       <NotificationBoardV2 />
 
-      {/* Employee Slide-Over */}
       <EmployeeSlideOver
         employee={selectedEmployee}
         isOpen={slideoverOpen}

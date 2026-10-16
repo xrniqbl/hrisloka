@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   HiArrowPath,
   HiArrowUpTray,
@@ -13,7 +13,11 @@ import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
-import { supabase } from '../../lib/supabase';
+import {
+  getMyReimbursements,
+  submitReimbursement,
+  uploadReimbursementReceipt,
+} from '../../services/reimbursementService';
 import BottomSheet from '../../components/BottomSheet';
 import '../../styles/shared.css';
 import EmpEmptyState from '../../components/EmpEmptyState';
@@ -46,11 +50,7 @@ export default function EmpReimbursement() {
     const { data: empData } = await getEmployeeByEmail(email);
     if (!empData) { setLoading(false); return; }
     setEmp(empData);
-    const { data } = await supabase
-      .from('reimbursements')
-      .select('*')
-      .eq('employee_id', empData.id)
-      .order('created_at', { ascending: false });
+    const { data } = await getMyReimbursements(empData.id);
     setItems(data || []);
     setLoading(false);
   }, [user]);
@@ -68,13 +68,10 @@ export default function EmpReimbursement() {
     if (!file || !emp) return;
     setUploadingPhoto(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `reimbursements/${emp.id}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: true });
+      const { url, error } = await uploadReimbursementReceipt(file, emp.id);
       if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path);
-      setReceiptUrl(publicUrl);
-      setForm(f => ({ ...f, receipt_url: publicUrl }));
+      setReceiptUrl(url);
+      setForm(f => ({ ...f, receipt_url: url }));
       toast?.success(locale === 'en' ? 'Receipt uploaded!' : 'Bukti berhasil diunggah!');
     } catch {
       toast?.error(locale === 'en' ? 'Upload failed' : 'Gagal mengunggah');
@@ -89,14 +86,12 @@ export default function EmpReimbursement() {
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('reimbursements').insert({
-        employee_id: emp.id,
+      const { error } = await submitReimbursement(emp.id, {
         date: form.date,
         category: form.category,
-        amount: parseInt(form.amount.replace(/\D/g, '')) || 0,
+        amount: parseInt(String(form.amount).replace(/\D/g, '')) || 0,
         notes: form.description,
-        receipt_url: form.receipt_url || null,
-        status: 'pending',
+        receiptUrl: form.receipt_url || null,
       });
       if (error) throw error;
       toast?.success(locale === 'en' ? 'Reimbursement request submitted!' : 'Pengajuan reimburse berhasil dikirim!');

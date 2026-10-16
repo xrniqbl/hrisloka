@@ -2,6 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,10 +16,17 @@ export default defineConfig({
     },
   },
   server: {
-    host: true,
+    // Bind locally by default. Use `npm run dev:host` for explicit LAN access.
+    host: '127.0.0.1',
     port: 5173,
     strictPort: false,
+    allowedHosts: ['localhost', '127.0.0.1'],
     proxy: {
+      // Local VPS-style API server (npm run start:server)
+      '/api': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
       '/api-bank': {
         target: 'https://use.api.co.id',
         changeOrigin: true,
@@ -36,16 +47,17 @@ export default defineConfig({
           if (id.includes('@tiptap')) return 'tiptap';
 
           // ── 3. DOMPurify sanitiser ────────────────────────────────────
-          if (id.includes('dompurify') || id.includes('isomorphic-dompurify')) return 'purify';
+          if (id.includes('dompurify')) return 'purify';
 
           // ── 4. React Icons (icon set is large, isolate it) ────────────
           if (id.includes('react-icons')) return 'icons';
 
-          // ── 5. Supabase client ────────────────────────────────────────
+          // ── 5. Supabase client (statically imported in ~80 modules;
+          //      splitting it out keeps the main bundle lean) ────────────
           if (id.includes('@supabase')) return 'supabase';
 
           // ── 6. React Router ───────────────────────────────────────────
-          if (id.includes('react-router') || id.includes('@remix-run')) return 'router';
+          if (id.includes('react-router')) return 'router';
 
           // ── 7. React + ReactDOM (must come AFTER router to avoid circular) ─
           if (

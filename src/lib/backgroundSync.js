@@ -11,10 +11,50 @@
 
 import { supabase } from './supabase';
 
-const DB_NAME = 'hrisloka_sync';
+const DB_NAME = 'kinikerja_sync';
+const LEGACY_DB_NAME = 'hrisloka_sync';
 const STORE_NAME = 'sync_queue';
 const SYNC_TAG = 'attendance-sync';
 const MAX_RETRIES = 5;
+
+/**
+ * One-time migration of the pre-rebrand ('hrisloka_sync') offline queue.
+ * Copy pending items into the new DB, then delete the legacy database so
+ * clock-ins queued offline before the KiniKerja rebrand are not lost.
+ */
+let migrationDone = false;
+async function migrateLegacyQueue() {
+  if (migrationDone) return;
+  migrationDone = true;
+  try {
+    const legacyItems = await new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(LEGACY_DB_NAME, 1);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) { db.close(); resolve([]); return; }
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const getReq = tx.objectStore(STORE_NAME).getAll();
+          getReq.onsuccess = () => { const items = getReq.result || []; db.close(); resolve(items); };
+          getReq.onerror = () => { try { db.close(); } catch { /* ignore */ } resolve([]); };
+        };
+        req.onerror = () => resolve([]);
+        req.onblocked = () => resolve([]);
+      } catch { resolve([]); }
+    });
+    if (legacyItems.length) {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      for (const { id: _dropped, ...rest } of legacyItems) store.add(rest);
+      await new Promise((resolve) => { tx.oncomplete = resolve; tx.onerror = resolve; });
+    }
+    try {
+      const delReq = indexedDB.deleteDatabase(LEGACY_DB_NAME);
+      if (delReq) { delReq.onsuccess = () => {}; delReq.onerror = () => {}; delReq.onblocked = () => {}; }
+    } catch { /* ignore */ }
+  } catch { /* migration is best-effort */ }
+}
 
 /**
  * Attach the current session's access token to the stored headers.
@@ -57,6 +97,7 @@ function openDB() {
  */
 export async function queueRequest(url, method, headers, body) {
   try {
+    await migrateLegacyQueue();
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     tx.objectStore(STORE_NAME).add({
@@ -77,6 +118,7 @@ export async function queueRequest(url, method, headers, body) {
       const reg = await navigator.serviceWorker.ready;
       await reg.sync.register(SYNC_TAG);
       console.log('[BackgroundSync] Queued request and registered sync');
+      registerTokenBridge();
       return true;
     }
 
@@ -101,14 +143,35 @@ function registerTokenBridge() {
   tokenBridgeRegistered = true;
   window.addEventListener('message', async (event) => {
     if (event.data?.type !== 'REQUEST_SYNC_AUTH_TOKEN') return;
+    // M3: only answer same-origin requests and reply with an explicit
+    // targetOrigin — a rogue same-page iframe must not harvest the token.
+    if (event.origin !== window.location.origin) return;
     try {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token || null;
-      event.source?.postMessage({ type: 'SYNC_AUTH_TOKEN', token });
+      event.source?.postMessage({ type: 'SYNC_AUTH_TOKEN', token }, event.origin);
     } catch {
-      event.source?.postMessage({ type: 'SYNC_AUTH_TOKEN', token: null });
+      event.source?.postMessage({ type: 'SYNC_AUTH_TOKEN', token: null }, event.origin);
     }
   });
+}
+
+// Register the SW sync-token bridge at module load so it is ALWAYS listening
+// — the SW may fire REQUEST_SYNC_AUTH_TOKEN when the app opens from a
+// notification/sync event, long before any queueRequest() call happens.
+// Waiting until queueRequest() would miss the token and stall the replay.
+if (typeof window !== 'undefined') {
+  registerTokenBridge();
+  registerOnlineFallbackAtLoad();
+}
+
+/** Best-effort online-listener at load (no queue check here — queueRequest covers it). */
+function registerOnlineFallbackAtLoad() {
+  try {
+    if (typeof window === 'undefined') return;
+    if (!('serviceWorker' in navigator) || 'SyncManager' in window) return;
+    registerOnlineFallback();
+  } catch { /* ignore — queueRequest path still registers */ }
 }
 
 // ── Fallback replay for browsers without SyncManager ──────────────────────

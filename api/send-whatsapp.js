@@ -9,10 +9,18 @@
  * Body: { to: "628xxx", message: "..." }
  */
 import { applyCors } from './_shared/cors.js';
+import { enforceJsonBodyLimit } from './_shared/securityHeaders.js';
+import { resolveTenantCaller, checkUserRateLimit, normalizePhone } from './_shared/tenantAuth.js';
 
 const FONNTE_TOKEN = process.env.FONNTE_TOKEN; // Server-side (no VITE_ prefix)
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Roles allowed to trigger WhatsApp sends (leave/payslip/loan/overtime/
+// ticket/registration notifications are all HR-or-manager initiated;
+// super_admin additionally may send to arbitrary numbers for the
+// IntegrationHub connection test).
+const ALLOWED_ROLES = new Set(['super_admin', 'hr_admin', 'admin', 'hr', 'manager']);
 
 // Rate limit: max 10 WA requests per IP per minute
 const rateLimitMap = new Map();
@@ -30,25 +38,8 @@ function checkRateLimit(ip) {
   return entry.count <= max;
 }
 
-// Verify Supabase JWT — FAIL CLOSED (same pattern as send-email / ai-review).
-async function verifyAuth(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  const token = authHeader.split(' ')[1];
-  if (!token) return false;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return false;
-  try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_SERVICE_KEY },
-    });
-    if (!res.ok) return false;
-    const user = await res.json();
-    if (user?.email_confirmed_at || user?.confirmed_at) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
+// Caller auth via resolveTenantCaller from _shared/tenantAuth.js
+// (tenant-bound employee row + role check, fail-closed).
 
 // Validate Indonesian/international phone number
 function isValidPhone(phone) {
@@ -64,16 +55,27 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Origin not allowed' });
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  // Authentication check — verify Supabase JWT
-  const isAuthed = await verifyAuth(req);
-  if (!isAuthed) {
+  // Reject oversized JSON bodies before auth (matches express 1mb limit)
+  if (!enforceJsonBodyLimit(req, res)) return;
+  // Authentication + tenant authorization
+  const caller = await resolveTenantCaller(req);
+  if (caller.error === 'unauthorized') {
     return res.status(401).json({ error: 'Unauthorized — valid session required' });
   }
+  if (caller.error === 'no_employee' || !caller.employee?.company_id) {
+    return res.status(403).json({ error: 'Forbidden — no employee record for this tenant' });
+  }
+  if (!ALLOWED_ROLES.has(caller.employee.role)) {
+    return res.status(403).json({ error: 'Forbidden — HR/admin/manager role required' });
+  }
 
-  // Rate limiting
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+  // Rate limiting (IP shared quota + per-user quota).
+  // Socket address is the key — X-Forwarded-For is not trusted.
+  const ip = req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many requests. Try again later.' });
+  }
+  if (!checkUserRateLimit(`wa:${caller.user.id || caller.user.sub}`, 10, 60_000)) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
@@ -97,7 +99,52 @@ export default async function handler(req, res) {
   }
 
   // Normalize number
-  const phone = to.replace(/[\s\-()]/g, '').replace(/^0/, '62').replace(/^\+/, '');
+  const phone = normalizePhone(to);
+
+  // Recipient authorization: the normalized number must belong to an
+  // employee of the caller's company. employees has two phone-ish columns
+  // (`phone`, `whatsapp`), so query per-column exact matches — never a full
+  // 500-row pull (which false-403s tenants with >500 employees).
+  // Exception: super_admin may send to arbitrary numbers (IntegrationHub
+  // connection test uses the configured sender number).
+  if (caller.employee.role !== 'super_admin') {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      return res.status(503).json({ success: false, error: 'Recipient check unavailable' });
+    }
+    const svcHeaders = {
+      apikey: SUPABASE_SERVICE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+    };
+    let owned = false;
+    for (const col of ['phone', 'whatsapp']) {
+      const lookup = await fetch(
+        `${SUPABASE_URL}/rest/v1/employees?company_id=eq.${encodeURIComponent(caller.employee.company_id)}&${col}=eq.${encodeURIComponent(phone)}&select=id&limit=1`,
+        { headers: svcHeaders },
+      );
+      if (!lookup.ok) {
+        return res.status(503).json({ success: false, error: 'Recipient check unavailable' });
+      }
+      const rows = await lookup.json().catch(() => []);
+      if (Array.isArray(rows) && rows.length > 0) { owned = true; break; }
+      // Numbers may be stored in local format (08xx) while `phone` is
+      // normalized (62xx) — also try the 0-prefixed variant.
+      if (phone.startsWith('62')) {
+        const local = `0${phone.slice(2)}`;
+        const alt = await fetch(
+          `${SUPABASE_URL}/rest/v1/employees?company_id=eq.${encodeURIComponent(caller.employee.company_id)}&${col}=eq.${encodeURIComponent(local)}&select=id&limit=1`,
+          { headers: svcHeaders },
+        );
+        if (!alt.ok) {
+          return res.status(503).json({ success: false, error: 'Recipient check unavailable' });
+        }
+        const altRows = await alt.json().catch(() => []);
+        if (Array.isArray(altRows) && altRows.length > 0) { owned = true; break; }
+      }
+    }
+    if (!owned) {
+      return res.status(403).json({ error: 'Forbidden — recipient not in company' });
+    }
+  }
 
   try {
     const apiRes = await fetch('https://api.fonnte.com/send', {
@@ -108,8 +155,15 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({ target: phone, message, countryCode: '62' }),
     });
-    const data = await apiRes.json();
-    if (!data.status) throw new Error(data.reason || 'Fonnte send failed');
+    // Unified Fonnte shape (same as cron-check-subscriptions.js): JSON
+    // Content-Type + explicit status check. Non-2xx or status:false = failure.
+    if (!apiRes.ok) throw new Error(`Fonnte HTTP ${apiRes.status}`);
+    const data = await apiRes.json().catch(() => null);
+    if (!data || data.status === false) {
+      throw new Error(
+        (data && typeof data.reason === 'string' && data.reason) || 'Fonnte send failed',
+      );
+    }
     res.status(200).json({ success: true });
   } catch (err) {
     console.error('[send-whatsapp] Error:', err.message);

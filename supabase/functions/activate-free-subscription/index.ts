@@ -8,34 +8,63 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+/** Fail-fast: missing secrets crash at boot (loud deploy error). */
+function requireEnv(name) {
+  const v = Deno.env.get(name);
+  if (!v) throw new Error('[activate-free] CONFIG ERROR: ' + name + ' is not set');
+  return v;
+}
+
+const SUPABASE_URL = requireEnv('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+
 // KEEP IN SYNC with src/lib/plans.js (YEARLY_DISCOUNT_PERCENT) and
 // supabase/migrations/sync_plan_prices_149k_299k.sql — checked at audit 2026-09.
 const YEARLY_DISCOUNT = 0.15;
 
+/** Fail-fast: missing secrets crash at boot (loud deploy error), never run with empty fallbacks. */
+function requireEnv(name: string): string {
+  const v = Deno.env.get(name);
+  if (!v) throw new Error('[activate-free] CONFIG ERROR: ' + name + ' is not set');
+  return v;
+}
+requireEnv('SUPABASE_URL');
+requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+
 const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
 // Origin allowlist — mirrors api/_shared/cors.js. Extra origins can be added
 // via the ALLOWED_ORIGINS / SITE_URL secrets. Never reflect unknown origins.
-const ALLOWED_ORIGINS = [
+// Localhost entries only apply when ALLOW_LOCALHOST=true (local dev).
+const PROD_ORIGINS = [
   'https://kinikerja.id',
   'https://www.kinikerja.id',
   'https://kinikerja.com',
   'https://www.kinikerja.com',
+];
+const DEV_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
+];
+const ALLOWED_ORIGINS = [
+  ...PROD_ORIGINS,
+  ...(Deno.env.get('ALLOW_LOCALHOST') === 'true' ? DEV_ORIGINS : []),
   ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean),
   ...(Deno.env.get('SITE_URL') ? [Deno.env.get('SITE_URL')!.trim().replace(/\/$/, '')] : []),
 ];
 
 function corsHeadersFor(req: Request): Record<string, string> {
   const origin = req.headers.get('Origin') || '';
-  return ALLOWED_ORIGINS.includes(origin)
+  const base = ALLOWED_ORIGINS.includes(origin)
     ? { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
     : corsHeaders;
+  return { ...base, 'Vary': 'Origin' };
 }
 
 function json(req: Request, body: unknown, status = 200) {
@@ -83,7 +112,14 @@ function resolveRenewalBase(currentSub: Record<string, unknown> | null | undefin
   return todayUtcMs();
 }
 
-/** Ensure paying user has an active super_admin employee row (+ company shell). */
+/** Ensure paying user has an active super_admin employee row (+ company shell).
+ * Anti-hijack rules:
+ * - Only touch rows owned by this auth user (auth_user_id match), or
+ *   unclaimed rows (auth_user_id IS NULL) with the same email (e.g. HR import).
+ * - Never reassign auth_user_id on a row owned by someone else.
+ * - Never promote the role of an already-claimed row (no self-promotion
+ *   from employee → super_admin via payment).
+ */
 async function ensureAdminEmployee(
   supabase,
   userId: string,
@@ -95,13 +131,30 @@ async function ensureAdminEmployee(
   const fullName = (profile?.full_name as string) || email.split('@')[0] || 'User';
   const companyName = (profile?.company_name as string) || null;
 
-  const { data: existing } = await supabase
+  // 1) Row already owned by this auth user — just ensure active, keep role.
+  const { data: owned } = await supabase
     .from('employees')
     .select('id, company_id, role')
-    .or(`auth_user_id.eq.${userId},email.eq.${email}`)
+    .eq('auth_user_id', userId)
     .maybeSingle();
 
-  if (existing?.id) {
+  if (owned?.id) {
+    await supabase
+      .from('employees')
+      .update({ status: 'active', name: fullName })
+      .eq('id', owned.id);
+    return owned.company_id || null;
+  }
+
+  // 2) Unclaimed row with same email (no auth owner yet) — safe to claim.
+  const { data: unclaimed } = await supabase
+    .from('employees')
+    .select('id, company_id')
+    .eq('email', email)
+    .is('auth_user_id', null)
+    .maybeSingle();
+
+  if (unclaimed?.id) {
     await supabase
       .from('employees')
       .update({
@@ -110,8 +163,8 @@ async function ensureAdminEmployee(
         auth_user_id: userId,
         name: fullName,
       })
-      .eq('id', existing.id);
-    return existing.company_id || null;
+      .eq('id', unclaimed.id);
+    return unclaimed.company_id || null;
   }
 
   let companyId = null;
@@ -158,10 +211,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return json(req, { error: 'Unauthorized' }, 401);
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', ''),
@@ -254,6 +304,25 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    // ── Claim voucher FIRST (atomic) — before creating the subscription ────
+    // Otherwise a failed/exhausted claim leaves an active free subscription.
+    let voucherId: string | null = null;
+    if (voucherCode) {
+      const { data: claimed, error: claimErr } = await supabase.rpc('claim_voucher', {
+        p_code: voucherCode,
+      });
+      if (claimErr || claimed !== true) {
+        console.warn('[activate-free] voucher claim rejected:', claimErr?.message || 'exhausted');
+        return json(req, { error: 'Voucher habis dipakai atau tidak valid.' }, 400);
+      }
+      const { data: v } = await supabase
+        .from('vouchers')
+        .select('id')
+        .eq('code', voucherCode)
+        .maybeSingle();
+      voucherId = v?.id || null;
+    }
+
     const companyId = await ensureAdminEmployee(supabase, user.id, user.email, profile);
 
     // ── Upsert subscription (source of truth, server-side) ──────────────
@@ -270,7 +339,7 @@ serve(async (req) => {
     const subPayload: Record<string, unknown> = {
       user_id: user.id,
       plan_slug,
-      plan_name: plan_name || plan.name || plan_slug,
+      plan_name: plan.name || plan_slug,
       status: 'active',
       billing_cycle: cycle,
       price_monthly: Number(plan.price_monthly) || 0,
@@ -293,28 +362,13 @@ serve(async (req) => {
       return json(req, { error: 'Gagal mengaktifkan langganan. Coba lagi.' }, 500);
     }
 
-    // ── Voucher usage bookkeeping (atomik via RPC claim_voucher) ──────────
-    // Select-then-update non-atomik rawan race/double-spend voucher sekali-pakai.
-    if (voucherCode) {
+    // ── Voucher usage bookkeeping (already claimed atomically above) ──────
+    if (voucherCode && voucherId) {
       try {
-        const { data: claimed, error: claimErr } = await supabase.rpc('claim_voucher', {
-          p_code: voucherCode,
+        await supabase.from('voucher_usage').insert({
+          voucher_id: voucherId,
+          company_id: companyId,
         });
-        if (claimErr || claimed !== true) {
-          console.warn('[activate-free] voucher claim rejected:', claimErr?.message || 'exhausted');
-          return json(req, { error: 'Voucher habis dipakai atau tidak valid.' }, 400);
-        }
-        const { data: v } = await supabase
-          .from('vouchers')
-          .select('id')
-          .eq('code', voucherCode)
-          .maybeSingle();
-        if (v?.id) {
-          await supabase.from('voucher_usage').insert({
-            voucher_id: v.id,
-            company_id: companyId,
-          });
-        }
       } catch (e) {
         console.warn('[activate-free] voucher usage update failed:', e?.message || e);
       }
@@ -333,6 +387,7 @@ serve(async (req) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[activate-free] Error:', message);
-    return json(req, { error: message }, 500);
+    // Pesan generik ke client — detail sudah tercatat di log server-side.
+    return json(req, { error: 'Internal error' }, 500);
   }
 });

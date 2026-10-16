@@ -15,16 +15,17 @@ async function getAuthHeaders() {
 
 /**
  * Call AI via serverless function (GEMINI_API_KEY on server).
+ * Action-based API: the server assembles the prompt from validated fields.
  */
-async function callGemini(prompt, maxTokens = 800) {
+async function callGeminiAction(action, data) {
   const res = await fetch('/api/ai-review', {
     method: 'POST',
     headers: await getAuthHeaders(),
-    body: JSON.stringify({ prompt, maxTokens }),
+    body: JSON.stringify({ action, data }),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.success) throw new Error(data.error || 'AI server error');
-  return data.text;
+  const resData = await res.json().catch(() => ({}));
+  if (!res.ok || !resData.success) throw new Error(resData.error || 'AI server error');
+  return resData.text;
 }
 
 
@@ -42,36 +43,17 @@ export async function generateAIReview(employee, aiCapabilities, kpiData = null)
   const skills = aiCapabilities?.skills || [];
   const certs = aiCapabilities?.certifications || [];
 
-  const skillsText = skills.length
-    ? skills.map(s => `${s.name} (${s.level}, ${s.score}%)`).join(', ')
-    : 'Belum ada data AI skills';
-  const certsText = certs.length ? certs.map(c => c.name).join(', ') : 'Belum ada sertifikasi';
-
-  const prompt = `Kamu adalah asisten HR profesional untuk perusahaan Indonesia.
-Buat evaluasi kinerja bulanan yang personal, spesifik, dan konstruktif untuk karyawan berikut dalam Bahasa Indonesia:
-
-**Data Karyawan:**
-- Nama: ${empName}
-- Divisi: ${division}
-- Posisi: ${position}
-- Periode: ${period}
-
-**AI Capability Score:** ${avgScore}/100
-**Skills dikuasai:** ${skillsText}
-**Sertifikasi AI:** ${certsText}
-${kpiData ? `**KPI:** ${JSON.stringify(kpiData)}` : ''}
-
-Buat evaluasi yang mencakup:
-1. Ringkasan performa (2-3 kalimat personal, bukan generik)
-2. Kekuatan utama berdasarkan data di atas
-3. Area pengembangan yang spesifik dan actionable
-4. Rekomendasi program training yang relevan
-5. Target kuartal berikutnya
-
-Format sebagai teks terstruktur dengan judul section. Gunakan nada profesional tapi hangat. Maksimal 350 kata.`;
-
   try {
-    const text = await callGemini(prompt, 800);
+    const text = await callGeminiAction('performance_review', {
+      name: empName,
+      division,
+      position,
+      period,
+      avgScore,
+      skills: skills.map((s) => ({ name: s.name, level: s.level, score: s.score })),
+      certs: certs.map((c) => c.name),
+      kpi: kpiData ? JSON.stringify(kpiData).slice(0, 2000) : '',
+    });
     return { text, source: 'gemini' };
   } catch (err) {
     console.warn('[AI Service] Gemini failed, using template:', err.message);
@@ -79,6 +61,7 @@ Format sebagai teks terstruktur dengan judul section. Gunakan nada profesional t
 
   // ── Fallback: Enhanced contextual template ───────────────────────────────
   const readiness = avgScore >= 80 ? 'sangat tinggi' : avgScore >= 60 ? 'baik' : avgScore >= 40 ? 'sedang' : 'perlu ditingkatkan';
+  const certNames = certs.map((c) => c.name).filter(Boolean);
   const topSkill = skills.sort((a, b) => b.score - a.score)[0];
   const weakSkill = skills.sort((a, b) => a.score - b.score)[0];
   const improvement = weakSkill && weakSkill.score < 60 ? weakSkill.name : null;
@@ -97,7 +80,7 @@ ${topSkill ? `Keunggulan terlihat pada kemampuan ${topSkill.name} (${topSkill.sc
 
 ─── Kekuatan Utama ───────────────
 ${skills.slice(0, 3).map(s => `• ${s.name}: Level ${s.level} (${s.score}%)`).join('\n') || '• Belum ada data skills'}
-${certs.length ? `• Sertifikasi: ${certsText}` : ''}
+${certNames.length ? `• Sertifikasi: ${certNames.join(', ')}` : ''}
 
 ─── Area Pengembangan ────────────
 ${improvement ? `• Tingkatkan kemampuan ${improvement} melalui program micro-learning` : '• Pertahankan momentum pertumbuhan yang ada'}
@@ -124,9 +107,8 @@ DRAFT — Perlu review & tanda tangan HR Manager`,
  * Generate a department AI readiness summary.
  */
 export async function generateDeptInsight(division, avgScore, headcount) {
-  const prompt = `Berikan insight singkat (2 kalimat dalam Bahasa Indonesia) untuk divisi ${division} dengan AI readiness score ${avgScore}/100 dan ${headcount} karyawan. Fokus pada rekomendasi spesifik.`;
   try {
-    return await callGemini(prompt, 100);
+    return await callGeminiAction('dept_insight', { division, avgScore, headcount });
   } catch {
     return `Divisi ${division} memiliki AI readiness score ${avgScore}/100 dengan ${headcount} karyawan. ${avgScore < 60 ? 'Perlu program pelatihan AI intensif.' : 'Pertahankan dan tingkatkan leverage teknologi AI.'}`;
   }

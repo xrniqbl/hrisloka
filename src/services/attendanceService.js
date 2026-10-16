@@ -1,16 +1,30 @@
 import { supabase } from '../lib/supabase';
-import { guardCompanyId } from '../lib/tenantGuard';
+import { guardCompanyId, resolveMyEmployee } from '../lib/tenantGuard';
+
+async function resolveSelfEmployeeId(employeeId, context) {
+  const me = await resolveMyEmployee();
+  if (!me?.id) {
+    return { data: null, error: { message: `${context}: employee identity unavailable`, code: 'IDENTITY_UNAVAILABLE' } };
+  }
+  if (employeeId && String(me.id) !== String(employeeId)) {
+    return { data: null, error: { message: `${context}: employee identity mismatch`, code: 'IDENTITY_MISMATCH' } };
+  }
+  return { employeeId: me.id };
+}
 
 // Clock in — with face & trust score support
-export async function clockIn(employeeId, data) {
+export async function clockIn(employeeId, data = {}) {
   if (!employeeId) return { data: null, error: { message: 'employeeId required' } };
+  const identity = await resolveSelfEmployeeId(employeeId, 'clockIn');
+  if (identity.error) return identity;
+  const resolvedEmployeeId = identity.employeeId;
 
   // Avoid duplicate clock-in for the same day
   const today = new Date().toISOString().split('T')[0];
   const { data: existing } = await supabase
     .from('attendance')
     .select('id, clock_in, clock_out')
-    .eq('employee_id', employeeId)
+    .eq('employee_id', resolvedEmployeeId)
     .eq('date', today)
     .maybeSingle();
 
@@ -23,7 +37,7 @@ export async function clockIn(employeeId, data) {
 
   const clockInTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
   const row = {
-    employee_id: employeeId,
+    employee_id: resolvedEmployeeId,
     date: today,
     clock_in: clockInTime,
     status: 'present',
@@ -51,7 +65,7 @@ export async function clockIn(employeeId, data) {
       .from('attendance')
       .update(row)
       .eq('id', existing.id)
-      .eq('employee_id', employeeId)
+      .eq('employee_id', resolvedEmployeeId)
       .select()
       .single();
     return { data: result, error };
@@ -138,17 +152,47 @@ export async function saveTrustLog(attendanceId, trustData) {
   return { data, error };
 }
 
-// Clock out — employeeId required for ownership verification
-export async function clockOut(attendanceId, employeeId) {
-  let query = supabase
+// Clock out — resolves the caller identity when legacy call sites omit employeeId.
+// Verification evidence (face/GPS/trust) is recorded on the same row so
+// clock-out carries the same anti-fraud proof as clock-in.
+export async function clockOut(attendanceId, employeeId, evidence = {}) {
+  if (!attendanceId) return { data: null, error: { message: 'attendanceId required' } };
+  const identity = await resolveSelfEmployeeId(employeeId, 'clockOut');
+  if (identity.error) return identity;
+
+  const patch = {
+    clock_out: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
+  };
+  if (evidence && typeof evidence === 'object') {
+    if (typeof evidence.latitude === 'number' && Number.isFinite(evidence.latitude)) {
+      patch.clock_out_latitude = evidence.latitude;
+    }
+    if (typeof evidence.longitude === 'number' && Number.isFinite(evidence.longitude)) {
+      patch.clock_out_longitude = evidence.longitude;
+    }
+    if (typeof evidence.inRadius === 'boolean') patch.clock_out_in_radius = evidence.inRadius;
+    if (typeof evidence.faceVerified === 'boolean') patch.clock_out_face_verified = evidence.faceVerified;
+    if (typeof evidence.faceDistance === 'number' && Number.isFinite(evidence.faceDistance)) {
+      patch.clock_out_face_distance = evidence.faceDistance;
+    }
+    if (typeof evidence.faceConfidence === 'number' && Number.isFinite(evidence.faceConfidence)) {
+      patch.clock_out_face_confidence = evidence.faceConfidence;
+    }
+    if (typeof evidence.trustScore === 'number' && Number.isFinite(evidence.trustScore)) {
+      patch.clock_out_trust_score = Math.max(0, Math.min(100, evidence.trustScore));
+    }
+    if (['trusted', 'warning', 'rejected'].includes(evidence.trustLevel)) {
+      patch.clock_out_trust_level = evidence.trustLevel;
+    }
+  }
+
+  const { data, error } = await supabase
     .from('attendance')
-    .update({
-      clock_out: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    })
-    .eq('id', attendanceId);
-  // Verify the attendance record belongs to this employee
-  if (employeeId) query = query.eq('employee_id', employeeId);
-  const { data, error } = await query.select().single();
+    .update(patch)
+    .eq('id', attendanceId)
+    .eq('employee_id', identity.employeeId)
+    .select()
+    .single();
   return { data, error };
 }
 

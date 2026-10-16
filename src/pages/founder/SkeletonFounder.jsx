@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SkeletonFounder - Shared skeleton components for Founder Portal pages
  */
 

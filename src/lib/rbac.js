@@ -1,7 +1,7 @@
 /**
  * RBAC — Role definitions and permission maps
  * Roles:
- *   founder     = HRIS Loka founder (god mode)
+ *   founder     = KiniKerja founder (god mode)
  *   super_admin = Owner/bos perusahaan yang berlangganan
  *   hr_admin    = Staf HRD perusahaan
  *   manager     = Manager divisi
@@ -11,7 +11,7 @@
 // FOUNDER EMAIL — ONLY this exact email can access the Founder Portal.
 // MUST be set via VITE_FOUNDER_EMAIL env variable. No hardcoded fallback for security.
 export const FOUNDER_EMAIL = import.meta.env.VITE_FOUNDER_EMAIL ?? '';
-if (!FOUNDER_EMAIL) {
+if (!FOUNDER_EMAIL && import.meta.env.DEV) {
   console.error('[RBAC] SECURITY: VITE_FOUNDER_EMAIL is not set. Founder portal will be inaccessible.');
 }
 
@@ -45,16 +45,46 @@ export const ROLE_COLORS = {
 
 /**
  * Route → minimum role map
- * Routes not listed here are accessible to all authenticated users.
+ * DEFAULT-DENY: only routes explicitly listed in ROUTE_PERMISSIONS or
+ * PUBLIC_PATHS are reachable. Unknown paths return false — AdminRouteGuard
+ * and DashboardLayout treat that as "no access" (404/denied, never fail-open).
  * Founder always has access to everything.
  */
+export const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/checkout',
+  '/setup',
+  '/onboarding-form',
+  '/landing',
+  '/install',
+  '/harga',
+  '/fitur',
+  '/blog',
+  '/careers',
+  '/employee-web-access',
+  '/not-registered',
+  '/maintenance',
+  // Employee PWA auth is enforced by EmployeeLayout (guards above), not by
+  // the desktop ROUTE_PERMISSIONS map — listing the /app prefix here keeps
+  // hasAccess honest about these being intentionally reachable public shells.
+  '/app/splash',
+  '/app/welcome',
+  '/app/login',
+  '/app/register',
+  '/app/reset-password',
+  '/app/pending',
+  '/app/rejected',
+];
 export const ROUTE_PERMISSIONS = {
   // Owner (super_admin) only — billing & system
   '/branches':        ['super_admin'],
   '/audit-trail':     ['super_admin'],
   '/integrations':    ['super_admin'],
   '/checkout':        ['super_admin'],
-  '/subscription':    ['super_admin'],
+  // NOTE: no '/subscription' route exists in App.jsx — billing lives at
+  // /checkout (renew) + /settings (status). Kept out of the map so a stale
+  // link fails closed to NotFound instead of a phantom permission entry.
 
   // HR Admin + Super Admin (all web admin features)
   '/settings':        ['super_admin', 'hr_admin'],
@@ -66,7 +96,6 @@ export const ROUTE_PERMISSIONS = {
   '/profile-requests':['super_admin', 'hr_admin'],
   '/payroll':         ['super_admin', 'hr_admin'],
   '/payslips':        ['super_admin', 'hr_admin'],
-  '/reimbursement':   ['super_admin', 'hr_admin'],
   '/expense-ocr':     ['super_admin', 'hr_admin'],
   '/shifts':          ['super_admin', 'hr_admin'],
   '/jobs':            ['super_admin', 'hr_admin'],
@@ -81,23 +110,31 @@ export const ROUTE_PERMISSIONS = {
   '/geo-attendance':  ['super_admin', 'hr_admin'],
   '/ai-capability':   ['super_admin', 'hr_admin'],
   '/contracts':       ['super_admin', 'hr_admin'],
-  '/approvals':       ['super_admin', 'hr_admin'],
-  '/kpi':             ['super_admin', 'hr_admin'],
-  '/appraisal':       ['super_admin', 'hr_admin'],
-  '/attendance':      ['super_admin', 'hr_admin'],
-  '/leave':           ['super_admin', 'hr_admin'],
-  '/overtime':        ['super_admin', 'hr_admin'],
-  '/projects':        ['super_admin', 'hr_admin'],
-  '/timesheets':      ['super_admin', 'hr_admin'],
-  '/dashboard':       ['super_admin', 'hr_admin'],
-  '/org-chart':       ['super_admin', 'hr_admin'],
-  '/announcements':   ['super_admin', 'hr_admin'],
-  '/helpdesk':        ['super_admin', 'hr_admin'],
-  '/calendar':        ['super_admin', 'hr_admin'],
+
+  // Manager + HR Admin + Super Admin
+  // Manager scope (per EmployeeProfile role card): approvals (cuti/lembur/
+  // reimburse), KPI & appraisal, proyek & timesheet, absensi tim, plus the
+  // shared read surfaces (dashboard, org chart, calendar, announcements, help).
+  '/approvals':       ['super_admin', 'hr_admin', 'manager'],
+  '/kpi':             ['super_admin', 'hr_admin', 'manager'],
+  '/appraisal':       ['super_admin', 'hr_admin', 'manager'],
+  '/attendance':      ['super_admin', 'hr_admin', 'manager'],
+  '/leave':           ['super_admin', 'hr_admin', 'manager'],
+  '/overtime':        ['super_admin', 'hr_admin', 'manager'],
+  '/reimbursement':   ['super_admin', 'hr_admin', 'manager'],
+  '/projects':        ['super_admin', 'hr_admin', 'manager'],
+  '/timesheets':      ['super_admin', 'hr_admin', 'manager'],
+  '/dashboard':       ['super_admin', 'hr_admin', 'manager'],
+  '/org-chart':       ['super_admin', 'hr_admin', 'manager'],
+  '/announcements':   ['super_admin', 'hr_admin', 'manager'],
+  '/helpdesk':        ['super_admin', 'hr_admin', 'manager'],
+  '/calendar':        ['super_admin', 'hr_admin', 'manager'],
 };
 
 /**
- * Check if the logged-in user is the founder
+ * Check if the logged-in user is the founder.
+ * Client-side UX gate ONLY — real enforcement lives in Postgres RLS
+ * (is_founder() SQL). Never rely on this for authorization server-side.
  */
 export function isFounder(user, employee) {
  const email = user?.email || employee?.email || '';
@@ -114,19 +151,47 @@ export function hasAccess(role, path, isFounderUser = false) {
  if (isFounderUser) return true;
  // Founder routes are blocked for non-founders
  if (isFounderRoute(path)) return false;
- 
- const allowedRoles = ROUTE_PERMISSIONS[path];
- // If no specific permission defined, allow all authenticated users
- if (!allowedRoles) return true;
+ // Explicit public paths (landing, login, checkout, setup)
+ if (PUBLIC_PATHS.includes(path)) return true;
+ // Public prefix routes: careers detail pages, blog posts
+ if (path === '/careers' || path?.startsWith('/careers/')) return true;
+ if (path === '/blog' || path?.startsWith('/blog/')) return true;
+
+ let allowedRoles = ROUTE_PERMISSIONS[path];
+ if (!allowedRoles && path) {
+   // Nested admin routes (e.g. /contracts/edit/123, /employees/456) inherit
+   // the longest matching parent prefix instead of failing closed.
+   const parent = Object.keys(ROUTE_PERMISSIONS)
+     .filter((p) => path === p || path.startsWith(p + '/'))
+     .sort((a, b) => b.length - a.length)[0];
+   if (parent) allowedRoles = ROUTE_PERMISSIONS[parent];
+ }
+ // Default-deny: unknown routes are NOT accessible (fail-closed)
+ if (!allowedRoles) return false;
  return allowedRoles.includes(role || 'employee');
 }
 
 /**
- * Check sidebar visibility — respects "View As" for founder
+ * Check sidebar visibility — respects "View As" for founder.
+ * Fail-closed like hasAccess: unknown paths return false so a missing map
+ * entry hides (rather than exposes) the nav item.
  */
-export function hasSidebarAccess(role, path) {
- const allowedRoles = ROUTE_PERMISSIONS[path];
- if (!allowedRoles) return true;
+export function hasSidebarAccess(role, path, isFounderUser = false) {
+ if (isFounderUser) return true;
+ if (isFounderRoute(path)) return false;
+ if (PUBLIC_PATHS.includes(path)) return true;
+ if (path === '/careers' || path?.startsWith('/careers/')) return true;
+ if (path === '/blog' || path?.startsWith('/blog/')) return true;
+ let allowedRoles = ROUTE_PERMISSIONS[path];
+ if (!allowedRoles && path) {
+   // Nested admin routes (e.g. /employees/456, /contracts/edit/123) inherit
+   // the longest matching parent prefix — mirrors hasAccess.
+   const parent = Object.keys(ROUTE_PERMISSIONS)
+     .filter((p) => path === p || path.startsWith(p + '/'))
+     .sort((a, b) => b.length - a.length)[0];
+   if (parent) allowedRoles = ROUTE_PERMISSIONS[parent];
+ }
+ if (!allowedRoles) return false;
  return allowedRoles.includes(role || 'employee');
 }
 

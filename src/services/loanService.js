@@ -87,10 +87,10 @@ export async function approveLoan(id, approverId, companyId) {
     const emp = data.employees;
     const amount = Number(data.amount || 0).toLocaleString('id-ID');
     if (emp?.phone) {
-      const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan pinjaman sebesar Rp ${amount} telah *DISETUJUI*.\n\n_HRIS Loka — Smart HR Platform_`;
+      const msg = `🏢 *KiniKerja*\n\nHalo, *${emp.name}*!\n\nPengajuan pinjaman sebesar Rp ${amount} telah *DISETUJUI*.\n\n_KiniKerja — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[loanService] WA error:', e));
     }
-    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Pinjaman Disetujui ✅', `Pinjaman Rp ${amount} telah disetujui.`, '/app/loan', companyId)
+    sendPushToEmployee(data.employee_id || emp?.id, 'KiniKerja — Pinjaman Disetujui ✅', `Pinjaman Rp ${amount} telah disetujui.`, '/app/loan', companyId)
       .catch(e => console.warn('[loanService] push error:', e));
     try {
       const { createNotification } = await import('./notificationService');
@@ -126,10 +126,10 @@ export async function rejectLoan(id, companyId) {
     const emp = data.employees;
     const amount = Number(data.amount || 0).toLocaleString('id-ID');
     if (emp?.phone) {
-      const msg = `🏢 *HRIS Loka*\n\nHalo, *${emp.name}*!\n\nPengajuan pinjaman sebesar Rp ${amount} telah *DITOLAK*.\n\n_HRIS Loka — Smart HR Platform_`;
+      const msg = `🏢 *KiniKerja*\n\nHalo, *${emp.name}*!\n\nPengajuan pinjaman sebesar Rp ${amount} telah *DITOLAK*.\n\n_KiniKerja — Smart HR Platform_`;
       sendWhatsApp(emp.phone, msg).catch(e => console.warn('[loanService] WA error:', e));
     }
-    sendPushToEmployee(data.employee_id || emp?.id, 'HRIS Loka — Pinjaman Ditolak ❌', `Pinjaman Rp ${amount} ditolak.`, '/app/loan', companyId)
+    sendPushToEmployee(data.employee_id || emp?.id, 'KiniKerja — Pinjaman Ditolak ❌', `Pinjaman Rp ${amount} ditolak.`, '/app/loan', companyId)
       .catch(e => console.warn('[loanService] push error:', e));
     try {
       const { createNotification } = await import('./notificationService');

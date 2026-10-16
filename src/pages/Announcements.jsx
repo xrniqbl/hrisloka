@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiSend, FiTrash2, FiBell, FiClock } from 'react-icons/fi';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { TableSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
 import { useRealtimeTable } from '../hooks/useRealtime';
@@ -11,6 +12,7 @@ import '../styles/admin.css';
 
 export default function Announcements() {
   const { employee } = useAuth();
+  const { toast } = useToast();
   const companyId = employee?.company_id;
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,7 @@ export default function Announcements() {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
     if (!companyId) {
-      alert('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
+      toast.error('Perusahaan tidak terdeteksi. Login ulang sebagai HR.');
       return;
     }
     setSending(true);
@@ -83,7 +85,8 @@ export default function Announcements() {
       setMessage('');
       fetchAnnouncements();
     } else {
-      alert('Gagal mengirim: ' + (error.message || 'error'));
+      console.error('[Announcements] send failed:', error);
+      toast.error('Gagal mengirim: ' + (error.message || 'error'));
     }
     setSending(false);
   };

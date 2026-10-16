@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   HiArrowTrendingUp,
   HiBellAlert,
@@ -54,18 +54,17 @@ export default function EmpProjects() {
   const empId = employee?.id;
   const today = new Date().toISOString().split('T')[0];
 
-  const getWeekStart = () => {
-    const d = new Date();
-    d.setDate(d.getDate() - d.getDay());
-    return d.toISOString().split('T')[0];
-  };
-  const getMonthStart = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-  };
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!empId) return;
+    const getWeekStart = () => {
+      const d = new Date();
+      d.setDate(d.getDate() - d.getDay());
+      return d.toISOString().split('T')[0];
+    };
+    const getMonthStart = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    };
     setLoading(true);
     const [proj, timer, todayTs, weekTs, monthTs] = await Promise.all([
       projectService.getEmployeeProjects(empId),
@@ -80,9 +79,9 @@ export default function EmpProjects() {
     setWeeklyHours((weekTs.data || []).reduce((s, t) => s + (t.hours || 0), 0));
     setMonthlyHours((monthTs.data || []).reduce((s, t) => s + (t.hours || 0), 0));
     setLoading(false);
-  };
+  }, [empId, today]);
 
-  useEffect(() => { fetchData(); }, [empId]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Live timer
   useEffect(() => {

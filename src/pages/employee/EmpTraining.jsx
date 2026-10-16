@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   HiArrowTopRightOnSquare,
   HiBookOpen,
@@ -13,7 +13,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
-import { supabase } from '../../lib/supabase';
+import { getAllTrainings, enrollTraining } from '../../services/trainingService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import '../../styles/shared.css';
@@ -45,15 +45,8 @@ export default function EmpTraining() {
     const email = user?.email || user?.user_metadata?.email;
     const { data: empData } = await getEmployeeByEmail(email);
     setEmp(empData);
-    // Company-scoped trainings only (production multi-tenant)
-    let q = supabase
-      .from('trainings')
-      .select('*, training_participants(*, employees(name, division)), training_materials(*)')
-      .order('start_date', { ascending: false });
-    if (empData?.company_id) {
-      q = q.eq('company_id', empData.company_id);
-    }
-    const { data: trainingData } = await q;
+    // Company-scoped trainings only (production multi-tenant) — via service layer
+    const { data: trainingData } = await getAllTrainings(empData?.company_id);
     setTrainings(trainingData || []);
     const allMaterials = (trainingData || []).flatMap(t =>
       (t.training_materials || []).map(m => ({ ...m, trainingTitle: t.title, trainingCategory: t.category }))
@@ -240,7 +233,7 @@ export default function EmpTraining() {
                   onClick={async () => {
                     if (!emp) return;
                     setEnrollingId(t.id);
-                    const { error } = await supabase.from('training_participants').insert({ training_id: t.id, employee_id: emp.id, status: 'enrolled' });
+                    const { error } = await enrollTraining(t.id, emp.id);
                     if (!error) { toast.success(locale === 'en' ? 'Successfully enrolled!' : 'Berhasil mendaftar training!'); loadData(); }
                     else toast.error(locale === 'en' ? 'Failed to enroll. You may already be registered.' : 'Gagal mendaftar. Mungkin sudah terdaftar.');
                     setEnrollingId(null);

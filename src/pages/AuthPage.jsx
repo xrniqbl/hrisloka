@@ -45,7 +45,7 @@ export default function AuthPage() {
  const [showEmployeeWarning, setShowEmployeeWarning] = useState(false);
  const countdownRef = useRef(null);
  const navigate = useNavigate();
- const { user, employee, isPWA, loading: authLoading, signInWithPassword, resetPassword, signInWithGoogle, signUp, setIsDemo } = useAuth();
+ const { user, employee, isPWA, loading: authLoading, onboardingLoading, signInWithPassword, resetPassword, signInWithGoogle, signUp, setIsDemo } = useAuth();
 
  // -- SEO + clean bad hashes from URL bar -----------------------
  useEffect(() => {
@@ -79,8 +79,10 @@ export default function AuthPage() {
  const pwStrength = passwordRules.filter(r => r.test(password)).length;
  const isPasswordValid = pwStrength === 4;
 
- // Redirect after login - but only if warning is NOT showing
- if (!authLoading && user && !showEmployeeWarning) {
+ // Redirect after login - but only if warning is NOT showing.
+ // Wait for onboarding/subscription resolution first: getRole(null) defaults
+ // to 'employee', which would flash-misroute a slow-loading admin to /app/home.
+ if (!authLoading && !onboardingLoading && user && !showEmployeeWarning) {
   const founderUser = isFounder(user, employee);
   if (founderUser) {
    const savedPath = getRememberedPath('/founder/dashboard');
@@ -88,8 +90,9 @@ export default function AuthPage() {
    return <Navigate to={founderDest} replace />;
   }
   const role = getRole(employee);
-  // Account still pending HR verification
-  if (employee?.account_status === 'pending_verification' || String(employee?.account_status || '').includes('pending')) {
+  // Account still pending HR verification (catch-all: pending_verification,
+  // pending, pending_approval, ... — mirrors App.jsx AuthRedirect)
+  if (employee && String(employee?.account_status || '').includes('pending')) {
    return <Navigate to="/app/pending" replace />;
   }
   if (employee?.account_status === 'rejected') {
@@ -122,45 +125,82 @@ export default function AuthPage() {
 
  setLoading(true);
  setMessage({ text: '', type: '' });
- const { error } = await signInWithPassword(email, password);
- if (error) {
-   setMessage({ text: error.message, type: 'error' });
+ try {
+   const { error } = await signInWithPassword(email, password);
+   if (error) {
+     console.warn('[AuthPage] password login failed:', error.message);
+     setMessage({ text: 'Email atau password salah. Silakan coba lagi.', type: 'error' });
+     return;
+   }
+
+   // Login berhasil - fetch role karyawan dari database
+   let emp = null;
+   try {
+     const { data } = await supabase
+       .from('employees')
+       .select('role, division, position')
+       .eq('email', email.trim().toLowerCase())
+       .maybeSingle();
+     emp = data;
+   } catch (queryErr) {
+     // Offline / RLS error on the lookup must not strand the user on a
+     // spinner — fall through to the default redirect; guards re-resolve role.
+     console.warn('[AuthPage] employee lookup failed:', queryErr?.message || queryErr);
+   }
+
+   // role === 'employee' (atau tidak ada role) dan BUKAN di PWA &rarr; tampilkan warning
+   const empRole = emp?.role || 'employee';
+   const isRegularEmployee = empRole === 'employee';
+
+   if (isRegularEmployee && !isPWA) {
+     // Regular employees must use the installed PWA — sign the fresh session
+     // back out first so no authenticated desktop session lingers behind the
+     // warning modal (avoids a trapped authed-but-blocked state).
+     try {
+       await supabase.auth.signOut();
+     } catch {
+       /* best-effort — navigation below still clears the trap */
+     }
+     setShowEmployeeWarning(true);
+     return;
+   }
+
+   // Admin / HR / Manager / Founder → redirect normal
+   const founderEmail = (import.meta.env.VITE_FOUNDER_EMAIL || '').toLowerCase();
+   const isFounderLogin = founderEmail && email.trim().toLowerCase() === founderEmail;
+   if (isFounderLogin) {
+     navigate('/founder/dashboard', { replace: true });
+   } else if (isRegularEmployee) {
+     // Employee inside the PWA — go straight to the app home
+     navigate('/app/home', { replace: true });
+   } else {
+     navigate(getRememberedPath('/dashboard'), { replace: true });
+   }
+ } catch (err) {
+   console.warn('[AuthPage] password login exception:', err?.message || err);
+   setMessage({ text: 'Terjadi kesalahan. Silakan coba lagi.', type: 'error' });
+ } finally {
    setLoading(false);
-   return;
  }
-
- // Login berhasil - fetch role karyawan dari database
- const { data: emp } = await supabase
-   .from('employees')
-   .select('role, division, position')
-   .eq('email', email.trim().toLowerCase())
-   .maybeSingle();
-
- // role === 'employee' (atau tidak ada role) dan BUKAN di PWA &rarr; tampilkan warning
- const empRole = emp?.role || 'employee';
- const isRegularEmployee = empRole === 'employee';
-
- if (isRegularEmployee && !isPWA) {
-   setShowEmployeeWarning(true);
-   setLoading(false);
-   return;
- }
-
-  // Admin / HR / Manager / Founder → redirect normal
-  const founderEmail = (import.meta.env.VITE_FOUNDER_EMAIL || '').toLowerCase();
-  const isFounderLogin = founderEmail && email.trim().toLowerCase() === founderEmail;
-  if (isFounderLogin) {
-   navigate('/founder/dashboard', { replace: true });
-  } else {
-   navigate(getRememberedPath('/dashboard'), { replace: true });
-  }
-  setLoading(false);
  };
 
 
  const handleGoogleLogin = async () => {
- const { error } = await signInWithGoogle();
- if (error) setMessage({ text: error.message, type: 'error' });
+ setLoading(true);
+ try {
+   const { error } = await signInWithGoogle();
+   if (error) {
+     console.warn('[AuthPage] google login failed:', error.message);
+     setMessage({ text: 'Login Google gagal. Silakan coba lagi.', type: 'error' });
+   }
+   // Success → Supabase redirects to OAuth provider (no setLoading(false)
+   // needed here, but finally guarantees the spinner never sticks on error).
+ } catch (err) {
+   console.warn('[AuthPage] google login exception:', err?.message || err);
+   setMessage({ text: 'Login Google gagal. Silakan coba lagi.', type: 'error' });
+ } finally {
+   setLoading(false);
+ }
  };
 
  const handleForgotPassword = async (e) => {
@@ -168,10 +208,21 @@ export default function AuthPage() {
  if (!email) return;
  setLoading(true);
  setMessage({ text: '', type: '' });
- const { error } = await resetPassword(email);
- if (error) setMessage({ text: error.message, type: 'error' });
- else setMessage({ text: 'Link reset dikirim! Cek inbox email Anda.', type: 'success' });
- setLoading(false);
+ try {
+   const { error } = await resetPassword(email);
+   // Always show success to prevent account enumeration (even on error,
+   // except network/technical failures — still show success to avoid leaking
+   // whether the email is registered).
+   if (error) console.warn('[AuthPage] forgot password error:', error.message);
+   setMessage({ text: 'Jika email terdaftar, link reset telah dikirim. Cek inbox email Anda.', type: 'success' });
+ } catch (err) {
+   // Network exception — still show the generic success to avoid leaking
+   // registration status, but log for diagnostics.
+   console.warn('[AuthPage] forgot password exception:', err?.message || err);
+   setMessage({ text: 'Jika email terdaftar, link reset telah dikirim. Cek inbox email Anda.', type: 'success' });
+ } finally {
+   setLoading(false);
+ }
  };
 
  const handleSignUp = async (e) => {
@@ -179,15 +230,26 @@ export default function AuthPage() {
   if (!email || !password || !fullName || !isPasswordValid) return;
   setLoading(true);
   setMessage({ text: '', type: '' });
-  const { error } = await signUp(email, password, { full_name: fullName });
-  if (error) {
-    setMessage({ text: error.message, type: 'error' });
+  try {
+    const { error } = await signUp(email, password, { full_name: fullName });
+    if (error) {
+      console.warn('[AuthPage] signup failed:', error.message);
+      const msg = String(error.message || '').toLowerCase();
+      if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+        setMessage({ text: 'Email sudah terdaftar. Silakan login.', type: 'error' });
+      } else {
+        setMessage({ text: 'Pendaftaran gagal. Silakan coba lagi.', type: 'error' });
+      }
+      return;
+    }
+    // Signup berhasil - langsung ke checkout (email verifikasi menyusul)
+    navigate('/checkout');
+  } catch (err) {
+    console.warn('[AuthPage] signup exception:', err?.message || err);
+    setMessage({ text: 'Pendaftaran gagal. Silakan coba lagi.', type: 'error' });
+  } finally {
     setLoading(false);
-    return;
   }
-  // Signup berhasil - langsung ke checkout (email verifikasi menyusul)
-  navigate('/checkout');
-  setLoading(false);
   };
 
  const reset = () => { setMessage({ text: '', type: '' }); setForgotMode(false); setPassword(''); setShowPass(false); };
@@ -232,7 +294,7 @@ export default function AuthPage() {
  š Gunakan Aplikasi PWA
  </h2>
  <p style={{ fontSize: 14, color: '#666', lineHeight: 1.6, marginBottom: 20 }}>
- Karyawan wajib mengakses HRIS Loka melalui <strong>aplikasi yang terinstall di HP</strong> (bukan browser biasa).
+ Karyawan wajib mengakses KiniKerja melalui <strong>aplikasi yang terinstall di HP</strong> (bukan browser biasa).
  <br /><br />
  Ini untuk memastikan keamanan absensi dengan Face ID dan GPS verification.
  </p>
@@ -288,14 +350,14 @@ export default function AuthPage() {
  <div className="auth-panel-inner">
  {/* Logo - light/dark mode aware */}
  <picture>
- <source media="(prefers-color-scheme: dark)" srcSet="/landing/hrislokawhitepanjang.png" />
- <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" className="auth-logo" />
+ <source media="(prefers-color-scheme: dark)" srcSet="/landing/kinikerjawhitepanjang.png" />
+ <img src="/landing/kinikerjabluepanjang.png" alt="KiniKerja" className="auth-logo" />
  </picture>
 
  {!forgotMode ? (
  <>
  <h2>Selamat Datang</h2>
- <p className="auth-sub">Masuk ke akun HRIS Loka Anda</p>
+ <p className="auth-sub">Masuk ke akun KiniKerja Anda</p>
 
  {message.text && !isSignUp && (
  <div className={`auth-msg ${message.type}`}>{message.text}</div>
@@ -355,8 +417,8 @@ export default function AuthPage() {
  <div className="auth-panel-inner">
  {/* Logo - light/dark mode aware */}
  <picture>
- <source media="(prefers-color-scheme: dark)" srcSet="/landing/hrislokawhitepanjang.png" />
- <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" className="auth-logo" />
+ <source media="(prefers-color-scheme: dark)" srcSet="/landing/kinikerjawhitepanjang.png" />
+ <img src="/landing/kinikerjabluepanjang.png" alt="KiniKerja" className="auth-logo" />
  </picture>
  <h2>Buat Akun</h2>
  <p className="auth-sub">Bergabung dengan tim HR Anda</p>
@@ -410,7 +472,7 @@ export default function AuthPage() {
  {/* Left overlay (shown when signup) */}
  <div className="auth-overlay left-overlay">
  <div className="overlay-inner">
- <div className="overlay-brand">HRIS <span>Loka</span></div>
+ <div className="overlay-brand">Kini<span>Kerja</span></div>
  <h3>Sudah punya akun?</h3>
  <p>Masuk untuk mengakses dashboard HR dan kelola data tim Anda.</p>
  <button className="overlay-btn" onClick={() => { setIsSignUp(false); reset(); }}>Masuk</button>
@@ -419,8 +481,8 @@ export default function AuthPage() {
  {/* Right overlay (shown when signin) */}
  <div className="auth-overlay right-overlay">
  <div className="overlay-inner">
- <div className="overlay-brand">HRIS <span>Loka</span></div>
- <h3>Baru di HRIS Loka?</h3>
+ <div className="overlay-brand">Kini<span>Kerja</span></div>
+ <h3>Baru di KiniKerja?</h3>
  <p>Daftar dan mulai kelola sumber daya manusia perusahaan Anda secara modern.</p>
  <button className="overlay-btn" onClick={() => { setIsSignUp(true); reset(); }}>Daftar Sekarang</button>
  </div>

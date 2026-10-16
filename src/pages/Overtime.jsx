@@ -18,6 +18,8 @@ import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import MetricStatCards from '../components/MetricStatCards';
+import { Clock, Hourglass, Wallet } from 'lucide-react';
 
 const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
 
@@ -86,31 +88,19 @@ export default function Overtime() {
  <div>
  <div className="page-header">
  <h1>{t('overtime.title')}</h1>
- <Button className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Catat Lembur</Button>
+ <button type="button" className="btn-primary" onClick={() => setShowForm(true)}><FiPlus /> Catat Lembur</button>
  </div>
 
- {/* Summary Cards */}
- <div className="stats-grid">
- <div className="info-card">
- <div className="info-card-label">Total Jam Lembur (Approved)</div>
- <div className="info-card-value">{records.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.hours || 0), 0)} jam</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Menunggu Approval</div>
- <div className="info-card-value warning">{records.filter(r => r.status === 'pending').length}</div>
- </div>
- <div className="info-card">
- <div className="info-card-label">Total Biaya Lembur</div>
- <div className="info-card-value primary">
- {formatCurrency(records.filter(r => r.status === 'approved').reduce((s, r) => {
+ <MetricStatCards items={[
+ { key: 'hours', label: 'Jam Approved', value: `${records.filter(r => r.status === 'approved').reduce((s, r) => s + Number(r.hours || 0), 0)} jam`, icon: Clock },
+ { key: 'pending', label: 'Menunggu Approval', value: records.filter(r => r.status === 'pending').length, icon: Hourglass },
+ { key: 'cost', label: 'Biaya Lembur', value: formatCurrency(records.filter(r => r.status === 'approved').reduce((s, r) => {
  const emp = getEmp(r.employee_id);
  return s + (emp ? calculateOvertimePay(emp.baseSalary || emp.base_salary || 0, Number(r.hours), Number(r.rate)) : 0);
- }, 0))}
- </div>
- </div>
- </div>
+ }, 0)), icon: Wallet },
+ ]} />
 
-﻿ <div className="filters-bar">
+ <div className="filters-bar">
  <NativeSelect value={filter} onChange={(e) => setFilter(e.target.value)}>
  <option value="">Semua Status</option>
  <option value="pending">Pending</option>
@@ -221,8 +211,8 @@ export default function Overtime() {
  </div>
  </DialogPanel>
  <DialogFooter>
- <Button variant="outline" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</Button>
- <Button className="btn-primary" onClick={handleSubmit} disabled={!form.employeeId || !form.date || !form.hours}>Simpan</Button>
+ <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Batal</button>
+ <button type="button" className="btn-primary" onClick={handleSubmit} disabled={!form.employeeId || !form.date || !form.hours}>Simpan</button>
  </DialogFooter>
  </DialogContent>
  </Dialog>

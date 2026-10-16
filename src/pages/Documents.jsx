@@ -19,12 +19,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import DocLink from '../components/DocLink';
 import EmptyState from '../components/EmptyState';
+import { useToast } from '../components/Toast';
 
 const docTypes = ['KTP', 'Ijazah', 'Kontrak Kerja', 'Sertifikat', 'NPWP', 'Lainnya'];
 
 export default function Documents() {
   const { t } = useTranslation();
   const { employee } = useAuth();
+  const { toast } = useToast();
  const [documents, setDocuments] = useState([]);
  const [employees, setEmployees] = useState([]);
  const [loading, setLoading] = useState(true);
@@ -83,6 +85,7 @@ export default function Documents() {
  fetchData();
  } else {
  console.error('[Documents] Upload error:', error.message);
+ toast.error('Gagal mengunggah dokumen. Coba lagi.');
  }
  };
 

@@ -1,5 +1,5 @@
 -- ============================================================
--- HRISloka — Founder Portal + Platform Settings RLS Hardening
+-- KiniKerja — Founder Portal + Platform Settings RLS Hardening
 -- ============================================================
 -- Fixes audit findings (2026-08-09):
 --   1. migration_founder_portal.sql created blanket
@@ -24,19 +24,33 @@
 -- ============================================================
 
 -- ── HELPER FUNCTIONS (idempotent — same as migration_rls_fix.sql) ──
+-- NOTE C1: definisi kanonis is_founder() ada di
+-- scripts/FIX_FOUNDER_ESCALATION.sql (sumber kebenaran = tabel
+-- platform_founders, BUKAN employees.role). Definisi di bawah ini
+-- IDENTIK (CREATE OR REPLACE) agar tiap file tetap mandiri — urutan
+-- jalan tidak penting.
+CREATE TABLE IF NOT EXISTS platform_founders (
+  user_id uuid PRIMARY KEY,
+  email text,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE platform_founders ENABLE ROW LEVEL SECURITY;
+-- Sengaja TANPA policy untuk anon/authenticated (deny default).
+
 CREATE OR REPLACE FUNCTION get_my_company_id()
-RETURNS integer LANGUAGE sql SECURITY DEFINER STABLE AS $$
+RETURNS integer LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
   SELECT company_id FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
 $$;
 
 CREATE OR REPLACE FUNCTION get_my_role()
-RETURNS text LANGUAGE sql SECURITY DEFINER STABLE AS $$
+RETURNS text LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
   SELECT role FROM employees WHERE auth_user_id = auth.uid() LIMIT 1;
 $$;
 
 CREATE OR REPLACE FUNCTION is_founder()
-RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
-  SELECT get_my_role() = 'founder';
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM platform_founders WHERE user_id = auth.uid());
 $$;
 
 -- ============================================================

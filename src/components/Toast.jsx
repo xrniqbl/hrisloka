@@ -72,7 +72,7 @@ export function ToastProvider({ children }) {
  {children}
  <div className="toast-container">
  {toasts.map(t => (
- <div key={t.id} className={`toast toast-${t.type}`}>
+ <div key={t.id} className={`toast toast-${t.type}`} role="status" aria-live="polite">
  <div className="toast-icon">
  {t.type === 'success' && <HiCheck />}
  {t.type === 'error' && <HiXMark />}
@@ -80,7 +80,7 @@ export function ToastProvider({ children }) {
  {t.type === 'info' && <HiInformationCircle />}
  </div>
  <span className="toast-message">{t.message}</span>
- <button className="toast-close" onClick={() => removeToast(t.id)}><HiXMark /></button>
+ <button className="toast-close" onClick={() => removeToast(t.id)} aria-label="Tutup"><HiXMark /></button>
  </div>
  ))}
  </div>

@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------
--- HRIS Loka — RLS Tenant Isolation Audit
+-- KiniKerja — RLS Tenant Isolation Audit
 -- Run in Supabase SQL Editor (Dashboard → SQL → New query).
 -- NOTE: Do NOT use psql meta-commands (\echo, \i, etc.) — SQL Editor rejects them.
 -- Expected: section 2 empty (no global super_admin leaks).

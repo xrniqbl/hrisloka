@@ -1,7 +1,9 @@
 import { supabase } from './supabase';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 
-  'BMzRwwjkGjrPI3-R071Bd5FOlJZNoqCf0F1ZYjzOKAo1mZqud-vzq5ypIwzB-I9zutHXw00sq04NcRVDJkUPGW4';
+// VAPID public key MUST match the server's private key pair.
+// No hardcoded fallback: a mismatch causes every push delivery to silently fail.
+// If unset, push notifications are disabled (subscribeForPush returns null).
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -19,8 +21,22 @@ function urlBase64ToUint8Array(base64String) {
  * Returns { success: boolean, error?: string }
  */
 export async function subscribeToPushNotifications(employeeId) {
+  // Respect platform feature flag (Founder Portal → Feature Flags)
+  try {
+    const raw = localStorage.getItem('founder_feature_flags');
+    if (raw) {
+      const flags = JSON.parse(raw);
+      if (flags && flags.push_notifications === false) {
+        return { success: false, error: 'Push notifications dinonaktifkan oleh administrator platform.' };
+      }
+    }
+  } catch { /* ignore parse errors */ }
+
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     return { success: false, error: 'Push notifications tidak didukung oleh browser ini.' };
+  }
+  if (!VAPID_PUBLIC_KEY) {
+    return { success: false, error: 'Push notifications belum dikonfigurasi di server.' };
   }
 
   try {

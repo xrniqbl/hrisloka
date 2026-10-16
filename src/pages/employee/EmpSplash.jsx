@@ -5,7 +5,7 @@ import { isDemoMode } from '../../lib/demoGuard';
 import './EmpOnboard.css';
 
 const SPLASH_MS = 2200;
-export const SPLASH_KEY = 'hrisloka_splash_seen';
+export const SPLASH_KEY = 'kinikerja_splash_seen';
 
 export default function EmpSplash() {
   const navigate = useNavigate();
@@ -29,16 +29,16 @@ export default function EmpSplash() {
   }
 
   return (
-    <div className="emp-onboard emp-splash" role="status" aria-label="Memuat HRIS Loka">
+    <div className="emp-onboard emp-splash" role="status" aria-label="Memuat KiniKerja">
       <div className="emp-splash__content">
         <div className="emp-splash__icon-wrap">
           <img
-            src="/landing/hrislokalogo.jpeg"
-            alt="HRIS Loka"
+            src="/landing/kinikerjalogo.jpeg"
+            alt="KiniKerja"
             className="emp-splash__icon"
           />
         </div>
-        <p className="emp-splash__name">HRIS Loka</p>
+        <p className="emp-splash__name">KiniKerja</p>
       </div>
     </div>
   );

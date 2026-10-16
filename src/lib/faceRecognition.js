@@ -13,9 +13,15 @@
 let faceapi = null;
 let modelsLoaded = false;
 let loadingPromise = null;
+// Expression net is OPTIONAL — public/models only ships detector + landmarks
+// + recognition. Smile challenge falls back to mouth landmarks when absent.
+let expressionsAvailable = false;
 
 const MODEL_URL = '/models';
-const RECOGNITION_THRESHOLD = 0.52;
+// face-api standard threshold (0.6). Fixed — never loosened for low quality
+// (a blurry frame must be HARDER to accept, not easier). Server-side
+// api/attendance/clock-in.js enforces the same 0.6 cutoff.
+const RECOGNITION_THRESHOLD = 0.6;
 const MIN_FACE_QUALITY = 0.4;
 const MIN_DETECTION_CONFIDENCE = 0.7;
 
@@ -34,8 +40,16 @@ export async function loadModels(onProgress) {
       await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
       onProgress?.(75, 'Mengunduh model pengenalan wajah...');
       await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-      onProgress?.(90, 'Mengunduh model ekspresi wajah...');
-      await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+      // Expression net is optional (not shipped in public/models): the smile
+      // challenge falls back to mouth-aspect-ratio from landmarks. A missing
+      // file must NEVER fail the whole load — that bricks all face attendance.
+      try {
+        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+        expressionsAvailable = true;
+      } catch {
+        expressionsAvailable = false;
+        console.warn('[FaceRecognition] expression model not shipped — smile uses landmark fallback');
+      }
       modelsLoaded = true;
       onProgress?.(100, 'Siap!');
       return true;
@@ -73,10 +87,15 @@ export function assessFaceQuality(detection) {
     feedback.push('Wajah terlalu besar, jauhkan dari kamera');
   }
 
+  // Resolution-independent centering: use caller-provided frame size,
+  // fall back to the box's own scale when unknown. Never hardcode 640x480
+  // (the scanner runs at 640x640 — hardcoded 320/240 shifts the Y center).
+  const frameW = Number(detection.frameWidth) || box.width * 4;
+  const frameH = Number(detection.frameHeight) || box.height * 4;
   const centerX = box.x + box.width / 2;
   const centerY = box.y + box.height / 2;
-  const offsetX = Math.abs(centerX - 320) / 320;
-  const offsetY = Math.abs(centerY - 240) / 240;
+  const offsetX = Math.abs(centerX - frameW / 2) / (frameW / 2);
+  const offsetY = Math.abs(centerY - frameH / 2) / (frameH / 2);
   
   if (offsetX > 0.20) {
     score -= 0.15;
@@ -125,10 +144,21 @@ export async function detectSingleFace(videoOrCanvas, options = {}) {
   const result = await faceapi
     .detectSingleFace(videoOrCanvas, detectorOptions)
     .withFaceLandmarks()
-    .withFaceDescriptor()
-    .withFaceExpressions();
+    .withFaceDescriptor();
 
   if (!result) return null;
+
+  // Expressions only when the optional net loaded (see loadModels).
+  if (expressionsAvailable && faceapi.nets.faceExpressionNet?.isLoaded) {
+    try {
+      const withExpr = await faceapi
+        .detectSingleFace(videoOrCanvas, detectorOptions)
+        .withFaceLandmarks()
+        .withFaceDescriptor()
+        .withFaceExpressions();
+      if (withExpr?.expressions) result.expressions = withExpr.expressions;
+    } catch { /* landmark-only path */ }
+  }
 
   const quality = assessFaceQuality(result);
   
@@ -149,8 +179,7 @@ export async function detectAllFaces(videoOrCanvas, options = {}) {
   const results = await faceapi
     .detectAllFaces(videoOrCanvas, detectorOptions)
     .withFaceLandmarks()
-    .withFaceDescriptor()
-    .withFaceExpressions();
+    .withFaceDescriptor();
 
   return results.map(result => ({
     ...result,
@@ -216,9 +245,10 @@ export function matchFace(liveDescriptor, registeredFaces, liveQuality = null) {
   }
 
   let threshold = RECOGNITION_THRESHOLD;
-  if (liveQuality) {
-    const qualityAdjustment = (1 - liveQuality.score) * 0.15;
-    threshold = RECOGNITION_THRESHOLD + qualityAdjustment;
+  if (liveQuality && liveQuality.score < MIN_FACE_QUALITY) {
+    // Low-quality frame: tighten, never loosen (security — blurry must be
+    // harder to accept). Caller should prompt a retake instead.
+    threshold = RECOGNITION_THRESHOLD - 0.05;
   }
 
   const confidence = Math.max(0, Math.round((1 - bestDistance / 1.0) * 100));
@@ -250,10 +280,14 @@ export function extractLandmarkData(detection) {
   };
 }
 
-export function checkFacePosition(detection, _videoWidth, _videoHeight) {
+export function checkFacePosition(detection, videoWidth, videoHeight) {
   if (!detection) return { ok: false, message: 'Posisikan wajah dalam frame' };
 
-  const quality = detection.quality || assessFaceQuality(detection);
+  // Forward the caller's frame size so centering is resolution-independent.
+  const withFrame = (videoWidth && videoHeight)
+    ? { ...detection, frameWidth: videoWidth, frameHeight: videoHeight }
+    : detection;
+  const quality = withFrame.quality || assessFaceQuality(withFrame);
   
   return {
     ok: quality.score >= MIN_FACE_QUALITY,
@@ -305,6 +339,10 @@ export function getFaceapi() {
 
 export function isModelsLoaded() {
   return modelsLoaded;
+}
+
+export function areExpressionsAvailable() {
+  return expressionsAvailable;
 }
 
 export const QUALITY_THRESHOLDS = {

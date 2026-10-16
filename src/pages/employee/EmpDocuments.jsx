@@ -56,7 +56,7 @@ export default function EmpDocuments() {
       setDocuments(docs || []);
     }
     setLoading(false);
-  }, [user, authEmployee?.id]);
+  }, [user, authEmployee]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

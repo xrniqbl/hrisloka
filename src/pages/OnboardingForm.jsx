@@ -91,7 +91,7 @@ export default function OnboardingForm() {
   }, []);
 
   // Load cities when province changes
-  const loadCities = useCallback(async (provinceId) => {
+  const loadCities = useCallback(async  (provinceId) => {
     if (!provinceId) { setCities([]); return; }
     setLoadingCities(true);
     try {
@@ -165,7 +165,7 @@ export default function OnboardingForm() {
         {/* Header */}
         <div className="ob-header">
           <picture>
-            <img src="/landing/hrislokawhitepanjang.png" alt="HRIS Loka" className="ob-logo" />
+            <img src="/landing/kinikerjawhitepanjang.png" alt="KiniKerja" className="ob-logo" />
           </picture>
           <div className="ob-header-badge">Langkah 1 dari 2</div>
         </div>

@@ -123,9 +123,12 @@ export default function EmpCalendar() {
   const today = new Date();
  const isToday = (d) => today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
 
- const getDateStr = (d) => `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+ const getDateStr = useCallback(
+ (d) => `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+ [year, month],
+ );
 
- const getDateEvents = (d) => {
+ const getDateEvents = useCallback((d) => {
  if (!d) return [];
  const ds = getDateStr(d);
  const dayOfWeek = new Date(year, month, d).getDay();
@@ -158,7 +161,7 @@ export default function EmpCalendar() {
  );
 
  return events;
- };
+ }, [year, month, holidays, leaves, shifts, trainings, locale, getDateStr]);
 
  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); setSelectedDate(null); };
  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); setSelectedDate(null); };
@@ -171,7 +174,7 @@ export default function EmpCalendar() {
    getDateEvents(day).forEach((event) => datesByType[event.type]?.push(new Date(year, month, day)));
   }
   return datesByType;
- }, [year, month, holidays, leaves, shifts, trainings]);
+ }, [year, month, getDateEvents]);
 
   // Build agenda: all events for the whole month, sorted.
   // NOTE: must be declared BEFORE any early return — hooks cannot be called
@@ -186,7 +189,7 @@ export default function EmpCalendar() {
       }
     }
     return result;
-  }, [month, year, holidays, leaves, shifts, trainings]);
+  }, [month, year, getDateEvents, getDateStr]);
 
  const todayStr = today.toISOString().split('T')[0];
  const upcomingHolidays = holidays.filter(h => h.date >= todayStr).slice(0, 5);

@@ -1,28 +1,66 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { Icon } from '@astryxdesign/core/Icon';
 import {
-  FiUsers, FiCreditCard, FiAlertCircle, FiRefreshCw, FiBriefcase,
-  FiArrowUpRight, FiArrowDownRight, FiTrendingUp,
-} from 'react-icons/fi';
+  Building2,
+  Users,
+  CreditCard,
+  LifeBuoy,
+  RefreshCw,
+  TrendingUp,
+  ArrowUpRight,
+  Plus,
+  Bell,
+  Ticket,
+  Tag,
+} from 'lucide-react';
 import {
-  Chart as ChartJS, CategoryScale, LinearScale, BarElement,
-  ArcElement, PointElement, LineElement, Filler, Tooltip, Legend,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
+import MetricStatCards from '../../components/MetricStatCards';
 import * as founderService from '../../services/founderService';
 import './founder.css';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Filler, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+);
 
-const chartFont = { family: 'Inter Tight', weight: '500', size: 12 };
+const BRAND = '#5654D4';
+const chartFont = { family: 'Inter, Inter Tight, system-ui, sans-serif', weight: '500', size: 12 };
 
 const tooltipConfig = {
-  backgroundColor: 'rgba(10, 15, 30, 0.92)',
+  backgroundColor: 'rgba(17, 24, 39, 0.92)',
   titleFont: { ...chartFont, weight: '700', size: 12 },
   bodyFont: chartFont,
   cornerRadius: 8,
   padding: { top: 8, bottom: 8, left: 12, right: 12 },
   boxPadding: 3,
+};
+
+/** Soft monochrome plan palette (brand-aligned) */
+const PLAN_COLORS = {
+  Free: '#9CA3AF',
+  Starter: '#5654D4',
+  Pro: '#7C75FF',
+  Enterprise: '#3730A3',
 };
 
 function formatIDR(n) {
@@ -35,45 +73,52 @@ function formatIDR(n) {
 
 function SkeletonBox({ w = '60%', h = 28 }) {
   return (
-    <div style={{
-      height: h, background: 'var(--border)', borderRadius: 6,
-      width: w, animation: 'fp-pulse 1.5s ease-in-out infinite',
-    }} />
-  );
-}
-
-function StatCard({ icon, label, value, change, changeType, iconBg, iconColor, loading }) {
-  return (
-    <div className="fp-stat">
-      <div className="fp-stat-header">
-        <div className="fp-stat-icon" style={{ background: iconBg, color: iconColor }}>{icon}</div>
-        {!loading && change && (
-          <div className={`fp-stat-change ${changeType}`}>
-            {changeType === 'up' && <FiArrowUpRight size={11} />}
-            {changeType === 'down' && <FiArrowDownRight size={11} />}
-            {change}
-          </div>
-        )}
-      </div>
-      {loading
-        ? <SkeletonBox w="55%" h={28} />
-        : <div className="fp-stat-value">{value}</div>}
-      <div className="fp-stat-label" style={{ marginTop: 4 }}>{label}</div>
-    </div>
+    <div
+      className="fp-skeleton"
+      style={{ height: h, width: w }}
+      aria-hidden
+    />
   );
 }
 
 function EmptyChart({ text, sub }) {
   return (
-    <div className="ep-empty-wrap">
-      <div className="ep-empty-icon"><FiTrendingUp size={32} /></div>
-      <div className="ep-empty-title">{text}</div>
-      {sub && <div className="ep-empty-desc">{sub}</div>}
+    <div className="fp-empty" style={{ padding: '40px 16px' }}>
+      <div className="fp-empty-icon">
+        <Icon icon={TrendingUp} size="md" color="inherit" />
+      </div>
+      <div className="fp-empty-title">{text}</div>
+      {sub && <div className="fp-empty-desc">{sub}</div>}
     </div>
   );
 }
 
-const PLAN_COLORS = { Free: '#94A3B8', Starter: '#635BFF', Pro: '#8B5CF6', Enterprise: '#F59E0B' };
+const QUICK_ACTIONS = [
+  {
+    label: 'Tambah Perusahaan',
+    desc: 'Daftarkan tenant perusahaan baru',
+    href: '/founder/companies',
+    icon: Plus,
+  },
+  {
+    label: 'Kirim Broadcast',
+    desc: 'Notifikasi ke semua subscriber aktif',
+    href: '/founder/broadcast',
+    icon: Bell,
+  },
+  {
+    label: 'Tinjau Tiket Support',
+    desc: 'Kelola keluhan klien terbuka',
+    href: '/founder/support',
+    icon: Ticket,
+  },
+  {
+    label: 'Buat Voucher',
+    desc: 'Generate kode diskon untuk klien',
+    href: '/founder/vouchers',
+    icon: Tag,
+  },
+];
 
 export default function FounderDashboard() {
   const [stats, setStats] = useState(null);
@@ -82,7 +127,7 @@ export default function FounderDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     try {
       const [statsRes, revRes, subsRes] = await Promise.all([
         founderService.getFounderDashboardStats(),
@@ -98,239 +143,280 @@ export default function FounderDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchAll();
   };
 
-  useEffect(() => { fetchAll(); }, []);
-  const handleRefresh = () => { setRefreshing(true); fetchAll(); };
+  const openTickets = stats?.openComplaints ?? 0;
+  const totalSubs = stats?.activeSubs ?? 0;
 
-  // Revenue chart
-  const hasRevenue = revenueHistory.some(r => r.amount > 0);
+  const kpiItems = useMemo(
+    () => [
+      {
+        key: 'companies',
+        label: 'Perusahaan',
+        value: loading ? '…' : (stats?.totalCompanies ?? 0),
+        icon: Building2,
+      },
+      {
+        key: 'subs',
+        label: 'Subscriber Aktif',
+        value: loading ? '…' : (stats?.activeSubs ?? 0),
+        icon: Users,
+      },
+      {
+        key: 'mrr',
+        label: 'Total MRR',
+        value: loading ? '…' : formatIDR(stats?.mrr ?? 0),
+        icon: CreditCard,
+      },
+      {
+        key: 'tickets',
+        label: 'Tiket Terbuka',
+        value: loading ? '…' : openTickets,
+        icon: LifeBuoy,
+      },
+    ],
+    [stats, loading, openTickets],
+  );
+
+  const hasRevenue = revenueHistory.some((r) => r.amount > 0);
   const revenueChartData = {
-    labels: revenueHistory.map(r => r.label),
-    datasets: [{
-      label: 'Pendapatan',
-      data: revenueHistory.map(r => r.amount),
-      borderColor: '#F59E0B',
-      backgroundColor: 'rgba(245, 158, 11, 0.08)',
-      tension: 0.4, fill: true,
-      pointRadius: 4, pointBackgroundColor: '#F59E0B',
-      pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5,
-    }],
+    labels: revenueHistory.map((r) => r.label),
+    datasets: [
+      {
+        label: 'Pendapatan',
+        data: revenueHistory.map((r) => r.amount),
+        borderColor: BRAND,
+        backgroundColor: 'rgba(86, 84, 212, 0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: BRAND,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        borderWidth: 2,
+      },
+    ],
   };
 
-  // Subscriber chart
-  const hasSubs = subsHistory.some(s => s.count > 0);
+  const hasSubs = subsHistory.some((s) => s.count > 0);
   const subsChartData = {
-    labels: subsHistory.map(s => s.label),
-    datasets: [{
-      label: 'Subscriber Aktif',
-      data: subsHistory.map(s => s.count),
-      borderColor: '#6366F1',
-      backgroundColor: 'rgba(99, 102, 241, 0.08)',
-      tension: 0.4, fill: true,
-      pointRadius: 4, pointBackgroundColor: '#6366F1',
-      pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2.5,
-    }],
+    labels: subsHistory.map((s) => s.label),
+    datasets: [
+      {
+        label: 'Subscriber Aktif',
+        data: subsHistory.map((s) => s.count),
+        borderColor: '#7C75FF',
+        backgroundColor: 'rgba(124, 117, 255, 0.08)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: '#7C75FF',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        borderWidth: 2,
+      },
+    ],
   };
 
   const lineOptions = (yFormatter) => ({
-    responsive: true, maintainAspectRatio: false,
+    responsive: true,
+    maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: { legend: { display: false }, tooltip: tooltipConfig },
     scales: {
       y: {
         beginAtZero: true,
         grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
-        ticks: { font: chartFont, color: '#9CA3AF', padding: 6, callback: yFormatter || undefined },
+        ticks: {
+          font: chartFont,
+          color: '#9CA3AF',
+          padding: 6,
+          callback: yFormatter || undefined,
+        },
         border: { display: false },
       },
-      x: { grid: { display: false }, ticks: { font: chartFont, color: '#9CA3AF', padding: 4 }, border: { display: false } },
+      x: {
+        grid: { display: false },
+        ticks: { font: chartFont, color: '#9CA3AF', padding: 4 },
+        border: { display: false },
+      },
     },
   });
 
-  // Plan distribution
   const planDist = stats?.planDist || {};
   const planLabels = Object.keys(planDist);
   const planData = Object.values(planDist);
-  const planColors = planLabels.map(l => PLAN_COLORS[l] || '#94A3B8');
+  const planColors = planLabels.map((l) => PLAN_COLORS[l] || '#9CA3AF');
 
   const planChartData = {
     labels: planLabels.length > 0 ? planLabels : ['Belum ada data'],
-    datasets: [{
-      data: planData.length > 0 ? planData : [1],
-      backgroundColor: planData.length > 0 ? planColors : ['#E2E8F0'],
-      borderWidth: 0, hoverOffset: 6,
-    }],
+    datasets: [
+      {
+        data: planData.length > 0 ? planData : [1],
+        backgroundColor: planData.length > 0 ? planColors : ['#E5E7EB'],
+        borderWidth: 0,
+        hoverOffset: 4,
+      },
+    ],
   };
+
   const planOptions = {
-    responsive: true, maintainAspectRatio: false, cutout: '68%',
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '70%',
     plugins: {
       legend: {
         position: 'bottom',
-        labels: { boxWidth: 8, boxHeight: 8, borderRadius: 4, useBorderRadius: true, font: { size: 12, ...chartFont }, color: '#9CA3AF', padding: 12 },
+        labels: {
+          boxWidth: 8,
+          boxHeight: 8,
+          borderRadius: 4,
+          useBorderRadius: true,
+          font: { size: 12, ...chartFont },
+          color: '#9CA3AF',
+          padding: 12,
+        },
       },
-      tooltip: { ...tooltipConfig, callbacks: { label: ctx => ` ${ctx.label}: ${planData.length > 0 ? ctx.parsed : 0} perusahaan` } },
+      tooltip: {
+        ...tooltipConfig,
+        callbacks: {
+          label: (ctx) =>
+            ` ${ctx.label}: ${planData.length > 0 ? ctx.parsed : 0} perusahaan`,
+        },
+      },
     },
   };
 
-  const totalSubs = stats?.activeSubs ?? 0;
-  const openTickets = stats?.openComplaints ?? 0;
+  const ticketHint =
+    openTickets > 0 ? `${openTickets} tiket terbuka` : 'Semua terselesaikan';
 
   return (
-    <div>
-      {/* Header */}
+    <div className="fp-page">
       <div className="fp-header">
         <div className="fp-header-top">
           <div>
-            <h1 className="fp-title">Founder Dashboard</h1>
-            <p className="fp-subtitle">Overview platform & metrik berlangganan secara real-time</p>
+            <h1 className="fp-title">Dashboard</h1>
+            <p className="fp-subtitle">
+              Overview platform & metrik berlangganan
+              {stats?.newThisMonth
+                ? ` · +${stats.newThisMonth} perusahaan bulan ini`
+                : ''}
+            </p>
           </div>
           <div className="fp-actions">
-            <div className="fp-realtime-dot" />
-            <button className="fp-btn fp-btn-secondary fp-btn-sm" onClick={handleRefresh} disabled={refreshing}>
-              <FiRefreshCw size={13} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
-              {refreshing ? 'Memuat...' : 'Refresh'}
+            <span className="fp-realtime-dot" title="Live" aria-hidden />
+            <button
+              type="button"
+              className="fp-btn fp-btn-secondary fp-btn-sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <span className={refreshing ? 'fp-spin' : undefined} style={{ display: 'inline-flex' }}>
+                <Icon icon={RefreshCw} size="sm" color="inherit" />
+              </span>
+              {refreshing ? 'Memuat…' : 'Refresh'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="fp-stats">
-        <StatCard
-          loading={loading}
-          icon={<FiBriefcase />}
-          label="Total Perusahaan"
-          value={stats?.totalCompanies ?? 0}
-          change={stats?.newThisMonth ? `+${stats.newThisMonth} bulan ini` : undefined}
-          changeType="up"
-          iconBg="rgba(99,102,241,0.1)" iconColor="#6366F1"
-        />
-        <StatCard
-          loading={loading}
-          icon={<FiUsers />}
-          label="Subscriber Aktif"
-          value={stats?.activeSubs ?? 0}
-          change={stats?.activeCompanies ? `${stats.activeCompanies} perusahaan aktif` : undefined}
-          changeType="up"
-          iconBg="rgba(16,185,129,0.1)" iconColor="#10B981"
-        />
-        <StatCard
-          loading={loading}
-          icon={<FiCreditCard />}
-          label="Total MRR"
-          value={formatIDR(stats?.mrr ?? 0)}
-          iconBg="rgba(245,158,11,0.1)" iconColor="#F59E0B"
-        />
-        <StatCard
-          loading={loading}
-          icon={<FiAlertCircle />}
-          label="Tiket Support Terbuka"
-          value={openTickets}
-          change={openTickets > 0 ? 'Perlu perhatian' : 'Semua terselesaikan'}
-          changeType={openTickets > 0 ? 'down' : 'up'}
-          iconBg="rgba(239,68,68,0.1)" iconColor="#EF4444"
-        />
-      </div>
+      <MetricStatCards items={kpiItems} className="fp-metric-strip" />
 
-      {/* Charts Row 1 */}
       <div className="fp-grid-2 mb-sm">
         <div className="fp-card">
           <div className="fp-card-header">
             <span className="fp-card-title">Tren Pendapatan</span>
-            <span className="fp-card-badge">6 bulan terakhir</span>
+            <span className="fp-card-badge">6 bulan</span>
           </div>
           <div className="fp-card-body">
-            {loading
-              ? <SkeletonBox w="100%" h={260} />
-              : !hasRevenue
-                ? <EmptyChart text="Belum ada pendapatan" sub="Data muncul saat ada pembayaran masuk" />
-                : (
-                  <div className="fp-chart-area">
-                    <Line data={revenueChartData} options={lineOptions(v => formatIDR(v))} />
-                  </div>
-                )}
+            {loading ? (
+              <SkeletonBox w="100%" h={220} />
+            ) : !hasRevenue ? (
+              <EmptyChart
+                text="Belum ada pendapatan"
+                sub="Data muncul saat ada pembayaran masuk"
+              />
+            ) : (
+              <div className="fp-chart-area">
+                <Line
+                  data={revenueChartData}
+                  options={lineOptions((v) => formatIDR(v))}
+                />
+              </div>
+            )}
           </div>
         </div>
+
         <div className="fp-card">
           <div className="fp-card-header">
             <span className="fp-card-title">Pertumbuhan Subscriber</span>
-            <span className="fp-card-badge">6 bulan terakhir</span>
+            <span className="fp-card-badge">6 bulan</span>
           </div>
           <div className="fp-card-body">
-            {loading
-              ? <SkeletonBox w="100%" h={260} />
-              : !hasSubs
-                ? <EmptyChart text="Belum ada subscriber" sub="Data muncul saat perusahaan mendaftar" />
-                : (
-                  <div className="fp-chart-area">
-                    <Line data={subsChartData} options={lineOptions()} />
-                  </div>
-                )}
+            {loading ? (
+              <SkeletonBox w="100%" h={220} />
+            ) : !hasSubs ? (
+              <EmptyChart
+                text="Belum ada subscriber"
+                sub="Data muncul saat perusahaan mendaftar"
+              />
+            ) : (
+              <div className="fp-chart-area">
+                <Line data={subsChartData} options={lineOptions()} />
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Charts Row 2 */}
       <div className="fp-grid-2">
-        {/* Plan distribution */}
         <div className="fp-card">
           <div className="fp-card-header">
             <span className="fp-card-title">Distribusi Paket</span>
             <span className="fp-card-badge">{totalSubs} total</span>
           </div>
           <div className="fp-card-body">
-            {loading
-              ? <SkeletonBox w="100%" h={220} />
-              : (
-                <div style={{ height: 220, position: 'relative' }}>
-                  <Doughnut data={planChartData} options={planOptions} />
-                  <div style={{
-                    position: 'absolute', top: '42%', left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    textAlign: 'center', pointerEvents: 'none',
-                  }}>
-                    <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)' }}>{totalSubs}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Perusahaan</div>
-                  </div>
+            {loading ? (
+              <SkeletonBox w="100%" h={200} />
+            ) : (
+              <div className="fp-doughnut-wrap">
+                <Doughnut data={planChartData} options={planOptions} />
+                <div className="fp-doughnut-center">
+                  <div className="fp-doughnut-value">{totalSubs}</div>
+                  <div className="fp-doughnut-label">Perusahaan</div>
                 </div>
-              )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Quick actions */}
         <div className="fp-card">
           <div className="fp-card-header">
             <span className="fp-card-title">Aksi Cepat</span>
           </div>
-          <div className="fp-card-body" style={{ padding: '12px 20px' }}>
-            {[
-              { label: 'Tambah Perusahaan', desc: 'Daftarkan tenant perusahaan baru', href: '/founder/companies', color: '#F59E0B' },
-              { label: 'Kirim Broadcast', desc: 'Notifikasi ke semua subscriber aktif', href: '/founder/broadcast', color: '#6366F1' },
-              { label: 'Tinjau Tiket Support', desc: `${openTickets} tiket terbuka`, href: '/founder/support', color: '#EF4444' },
-              { label: 'Buat Voucher', desc: 'Generate kode diskon untuk klien', href: '/founder/vouchers', color: '#10B981' },
-            ].map((item, i) => (
-              <Link
-                key={i}
-                to={item.href}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '12px 0',
-                  borderBottom: i < 3 ? '1px solid var(--border)' : 'none',
-                  textDecoration: 'none',
-                  transition: 'opacity 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-              >
-                <div style={{ width: 36, height: 36, borderRadius: 9, background: `${item.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{item.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{item.desc}</div>
-                </div>
-                <FiArrowUpRight size={15} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+          <div className="fp-card-body fp-quick-actions">
+            {QUICK_ACTIONS.map((item) => (
+              <Link key={item.href} to={item.href} className="fp-quick-item">
+                <span className="fp-quick-icon" aria-hidden>
+                  <Icon icon={item.icon} size="sm" color="inherit" />
+                </span>
+                <span className="fp-quick-text">
+                  <span className="fp-quick-label">
+                    {item.label}
+                    {item.href === '/founder/support' ? (
+                      <span className="fp-quick-meta"> · {ticketHint}</span>
+                    ) : null}
+                  </span>
+                  <span className="fp-quick-desc">{item.desc}</span>
+                </span>
+                <Icon icon={ArrowUpRight} size="sm" color="inherit" className="fp-quick-arrow" />
               </Link>
             ))}
           </div>
@@ -339,4 +425,3 @@ export default function FounderDashboard() {
     </div>
   );
 }
-

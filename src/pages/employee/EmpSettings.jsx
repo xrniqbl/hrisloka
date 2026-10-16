@@ -29,6 +29,40 @@ import './EmpSettings.css';
 
 const DARK_KEY = 'hrisync_dark_mode';
 
+// Pure presentational rows — kept at module scope so they have a stable
+// identity across EmpSettings renders (defining them inside the component
+// remounted them every render). They take all data via props.
+const ToggleRow = ({ icon, label, desc, value, onChange }) => (
+  <div className="emp-settings__row">
+    <div className="emp-settings__icon">{icon}</div>
+    <div className="emp-settings__text">
+      <div className="emp-settings__label">{label}</div>
+      {desc && <div className="emp-settings__desc">{desc}</div>}
+    </div>
+    <button
+      type="button"
+      className="emp-settings__toggle"
+      style={{ background: value ? 'var(--primary)' : 'var(--border)' }}
+      onClick={() => onChange(!value)}
+      aria-pressed={value}
+      aria-label={label}
+    >
+      <span className="emp-settings__toggle-knob" style={{ left: value ? 23 : 3 }} />
+    </button>
+  </div>
+);
+
+const ActionRow = ({ icon, label, desc, onClick, danger }) => (
+  <button type="button" className="emp-settings__row" onClick={onClick}>
+    <div className={'emp-settings__icon' + (danger ? ' emp-settings__icon--danger' : '')}>{icon}</div>
+    <div className="emp-settings__text">
+      <div className={'emp-settings__label' + (danger ? ' emp-settings__label--danger' : '')}>{label}</div>
+      {desc && <div className="emp-settings__desc">{desc}</div>}
+    </div>
+    <HiChevronRight size={16} className="emp-settings__chevron" />
+  </button>
+);
+
 export default function EmpSettings() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
@@ -173,37 +207,6 @@ export default function EmpSettings() {
     }
   };
 
-  const ToggleRow = ({ icon, label, desc, value, onChange }) => (
-    <div className="emp-settings__row">
-      <div className="emp-settings__icon">{icon}</div>
-      <div className="emp-settings__text">
-        <div className="emp-settings__label">{label}</div>
-        {desc && <div className="emp-settings__desc">{desc}</div>}
-      </div>
-      <button
-        type="button"
-        className="emp-settings__toggle"
-        style={{ background: value ? 'var(--primary)' : 'var(--border)' }}
-        onClick={() => onChange(!value)}
-        aria-pressed={value}
-        aria-label={label}
-      >
-        <span className="emp-settings__toggle-knob" style={{ left: value ? 23 : 3 }} />
-      </button>
-    </div>
-  );
-
-  const ActionRow = ({ icon, label, desc, onClick, danger }) => (
-    <button type="button" className="emp-settings__row" onClick={onClick}>
-      <div className={'emp-settings__icon' + (danger ? ' emp-settings__icon--danger' : '')}>{icon}</div>
-      <div className="emp-settings__text">
-        <div className={'emp-settings__label' + (danger ? ' emp-settings__label--danger' : '')}>{label}</div>
-        {desc && <div className="emp-settings__desc">{desc}</div>}
-      </div>
-      <HiChevronRight size={16} className="emp-settings__chevron" />
-    </button>
-  );
-
   const pwdOk = pwdForm.newPassword.length >= 8 && pwdForm.newPassword === pwdForm.confirmPassword;
 
   return (
@@ -282,7 +285,7 @@ export default function EmpSettings() {
       <section className="emp-settings__group">
         <div className="emp-settings__group-title">{t('about')}</div>
         {[
-          [t('app_name'), 'HRIS Loka Employee'],
+          [t('app_name'), 'KiniKerja Employee'],
           [t('version'), '2.0.0'],
           [t('platform'), 'PWA'],
         ].map(([k, v]) => (

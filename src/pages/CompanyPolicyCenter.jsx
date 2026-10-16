@@ -5,6 +5,7 @@ import * as policyService from '../services/policyService';
 import '../styles/shared.css';
 import '../styles/admin.css';
 import EmptyState from '../components/EmptyState';
+import FormDateField from '../components/FormDateField';
 
 const CATEGORIES = [
   { id: 'sop', label: 'SOP', color: '#635BFF' },
@@ -203,7 +204,7 @@ export default function CompanyPolicyCenter() {
  </div>
  <div className="form-group">
  <label className="form-label">Tanggal Berlaku</label>
- <input className="form-input" type="date" value={form.effective_date} onChange={e => setForm({ ...form, effective_date: e.target.value })} />
+ <FormDateField value={form.effective_date} onChange={(v) => setForm({ ...form, effective_date: v })} placeholder="Tanggal berlaku" />
  </div>
  <div className="form-group">
  <label className="form-label">Status</label>

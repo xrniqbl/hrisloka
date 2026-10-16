@@ -98,7 +98,7 @@ export default function KPITracking() {
  };
 
  // Realtime: auto-refresh
- useRealtimeTable('kpi_records', fetchData, { companyId: currentUser?.company_id });
+ useRealtimeTable('kpi_records', fetchData, { companyId: employee?.company_id });
 
  const getColor = (score) => {
  if (score >= 90) return 'var(--success)';

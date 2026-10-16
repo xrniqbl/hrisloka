@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getPendingRegistrations, acceptEmployeeRegistration, rejectEmployeeRegistration } from '../services/companyService';
 import { useAuth } from '../context/AuthContext';
 

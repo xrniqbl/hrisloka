@@ -1,15 +1,15 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { updateSEOTags, injectSchema } from '../lib/seo';
 
 const PRIVACY_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: 'Kebijakan Privasi HRIS Loka',
-  url: 'https://hrisloka.com/privacy',
-  description: 'Kebijakan privasi dan perlindungan data pengguna HRIS Loka sesuai regulasi Indonesia.',
+  name: 'Kebijakan Privasi KiniKerja',
+  url: 'https://kinikerja.id/privacy',
+  description: 'Kebijakan privasi dan perlindungan data pengguna KiniKerja sesuai regulasi Indonesia.',
   inLanguage: 'id',
-  publisher: { '@type': 'Organization', name: 'HRIS Loka', url: 'https://hrisloka.com' },
+  publisher: { '@type': 'Organization', name: 'KiniKerja', url: 'https://kinikerja.id' },
   dateModified: '2026-05-21',
 };
 
@@ -28,10 +28,10 @@ const s = {
 export default function PrivacyPolicy() {
   useEffect(() => {
     updateSEOTags({
-      title: 'Kebijakan Privasi - HRIS Loka',
-      description: 'Kebijakan privasi HRIS Loka menjelaskan cara kami mengumpulkan, menggunakan, dan melindungi data personal pengguna sesuai regulasi perlindungan data Indonesia.',
-      canonical: 'https://hrisloka.com/privacy',
-      keywords: 'kebijakan privasi HRIS Loka, perlindungan data, privacy policy HR software',
+      title: 'Kebijakan Privasi - KiniKerja',
+      description: 'Kebijakan privasi KiniKerja menjelaskan cara kami mengumpulkan, menggunakan, dan melindungi data personal pengguna sesuai regulasi perlindungan data Indonesia.',
+      canonical: 'https://kinikerja.id/privacy',
+      keywords: 'kebijakan privasi KiniKerja, perlindungan data, privacy policy HR software',
     });
     injectSchema('privacy-page', PRIVACY_SCHEMA);
   }, []);
@@ -39,14 +39,14 @@ export default function PrivacyPolicy() {
   return (
     <>
       <nav style={s.nav}>
-        <Link to="/" style={{ fontSize: 20, fontWeight: 600, color: '#635BFF', textDecoration: 'none' }}>HRIS Loka</Link>
+        <Link to="/" style={{ fontSize: 20, fontWeight: 600, color: '#635BFF', textDecoration: 'none' }}>KiniKerja</Link>
         <Link to="/landing" style={{ fontSize: 14, color: '#64748B', textDecoration: 'none', fontWeight: 600 }}>† Kembali</Link>
       </nav>
       <main style={s.page}>
         <h1 style={s.h1}>Kebijakan Privasi</h1>
         <span style={s.date}>Terakhir diperbarui: 21 Mei 2026</span>
 
-        <p style={s.p}>HRIS Loka ("kami", "Layanan") berkomitmen untuk melindungi privasi dan keamanan data pengguna. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, mengungkapkan, dan melindungi informasi Anda saat menggunakan platform HRIS Loka.</p>
+        <p style={s.p}>KiniKerja ("kami", "Layanan") berkomitmen untuk melindungi privasi dan keamanan data pengguna. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, mengungkapkan, dan melindungi informasi Anda saat menggunakan platform KiniKerja.</p>
 
         <h2 style={s.h2}>1. Informasi yang Kami Kumpulkan</h2>
         <p style={s.p}>Kami mengumpulkan informasi berikut:</p>
@@ -60,7 +60,7 @@ export default function PrivacyPolicy() {
 
         <h2 style={s.h2}>2. Cara Kami Menggunakan Data</h2>
         <ul style={s.ul}>
-          <li style={s.li}>Menyediakan dan mengoperasikan layanan HRIS Loka</li>
+          <li style={s.li}>Menyediakan dan mengoperasikan layanan KiniKerja</li>
           <li style={s.li}>Memverifikasi kehadiran dan identitas karyawan</li>
           <li style={s.li}>Menghitung penggajian dan tunjangan karyawan</li>
           <li style={s.li}>Mengirimkan notifikasi terkait layanan (email, WhatsApp, push notification)</li>
@@ -79,7 +79,7 @@ export default function PrivacyPolicy() {
         </ul>
 
         <h2 style={s.h2}>4. Berbagi Data dengan Pihak Ketiga</h2>
-        <p style={s.p}>Kami tidak menjual data Anda. Data hanya dibagikan kepada penyedia layanan infrastruktur yang membantu kami mengoperasikan platform (Supabase, Vercel, Resend, Fonnte) dengan perjanjian kerahasiaan data yang ketat.</p>
+        <p style={s.p}>Kami tidak menjual data Anda. Data hanya dibagikan kepada penyedia layanan infrastruktur yang membantu kami mengoperasikan platform (Supabase, Vercel, Brevo, Fonnte) dengan perjanjian kerahasiaan data yang ketat.</p>
 
         <h2 style={s.h2}>5. Retensi Data</h2>
         <p style={s.p}>Data karyawan disimpan selama akun aktif dan selama 1 tahun setelah penghapusan akun untuk keperluan audit, sesuai regulasi ketenagakerjaan Indonesia. Data biometrik (deskriptor wajah) dihapus segera setelah akun dinonaktifkan.</p>
@@ -94,8 +94,8 @@ export default function PrivacyPolicy() {
         </ul>
 
         <h2 style={s.h2}>7. Kontak</h2>
-        <p style={s.p}>Untuk pertanyaan atau permintaan terkait privasi data, hubungi kami di: <a href="mailto:hrisloka@gmail.com" style={s.a}>hrisloka@gmail.com</a></p>
-        <p style={s.p}>HRIS Loka  Bandung, Jawa Barat, Indonesia</p>
+        <p style={s.p}>Untuk pertanyaan atau permintaan terkait privasi data, hubungi kami di: <a href="mailto:kinikerja@gmail.com" style={s.a}>kinikerja@gmail.com</a></p>
+        <p style={s.p}>KiniKerja  Bandung, Jawa Barat, Indonesia</p>
       </main>
     </>
   );

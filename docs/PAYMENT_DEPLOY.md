@@ -18,11 +18,11 @@ supabase functions deploy activate-free-subscription
 ```
 
 > **Prerequisite (RLS):** run `scripts/FIX_FOUNDER_PORTAL_RLS.sql` in the SQL
-> Editor first. It removes the blanket `authenticated` policies from
-> `migration_founder_portal.sql` and locks billing tables to founder/service
-> writes. Free & voucher activations now go through the
-> `activate-free-subscription` Edge Function (service_role), so the client no
-> longer writes to `subscriptions` directly.
+> Editor **before** deploying the functions below. It removes the blanket
+> `authenticated` policies from `migration_founder_portal.sql` and locks
+> billing tables to founder/service writes. Free & voucher activations now go
+> through the `activate-free-subscription` Edge Function (service_role), so
+> the client no longer writes to `subscriptions` directly.
 
 ### Secrets (Dashboard → Edge Functions → Secrets)
 
@@ -32,9 +32,9 @@ supabase functions deploy activate-free-subscription
 | `MIDTRANS_IS_PRODUCTION` | `true` or `false` |
 | `SUPABASE_URL` | Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role (never expose to browser) |
-| `SITE_URL` | e.g. `https://hrisloka.com` |
+| `SITE_URL` | Canonical: `https://kinikerja.id` (do NOT use kinikerja.com) |
 | `BREVO_API_KEY` | Optional activation emails (Brevo) |
-| `FROM_EMAIL` | e.g. `noreply@hrisloka.id` |
+| `FROM_EMAIL` | e.g. `noreply@kinikerja.id` |
 
 ## 2. Midtrans Dashboard
 
@@ -52,7 +52,7 @@ VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 VITE_MIDTRANS_CLIENT_KEY=Mid-client-...
 VITE_MIDTRANS_IS_PRODUCTION=false
-SITE_URL=https://hrisloka.com
+SITE_URL=https://kinikerja.id
 ```
 
 ## 4. Database plan prices
@@ -71,7 +71,11 @@ Run once in SQL Editor:
    - `payment_orders.status` → `paid`
    - `subscriptions.status` → `active`
    - `employees.role` → `super_admin` (webhook)
-4. Checkout step 3 polls until paid → redirects `/dashboard`.
+4. Checkout step 3 polls `payment_orders` until paid → redirects `/dashboard`.
+   Poll behavior (`src/pages/CheckoutPage.jsx` StepConfirmation): 4s interval,
+   max ~45 attempts (**~3 min timeout**), then shows a timeout state with a
+   "Coba Lagi" retry button (polling resumes; a settled payment still
+   activates via webhook).
 5. Test **pending** (bank VA) → screen shows waiting → settles via webhook.
 6. Test **100% voucher** → Edge Function `activate-free-subscription` (no Snap).
 7. Test **yearly** pricing: amount must match `monthly × 12 × 0.85`.
@@ -80,12 +84,17 @@ Run once in SQL Editor:
 
 ## 6. Cron (expiry reminders + payment reconciliation)
 
-- Vercel/VPS: `api/cron-check-subscriptions.js`
-- Header/query: `CRON_SECRET`
+> **Canonical scheduler = VPS `server/index.js` node-cron** (localhost-only
+> route, secret injected server-side via header). The route is fail-closed:
+> external callers without the `CRON_SECRET` header get `401`/`403` — do NOT
+> weaken the check (e.g. by adding a `?secret=` query fallback).
+
+- Scheduler: VPS node-cron calling `api/cron-check-subscriptions.js` in-process
+- Auth: header `x-cron-secret: <CRON_SECRET>` ONLY (header-only; no query fallback)
 - Marks `active` past `expires_at` as `expired`; sends WA reminders if Fonnte configured.
 - Reconciles `payment_orders` stuck `pending` > 2h against the Midtrans status
   API and replays settled/failed results into `midtrans-webhook`.
-  Requires on the **Vercel** project: `MIDTRANS_SERVER_KEY`,
+  Requires on the **VPS** server env: `MIDTRANS_SERVER_KEY`,
   `MIDTRANS_IS_PRODUCTION` (`true`/`false`).
 
 ## 7. Security notes

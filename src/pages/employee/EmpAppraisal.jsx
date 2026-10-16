@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { HiArrowTrendingUp, HiChevronRight, HiClipboardDocumentCheck, HiStar, HiPaperAirplane } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { getEmployeeByEmail } from '../../services/employeeService';
+import { getEmployeeAppraisals, submitSelfAssessment } from '../../services/appraisalService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
 import { sendAppraisalPush } from '../../services/pushService';
@@ -21,10 +22,10 @@ export default function EmpAppraisal() {
 
   const load = useCallback(async () => {
     if (!user?.email) return;
-    const { data: e } = await supabase.from('employees').select('*').eq('email', user.email).single();
+    const { data: e } = await getEmployeeByEmail(user.email);
     if (e) {
       setEmp(e);
-      const { data: a } = await supabase.from('appraisals').select('*').eq('employee_id', e.id).order('created_at', { ascending: false });
+      const { data: a } = await getEmployeeAppraisals(e.id, e.company_id);
       setAppraisals(a || []);
     }
     setLoading(false);
@@ -35,12 +36,10 @@ export default function EmpAppraisal() {
   const handleSubmit = async () => {
     if (!form.achievements.trim()) return;
     setSubmitting(true);
-    const { error } = await supabase.from('self_assessments').insert({
-      employee_id: emp.id,
+    const { error } = await submitSelfAssessment(emp.id, {
       period: new Date().toISOString().slice(0, 7),
       ...form,
-      status: 'submitted',
-    });
+    }, emp.company_id);
     if (!error) {
       toast?.success('Self-assessment berhasil dikirim!');
       // Notify HR/manager via push (fire-and-forget)

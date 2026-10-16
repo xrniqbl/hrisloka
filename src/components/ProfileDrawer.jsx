@@ -29,6 +29,7 @@ import { useToast } from './Toast';
 import { loadPayrollConfig, savePayrollConfig, DEFAULT_PAYROLL_CONFIG, PTKP_VALUES } from '../lib/payrollConfig';
 import { safeGetItem, safeSetItem } from '../lib/safeStorage';
 import AvatarPicker from './AvatarPicker';
+import { uploadProfilePhoto } from '../services/employeeService';
 import '../styles/shared.css';
 import './ProfileDrawer.css';
 
@@ -116,16 +117,18 @@ export default function ProfileDrawer({ open, onClose }) {
   const [deptSelected, setDeptSelected] = useState('');
 
   // ── Company form ──
+  // Legacy 'HRIS Loka_*' keys are still read once so existing tenants keep
+  // their locally saved settings after the KiniKerja rebrand.
   const [companyForm, setCompanyForm] = useState(() => {
     try {
-      const s = localStorage.getItem('HRIS Loka_company_settings');
-      return s ? JSON.parse(s) : { name: 'PT HRIS Loka Indonesia', address: 'Jl. Sudirman No. 123, Jakarta Selatan', phone: '(021) 555-0123', website: 'hrisloka.id' };
+      const s = localStorage.getItem('KiniKerja_company_settings') || localStorage.getItem('HRIS Loka_company_settings');
+      return s ? JSON.parse(s) : { name: 'PT KiniKerja Indonesia', address: 'Jl. Sudirman No. 123, Jakarta Selatan', phone: '(021) 555-0123', website: 'kinikerja.id' };
     } catch { return { name: '', address: '', phone: '', website: '' }; }
   });
 
   // ── Career form ──
   const [careerForm, setCareerForm] = useState({
-    slug: 'informasilowongan', company_name: 'HRIS Loka',
+    slug: 'informasilowongan', company_name: 'KiniKerja',
     company_description: '', accent_color: '#635BFF', is_active: true,
   });
   const [originalSlug, setOriginalSlug] = useState('informasilowongan');
@@ -135,11 +138,11 @@ export default function ProfileDrawer({ open, onClose }) {
   // ── Notifications ──
   const [notifications, setNotifications] = useState(() => {
     try {
-      const s = localStorage.getItem('HRIS Loka_notifications');
+      const s = localStorage.getItem('KiniKerja_notifications') || localStorage.getItem('HRIS Loka_notifications');
       return s ? JSON.parse(s) : { emailLeave: true, emailPayroll: true, emailReimbursement: true, pushAttendance: true, pushApproval: true, pushAnnouncement: true };
     } catch { return { emailLeave: true, emailPayroll: true, emailReimbursement: true, pushAttendance: true, pushApproval: true, pushAnnouncement: true }; }
   });
-  useEffect(() => { safeSetItem('HRIS Loka_notifications', JSON.stringify(notifications)); }, [notifications]);
+  useEffect(() => { safeSetItem('KiniKerja_notifications', JSON.stringify(notifications)); }, [notifications]);
 
   // ── Security form ──
   const [securityForm, setSecurityForm] = useState({ newPassword: '', confirmPassword: '' });
@@ -180,7 +183,7 @@ export default function ProfileDrawer({ open, onClose }) {
         if (data) {
           setCareerForm({
             slug: data.slug || 'informasilowongan',
-            company_name: data.company_name || 'HRIS Loka',
+            company_name: data.company_name || 'KiniKerja',
             company_description: data.company_description || '',
             accent_color: data.accent_color || '#635BFF',
             is_active: data.is_active !== false,
@@ -204,7 +207,6 @@ export default function ProfileDrawer({ open, onClose }) {
     if (!file) return;
     setUploading(true);
     try {
-      const { uploadProfilePhoto } = await import('../services/employeeService');
       const id = employee?.id || user?.id;
       const { url, error } = await uploadProfilePhoto(id, file, { updateEmployee: !!employee?.id });
       if (error || !url) throw error || new Error('Upload gagal');
@@ -243,7 +245,7 @@ export default function ProfileDrawer({ open, onClose }) {
   };
 
   const handleSaveCompany = () => {
-    safeSetItem('HRIS Loka_company_settings', JSON.stringify(companyForm));
+    safeSetItem('KiniKerja_company_settings', JSON.stringify(companyForm));
     toast.success('Pengaturan perusahaan disimpan.');
     showSaved();
   };
@@ -258,7 +260,7 @@ export default function ProfileDrawer({ open, onClose }) {
       setSlugStatus('idle');
       toast.success('Career page settings disimpan.');
     } catch {
-      safeSetItem('HRIS Loka_career_settings', JSON.stringify(careerForm));
+      safeSetItem('KiniKerja_career_settings', JSON.stringify(careerForm));
       toast.info('Disimpan lokal. Jalankan migration SQL untuk simpan ke database.');
     }
     setSaving(false);

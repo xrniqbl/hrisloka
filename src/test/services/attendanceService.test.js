@@ -3,10 +3,16 @@ import { supabase } from '../../lib/supabase';
 import * as attendanceService from '../../services/attendanceService';
 
 vi.mock('../../lib/supabase');
+vi.mock('../../lib/tenantGuard', async (importOriginal) => ({
+  ...(await importOriginal()),
+  resolveMyEmployee: vi.fn(),
+}));
+import { resolveMyEmployee } from '../../lib/tenantGuard';
 
 describe('attendanceService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resolveMyEmployee.mockResolvedValue({ id: 'emp-1' });
   });
 
   describe('getAttendanceByDate', () => {
@@ -50,6 +56,12 @@ describe('attendanceService', () => {
     it('should reject when employeeId missing', async () => {
       const result = await attendanceService.clockIn(null, { latitude: 1, longitude: 1 });
       expect(result.error?.message).toMatch(/employeeId/i);
+    });
+
+    it('should reject a different employee identity before querying attendance', async () => {
+      const result = await attendanceService.clockIn('emp-other', { latitude: -6.2, longitude: 106.8 });
+      expect(result.error?.code).toBe('IDENTITY_MISMATCH');
+      expect(supabase.from).not.toHaveBeenCalled();
     });
 
     it('should block duplicate open clock-in', async () => {

@@ -4,7 +4,24 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const MIDTRANS_SERVER_KEY = Deno.env.get('MIDTRANS_SERVER_KEY') || '';
+/** Fail-fast: missing secrets crash at boot (loud deploy error), never run with empty fallbacks. */
+function requireEnv(name) {
+  const v = Deno.env.get(name);
+  if (!v) throw new Error('[create-payment] CONFIG ERROR: ' + name + ' is not set');
+  return v;
+}
+function requireSiteUrl() {
+  const v = (Deno.env.get('SITE_URL') || '').trim().replace(/\/$/, '');
+  if (!v || !/^https?://[^/]+$/.test(v)) {
+    throw new Error('[create-payment] CONFIG ERROR: SITE_URL must be a valid http(s) origin');
+  }
+  return v;
+}
+
+const MIDTRANS_SERVER_KEY = requireEnv('MIDTRANS_SERVER_KEY');
+const SUPABASE_URL = requireEnv('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+const SITE_URL = requireSiteUrl();
 const MIDTRANS_BASE_URL = Deno.env.get('MIDTRANS_IS_PRODUCTION') === 'true'
   ? 'https://app.midtrans.com/snap/v1'
   : 'https://app.sandbox.midtrans.com/snap/v1';
@@ -20,29 +37,39 @@ const FALLBACK_PLANS: Record<string, { name: string; price_monthly: number | nul
 
 const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
+
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') || '';
+  const base = ALLOWED_ORIGINS.includes(origin)
+    ? { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
+    : corsHeaders;
+  return { ...base, 'Vary': 'Origin' };
+}
 
 // Origin allowlist — mirrors api/_shared/cors.js. Extra origins can be added
 // via the ALLOWED_ORIGINS / SITE_URL secrets. Never reflect unknown origins.
-const ALLOWED_ORIGINS = [
+// Localhost entries only apply when ALLOW_LOCALHOST=true (local dev).
+const PROD_ORIGINS = [
   'https://kinikerja.id',
   'https://www.kinikerja.id',
   'https://kinikerja.com',
   'https://www.kinikerja.com',
+];
+const DEV_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
+];
+const ALLOWED_ORIGINS = [
+  ...PROD_ORIGINS,
+  ...(Deno.env.get('ALLOW_LOCALHOST') === 'true' ? DEV_ORIGINS : []),
   ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean),
   ...(Deno.env.get('SITE_URL') ? [Deno.env.get('SITE_URL')!.trim().replace(/\/$/, '')] : []),
 ];
-
-function corsHeadersFor(req: Request): Record<string, string> {
-  const origin = req.headers.get('Origin') || '';
-  return ALLOWED_ORIGINS.includes(origin)
-    ? { ...corsHeaders, 'Access-Control-Allow-Origin': origin }
-    : corsHeaders;
-}
 
 function expectedBasePrice(priceMonthly: number | null, billingCycle: string): number | null {
   if (priceMonthly === null || priceMonthly === undefined) return null;
@@ -65,10 +92,7 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', ''),
@@ -95,7 +119,7 @@ serve(async (req) => {
       });
     }
 
-    const amountNum = Number(amount);
+    const amountNum = Number(body?.amount ?? amount);
     if (!Number.isFinite(amountNum) || amountNum < 0) {
       return new Response(JSON.stringify({ error: 'Invalid amount' }), {
         status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
@@ -147,65 +171,69 @@ serve(async (req) => {
         .maybeSingle();
 
       if (!voucher) {
-        return new Response(JSON.stringify({ error: 'Voucher tidak valid' }), {
+        console.warn('[create-payment] voucher rejected: not found', { voucherCode });
+        return new Response(JSON.stringify({ error: 'Voucher tidak dapat digunakan' }), {
           status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       if (voucher.valid_until && new Date(voucher.valid_until) < new Date()) {
-        return new Response(JSON.stringify({ error: 'Voucher kadaluarsa' }), {
+        console.warn('[create-payment] voucher rejected: expired', { voucherCode });
+        return new Response(JSON.stringify({ error: 'Voucher tidak dapat digunakan' }), {
           status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
 
       const plans = voucher.applicable_plans || [];
       if (Array.isArray(plans) && plans.length > 0 && !plans.includes(plan_slug)) {
-        return new Response(JSON.stringify({ error: 'Voucher tidak berlaku untuk paket ini' }), {
+        console.warn('[create-payment] voucher rejected: plan mismatch', { voucherCode, plan_slug });
+        return new Response(JSON.stringify({ error: 'Voucher tidak dapat digunakan' }), {
           status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
       // single plan_slug column (older schema)
       if (voucher.plan_slug && voucher.plan_slug !== plan_slug) {
-        return new Response(JSON.stringify({ error: 'Voucher tidak berlaku untuk paket ini' }), {
+        console.warn('[create-payment] voucher rejected: plan mismatch (legacy column)', { voucherCode, plan_slug });
+        return new Response(JSON.stringify({ error: 'Voucher tidak dapat digunakan' }), {
           status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
 
       const used = voucher.used_count ?? voucher.current_uses ?? 0;
       if (voucher.max_uses !== null && used >= voucher.max_uses) {
-        return new Response(JSON.stringify({ error: 'Voucher habis dipakai' }), {
+        console.warn('[create-payment] voucher rejected: exhausted', { voucherCode, used });
+        return new Response(JSON.stringify({ error: 'Voucher tidak dapat digunakan' }), {
           status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
         });
       }
 
-      if (voucher.discount_type === 'percentage') {
+      if (voucher.discount_type === 'percentage' || voucher.discount_type === 'percent') {
         serverDiscount = Math.round(base * Number(voucher.discount_value) / 100);
-      } else {
+      } else if (voucher.discount_type === 'fixed') {
         serverDiscount = Math.min(Number(voucher.discount_value), base);
+      } else {
+        console.warn('[create-payment] voucher rejected: unknown discount_type', { voucherCode, discount_type: voucher.discount_type });
+        return new Response(JSON.stringify({ error: 'Voucher tidak dapat digunakan' }), {
+          status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
+        });
       }
     }
 
     const expectedAmount = Math.max(0, base - serverDiscount);
     // Allow 1 IDR tolerance for rounding
-    if (Math.abs(amountNum - expectedAmount) > 1) {
+    if (!Number.isFinite(amountNum) || !Number.isFinite(Number(expectedAmount)) || Math.abs(Number(amountNum) - Number(expectedAmount)) > 1) {
       console.error('[create-payment] amount mismatch', { amountNum, expectedAmount, base, serverDiscount });
       return new Response(JSON.stringify({
         error: 'Harga tidak valid. Muat ulang halaman dan coba lagi.',
-        expected: expectedAmount,
       }), {
         status: 400, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
 
-    if (!MIDTRANS_SERVER_KEY) {
-      return new Response(JSON.stringify({ error: 'Payment gateway not configured' }), {
-        status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
-      });
-    }
 
     // order_id acak (crypto UUID) — prediktabilitas + fragmen user id dihilangkan.
-    // Idempotency: bila client double-click dalam 60 detik untuk plan+amount sama,
+    // Idempotency: bila client double-click dalam 10 menit untuk plan+amount sama,
     // kembalikan order pending yang sudah ada alih-alih membuat order baru.
-    const since = new Date(Date.now() - 60_000).toISOString();
+    const since = new Date(Date.now() - 10 * 60_000).toISOString();
     const { data: recent } = await supabase
       .from('payment_orders')
       .select('order_id, snap_token, amount')
@@ -228,7 +256,8 @@ serve(async (req) => {
     }
 
     const order_id = `KK-${crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
-    const resolvedName = plan_name || plan.name || plan_slug;
+    // plan_name is server-resolved (DB/fallback) — never trust client input (XSS/spoofing).
+    const resolvedName = plan.name || plan_slug;
 
     const { data: profile } = await supabase
       .from('onboarding_profiles')
@@ -257,9 +286,9 @@ serve(async (req) => {
         },
       ],
       callbacks: {
-        finish: `${Deno.env.get('SITE_URL') || 'https://kinikerja.id'}/checkout?status=success&order_id=${encodeURIComponent(order_id)}`,
-        error: `${Deno.env.get('SITE_URL') || 'https://kinikerja.id'}/checkout?status=error&order_id=${encodeURIComponent(order_id)}`,
-        pending: `${Deno.env.get('SITE_URL') || 'https://kinikerja.id'}/checkout?status=pending&order_id=${encodeURIComponent(order_id)}`,
+        finish: `${SITE_URL}/checkout?status=success&order_id=${encodeURIComponent(order_id)}`,
+        error: `${SITE_URL}/checkout?status=error&order_id=${encodeURIComponent(order_id)}`,
+        pending: `${SITE_URL}/checkout?status=pending&order_id=${encodeURIComponent(order_id)}`,
       },
     };
 
@@ -275,7 +304,8 @@ serve(async (req) => {
 
     const midtransData = await midtransRes.json();
     if (!midtransData.token) {
-      return new Response(JSON.stringify({ error: 'Failed to create payment', detail: midtransData }), {
+      console.error('[create-payment] midtrans error:', JSON.stringify(midtransData).slice(0, 500));
+      return new Response(JSON.stringify({ error: 'Failed to create payment. Coba lagi.' }), {
         status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
@@ -295,7 +325,7 @@ serve(async (req) => {
 
     if (insertErr) {
       console.error('[create-payment] insert order error:', insertErr.message);
-      return new Response(JSON.stringify({ error: 'Failed to save order' }), {
+      return new Response(JSON.stringify({ error: 'Internal error' }), {
         status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
       });
     }
@@ -310,7 +340,8 @@ serve(async (req) => {
     }), { headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' } });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('[create-payment] Error:', message);
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500, headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
     });
   }

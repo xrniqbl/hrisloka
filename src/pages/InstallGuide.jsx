@@ -16,7 +16,7 @@ const ANDROID_STEPS = [
   {
     num: '01',
     title: 'Buka Browser Chrome',
-    desc: 'Pastikan kamu membuka HRIS Loka di browser Google Chrome di HP Android kamu. Kunjungi link yang diberikan oleh HR perusahaan.',
+    desc: 'Pastikan kamu membuka KiniKerja di browser Google Chrome di HP Android kamu. Kunjungi link yang diberikan oleh HR perusahaan.',
     icon: (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
@@ -214,9 +214,9 @@ export default function InstallGuide() {
     injectSchema('installHowTo', {
       '@context': 'https://schema.org',
       '@type': 'HowTo',
-      'name': 'Cara Install Aplikasi HRIS Loka di HP (Android & iPhone)',
-      'description': 'Panduan lengkap menginstal aplikasi HRIS Loka sebagai Progressive Web App (PWA) di Android menggunakan Chrome dan iPhone menggunakan Safari.',
-      'image': 'https://hrisloka.com/og-image.png',
+      'name': 'Cara Install Aplikasi KiniKerja di HP (Android & iPhone)',
+      'description': 'Panduan lengkap menginstal aplikasi KiniKerja sebagai Progressive Web App (PWA) di Android menggunakan Chrome dan iPhone menggunakan Safari.',
+      'image': 'https://kinikerja.id/og-image.jpg',
       'totalTime': 'PT1M',
       'step': [
         {
@@ -228,9 +228,9 @@ export default function InstallGuide() {
         {
           '@type': 'HowToStep',
           'position': 2,
-          'name': 'Login ke Akun HRIS Loka',
+          'name': 'Login ke Akun KiniKerja',
           'text': 'Masuk menggunakan email dan password yang diberikan oleh tim HR perusahaan.',
-          'url': 'https://hrisloka.com/login',
+          'url': 'https://kinikerja.id/login',
         },
         {
           '@type': 'HowToStep',
@@ -248,7 +248,7 @@ export default function InstallGuide() {
           '@type': 'HowToStep',
           'position': 5,
           'name': 'Konfirmasi Install',
-          'text': 'Ketuk "Tambahkan" atau "Install" di dialog konfirmasi. Aplikasi HRIS Loka siap digunakan dari layar utama HP.',
+          'text': 'Ketuk "Tambahkan" atau "Install" di dialog konfirmasi. Aplikasi KiniKerja siap digunakan dari layar utama HP.',
         },
       ],
     });
@@ -294,7 +294,7 @@ export default function InstallGuide() {
       <nav className="lp-nav scrolled" style={{ position: 'sticky', top: 0, zIndex: 1000 }}>
         <div className="lp-nav-inner lp-container">
           <Link to="/landing" className="lp-logo">
-            <img src="/landing/hrislokabluepanjang.png" alt="HRIS Loka" className="lp-logo-img" />
+            <img src="/landing/kinikerjabluepanjang.png" alt="KiniKerja" className="lp-logo-img" />
           </Link>
           <div className="lp-nav-right">
             <Link to="/landing" className="lp-nav-login">Beranda</Link>
@@ -326,7 +326,7 @@ export default function InstallGuide() {
 
             <Motion.h1 className="ig-hero-title" variants={fadeUp}>
               Install Aplikasi<br />
-              <span className="lp-hero-gradient">HRIS Loka</span> di HP Kamu
+              <span className="lp-hero-gradient">KiniKerja</span> di HP Kamu
             </Motion.h1>
 
             <Motion.p className="ig-hero-sub" variants={fadeUp}>
@@ -343,7 +343,7 @@ export default function InstallGuide() {
                     <div className="ig-phone-avatar">HR</div>
                     <div>
                       <div className="ig-phone-name">Selamat Pagi!</div>
-                      <div className="ig-phone-role">HRIS Loka Employee</div>
+                      <div className="ig-phone-role">KiniKerja Employee</div>
                     </div>
                   </div>
                   <div className="ig-phone-card">
@@ -590,7 +590,7 @@ export default function InstallGuide() {
                 </svg>
               </div>
               <div>
-                <strong>Catatan untuk Admin:</strong> Fitur ini eksklusif untuk karyawan yang sudah terdaftar di sistem HRIS Loka. Jika belum punya akun, hubungi tim HR atau admin perusahaan kamu untuk mendapatkan akses.
+                <strong>Catatan untuk Admin:</strong> Fitur ini eksklusif untuk karyawan yang sudah terdaftar di sistem KiniKerja. Jika belum punya akun, hubungi tim HR atau admin perusahaan kamu untuk mendapatkan akses.
               </div>
             </div>
           </div>
@@ -606,7 +606,7 @@ export default function InstallGuide() {
             {[
               {
                 q: 'Apakah saya perlu mengunduh dari App Store atau Play Store?',
-                a: 'Tidak perlu! HRIS Loka adalah aplikasi web progresif (PWA). Kamu bisa install langsung dari browser tanpa perlu ke toko aplikasi.',
+                a: 'Tidak perlu! KiniKerja adalah aplikasi web progresif (PWA). Kamu bisa install langsung dari browser tanpa perlu ke toko aplikasi.',
               },
               {
                 q: 'Apakah gratis untuk menginstall?',
@@ -614,7 +614,7 @@ export default function InstallGuide() {
               },
               {
                 q: 'Apakah data saya aman di PWA?',
-                a: 'Sangat aman. HRIS Loka menggunakan enkripsi end-to-end. Semua data tersimpan di server aman, bukan di HP kamu.',
+                a: 'Sangat aman. KiniKerja menggunakan enkripsi end-to-end. Semua data tersimpan di server aman, bukan di HP kamu.',
               },
               {
                 q: 'Mengapa saya tidak menemukan opsi "Add to Home Screen" di Safari?',
@@ -650,7 +650,7 @@ export default function InstallGuide() {
               </svg>
             </div>
             <h2 className="ig-cta-title">Siap Install Sekarang?</h2>
-            <p className="ig-cta-desc">Buka website HRIS Loka di browser HP kamu dan ikuti langkah di atas. Selesai dalam 30 detik!</p>
+            <p className="ig-cta-desc">Buka website KiniKerja di browser HP kamu dan ikuti langkah di atas. Selesai dalam 30 detik!</p>
             <div className="ig-cta-actions">
               <button
                 onClick={handleInstall}
@@ -697,7 +697,7 @@ export default function InstallGuide() {
             </svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a', lineHeight: 1.2 }}>Install HRIS Loka</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a', lineHeight: 1.2 }}>Install KiniKerja</div>
             <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
               {promptReady ? 'Klik untuk install langsung - siap dipasang!' : 'Tambahkan ke layar utama HP kamu'}
             </div>
@@ -729,7 +729,7 @@ export default function InstallGuide() {
       {/* Simple footer */}
       <div className="ig-footer">
         <div className="lp-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <span> 2026 HRIS Loka. Dibuat dengan  di Bandung.</span>
+          <span> 2026 KiniKerja. Dibuat dengan  di Bandung.</span>
           <div style={{ display: 'flex', gap: 20 }}>
             <Link to="/landing">Beranda</Link>
             <Link to="/login">Masuk</Link>

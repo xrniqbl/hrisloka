@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link, useParams, Navigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { updateSEOTags, injectSchema } from '../lib/seo';
@@ -11,9 +11,9 @@ export default function BlogPost() {
   useEffect(() => {
     if (!article) return;
     updateSEOTags({
-      title: `${article.title} | HRIS Loka Blog`,
+      title: `${article.title} | KiniKerja Blog`,
       description: article.excerpt,
-      canonical: `https://hrisloka.com/blog/${article.slug}`,
+      canonical: `https://kinikerja.id/blog/${article.slug}`,
       keywords: article.keywords.join(', '),
     });
     injectSchema(`blogpost-${article.slug}`, {
@@ -21,18 +21,18 @@ export default function BlogPost() {
       '@type': 'BlogPosting',
       headline: article.title,
       description: article.excerpt,
-      url: `https://hrisloka.com/blog/${article.slug}`,
+      url: `https://kinikerja.id/blog/${article.slug}`,
       datePublished: article.date,
       dateModified: article.date,
-      author: { '@type': 'Organization', name: 'HRIS Loka', url: 'https://hrisloka.com' },
+      author: { '@type': 'Organization', name: 'KiniKerja', url: 'https://kinikerja.id' },
       publisher: {
         '@type': 'Organization',
-        name: 'HRIS Loka',
-        logo: { '@type': 'ImageObject', url: 'https://hrisloka.com/landing/hrislokabluepanjang.png' },
+        name: 'KiniKerja',
+        logo: { '@type': 'ImageObject', url: 'https://kinikerja.id/landing/kinikerjabluepanjang.png' },
       },
       keywords: article.keywords.join(', '),
       inLanguage: 'id',
-      isPartOf: { '@type': 'Blog', name: 'Blog HRIS Loka', url: 'https://hrisloka.com/blog' },
+      isPartOf: { '@type': 'Blog', name: 'Blog KiniKerja', url: 'https://kinikerja.id/blog' },
     });
   }, [article]);
 
@@ -53,7 +53,7 @@ export default function BlogPost() {
   return (
     <>
       <nav style={s.nav}>
-        <Link to="/" style={s.logo}>HRIS Loka</Link>
+        <Link to="/" style={s.logo}>KiniKerja</Link>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <Link to="/blog" style={{ fontSize: 14, color: '#64748B', textDecoration: 'none', fontWeight: 600 }}>Blog</Link>
           <Link to="/checkout" style={{ padding: '8px 20px', background: '#635BFF', color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>Mulai Sekarang</Link>
@@ -75,7 +75,7 @@ export default function BlogPost() {
           <div style={s.meta}>
             <span>Ÿ"... {new Date(article.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
             <span> {article.readTime} membaca</span>
-            <span>œ Tim HRIS Loka</span>
+            <span>œ Tim KiniKerja</span>
           </div>
 
           <p style={{ ...s.content, fontWeight: 600, color: '#475569', fontSize: 18, marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid #E2E8F0' }}>
@@ -96,7 +96,8 @@ export default function BlogPost() {
 
         {/* In-article CTA */}
         <div style={s.cta}>
-          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#635BFF', marginBottom: 10 }}>Coba HRIS Loka Sekarang</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 600, color: '#635BFF', marginBottom: 10 }}>Coba KiniKerja Sekarang</h2>
+          {/* KEEP IN SYNC with src/lib/plans.js CANONICAL_PLANS prices */}
           <p style={{ color: '#475569', marginBottom: 20, fontSize: 15 }}>Mulai digitalisasi HR perusahaan Anda dengan paket Starter <strong>hanya Rp 149.000/bulan</strong>.</p>
           <Link to="/checkout" style={{ display: 'inline-block', padding: '12px 32px', background: '#635BFF', color: '#fff', borderRadius: 10, fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
             Lihat Paket & Harga &rarr;

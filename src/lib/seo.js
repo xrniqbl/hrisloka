@@ -1,58 +1,130 @@
 /**
- * SEOHead — Dynamic meta tag manager untuk React SPA
- * 
- * Gunakan di setiap halaman publik (Landing, Install, Login)
- * untuk memberikan meta tag yang unik per-route.
- * 
- * Cara pakai:
- *   import { SEOHead } from '../lib/seo';
- *   <SEOHead page="landing" />
- * 
- * atau custom:
- *   <SEOHead
- *     title="Judul Halaman"
- *     description="Deskripsi halaman..."
- *     canonical="https://hrisloka.com/halaman"
- *   />
+ * SEO utilities — dynamic meta + JSON-LD for SPA routes.
+ *
+ * Usage:
+ *   import { updateSEOTags, injectSchema, markNoIndex } from '../lib/seo';
+ *   updateSEOTags({ page: 'landing' });
+ *   markNoIndex(); // private app shells
  */
 
-const BASE_URL = 'https://hrisloka.com';
-const DEFAULT_OG_IMAGE = `${BASE_URL}/og-image.png`;
+import { CANONICAL_PLANS, formatPlanIDR } from './plans';
 
-// ─── Page-level SEO presets ──────────────────────────────────────────────────
-const PAGE_SEO = {
+const BASE_URL = 'https://kinikerja.id';
+const DEFAULT_OG_IMAGE = `${BASE_URL}/og-image.jpg`;
+const BRAND = 'KiniKerja';
+
+/** Prices from src/lib/plans.js CANONICAL_PLANS (single source of truth) */
+const STARTER_PRICE = CANONICAL_PLANS.find((p) => p.slug === 'starter')?.price_monthly ?? 149000;
+const PRO_PRICE = CANONICAL_PLANS.find((p) => p.slug === 'pro')?.price_monthly ?? 299000;
+const PRICE_STARTER = String(STARTER_PRICE);
+const PRICE_PRO = String(PRO_PRICE);
+const PRICE_STARTER_LABEL = formatPlanIDR(STARTER_PRICE);
+const PRICE_PRO_LABEL = formatPlanIDR(PRO_PRICE);
+
+/** Centralized public contact links — use these instead of hardcoding wa.me URLs */
+export const WA_NUMBER = '6289512114437';
+export const waEnterpriseLink = (msg = 'Halo, saya tertarik dengan paket Enterprise KiniKerja.') =>
+  `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
+
+/** Canonical site URL — use this instead of hardcoding kinikerja.id */
+export const SITE_URL = BASE_URL;
+
+export const PAGE_SEO = {
   landing: {
-    title: 'HRIS Loka — Software HR Modern untuk Perusahaan Indonesia',
-    description: 'HRIS Loka adalah platform manajemen SDM (HRIS) terlengkap untuk perusahaan Indonesia. Absensi GPS real-time, penggajian otomatis, penilaian KPI, dan rekrutmen end-to-end. Starter Rp 75K/bln, Pro Rp 125K/bln.',
+    title: `${BRAND} — Software HR Modern untuk Perusahaan Indonesia | Mulai ${PRICE_STARTER_LABEL}/bulan`,
+    description: `Platform HRIS terlengkap untuk perusahaan Indonesia. Absensi GPS, penggajian otomatis BPJS+PPh21, KPI, rekrutmen. Starter ${PRICE_STARTER_LABEL}/bln, Pro ${PRICE_PRO_LABEL}/bln. Setup 5 menit.`,
     canonical: `${BASE_URL}/`,
     ogType: 'website',
+    keywords:
+      'HRIS Indonesia, software HR, sistem HRD, absensi GPS, penggajian otomatis, payroll BPJS, KPI karyawan, rekrutmen digital',
   },
   install: {
-    title: 'Cara Install Aplikasi HRIS Loka di HP — Panduan Lengkap PWA',
-    description: 'Panduan lengkap cara menginstal aplikasi HRIS Loka di Android dan iPhone (iOS) sebagai Progressive Web App. Tidak perlu Play Store — langsung dari browser, gratis.',
+    title: `Cara Install Aplikasi ${BRAND} di HP — Panduan PWA Android & iOS`,
+    description: `Install ${BRAND} di Android dan iPhone tanpa Play Store. Progressive Web App untuk absensi GPS, slip gaji, dan cuti dari HP.`,
     canonical: `${BASE_URL}/install`,
     ogType: 'article',
-    keywords: 'cara install HRIS, download aplikasi HR, HRIS mobile Android, HRIS iOS, install PWA HRIS',
+    keywords: 'cara install HRIS, download aplikasi HR, HRIS mobile, install PWA',
   },
   login: {
-    title: 'Masuk ke HRIS Loka — Login Portal HR & Karyawan',
-    description: 'Masuk ke akun HRIS Loka Anda. Portal login untuk admin HR, manajer, dan karyawan. Akses dashboard manajemen SDM kapan saja, di mana saja.',
+    title: `Masuk ke ${BRAND} — Login Portal HR & Karyawan`,
+    description: `Login portal ${BRAND} untuk admin HR, manajer, dan karyawan. Akses dashboard SDM kapan saja.`,
     canonical: `${BASE_URL}/login`,
     ogType: 'website',
-    noindex: false, // biarkan terindex — brand searches
+    noindex: false,
   },
   checkout: {
-    title: 'Berlangganan HRIS Loka — Pilih Paket HR Terbaik untuk Tim Anda',
-    description: 'Pilih paket HRIS Loka yang sesuai kebutuhan perusahaan Anda. Starter Rp 75.000/bulan, Pro Rp 125.000/bulan, Enterprise custom. Diskon 15% untuk langganan tahunan.',
+    title: `Berlangganan ${BRAND} — Starter ${PRICE_STARTER_LABEL} · Pro ${PRICE_PRO_LABEL}`,
+    description: `Pilih paket ${BRAND}: Starter ${PRICE_STARTER_LABEL}/bulan (25 karyawan), Pro ${PRICE_PRO_LABEL}/bulan (100 karyawan), Enterprise custom. Diskon 15% tahunan.`,
     canonical: `${BASE_URL}/checkout`,
     ogType: 'website',
-    keywords: 'harga HRIS Loka, paket HRIS, beli software HR, berlangganan HRIS Indonesia',
+    keywords: 'harga HRIS, paket software HR, berlangganan HRIS Indonesia',
+  },
+  harga: {
+    title: `Harga ${BRAND} ${new Date().getFullYear()} — Paket Software HR Indonesia`,
+    description: `Daftar harga ${BRAND}: Starter ${PRICE_STARTER_LABEL}/bln, Pro ${PRICE_PRO_LABEL}/bln, Enterprise custom. Bandingkan fitur absensi, payroll, KPI.`,
+    canonical: `${BASE_URL}/harga`,
+    ogType: 'website',
+    keywords: 'harga HRIS Indonesia, biaya software HR, paket HRIS murah',
+  },
+  fitur: {
+    title: `Fitur ${BRAND} — Absensi GPS, Payroll, KPI & Rekrutmen`,
+    description: `Fitur lengkap ${BRAND}: manajemen karyawan, absensi GPS geofence, penggajian BPJS/PPh21, cuti, KPI, rekrutmen, PWA karyawan.`,
+    canonical: `${BASE_URL}/fitur`,
+    ogType: 'website',
+    keywords: 'fitur HRIS, absensi GPS karyawan, software payroll Indonesia',
+  },
+  privacy: {
+    title: `Kebijakan Privasi — ${BRAND}`,
+    description: `Kebijakan privasi dan perlindungan data pengguna ${BRAND}. Multi-tenant isolation, enkripsi, dan kontrol akses berbasis peran.`,
+    canonical: `${BASE_URL}/privacy`,
+    ogType: 'website',
+  },
+  blog: {
+    title: `Blog ${BRAND} — Tips HR, Payroll & Digitalisasi SDM`,
+    description: `Artikel seputar manajemen SDM, absensi, payroll, dan digitalisasi HR untuk perusahaan Indonesia.`,
+    canonical: `${BASE_URL}/blog`,
+    ogType: 'website',
   },
 };
 
+function setMeta(selector, attr, content) {
+  if (content == null || content === '') return;
+  let el = document.querySelector(selector);
+  if (!el) {
+    el = document.createElement('meta');
+    if (selector.includes('property=')) {
+      const prop = selector.match(/property="([^"]+)"/)?.[1];
+      if (prop) el.setAttribute('property', prop);
+    } else {
+      const name = selector.match(/name="([^"]+)"/)?.[1];
+      if (name) el.setAttribute('name', name);
+    }
+    document.head.appendChild(el);
+  }
+  el.setAttribute(attr, content);
+}
+
+function setLink(rel, href, extra = {}) {
+  if (!href) return;
+  let el;
+  if (extra.hreflang) {
+    el = document.querySelector(`link[rel="${rel}"][hreflang="${extra.hreflang}"]`);
+  } else if (rel === 'canonical') {
+    el = document.querySelector('link[rel="canonical"]');
+  } else {
+    el = document.querySelector(`link[rel="${rel}"]`);
+  }
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', rel);
+    if (extra.hreflang) el.setAttribute('hreflang', extra.hreflang);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
+}
+
 /**
- * Update document head tags untuk SEO
- * Dipanggil dari komponen React dengan useEffect
+ * Update document head for public marketing / auth pages.
  */
 export function updateSEOTags({
   title,
@@ -63,75 +135,59 @@ export function updateSEOTags({
   keywords,
   noindex = false,
   page,
-}) {
-  // Resolve preset jika `page` diberikan
+  jsonLd,
+} = {}) {
   const preset = page ? PAGE_SEO[page] : null;
-  const _title = title || preset?.title || 'HRIS Loka — Software HR Modern';
+  const _title = title || preset?.title || `${BRAND} — Software HR Modern`;
   const _desc = description || preset?.description || '';
   const _canonical = canonical || preset?.canonical || `${BASE_URL}/`;
   const _ogType = ogType || preset?.ogType || 'website';
   const _keywords = keywords || preset?.keywords || '';
   const _noindex = noindex ?? preset?.noindex ?? false;
 
-  // ── Title ──────────────────────────────────────────────────────
   document.title = _title;
 
-  // ── Helper: upsert meta tag ────────────────────────────────────
-  const setMeta = (selector, attr, content) => {
-    let el = document.querySelector(selector);
-    if (!el) {
-      el = document.createElement('meta');
-      if (selector.includes('property')) {
-        const prop = selector.match(/property="([^"]+)"/)?.[1];
-        if (prop) el.setAttribute('property', prop);
-      } else {
-        const name = selector.match(/name="([^"]+)"/)?.[1];
-        if (name) el.setAttribute('name', name);
-      }
-      document.head.appendChild(el);
-    }
-    el.setAttribute(attr, content);
-  };
-
-  // ── Helper: upsert link tag ────────────────────────────────────
-  const setLink = (rel, href) => {
-    let el = document.querySelector(`link[rel="${rel}"]`);
-    if (!el) {
-      el = document.createElement('link');
-      el.setAttribute('rel', rel);
-      document.head.appendChild(el);
-    }
-    el.setAttribute('href', href);
-  };
-
-  // ── Meta Basic ─────────────────────────────────────────────────
   setMeta('meta[name="description"]', 'content', _desc);
   if (_keywords) setMeta('meta[name="keywords"]', 'content', _keywords);
-  setMeta('meta[name="robots"]', 'content',
-    _noindex ? 'noindex, nofollow' : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
+  setMeta(
+    'meta[name="robots"]',
+    'content',
+    _noindex
+      ? 'noindex, nofollow, noarchive'
+      : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
   );
+  setMeta('meta[name="googlebot"]', 'content', _noindex ? 'noindex, nofollow' : 'index, follow');
 
-  // ── Canonical ──────────────────────────────────────────────────
   setLink('canonical', _canonical);
+  setLink('alternate', _canonical, { hreflang: 'id' });
+  setLink('alternate', _canonical, { hreflang: 'x-default' });
 
-  // ── Open Graph ─────────────────────────────────────────────────
   setMeta('meta[property="og:title"]', 'content', _title);
   setMeta('meta[property="og:description"]', 'content', _desc);
   setMeta('meta[property="og:type"]', 'content', _ogType);
   setMeta('meta[property="og:url"]', 'content', _canonical);
   setMeta('meta[property="og:image"]', 'content', ogImage);
+  setMeta('meta[property="og:image:alt"]', 'content', `${BRAND} — Software HR Indonesia`);
+  setMeta('meta[property="og:locale"]', 'content', 'id_ID');
+  setMeta('meta[property="og:site_name"]', 'content', BRAND);
 
-  // ── Twitter Card ───────────────────────────────────────────────
+  setMeta('meta[name="twitter:card"]', 'content', 'summary_large_image');
   setMeta('meta[name="twitter:title"]', 'content', _title);
   setMeta('meta[name="twitter:description"]', 'content', _desc);
   setMeta('meta[name="twitter:image"]', 'content', ogImage);
+
+  if (jsonLd) injectSchema('page-dynamic', jsonLd);
 }
 
-/**
- * Inject JSON-LD schema ke dalam <head>
- * Aman dipanggil berulang — menggantikan script yang sudah ada
- */
+/** Force noindex for authenticated app shells (dashboard, founder, PWA). */
+export function markNoIndex(title = `${BRAND} — App`) {
+  document.title = title;
+  setMeta('meta[name="robots"]', 'content', 'noindex, nofollow, noarchive');
+  setMeta('meta[name="googlebot"]', 'content', 'noindex, nofollow');
+}
+
 export function injectSchema(id, schema) {
+  if (!id || !schema) return;
   let el = document.querySelector(`script[data-schema="${id}"]`);
   if (!el) {
     el = document.createElement('script');
@@ -139,219 +195,41 @@ export function injectSchema(id, schema) {
     el.setAttribute('data-schema', id);
     document.head.appendChild(el);
   }
-  el.textContent = JSON.stringify(schema, null, 2);
+  el.textContent = JSON.stringify(schema);
 }
 
-/**
- * Schema preset untuk setiap halaman
- */
 export const SCHEMAS = {
-  /**
-   * Schema untuk halaman pricing / checkout
-   * Target: "harga HRIS", "biaya software HR", "HRIS gratis Indonesia"
-   */
   pricing: {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'HRIS Loka',
-    description: 'Platform manajemen SDM (HRIS) modern untuk perusahaan Indonesia dengan fitur absensi GPS, penggajian otomatis, penilaian KPI, dan rekrutmen end-to-end.',
-    url: 'https://hrisloka.com',
-    brand: {
-      '@type': 'Brand',
-      name: 'HRIS Loka',
-    },
+    name: BRAND,
+    description:
+      'Platform manajemen SDM (HRIS) modern untuk perusahaan Indonesia: absensi GPS, penggajian otomatis, KPI, rekrutmen.',
+    url: BASE_URL,
+    brand: { '@type': 'Brand', name: BRAND },
     offers: [
       {
         '@type': 'Offer',
         name: 'Paket Starter',
-        price: '75000',
+        price: PRICE_STARTER,
         priceCurrency: 'IDR',
-        description: 'Rp 75.000/bulan untuk hingga 50 karyawan. Manajemen karyawan, absensi digital, cuti, payroll dasar, dan PWA karyawan.',
+        description: `${PRICE_STARTER_LABEL}/bulan hingga 25 karyawan.`,
         priceValidUntil: '2027-12-31',
         availability: 'https://schema.org/InStock',
-        url: 'https://hrisloka.com/checkout',
-        seller: { '@type': 'Organization', name: 'HRIS Loka' },
+        url: `${BASE_URL}/checkout`,
       },
       {
         '@type': 'Offer',
         name: 'Paket Pro',
-        price: '125000',
+        price: PRICE_PRO,
         priceCurrency: 'IDR',
-        description: 'Rp 125.000/bulan untuk hingga 200 karyawan. Absensi GPS real-time, penggajian otomatis, KPI, rekrutmen, AI Expense OCR, dan laporan lanjutan.',
+        description: `${PRICE_PRO_LABEL}/bulan hingga 100 karyawan.`,
         priceValidUntil: '2027-12-31',
         availability: 'https://schema.org/InStock',
-        url: 'https://hrisloka.com/checkout',
-        seller: { '@type': 'Organization', name: 'HRIS Loka' },
-      },
-      {
-        '@type': 'Offer',
-        name: 'Paket Enterprise',
-        description: 'Harga custom untuk perusahaan besar. Karyawan tidak terbatas, custom integrasi API, dan dedicated account manager.',
-        availability: 'https://schema.org/InStock',
-        url: 'https://hrisloka.com/checkout',
-        seller: { '@type': 'Organization', name: 'HRIS Loka' },
-      },
-    ],
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.9',
-      ratingCount: '87',
-      bestRating: '5',
-      worstRating: '1',
-    },
-  },
-
-  /**
-   * Schema LocalBusiness — meningkatkan visibilitas Google Maps/local search
-   * Target: "software HR Bandung", "HRIS perusahaan Jawa Barat"
-   */
-  localBusiness: {
-    '@context': 'https://schema.org',
-    '@type': ['LocalBusiness', 'SoftwareApplication'],
-    name: 'HRIS Loka',
-    description: 'Platform Software HR (HRIS) modern untuk perusahaan Indonesia. Berbasis di Bandung, Jawa Barat.',
-    url: 'https://hrisloka.com',
-    telephone: '+6289512114437',
-    email: 'hrisloka@gmail.com',
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Bandung',
-      addressRegion: 'Jawa Barat',
-      postalCode: '40000',
-      addressCountry: 'ID',
-    },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: -6.9175,
-      longitude: 107.6191,
-    },
-    openingHoursSpecification: {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-      opens: '08:00',
-      closes: '17:00',
-    },
-    priceRange: 'Rp 75.000 - Custom',
-    servesCuisine: null,
-    currenciesAccepted: 'IDR',
-    paymentAccepted: 'Bank Transfer, QRIS',
-    sameAs: [
-      'https://www.linkedin.com/company/hrisloka',
-      'https://instagram.com/hrisloka',
-    ],
-    applicationCategory: 'BusinessApplication',
-    operatingSystem: 'Web, Android, iOS',
-  },
-
-  /**
-   * Schema ItemList — daftar fitur untuk Rich Results
-   * Target: "fitur HRIS", "apa saja fitur software HR"
-   */
-  featureList: {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'Fitur HRIS Loka',
-    description: 'Daftar lengkap fitur platform manajemen SDM HRIS Loka untuk perusahaan Indonesia',
-    numberOfItems: 7,
-    itemListElement: [
-      {
-        '@type': 'ListItem',
-        position: 1,
-        name: 'Manajemen Karyawan Terpusat',
-        description: 'Database karyawan terpusat dengan profil lengkap, kontrak digital, dan riwayat employment.',
-        url: 'https://hrisloka.com/landing#features',
-      },
-      {
-        '@type': 'ListItem',
-        position: 2,
-        name: 'Absensi GPS Real-time',
-        description: 'Absensi karyawan berbasis GPS dengan geofencing, anti-fraud, dan laporan real-time.',
-        url: 'https://hrisloka.com/landing#features',
-      },
-      {
-        '@type': 'ListItem',
-        position: 3,
-        name: 'Penggajian Otomatis',
-        description: 'Perhitungan gaji, tunjangan, potongan BPJS, PPh 21, dan slip gaji digital otomatis.',
-        url: 'https://hrisloka.com/landing#features',
-      },
-      {
-        '@type': 'ListItem',
-        position: 4,
-        name: 'Penilaian Kinerja KPI',
-        description: 'Evaluasi 360 derajat, OKR tracking, dan laporan performa karyawan secara berkala.',
-        url: 'https://hrisloka.com/landing#features',
-      },
-      {
-        '@type': 'ListItem',
-        position: 5,
-        name: 'Rekrutmen & Onboarding',
-        description: 'Pipeline rekrutmen end-to-end dari job posting, screening, hingga onboarding karyawan baru.',
-        url: 'https://hrisloka.com/landing#features',
-      },
-      {
-        '@type': 'ListItem',
-        position: 6,
-        name: 'AI Capability Mapping',
-        description: 'Pemetaan kompetensi karyawan berbasis AI untuk perencanaan talent yang lebih akurat.',
-        url: 'https://hrisloka.com/landing#technology',
-      },
-      {
-        '@type': 'ListItem',
-        position: 7,
-        name: 'Analitik & Laporan Real-time',
-        description: 'Dashboard analytics HR dengan visualisasi data untuk pengambilan keputusan strategis.',
-        url: 'https://hrisloka.com/landing#features',
-      },
-    ],
-  },
-
-  /**
-   * Schema HowTo — cara kerja software
-   * Target: "cara menggunakan HRIS", "implementasi HRIS", "onboarding HRIS"
-   */
-  howTo: {
-    '@context': 'https://schema.org',
-    '@type': 'HowTo',
-    name: 'Cara Menggunakan HRIS Loka untuk Perusahaan Anda',
-    description: 'Panduan langkah demi langkah untuk mulai menggunakan platform HRIS Loka dalam hitungan menit.',
-    estimatedCost: {
-      '@type': 'MonetaryAmount',
-      currency: 'IDR',
-      value: '75000',
-    },
-    totalTime: 'PT5M',
-    step: [
-      {
-        '@type': 'HowToStep',
-        position: 1,
-        name: 'Daftar & Setup Profil',
-        text: 'Buat akun perusahaan gratis dan konfigurasi struktur organisasi, departemen, dan kebijakan HR dalam hitungan menit.',
-        url: 'https://hrisloka.com/login',
-      },
-      {
-        '@type': 'HowToStep',
-        position: 2,
-        name: 'Import Data Karyawan',
-        text: 'Upload data karyawan secara massal via Excel atau input manual. Sistem langsung siap digunakan.',
-        url: 'https://hrisloka.com/landing#how-it-works',
-      },
-      {
-        '@type': 'HowToStep',
-        position: 3,
-        name: 'Jalankan Operasional HR',
-        text: 'Gunakan fitur absensi GPS, pengajuan cuti, penggajian otomatis, dan penilaian kinerja setiap hari.',
-        url: 'https://hrisloka.com/install',
-      },
-      {
-        '@type': 'HowToStep',
-        position: 4,
-        name: 'Analisis & Optimalkan',
-        text: 'Pantau dashboard analytics, buat laporan HR, dan buat keputusan berbasis data real-time.',
-        url: 'https://hrisloka.com/landing#how-it-works',
+        url: `${BASE_URL}/checkout`,
       },
     ],
   },
 };
 
-export default { updateSEOTags, injectSchema, SCHEMAS, PAGE_SEO };
+export default { updateSEOTags, injectSchema, markNoIndex, SCHEMAS, PAGE_SEO, BASE_URL, SITE_URL, WA_NUMBER, waEnterpriseLink };

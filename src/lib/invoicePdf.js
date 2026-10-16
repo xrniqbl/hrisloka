@@ -47,10 +47,10 @@ export function downloadInvoicePdf(order, meta = {}) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.text('HRIS Loka', M, 16);
+  doc.text('KiniKerja', M, 16);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text('Smart HR Platform — hrisloka.id', M, 23);
+  doc.text('Smart HR Platform — kinikerja.id', M, 23);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
@@ -158,12 +158,12 @@ export function downloadInvoicePdf(order, meta = {}) {
   doc.setFontSize(8);
   doc.setTextColor(...BRAND.gray);
   const notes = order.status === 'paid'
-    ? 'Dokumen ini merupakan bukti pembayaran yang sah. Terima kasih telah berlangganan HRIS Loka.'
+    ? 'Dokumen ini merupakan bukti pembayaran yang sah. Terima kasih telah berlangganan KiniKerja.'
     : 'Dokumen ini merupakan ringkasan pesanan. Invoice final terbit setelah pembayaran diterima.';
   doc.text(doc.splitTextToSize(notes, W - 2 * M), M, y);
 
   y += 12;
   doc.text('Pertanyaan billing? Hubungi support melalui dashboard → Settings → Support.', M, y);
 
-  doc.save(`invoice-${order.order_id || 'hrisloka'}.pdf`);
+  doc.save(`invoice-${order.order_id || 'kinikerja'}.pdf`);
 }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiX, FiCheck, FiChevronRight } from 'react-icons/fi';
 import * as founderService from '../../services/founderService';
 import './founder.css';
@@ -62,7 +62,7 @@ function SkeletonPage({ cols = 5, rows = 6, hasStats = false }) {
 }
 
 const EMPTY_PLAN = { name: '', slug: '', price_monthly: 0, price_yearly: 0, max_employees: 10, features: [], is_active: true };
-const PLAN_COLORS = { free: '#6B7280', starter: '#635BFF', pro: '#8B5CF6', enterprise: '#F59E0B' };
+const PLAN_COLORS = { free: '#6B7280', starter: '#5654D4', pro: '#7C75FF', enterprise: '#3730A3' };
 const formatIDR = (v) => v ? `Rp ${(v || 0).toLocaleString('id-ID')}` : '-';
 
 export default function FounderSubscriptions() {

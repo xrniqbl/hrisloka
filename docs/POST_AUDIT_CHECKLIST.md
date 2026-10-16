@@ -82,7 +82,7 @@ Ikuti `docs/TENANT_SMOKE_CHECKLIST.md` / `docs/SMOKE_TWO_COMPANY.md`: dua akun d
 npx web-push generate-vapid-keys
 ```
 
-Lalu update env (Vercel + VPS):
+Lalu update env (VPS `.env` + Supabase Edge secrets):
 
 | Env var lama | Env var baru |
 |---|---|
@@ -103,7 +103,7 @@ bash scripts/deploy-payment-functions.sh
 
 Fungsi yang berubah: `create-payment`, `activate-free-subscription` (`midtrans-webhook` tidak memakai CORS).
 
-## 6. Deploy API (Vercel / VPS)
+## 6. Deploy API (VPS)
 
 - `api/attendance/clock-in.js` kini **mewajibkan JWT valid** + employee_id milik sesi.
 - Klien (`src/lib/backgroundSync.js`, `public/sw.js`) mengirim token saat replay antrean offline.

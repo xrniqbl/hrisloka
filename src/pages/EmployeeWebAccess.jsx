@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -47,11 +47,11 @@ export default function EmployeeWebAccess() {
     return () => { clearTimeout(t); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     clearInterval(intervalRef.current);
     await signOut();
     navigate('/', { replace: true });
-  };
+  }, [signOut, navigate]);
 
   useEffect(() => {
     // Countdown to auto-logout
@@ -66,7 +66,7 @@ export default function EmployeeWebAccess() {
       });
     }, 1000);
     return () => clearInterval(intervalRef.current);
-  }, []);
+  }, [handleLogout]);
 
   const handleInstall = () => {
     clearInterval(intervalRef.current);
@@ -167,7 +167,7 @@ export default function EmployeeWebAccess() {
           transition: 'opacity 0.4s ease 0.3s',
         }}>
           Akun karyawan hanya dapat digunakan melalui{' '}
-          <strong style={{ color: '#CBD5E1' }}>aplikasi HRIS Loka</strong> yang terinstall
+          <strong style={{ color: '#CBD5E1' }}>aplikasi KiniKerja</strong> yang terinstall
           di HP. Ini memastikan keamanan absensi dengan Face ID dan GPS.
         </p>
 

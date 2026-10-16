@@ -16,6 +16,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { PageSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import MetricStatCards from '../components/MetricStatCards';
+import { useToast } from '../components/Toast';
+import { MessageSquare, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 
 const priorityColors = { low: '#6D8196', medium: '#F59E0B', high: '#DC2626', critical: '#7C2D12' };
 const statusColors = { open: '#635BFF', 'in-progress': '#F59E0B', resolved: '#16A34A' };
@@ -37,6 +40,7 @@ function getSlaStatus(ticket) {
 export default function Helpdesk() {
   const { t } = useTranslation();
   const { employee } = useAuth();
+  const { toast } = useToast();
   const [ticketList, setTicketList] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,11 +72,11 @@ export default function Helpdesk() {
   // Realtime: auto-refresh
   useRealtimeTable('tickets', fetchData, { companyId: employee?.company_id, enabled: !!employee?.company_id });
 
-  const stats = [
-    { label: 'Total Tiket', value: ticketList.length, color: '#635BFF', icon: <FiMessageSquare /> },
-    { label: 'Open', value: ticketList.filter(t => t.status === 'open').length, color: '#635BFF', icon: <FiAlertCircle /> },
-    { label: 'In Progress', value: ticketList.filter(t => t.status === 'in-progress' || t.status === 'in_progress').length, color: '#F59E0B', icon: <FiClock /> },
-    { label: 'Resolved', value: ticketList.filter(t => t.status === 'resolved').length, color: '#16A34A', icon: <FiCheckCircle /> },
+  const metricItems = [
+    { key: 'total', label: 'Total Tiket', value: ticketList.length, icon: MessageSquare },
+    { key: 'open', label: 'Open', value: ticketList.filter(t => t.status === 'open').length, icon: AlertCircle },
+    { key: 'progress', label: 'In Progress', value: ticketList.filter(t => t.status === 'in-progress' || t.status === 'in_progress').length, icon: Clock },
+    { key: 'resolved', label: 'Resolved', value: ticketList.filter(t => t.status === 'resolved').length, icon: CheckCircle2 },
   ];
 
   const filtered = ticketList.filter(t => {
@@ -113,6 +117,7 @@ export default function Helpdesk() {
       }
     } else {
       console.warn('[Helpdesk] status update failed:', error.message);
+      toast.error('Gagal memperbarui status tiket. Coba lagi.');
     }
   };
 
@@ -126,17 +131,7 @@ export default function Helpdesk() {
         </div>
       </div>
 
-      <div className="stats-grid">
-        {stats.map(s => (
-          <div key={s.label} className="info-card">
-            <div className="btn-icon-row mb-sm">
-              <span style={{ color: s.color, fontSize: 20 }}>{s.icon}</span>
-              <span className="info-card-label">{s.label}</span>
-            </div>
-            <div className="info-card-value" style={{ color: s.color }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
+      <MetricStatCards items={metricItems} />
 
       {/* Tabs */}
       <div className="tab-bar">
@@ -252,7 +247,7 @@ export default function Helpdesk() {
                 <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
                   <label className="form-label" style={{ alignSelf: 'center', marginRight: 8 }}>Update Status:</label>
                   {selected.status === 'open' && <button className="btn-primary btn-sm" onClick={() => handleStatusChange(selected.id, 'in-progress')}>&rarr; In Progress</button>}
-                  {(selected.status === 'open' || selected.status === 'in-progress' || selected.status === 'in_progress') && <button className="btn-primary btn-sm" style={{ background: 'var(--success)' }} onClick={() => handleStatusChange(selected.id, 'resolved')}> Resolved</button>}
+                  {(selected.status === 'open' || selected.status === 'in-progress' || selected.status === 'in_progress') && <button type="button" className="btn-secondary btn-sm" onClick={() => handleStatusChange(selected.id, 'resolved')}>Tandai Resolved</button>}
                 </div>
               )}
               {selected.status === 'resolved' && selected.resolvedDate && (
@@ -315,5 +310,4 @@ export default function Helpdesk() {
     </div>
   );
 }
-
 

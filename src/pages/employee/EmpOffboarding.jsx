@@ -1,7 +1,8 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { HiClipboardDocumentList, HiCheckCircle, HiExclamationCircle } from 'react-icons/hi2';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { getEmployeeByEmail } from '../../services/employeeService';
+import { getMyOffboarding, toggleMyOffboardingItem } from '../../services/offboardingService';
 import { useTranslation } from '../../lib/i18n';
 import EmpEmptyState from '../../components/EmpEmptyState';
 import '../../styles/shared.css';
@@ -15,10 +16,10 @@ export default function EmpOffboarding() {
 
   const load = useCallback(async () => {
     if (!user?.email) return;
-    const { data: e } = await supabase.from('employees').select('*').eq('email', user.email).single();
+    const { data: e } = await getEmployeeByEmail(user.email);
     if (e) {
       setEmp(e);
-      const { data: c } = await supabase.from('offboarding').select('*').eq('employee_id', e.id).order('created_at', { ascending: true });
+      const { data: c } = await getMyOffboarding(e.id, e.company_id);
       setChecklist(c || []);
     }
     setLoading(false);
@@ -27,7 +28,7 @@ export default function EmpOffboarding() {
   useEffect(() => { load(); }, [load]);
 
   const toggleItem = async (id, done) => {
-    await supabase.from('offboarding').update({ completed: !done, completed_at: !done ? new Date().toISOString() : null }).eq('id', id);
+    await toggleMyOffboardingItem(id, !done, emp?.id, emp?.company_id);
     load();
   };
 

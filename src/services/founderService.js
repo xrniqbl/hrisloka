@@ -1,9 +1,30 @@
 import { supabase } from '../lib/supabase';
 import { computeExpiresAt } from './subscriptionService';
+import { isFounder } from '../lib/rbac';
+
+// Defense-in-depth: enforcement nyata ada di RLS Postgres (is_founder() SQL).
+// Helper ini hanya gerbang client-side agar UI tidak memanggil tanpa hak.
+async function requireFounder() {
+  const { data: { user } } = await supabase.auth.getUser();
+  let employee = null;
+  if (user?.id) {
+    const { data } = await supabase
+      .from('employees')
+      .select('role')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    employee = data;
+  }
+  if (!user || !isFounder(user, employee) || employee?.role !== 'founder') {
+    throw new Error('Forbidden: founder only');
+  }
+}
+
 
 // ── Subscription Plans ───────────────────────────────────────────────────────
 
 export async function getAllPlans() {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscription_plans')
     .select('*')
@@ -12,6 +33,7 @@ export async function getAllPlans() {
 }
 
 export async function createPlan(payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscription_plans')
     .insert(payload)
@@ -21,6 +43,7 @@ export async function createPlan(payload) {
 }
 
 export async function updatePlan(id, payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscription_plans')
     .update({ ...payload, updated_at: new Date().toISOString() })
@@ -31,6 +54,7 @@ export async function updatePlan(id, payload) {
 }
 
 export async function deletePlan(id) {
+  await requireFounder();
   const { error } = await supabase.from('subscription_plans').delete().eq('id', id);
   return { error };
 }
@@ -38,6 +62,7 @@ export async function deletePlan(id) {
 // ── Subscriptions ────────────────────────────────────────────────────────────
 
 export async function getAllSubscriptions() {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscriptions')
     .select('*, companies(name, company_code, logo_url), subscription_plans(name, slug), onboarding_profiles(employee_count)')
@@ -46,6 +71,7 @@ export async function getAllSubscriptions() {
 }
 
 export async function getSubscriptionByCompany(companyId) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscriptions')
     .select('*, subscription_plans(name, slug, price_monthly, price_yearly)')
@@ -55,6 +81,7 @@ export async function getSubscriptionByCompany(companyId) {
 }
 
 export async function createSubscription(payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscriptions')
     .insert(payload)
@@ -64,6 +91,7 @@ export async function createSubscription(payload) {
 }
 
 export async function updateSubscription(id, payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscriptions')
     .update({ ...payload, updated_at: new Date().toISOString() })
@@ -74,6 +102,7 @@ export async function updateSubscription(id, payload) {
 }
 
 export async function cancelSubscription(id, _reason) {
+  await requireFounder();
   // `_reason` reserved for future audit notes column; schema currently has no notes field
   const { data, error } = await supabase
     .from('subscriptions')
@@ -85,6 +114,7 @@ export async function cancelSubscription(id, _reason) {
 }
 
 export async function getSubscriptionPayments(subscriptionId) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscription_payments')
     .select('*')
@@ -94,6 +124,7 @@ export async function getSubscriptionPayments(subscriptionId) {
 }
 
 export async function addPayment(payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('subscription_payments')
     .insert(payload)
@@ -105,6 +136,7 @@ export async function addPayment(payload) {
 // ── Vouchers ─────────────────────────────────────────────────────────────────
 
 export async function getAllVouchers() {
+  await requireFounder();
   const { data, error } = await supabase
     .from('vouchers')
     .select('*')
@@ -113,6 +145,7 @@ export async function getAllVouchers() {
 }
 
 export async function createVoucher(payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('vouchers')
     .insert(payload)
@@ -122,6 +155,7 @@ export async function createVoucher(payload) {
 }
 
 export async function updateVoucher(id, payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('vouchers')
     .update({ ...payload, updated_at: new Date().toISOString() })
@@ -132,11 +166,13 @@ export async function updateVoucher(id, payload) {
 }
 
 export async function deleteVoucher(id) {
+  await requireFounder();
   const { error } = await supabase.from('vouchers').delete().eq('id', id);
   return { error };
 }
 
 export async function getVoucherUsage(voucherId) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('voucher_usage')
     .select('*, companies(name)')
@@ -146,6 +182,7 @@ export async function getVoucherUsage(voucherId) {
 }
 
 export async function validateVoucherCode(code) {
+  await requireFounder();
   const today = new Date().toISOString().split('T')[0];
   const { data, error } = await supabase
     .from('vouchers')
@@ -163,6 +200,7 @@ export async function validateVoucherCode(code) {
 // ── Companies (Founder admin level) ──────────────────────────────────────────
 
 export async function getCompaniesWithStats() {
+  await requireFounder();
   const { data: companies, error } = await supabase
     .from('companies')
     .select('*')
@@ -197,8 +235,9 @@ export async function getCompaniesWithStats() {
 }
 
 export async function createCompanyWithPlan(payload) {
+  await requireFounder();
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = 'HRSLK-';
+  let code = 'KK-';
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
 
   const { data: company, error: companyErr } = await supabase
@@ -209,17 +248,43 @@ export async function createCompanyWithPlan(payload) {
   if (companyErr) return { data: null, error: companyErr };
 
   if (payload.plan_id) {
+    // Founder-created subscriptions go through the activate-free-subscription
+    // Edge Function (service_role) — never direct client inserts — so RLS
+    // (FIX_FOUNDER_PORTAL_RLS: founder-only writes) and pricing stay in one
+    // server-side path. Graceful fallback to direct insert keeps the founder
+    // flow working if the function is not yet deployed.
     const billingCycle = payload.billing_cycle || 'monthly';
-    const startDate = new Date().toISOString();
-    const { error: subErr } = await supabase.from('subscriptions').insert({
-      company_id: company.id,
-      plan_id: payload.plan_id,
-      status: 'active',
-      billing_cycle: billingCycle,
-      start_date: startDate.split('T')[0],
-      expires_at: computeExpiresAt(startDate, billingCycle),
-    });
-    if (subErr) console.error('[founderService] subscription insert failed:', subErr);
+    try {
+      const { data: planRow } = await supabase
+        .from('subscription_plans')
+        .select('slug, name')
+        .eq('id', payload.plan_id)
+        .maybeSingle();
+      const { error: fnErr } = await supabase.functions.invoke('activate-free-subscription', {
+        body: {
+          plan_slug: planRow?.slug || 'free',
+          plan_name: planRow?.name || null,
+          billing_cycle: billingCycle,
+          voucher_code: null,
+          company_id: company.id,
+        },
+      });
+      if (fnErr) throw fnErr;
+    } catch (e) {
+      // Fallback (requires service/founder context): direct insert is blocked
+      // for non-founders by RLS — surface the refusal rather than retrying.
+      const startDate = new Date().toISOString();
+      const { error: subErr } = await supabase.from('subscriptions').insert({
+        company_id: company.id,
+        plan_id: payload.plan_id,
+        status: 'active',
+        billing_cycle: billingCycle,
+        start_date: startDate.split('T')[0],
+        expires_at: computeExpiresAt(startDate, billingCycle),
+      });
+      if (subErr) console.error('[founderService] subscription insert failed (edge fn fallback):', subErr);
+      else console.warn('[founderService] activate-free-subscription unavailable, used direct insert fallback:', e?.message);
+    }
   }
   return { data: company, error: null };
 }
@@ -227,6 +292,7 @@ export async function createCompanyWithPlan(payload) {
 // ── Broadcasts ────────────────────────────────────────────────────────────────
 
 export async function getAllBroadcasts() {
+  await requireFounder();
   const { data, error } = await supabase
     .from('founder_broadcasts')
     .select('*')
@@ -234,7 +300,101 @@ export async function getAllBroadcasts() {
   return { data: data || [], error };
 }
 
+/**
+ * Fan-out platform broadcast into employee notifications for company owners/HR.
+ * Best-effort: never fails the main broadcast insert.
+ */
+async function fanOutBroadcastNotifications(broadcast) {
+  try {
+    let companyIds = [];
+
+    if (broadcast.target === 'company' && broadcast.target_company_id) {
+      companyIds = [broadcast.target_company_id];
+    } else if (broadcast.target === 'plan' && broadcast.target_plan_id) {
+      const { data: subs } = await supabase
+        .from('subscriptions')
+        .select('company_id')
+        .eq('plan_id', broadcast.target_plan_id)
+        .in('status', ['active', 'trial']);
+      companyIds = [...new Set((subs || []).map((s) => s.company_id).filter(Boolean))];
+    } else {
+      // all subscribers with active/trial subscription
+      const { data: subs } = await supabase
+        .from('subscriptions')
+        .select('company_id')
+        .in('status', ['active', 'trial']);
+      companyIds = [...new Set((subs || []).map((s) => s.company_id).filter(Boolean))];
+      // fallback: all companies if no company_id on subs (user-based model)
+      if (companyIds.length === 0) {
+        const { data: cos } = await supabase.from('companies').select('id').eq('is_active', true);
+        companyIds = (cos || []).map((c) => c.id);
+      }
+    }
+
+    if (companyIds.length === 0) return;
+
+    // Notify owner + HR of each company (not every employee)
+    const { data: recipients } = await supabase
+      .from('employees')
+      .select('id, company_id')
+      .in('company_id', companyIds)
+      .in('role', ['super_admin', 'hr_admin'])
+      .eq('account_status', 'active');
+
+    if (!recipients?.length) {
+      // older schemas may use status instead of account_status
+      const { data: alt } = await supabase
+        .from('employees')
+        .select('id, company_id')
+        .in('company_id', companyIds)
+        .in('role', ['super_admin', 'hr_admin']);
+      if (!alt?.length) return;
+      await insertPlatformNotifs(alt, broadcast);
+      return;
+    }
+
+    await insertPlatformNotifs(recipients, broadcast);
+  } catch (e) {
+    console.warn('[founderService] fanOutBroadcastNotifications failed:', e?.message);
+  }
+}
+
+async function insertPlatformNotifs(employees, broadcast) {
+  const rows = employees.map((emp) => ({
+    employee_id: emp.id,
+    type: 'platform',
+    title: broadcast.title,
+    body: broadcast.message,
+    message: broadcast.message,
+    data: {
+      source: 'founder_broadcast',
+      broadcast_id: broadcast.id,
+      action_url: broadcast.action_url || null,
+      broadcast_type: broadcast.type || 'info',
+    },
+  }));
+
+  // Chunk inserts (avoid huge payload)
+  const chunk = 80;
+  for (let i = 0; i < rows.length; i += chunk) {
+    const slice = rows.slice(i, i + chunk);
+    const { error } = await supabase.from('notifications').insert(slice);
+    if (error) {
+      // Retry without optional columns
+      const minimal = slice.map(({ employee_id, type, title, body, message }) => ({
+        employee_id,
+        type,
+        title,
+        body: body || message,
+      }));
+      const { error: e2 } = await supabase.from('notifications').insert(minimal);
+      if (e2) console.warn('[founderService] notif insert failed:', e2.message);
+    }
+  }
+}
+
 export async function sendBroadcast(payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('founder_broadcasts')
     .insert({ ...payload, sent_at: new Date().toISOString() })
@@ -244,17 +404,21 @@ export async function sendBroadcast(payload) {
   // Realtime broadcast via Supabase channel. channel.send() returns a
   // promise — catch to avoid an unhandled rejection if no client is
   // subscribed yet.
-  if (!error) {
+  if (!error && data) {
     supabase.channel('founder_broadcast').send({
       type: 'broadcast',
       event: 'new_broadcast',
       payload: data,
     }).catch((e) => console.warn('[founderService] realtime send failed:', e?.message));
+
+    // Deliver into owner NotificationCenter (same DB as HR notifs)
+    fanOutBroadcastNotifications(data);
   }
   return { data, error };
 }
 
 export async function deleteBroadcast(id) {
+  await requireFounder();
   const { error } = await supabase.from('founder_broadcasts').delete().eq('id', id);
   return { error };
 }
@@ -262,6 +426,7 @@ export async function deleteBroadcast(id) {
 // ── Client Complaints ─────────────────────────────────────────────────────────
 
 export async function getAllComplaints() {
+  await requireFounder();
   const { data, error } = await supabase
     .from('client_complaints')
     .select('*, companies(name, company_code)')
@@ -270,6 +435,7 @@ export async function getAllComplaints() {
 }
 
 export async function submitComplaint(payload) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('client_complaints')
     .insert(payload)
@@ -279,6 +445,7 @@ export async function submitComplaint(payload) {
 }
 
 export async function updateComplaintStatus(id, status) {
+  await requireFounder();
   const updates = { status, updated_at: new Date().toISOString() };
   if (status === 'resolved') updates.resolved_at = new Date().toISOString();
   const { data, error } = await supabase
@@ -291,6 +458,7 @@ export async function updateComplaintStatus(id, status) {
 }
 
 export async function getComplaintReplies(complaintId) {
+  await requireFounder();
   const { data, error } = await supabase
     .from('complaint_replies')
     .select('*')
@@ -300,6 +468,7 @@ export async function getComplaintReplies(complaintId) {
 }
 
 export async function addComplaintReply(complaintId, message, senderType = 'founder', senderName = 'Founder') {
+  await requireFounder();
   const { data, error } = await supabase
     .from('complaint_replies')
     .insert({ complaint_id: complaintId, message, sender_type: senderType, sender_name: senderName })
@@ -317,6 +486,10 @@ export async function addComplaintReply(complaintId, message, senderType = 'foun
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 export async function trackEvent(eventType, details = {}) {
+  // Sengaja TANPA requireFounder(): event analytics ditulis semua pengunjung
+  // (page_view, login, signup). RLS website_analytics hanya mengizinkan
+  // INSERT publik + SELECT founder (analytics_public_insert /
+  // analytics_founder_read di FIX_FOUNDER_PORTAL_RLS.sql).
   try {
     await supabase.from('website_analytics').insert({
       event_type: eventType,
@@ -338,6 +511,7 @@ function getDeviceType() {
 }
 
 export async function getAnalyticsSummary(days = 30) {
+  await requireFounder();
   const since = new Date();
   since.setDate(since.getDate() - days);
   const sinceStr = since.toISOString();
@@ -380,6 +554,7 @@ export async function getAnalyticsSummary(days = 30) {
 // ── Founder Dashboard Stats ───────────────────────────────────────────────────
 
 export async function getFounderDashboardStats() {
+  await requireFounder();
   try {
     const [
       { data: companies },
@@ -419,6 +594,7 @@ export async function getFounderDashboardStats() {
 // ── Revenue & Subscriber History (for dashboard charts) ───────────────────────
 
 export async function getRevenueHistory(months = 6) {
+  await requireFounder();
   const since = new Date();
   since.setMonth(since.getMonth() - months);
   const { data, error } = await supabase
@@ -449,6 +625,7 @@ export async function getRevenueHistory(months = 6) {
 }
 
 export async function getSubscriberHistory(months = 6) {
+  await requireFounder();
   // Get all subscriptions (not just recent) to compute cumulative count
   const { data, error } = await supabase
     .from('subscriptions')

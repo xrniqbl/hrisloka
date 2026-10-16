@@ -158,10 +158,27 @@ export function checkHeadTurn(direction, landmarkData) {
 // Smile / Expression Detection
 // ============================================================
 
-export function checkSmile(detection) {
-  if (!detection?.expressions) return { passed: false };
-  const happy = detection.expressions.happy || 0;
-  return { passed: happy > SMILE_THRESHOLD, confidence: happy };
+export function checkSmile(detection, landmarkData) {
+  // Preferred: expression net (when shipped). Fallback: mouth aspect ratio
+  // from landmarks — a smile widens the mouth relative to its height.
+  if (detection?.expressions && typeof detection.expressions.happy === 'number') {
+    const happy = detection.expressions.happy || 0;
+    return { passed: happy > SMILE_THRESHOLD, confidence: happy, method: 'expression' };
+  }
+  const mouth = landmarkData?.mouth;
+  if (mouth && mouth.length >= 6) {
+    const width = euclidean(mouth[0], mouth[mouth.length - 1]) || 1;
+    let top = Infinity, bottom = -Infinity;
+    for (const p of mouth) {
+      if (p.y < top) top = p.y;
+      if (p.y > bottom) bottom = p.y;
+    }
+    const mar = (bottom - top) / width;
+    // Neutral mouth MAR ≈ 0.15–0.25; open smile ≈ 0.35+. Threshold 0.32
+    // balances false-reject on subtle smiles vs photo acceptance.
+    return { passed: mar > 0.32, mar, method: 'landmark' };
+  }
+  return { passed: false, method: 'unavailable' };
 }
 
 // ============================================================
@@ -194,7 +211,7 @@ export function evaluateChallenge(challengeId, landmarkData, detection) {
       return result;
     }
     case 'smile': {
-      const result = checkSmile(detection);
+      const result = checkSmile(detection, landmarkData);
       return result;
     }
     default:

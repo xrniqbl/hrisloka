@@ -88,7 +88,7 @@ export default function NotificationBoard() {
  setLoading(false);
  }
  load();
- }, []);
+ }, [employee?.company_id]);
 
  return (
  <div className="notification-board">

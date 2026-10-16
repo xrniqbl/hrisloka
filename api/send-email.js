@@ -1,18 +1,45 @@
 /**
- * /api/send-email.js — Vercel Serverless Function
+ * /api/send-email.js — VPS API handler (server/index.js)
  *
- * Mengirim email via Resend API dari sisi server (API key tidak terekspos ke browser).
- * Frontend memanggil POST /api/send-email dengan body { type, ...payload }
+ * Mengirim email via Brevo (Sendinblue) Transactional API.
+ * API key hanya di server. Frontend: POST /api/send-email { type, to, ... }
  *
  * type: 'leave_approval' | 'payslip' | 'reimbursement'
+ *
+ * Env: BREVO_API_KEY, FROM_EMAIL, FROM_NAME (optional)
  */
 import { applyCors } from './_shared/cors.js';
+import { enforceJsonBodyLimit } from './_shared/securityHeaders.js';
+import { resolveTenantCaller, checkUserRateLimit } from './_shared/tenantAuth.js';
 
-
-const RESEND_API_KEY = process.env.RESEND_API_KEY; // Server-side env (no VITE_ prefix)
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@hrisloka.id';
+const BREVO_API_KEY =
+  process.env.BREVO_API_KEY ||
+  process.env.BREVO_SMTP_KEY ||
+  process.env.RESEND_API_KEY; // migration alias (optional)
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.BREVO_SENDER_EMAIL || 'noreply@kinikerja.id';
+const FROM_NAME = process.env.FROM_NAME || process.env.BREVO_SENDER_NAME || 'KiniKerja';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Roles allowed to trigger transactional email (all email types —
+// leave/payslip/reimbursement — go to employees and are HR/manager
+// initiated). Deliberately no super_admin-only arbitrary exception:
+// there is no legitimate "send test email anywhere" flow (the
+// IntegrationHub email check is a non-sending probe).
+const ALLOWED_ROLES = new Set(['super_admin', 'hr_admin', 'admin', 'hr', 'manager', 'finance']);
+
+/** Parse "Name <email@x.com>" or plain email into Brevo sender object */
+function resolveSender() {
+  const raw = String(FROM_EMAIL || '').trim();
+  const match = raw.match(/^(.*?)\s*<([^>]+)>$/);
+  if (match) {
+    return {
+      name: (match[1] || FROM_NAME).trim() || FROM_NAME,
+      email: match[2].trim(),
+    };
+  }
+  return { name: FROM_NAME, email: raw };
+}
 
 // Rate limit: max 10 email requests per IP per minute
 const rateLimitMap = new Map();
@@ -30,28 +57,8 @@ function checkRateLimit(ip) {
   return entry.count <= max;
 }
 
-// Verify Supabase JWT token — FAIL CLOSED.
-// If SUPABASE_URL or the service key is not configured, we reject rather than
-// allow, so a missing env var can never silently open the endpoint.
-async function verifyAuth(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  const token = authHeader.split(' ')[1];
-  if (!token) return false;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return false;
-  try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_SERVICE_KEY },
-    });
-    if (!res.ok) return false;
-    // Only confirmed users (email_confirmed) may send email on behalf of the app.
-    const user = await res.json();
-    if (user?.email_confirmed_at || user?.confirmed_at) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
+// Caller auth via resolveTenantCaller from _shared/tenantAuth.js
+// (tenant-bound employee row + role check, fail-closed).
 
 // Simple email format validation
 function isValidEmail(email) {
@@ -64,39 +71,66 @@ function sanitizeStr(val, maxLen = 500) {
   return val.replace(/<[^>]*>/g, '').slice(0, maxLen);
 }
 
-async function sendViaResend({ to, subject, html, text }) {
-  if (!RESEND_API_KEY) {
-    console.error('[send-email] RESEND_API_KEY not set on server');
-    return { success: false, error: 'Server email not configured' };
+/**
+ * Send transactional email via Brevo REST API.
+ * Docs: https://developers.brevo.com/reference/sendtransacemail
+ */
+async function sendViaBrevo({ to, subject, html, text }) {
+  if (!BREVO_API_KEY) {
+    console.error('[send-email] BREVO_API_KEY not set on server');
+    return { success: false, error: 'Server email not configured (set BREVO_API_KEY)' };
   }
-  const res = await fetch('https://api.resend.com/emails', {
+
+  const recipients = (Array.isArray(to) ? to : [to])
+    .filter(Boolean)
+    .map((email) => ({ email: String(email).trim() }));
+
+  if (recipients.length === 0) {
+    return { success: false, error: 'No recipients' };
+  }
+
+  const sender = resolveSender();
+  const body = {
+    sender,
+    to: recipients,
+    subject,
+    htmlContent: html || undefined,
+    textContent: text || undefined,
+  };
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': BREVO_API_KEY,
     },
-    body: JSON.stringify({
-      from: FROM_EMAIL,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-      text,
-    }),
+    body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Resend error');
-  return { success: true, id: data.id };
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      data?.message ||
+      data?.error ||
+      (Array.isArray(data?.code) ? data.code.join(', ') : data?.code) ||
+      `Brevo error HTTP ${res.status}`;
+    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+  }
+
+  // Brevo returns { messageId: "<...>" }
+  return { success: true, id: data.messageId || data.messageIds?.[0] || null, provider: 'brevo' };
 }
 
 function buildLeaveEmail({ employeeName, status, leaveType, startDate, endDate, notes }) {
   const statusLabel = status === 'approved' ? 'Disetujui ✅' : 'Ditolak ❌';
   const statusColor = status === 'approved' ? '#16A34A' : '#DC2626';
   return {
-    subject: `[HRIS Loka] Pengajuan Cuti ${statusLabel}`,
+    subject: `[KiniKerja] Pengajuan Cuti ${statusLabel}`,
     html: `
       <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px">
         <div style="background:linear-gradient(135deg,#0047AB,#2563eb);padding:24px;border-radius:16px 16px 0 0">
-          <h1 style="color:#fff;margin:0;font-size:20px">HRIS Loka</h1>
+          <h1 style="color:#fff;margin:0;font-size:20px">KiniKerja</h1>
           <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:13px">Human Resource Information System</p>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
@@ -111,7 +145,7 @@ function buildLeaveEmail({ employeeName, status, leaveType, startDate, endDate, 
               ${notes ? `<tr><td style="padding:4px 0;color:#6B7280;vertical-align:top">Catatan</td><td style="font-weight:600">${notes}</td></tr>` : ''}
             </table>
           </div>
-          <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh HRIS Loka. Jangan balas email ini.</p>
+          <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh KiniKerja. Jangan balas email ini.</p>
         </div>
       </div>
     `,
@@ -121,11 +155,11 @@ function buildLeaveEmail({ employeeName, status, leaveType, startDate, endDate, 
 
 function buildPayslipEmail({ employeeName, month, year, netSalary }) {
   return {
-    subject: `[HRIS Loka] Slip Gaji ${month} ${year} Tersedia`,
+    subject: `[KiniKerja] Slip Gaji ${month} ${year} Tersedia`,
     html: `
       <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px">
         <div style="background:linear-gradient(135deg,#0047AB,#2563eb);padding:24px;border-radius:16px 16px 0 0">
-          <h1 style="color:#fff;margin:0;font-size:20px">HRIS Loka</h1>
+          <h1 style="color:#fff;margin:0;font-size:20px">KiniKerja</h1>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
           <p>Halo, <strong>${employeeName}</strong>,</p>
@@ -134,8 +168,8 @@ function buildPayslipEmail({ employeeName, month, year, netSalary }) {
             <div style="font-size:12px;color:#2563EB;font-weight:600;text-transform:uppercase;letter-spacing:1px">Total Diterima</div>
             <div style="font-size:28px;font-weight:800;color:#0047AB">Rp ${Number(netSalary).toLocaleString('id-ID')}</div>
           </div>
-          <p>Buka aplikasi HRIS Loka untuk melihat rincian dan download slip gaji.</p>
-          <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh HRIS Loka.</p>
+          <p>Buka aplikasi KiniKerja untuk melihat rincian dan download slip gaji.</p>
+          <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh KiniKerja.</p>
         </div>
       </div>
     `,
@@ -146,16 +180,16 @@ function buildPayslipEmail({ employeeName, month, year, netSalary }) {
 function buildReimbursementEmail({ employeeName, status, amount, category }) {
   const statusLabel = status === 'approved' ? 'Disetujui ✅' : status === 'paid' ? 'Dibayarkan ✅' : 'Ditolak ❌';
   return {
-    subject: `[HRIS Loka] Reimbursement ${statusLabel}`,
+    subject: `[KiniKerja] Reimbursement ${statusLabel}`,
     html: `
       <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px">
         <div style="background:linear-gradient(135deg,#0047AB,#2563eb);padding:24px;border-radius:16px 16px 0 0">
-          <h1 style="color:#fff;margin:0;font-size:20px">HRIS Loka</h1>
+          <h1 style="color:#fff;margin:0;font-size:20px">KiniKerja</h1>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
           <p>Halo, <strong>${employeeName}</strong>,</p>
           <p>Pengajuan reimbursement kamu untuk <strong>${category}</strong> sebesar <strong>Rp ${Number(amount).toLocaleString('id-ID')}</strong> telah: <strong>${statusLabel}</strong></p>
-          <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh HRIS Loka.</p>
+          <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh KiniKerja.</p>
         </div>
       </div>
     `,
@@ -164,24 +198,50 @@ function buildReimbursementEmail({ employeeName, status, amount, category }) {
 }
 
 export default async function handler(req, res) {
-  applyCors(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' });
+  const originOk = applyCors(req, res, {
+    methods: 'POST, OPTIONS',
+    headers: 'Content-Type, Authorization',
+  });
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  // Authentication check — verify Supabase JWT
-  const isAuthed = await verifyAuth(req);
-  if (!isAuthed) {
-    return res.status(401).json({ error: 'Unauthorized — valid session required' });
+  // Reject oversized JSON bodies before auth (matches express 1mb limit)
+  if (!enforceJsonBodyLimit(req, res)) return;
+  // Browser requests must come from allowlisted Origin
+  if (req.headers.origin && !originOk) {
+    return res.status(403).json({ error: 'Origin not allowed' });
   }
 
-  // Rate limiting
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+  // Authentication + tenant authorization
+  const caller = await resolveTenantCaller(req);
+  if (caller.error === 'unauthorized') {
+    return res.status(401).json({ error: 'Unauthorized — valid session required' });
+  }
+  if (caller.error === 'no_employee' || !caller.employee?.company_id) {
+    return res.status(403).json({ error: 'Forbidden — no employee record for this tenant' });
+  }
+  if (!ALLOWED_ROLES.has(caller.employee.role)) {
+    return res.status(403).json({ error: 'Forbidden — HR/admin/manager role required' });
+  }
+
+  // Rate limiting (IP shared quota + per-user quota).
+  // Client IP uses the socket address — X-Forwarded-For is client-controlled
+  // and must not be trusted as a rate-limit key (trivial bypass).
+  const ip = req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many requests. Try again later.' });
+  }
+  if (!checkUserRateLimit(`email:${caller.user.id || caller.user.sub}`, 10, 60_000)) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
 
   const { type, to, ...payload } = req.body || {};
+
+  // Non-sending backend probe (IntegrationHub). Auth + role already checked
+  // above; return success without touching Brevo.
+  if (type === '__probe__') {
+    return res.status(200).json({ success: true, probe: true });
+  }
 
   // Input validation
   const VALID_TYPES = ['leave_approval', 'payslip', 'reimbursement'];
@@ -190,6 +250,38 @@ export default async function handler(req, res) {
   }
   if (!to || !isValidEmail(to)) {
     return res.status(400).json({ error: 'Invalid or missing recipient email' });
+  }
+
+  // Recipient authorization: `to` must match an employee email in the
+  // caller's company. No arbitrary-recipient exception — all three email
+  // types legitimately go to employees only.
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    return res.status(503).json({ success: false, error: 'Recipient check unavailable' });
+  }
+  {
+    // Case-insensitive exact match via ilike (single bounded query).
+    const lookup = await fetch(
+      `${SUPABASE_URL}/rest/v1/employees?company_id=eq.${encodeURIComponent(caller.employee.company_id)}&email=ilike.${encodeURIComponent(String(to).trim())}&select=id,email&limit=500`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        },
+      },
+    );
+    if (!lookup.ok) {
+      return res.status(503).json({ success: false, error: 'Recipient check unavailable' });
+    }
+    const rows = await lookup.json().catch(() => []);
+    const want = String(to).trim().toLowerCase();
+    // ilike is case-insensitive but may match patterns — confirm exact
+    // equality client-side on the bounded result set.
+    const match = (Array.isArray(rows) ? rows : []).some(
+      (r) => String(r?.email || '').trim().toLowerCase() === want,
+    );
+    if (!match) {
+      return res.status(403).json({ error: 'Forbidden — recipient not in company' });
+    }
   }
 
   // Sanitize all string payload fields
@@ -209,7 +301,10 @@ export default async function handler(req, res) {
       emailContent = buildReimbursementEmail(sanitized);
     }
 
-    const result = await sendViaResend({ to, ...emailContent });
+    const result = await sendViaBrevo({ to, ...emailContent });
+    if (!result.success) {
+      return res.status(503).json(result);
+    }
     res.status(200).json(result);
   } catch (err) {
     console.error('[send-email] Error:', err.message);

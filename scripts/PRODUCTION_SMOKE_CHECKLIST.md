@@ -1,4 +1,4 @@
-# Production smoke checklist — HRIS Loka
+# Production smoke checklist — KiniKerja
 
 Gunakan setelah migrasi SQL. Centang manual di browser + Supabase.
 

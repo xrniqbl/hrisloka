@@ -290,24 +290,29 @@ ALTER TABLE ai_capabilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_certifications ENABLE ROW LEVEL SECURITY;
 
 -- ================================================
--- RLS Policies — Allow authenticated users full access
--- (Simplified for initial setup — refine per role later)
+-- WARNING: DO NOT RUN the blanket-policy block below.
+-- It granted every authenticated user full access to all tables
+-- (FOR ALL USING auth.role()='authenticated') and destroys tenant
+-- isolation. Tenant isolation MUST come from the hardening files
+-- under supabase/migrations/* (company-scoped policies via
+-- get_my_company_id() + service_role bypass). This block is kept
+-- commented-out for history only — do NOT uncomment.
 -- ================================================
-DO $$
-DECLARE
-  tbl TEXT;
-BEGIN
-  FOR tbl IN SELECT unnest(ARRAY[
-    'kpi_records', 'kpi_metrics', 'appraisals', 'job_postings', 'candidates',
-    'assets', 'offboarding', 'offboarding_checklist', 'projects', 'project_assignments',
-    'timesheets', 'shifts', 'shift_assignments', 'holidays', 'loans', 'loan_payments',
-    'overtime_requests', 'ai_capabilities', 'ai_certifications'
-  ])
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS "auth_full_%s" ON %I;', tbl, tbl);
-    EXECUTE format('CREATE POLICY "auth_full_%s" ON %I FOR ALL USING (auth.role() = ''authenticated'') WITH CHECK (auth.role() = ''authenticated'');', tbl, tbl);
-  END LOOP;
-END $$;
+-- DO $$
+-- DECLARE
+--   tbl TEXT;
+-- BEGIN
+--   FOR tbl IN SELECT unnest(ARRAY[
+--     'kpi_records', 'kpi_metrics', 'appraisals', 'job_postings', 'candidates',
+--     'assets', 'offboarding', 'offboarding_checklist', 'projects', 'project_assignments',
+--     'timesheets', 'shifts', 'shift_assignments', 'holidays', 'loans', 'loan_payments',
+--     'overtime_requests', 'ai_capabilities', 'ai_certifications'
+--   ])
+--   LOOP
+--     -- EXECUTE format('DROP POLICY IF EXISTS "auth_full_%s" ON %I;', tbl, tbl);
+--     -- EXECUTE format('CREATE POLICY "auth_full_%s" ON %I FOR ALL USING (auth.role() = ''authenticated'') WITH CHECK (auth.role() = ''authenticated'');', tbl, tbl);
+--   END LOOP;
+-- END $$;
 
 -- ================================================
 -- Seed Data for Testing

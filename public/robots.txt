@@ -1,91 +1,104 @@
-# robots.txt — HRIS Loka
-# https://hrisloka.com
-# Diperbarui: 2026-05-17
-# Panduan: https://developers.google.com/search/docs/crawling-indexing/robots/create-robots-txt
+# robots.txt — KiniKerja
+# https://kinikerja.id
+# Updated: 2026-07-12
 
-# ── Semua crawler: izinkan halaman publik ─────────────────────
 User-agent: *
 Allow: /
 Allow: /landing
-Allow: /landing#*
+Allow: /harga
+Allow: /fitur
 Allow: /install
 Allow: /login
 Allow: /checkout
+Allow: /privacy
+Allow: /blog
+Allow: /careers/
 
-# Block semua route auth/admin — tidak ada nilai SEO, butuh login
+# Private / authenticated app areas
 Disallow: /app/
 Disallow: /dashboard/
 Disallow: /dashboard
 Disallow: /founder/
 Disallow: /maintenance
 Disallow: /employees
+Disallow: /employees/
 Disallow: /payroll
+Disallow: /payroll/
 Disallow: /attendance
 Disallow: /approvals
 Disallow: /settings
+Disallow: /settings/
 Disallow: /audit-trail
-Disallow: /recruitment
-Disallow: /helpdesk/
+Disallow: /helpdesk
 Disallow: /analytics
-
-# Block API endpoints
+Disallow: /not-registered
+Disallow: /geo-attendance
+Disallow: /timesheets
+Disallow: /contracts
+Disallow: /integrations
+Disallow: /branches
 Disallow: /api/
 
-# Block internal Vite/React build artifacts
+# Build / tooling (must never index)
+# NOTE: /assets/ is intentionally NOT disallowed — Google must be able to
+# fetch JS/CSS bundles to render pages. Blocking it breaks indexing.
 Disallow: /@vite/
 Disallow: /src/
 Disallow: /node_modules/
 
-# ── Googlebot: setting crawl khusus ──────────────────────────
 User-agent: Googlebot
 Allow: /
-Allow: /landing
 Allow: /harga
+Allow: /fitur
 Allow: /install
 Allow: /login
 Allow: /checkout
-Allow: /og-image.png
+Allow: /privacy
+Allow: /blog
+Allow: /og-image.jpg
 Allow: /sitemap*.xml
 Allow: /robots.txt
 Allow: /manifest.json
 Disallow: /api/
 Disallow: /app/
 Disallow: /founder/
+Disallow: /dashboard
+Disallow: /settings
 
-# ── Googlebot-Image: izinkan semua gambar landing ─────────────
 User-agent: Googlebot-Image
 Allow: /landing/
 Allow: /icons/
-Allow: /og-image.png
+Allow: /og-image.jpg
 
-# ── Bing Adbot ───────────────────────────────────────────────
 User-agent: Bingbot
 Allow: /
-Allow: /landing
+Allow: /harga
+Allow: /fitur
 Allow: /install
 Disallow: /api/
 Disallow: /app/
 Disallow: /founder/
+Disallow: /dashboard
 Crawl-delay: 1
 
-# ── Social media crawlers (OG preview) ───────────────────────
+# Social preview crawlers (Open Graph)
 User-agent: facebookexternalhit
 Allow: /
-Allow: /og-image.png
+Allow: /og-image.jpg
 
 User-agent: Twitterbot
 Allow: /
-Allow: /og-image.png
+Allow: /og-image.jpg
 
 User-agent: LinkedInBot
 Allow: /
-Allow: /og-image.png
+Allow: /og-image.jpg
 
 User-agent: WhatsApp
 Allow: /
-Allow: /og-image.png
+Allow: /og-image.jpg
 
-# ── AI Crawlers — block untuk melindungi konten ──────────────
+# AI scrapers — protect marketing copy
 User-agent: GPTBot
 Disallow: /
 
@@ -101,10 +114,12 @@ Disallow: /
 User-agent: Google-Extended
 Disallow: /
 
-User-agent: AdsBot-Google
+User-agent: Bytespider
 Disallow: /
 
-# ── Sitemap references ────────────────────────────────────────
-Sitemap: https://hrisloka.com/sitemap.xml
-Sitemap: https://hrisloka.com/sitemap-pages.xml
-Sitemap: https://hrisloka.com/sitemap-images.xml
+User-agent: Amazonbot
+Disallow: /
+
+Sitemap: https://kinikerja.id/sitemap.xml
+Sitemap: https://kinikerja.id/sitemap-pages.xml
+Sitemap: https://kinikerja.id/sitemap-images.xml

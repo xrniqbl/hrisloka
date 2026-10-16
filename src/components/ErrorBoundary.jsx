@@ -39,7 +39,8 @@ class ErrorBoundary extends Component {
     try {
       localStorage.removeItem('hrisync_last_path');
     } catch { /* ignore */ }
-    window.location.href = '/login';
+    // Root boundary also wraps /login — go to '/' (not /login) to avoid login-crash loop.
+    window.location.href = '/';
   };
 
   handleClearAndReload = () => {

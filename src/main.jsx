@@ -3,36 +3,56 @@ import { createRoot } from 'react-dom/client'
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import './astryx-theme.css';
-import { hrisNeutralTheme } from './themes/astryx-theme.ts/hris-neutral';
+import { hrisNeutralTheme } from './themes/astryx-theme/hris-neutral';
 import { Theme } from '@astryxdesign/core';
-import '@astryxdesign/core/astryx.css';
 import './index.css'
 import App from './App.jsx'
 import './lib/autoTranslate.js'
 import { initSentry } from './lib/sentry.js'
 import { safeGetItem, safeSetItem, safeRemoveItem } from './lib/safeStorage.js'
+import { requestPersistentStorage } from './lib/backgroundSync.js'
 
 // Error tracking first (before React mount)
 initSentry()
 
+// Persistent storage grant — keeps SW caches + IndexedDB from eviction.
+// Best-effort, non-blocking: must never delay first paint.
+if (typeof window !== 'undefined') {
+  requestPersistentStorage().catch(() => {});
+}
+
+// Listen for SW update events (register-sw.js dispatches these).
+// UpdatePrompt.jsx consumes them; this listener is a no-op fallback log.
+if (typeof window !== 'undefined') {
+  window.addEventListener('sw:update-available', () => {
+    if (import.meta.env.DEV) console.log('[App] SW update available');
+  });
+  window.addEventListener('sw:updated', () => {
+    if (import.meta.env.DEV) console.log('[App] SW updated');
+  });
+}
+
 // Apply saved theme before first paint (read both old + new key for migration)
 // Storage access is wrapped — blocked storage (Safari private mode) must not
 // crash the app before React mounts.
-const savedTheme = safeGetItem('hrisync_theme') || safeGetItem('HRIS Loka_theme');
+const savedTheme = safeGetItem('hrisync_theme') || safeGetItem('KiniKerja_theme') || safeGetItem('HRIS Loka_theme');
 if (savedTheme) {
   document.documentElement.setAttribute('data-theme', savedTheme);
   // Migrate old key to new key
   safeSetItem('hrisync_theme', savedTheme);
+  safeRemoveItem('KiniKerja_theme');
   safeRemoveItem('HRIS Loka_theme');
 }
 
-// Migrate locale key: hrisync_lang / HRIS Loka_locale → hrisync_locale
+// Migrate locale key: hrisync_lang / KiniKerja_locale / HRIS Loka_locale (legacy) → hrisync_locale
 const savedLocale = safeGetItem('hrisync_locale')
+  || safeGetItem('KiniKerja_locale')
   || safeGetItem('HRIS Loka_locale')
   || safeGetItem('hrisync_lang');
 if (savedLocale) {
   safeSetItem('hrisync_locale', savedLocale);
   safeSetItem('hrisync_lang', savedLocale);
+  safeRemoveItem('KiniKerja_locale');
   safeRemoveItem('HRIS Loka_locale');
 }
 

@@ -6,9 +6,10 @@ describe('sanitizeAppPath', () => {
     expect(sanitizeAppPath('/dashboard')).toBe('/dashboard');
   });
 
-  it('strips hash and query', () => {
+  it('strips hash but preserves safe query', () => {
     expect(sanitizeAppPath('/dashboard#foo')).toBe('/dashboard');
-    expect(sanitizeAppPath('/employees?id=1')).toBe('/employees');
+    expect(sanitizeAppPath('/employees?id=1')).toBe('/employees?id=1');
+    expect(sanitizeAppPath("/employees?id=1';DROP")).toBe('/employees');
   });
 
   it('rejects absolute URLs and maps pathname', () => {

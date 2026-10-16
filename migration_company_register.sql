@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS companies (
   id SERIAL PRIMARY KEY,
   name VARCHAR(200) NOT NULL,
-  company_code VARCHAR(20) UNIQUE NOT NULL,   -- Format: HRSLK-XXXXXX, auto-generated, immutable
+  company_code VARCHAR(20) UNIQUE NOT NULL,   -- Format: KK-XXXXXX, auto-generated, immutable
   logo_url TEXT,
   address TEXT,
   phone VARCHAR(30),
@@ -58,7 +58,7 @@ CREATE OR REPLACE FUNCTION generate_company_code()
 RETURNS TEXT AS $$
 DECLARE
   chars TEXT := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  code TEXT := 'HRSLK-';
+  code TEXT := 'KK-';
   i INT;
 BEGIN
   FOR i IN 1..6 LOOP
@@ -70,7 +70,7 @@ $$ LANGUAGE plpgsql;
 
 -- Insert perusahaan demo (jika belum ada)
 INSERT INTO companies (name, company_code, is_active)
-VALUES ('PT HRIS Loka Indonesia', generate_company_code(), true)
+VALUES ('PT KiniKerja Indonesia', generate_company_code(), true)
 ON CONFLICT DO NOTHING;
 
 -- 5. View: pending employee registrations (untuk admin dashboard)

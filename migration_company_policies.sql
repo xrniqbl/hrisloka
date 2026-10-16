@@ -1,4 +1,4 @@
--- Migration: company_policies table for HRIS Loka
+-- Migration: company_policies table for KiniKerja
 -- Run this in Supabase SQL Editor
 
 CREATE TABLE IF NOT EXISTS company_policies (

@@ -183,12 +183,7 @@ function EmptyCta({ icon, title, desc, primaryLabel, primaryTo, onPrimary, secon
     <div className="emp-card emp-empty" style={{ padding: '48px 24px' }}>
       <div
         className="emp-empty-icon"
-        style={{
-          opacity: 1,
-          background: 'color-mix(in srgb, var(--primary, #635BFF) 10%, transparent)',
-          color: 'var(--primary, #635BFF)',
-          border: '1.5px solid color-mix(in srgb, var(--primary, #635BFF) 18%, transparent)',
-        }}
+        style={{ color: '#9CA3AF' }}
       >
         {icon}
       </div>
@@ -317,9 +312,7 @@ export default function EmpApprovals() {
     }
   }, [user, authEmployee, authLoading]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleApprove = async (id, type) => {
     const isOwned = items[type]?.some((i) => i.id === id);

@@ -3,19 +3,9 @@
  * Supports: Bahasa Indonesia (id) and English (en)
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-// Lazy import to avoid circular — autoTranslate must be loaded first via main.jsx
-let _translateDOM = null;
-async function getTranslateFn() {
-  if (!_translateDOM) {
-    try {
-      const mod = await import('./autoTranslate.js');
-      _translateDOM = mod.translateDOM;
-    } catch {
-      /* optional autoTranslate */
-    }
-  }
-  return _translateDOM;
-}
+// Static import — autoTranslate has no imports of its own (no cycle), and
+// main.jsx already loads it statically. Keeps manualChunks to a single chunk.
+import { translateDOM } from './autoTranslate.js';
 
 // ── Translation files ──
 const translations = {
@@ -848,9 +838,8 @@ export function I18nProvider({ children }) {
   // Trigger DOM-level translation for hardcoded UI text on all pages
   // Multiple delays: React re-render + lazy routes
   let cancelled = false;
-  const run = async () => {
-    const fn = await getTranslateFn();
-    if (!cancelled && fn) fn(document.body, locale);
+  const run = () => {
+    if (!cancelled && typeof translateDOM === 'function') translateDOM(document.body, locale);
   };
   const t1 = setTimeout(run, 50);
   const t2 = setTimeout(run, 300);
@@ -873,7 +862,8 @@ export function I18nProvider({ children }) {
  }
  if (params) {
  Object.entries(params).forEach(([k, v]) => {
- text = text.replace(`{${k}}`, v);
+ // split/join = replaceAll-compatible: replaces repeated tokens too
+ text = text.split(`{${k}}`).join(v);
  });
  }
  return text;

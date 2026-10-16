@@ -126,7 +126,7 @@ export default function EmpAbsen() {
     ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     : ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
-  function t(en, id) { return locale === 'en' ? en : id; }
+  const t = useCallback((en, id) => (locale === 'en' ? en : id), [locale]);
 
   // ——— Load employee, office, attendance —————————————————————
   useEffect(() => {
@@ -213,21 +213,21 @@ export default function EmpAbsen() {
     return () => { cancelled = true; stopMotionCollection(); };
   }, [user]);
 
-  useEffect(() => {
-    if (emp && showRecap) loadMonthlyData();
-  }, [emp, recapMonth, showRecap]);
-
-  const loadMonthlyData = async () => {
+  const loadMonthlyData = useCallback(async () => {
     if (!emp) return;
     const { data } = await getAttendanceHistory(emp.id, 31);
     const now = new Date();
     now.setMonth(now.getMonth() + recapMonth);
     const m = now.getMonth(), y = now.getFullYear();
     setMonthlyHistory((data || []).filter(h => { const d = new Date(h.date); return d.getMonth() === m && d.getFullYear() === y; }));
-  };
+  }, [emp, recapMonth]);
+
+  useEffect(() => {
+    if (emp && showRecap) loadMonthlyData();
+  }, [emp, recapMonth, showRecap, loadMonthlyData]);
 
   // ——— Step 1: GPS + Anti-Spoofing ——————————————————————————————
-  const runGPSVerification = useCallback(async () => {
+  const runGPSVerification = useCallback(async  () => {
     setGpsLoading(true);
     setLocError('');
     setTrustResult(null);
@@ -274,7 +274,17 @@ export default function EmpAbsen() {
       );
 
       setAntiSpoofStep(t('Analyzing device sensors...', 'Menganalisis sensor perangkat...'));
-      const motionResult = analyzeDeviceMotion(0);
+      // Pass real GPS variance (meters) from the collected samples — a 0
+      // dummy always reported "perfectly stable" and poisoned the motion layer.
+      const gpsVarM = (() => {
+        if (!samples || samples.length < 2) return 0;
+        let maxD = 0;
+        for (let i = 1; i < samples.length; i++) {
+          maxD = Math.max(maxD, getDistance(samples[0].lat, samples[0].lng, samples[i].lat, samples[i].lng));
+        }
+        return maxD;
+      })();
+      const motionResult = analyzeDeviceMotion(gpsVarM);
 
       const trust = calculateTrustScore({
         accuracyResult, samplesResult, ipResult, travelResult, motionResult,
@@ -296,7 +306,7 @@ export default function EmpAbsen() {
       setGpsLoading(false);
       setAntiSpoofRunning(false);
     }
-  }, [todayAtt, locale]);
+  }, [todayAtt, t]);
 
   const inRadius = !geofenceEnabled
     ? true // platform geofence disabled — do not block by radius
@@ -424,7 +434,18 @@ export default function EmpAbsen() {
       }
 
       if (mode === 'out' && todayAtt?.id) {
-        const { error: outErr } = await serviceClockOut(todayAtt.id, emp.id);
+        // Clock-out carries the same face + GPS proof as clock-in: the flow
+        // above always runs GPS → face → confirm for both modes.
+        const { error: outErr } = await serviceClockOut(todayAtt.id, emp.id, {
+          latitude: location.lat,
+          longitude: location.lng,
+          inRadius,
+          faceVerified: finalTrust?.faceVerified || false,
+          faceDistance: finalTrust?.faceDistance,
+          faceConfidence: finalTrust?.faceConfidence,
+          trustScore: finalTrustResult?.trustScore ?? 100,
+          trustLevel: finalTrustResult?.level || 'trusted',
+        });
         if (outErr) throw outErr;
         setLastAction('out');
         setMode('done_both');
@@ -681,13 +702,13 @@ export default function EmpAbsen() {
         </div>
       )}
 
-      {/* ---- HRIS Loka Header ---- */}
+      {/* ---- KiniKerja Header ---- */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #5449FF, #1976D2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="15" rx="2" fill="white" fillOpacity="0.9"/><rect x="9" y="12" width="6" height="10" rx="1" fill="#5449FF"/><rect x="4" y="2" width="16" height="8" rx="1" fill="white" fillOpacity="0.6"/></svg>
           </div>
-          <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px' }}>HRIS Loka</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.3px' }}>KiniKerja</span>
         </div>
       </div>
 
@@ -761,11 +782,28 @@ export default function EmpAbsen() {
             {t('GPS Coordinate Detection', 'Deteksi Koordinat GPS')}
           </h2>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.6 }}>
-            {t(
-              `System verifies you're within ${office?.radius_meters || 50}m of ${office?.name || 'Office'}.`,
-              `Sistem memverifikasi Anda berada dalam radius ${office?.radius_meters || 50}m dari ${office?.name || 'Kantor'}.`
-            )}
+            {geofenceEnabled
+              ? t(
+                  `System verifies you're within ${office?.radius_meters || 50}m of ${office?.name || 'Office'}.`,
+                  `Sistem memverifikasi Anda berada dalam radius ${office?.radius_meters || 50}m dari ${office?.name || 'Kantor'}.`
+                )
+              : t(
+                  'Location radius check is turned off by your administrator. Your GPS coordinates are still recorded.',
+                  'Verifikasi radius lokasi dimatikan oleh administrator. Koordinat GPS Anda tetap dicatat.'
+                )}
           </p>
+
+          {!geofenceEnabled && (
+            <div className="absen-alert" style={{ marginBottom: 12, textAlign: 'left', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+              <HiExclamationTriangle />
+              <span>
+                {t(
+                  'Geofence validation is disabled — attendance is not restricted by office location.',
+                  'Validasi geofence nonaktif — absensi tidak dibatasi lokasi kantor.',
+                )}
+              </span>
+            </div>
+          )}
 
           {geofenceEnabled && !office && (
             <div className="absen-alert danger" style={{ marginBottom: 12, textAlign: 'left' }}>
@@ -819,17 +857,21 @@ export default function EmpAbsen() {
                   </span>
                 </div>
                 <div style={{ height: 1, background: 'var(--border)', marginBottom: 8 }} />
-                <div className={`absen-radius-badge ${inRadius ? 'in' : 'out'}`} style={{ margin: '0 auto' }}>
-                  {inRadius ? <><HiCheck size={14}/> {t(`Office Radius Verified (Safe)`, `Radius Kantor Terverifikasi (Aman)`)}</> : <><HiExclamationTriangle size={14}/> {t(`Outside Radius (${distance}m)`, `Di Luar Radius (${distance}m)`)}</>}
+                <div className={`absen-radius-badge ${!geofenceEnabled ? 'in' : (inRadius ? 'in' : 'out')}`} style={{ margin: '0 auto' }}>
+                  {!geofenceEnabled
+                    ? <><HiMapPin size={14}/> {t('Location recorded (radius check off)', 'Lokasi dicatat (cek radius nonaktif)')}</>
+                    : (inRadius
+                        ? <><HiCheck size={14}/> {t(`Office Radius Verified (Safe)`, `Radius Kantor Terverifikasi (Aman)`)}</>
+                        : <><HiExclamationTriangle size={14}/> {t(`Outside Radius (${distance}m)`, `Di Luar Radius (${distance}m)`)}</>)}
                 </div>
               </div>
 
               {/* 3 stat badges */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
                 {[
-                  { label: t('Radius', 'Radius'), val: `${office?.radius_meters || 50}m` },
+                  { label: t('Radius', 'Radius'), val: geofenceEnabled ? `${office?.radius_meters || 50}m` : t('Off', 'Nonaktif') },
                   { label: t('Updated', 'Diperbarui'), val: t('Now', 'Sekarang') },
-                  { label: 'Status', val: inRadius ? t('Safe', 'Aman') : t('Outside', 'Luar') },
+                  { label: 'Status', val: !geofenceEnabled ? t('Recorded', 'Dicatat') : (inRadius ? t('Safe', 'Aman') : t('Outside', 'Luar')) },
                 ].map(s => (
                   <div key={s.label} style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 6px', border: '1px solid var(--border)', textAlign: 'center' }}>
                     <div style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 600, marginBottom: 2 }}>{s.label}</div>

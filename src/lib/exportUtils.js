@@ -21,7 +21,7 @@ export function exportAttendancePDF({ data, employeeName, period, companyName })
   doc.text('Laporan Kehadiran Karyawan', 14, 18);
   doc.setFontSize(11);
   doc.setFont(undefined, 'normal');
-  doc.text(`Perusahaan: ${companyName || 'HRIS Loka'}`, 14, 27);
+  doc.text(`Perusahaan: ${companyName || 'KiniKerja'}`, 14, 27);
   doc.text(`Karyawan: ${employeeName || 'Semua'}`, 14, 34);
   doc.text(`Periode: ${period || '-'}`, 14, 41);
   doc.text(`Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 14, 48);
@@ -52,14 +52,14 @@ export function exportAttendancePDF({ data, employeeName, period, companyName })
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(`Halaman ${i} dari ${pageCount} — ${companyName || 'HRIS Loka'}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: 'center' });
+    doc.text(`Halaman ${i} dari ${pageCount} — ${companyName || 'KiniKerja'}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: 'center' });
   }
 
   doc.save(`laporan-kehadiran-${period || 'export'}.pdf`);
 }
 
 // ── Excel: Attendance Report ──────────────────────────────────────
-export function exportAttendanceXLSX({ data, employeeName, period, companyName }) {
+export function exportAttendanceXLSX({ data, period }) {
   const rows = data.map((row, i) => ({
     'No': i + 1,
     'Nama Karyawan': fmt(row.employees?.name || row.employee_name || row.name),
@@ -89,7 +89,7 @@ export function exportPayrollPDF({ data, period, companyName }) {
   doc.text('Laporan Penggajian', 14, 18);
   doc.setFontSize(11);
   doc.setFont(undefined, 'normal');
-  doc.text(`Perusahaan: ${companyName || 'HRIS Loka'}`, 14, 27);
+  doc.text(`Perusahaan: ${companyName || 'KiniKerja'}`, 14, 27);
   doc.text(`Periode: ${period || '-'}`, 14, 34);
   doc.text(`Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, 14, 41);
 
@@ -132,7 +132,7 @@ export function exportPayrollPDF({ data, period, companyName }) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(`Halaman ${i} dari ${pageCount} — CONFIDENTIAL — ${companyName || 'HRIS Loka'}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: 'center' });
+    doc.text(`Halaman ${i} dari ${pageCount} — CONFIDENTIAL — ${companyName || 'KiniKerja'}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: 'center' });
   }
 
   doc.save(`laporan-payroll-${period || 'export'}.pdf`);
@@ -165,7 +165,7 @@ export function exportPayrollXLSX({ data, period, companyName }) {
   // Summary sheet
   const summary = XLSX.utils.aoa_to_sheet([
     ['RINGKASAN PAYROLL', ''],
-    ['Perusahaan', companyName || 'HRIS Loka'],
+    ['Perusahaan', companyName || 'KiniKerja'],
     ['Periode', period || '-'],
     ['Jumlah Karyawan', rows.length],
     ['Total Bruto', rows.reduce((s, r) => s + r['Bruto'], 0)],

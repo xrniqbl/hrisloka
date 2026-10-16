@@ -159,7 +159,7 @@ export async function getTimesheets(filters = {}, companyId = null) {
   return { data: data || [], error };
 }
 
-export async function getMyTimesheets(employeeId, dateFrom, dateTo) {
+export async function getMyTimesheets(employeeId, dateFrom, dateTo, limit = null) {
   let query = supabase
     .from('timesheets')
     .select('*, projects(id, name, color)')
@@ -168,9 +168,34 @@ export async function getMyTimesheets(employeeId, dateFrom, dateTo) {
 
   if (dateFrom) query = query.gte('date', dateFrom);
   if (dateTo) query = query.lte('date', dateTo);
+  if (limit) query = query.limit(limit);
 
   const { data, error } = await query;
   return { data: data || [], error };
+}
+
+// Log a manual timesheet entry (PWA) — scoped by employee ownership;
+// RLS remains primary (timesheets has no company_id column).
+export async function logTimesheet(employeeId, entry) {
+  if (!employeeId) return { data: null, error: { message: 'employeeId required' } };
+  const hours = parseFloat(entry?.hours);
+  if (!hours || hours <= 0 || hours > 24) {
+    return { data: null, error: { message: 'Hours must be between 0 and 24' } };
+  }
+  if (!entry?.task) return { data: null, error: { message: 'Task required' } };
+  const { data, error } = await supabase
+    .from('timesheets')
+    .insert({
+      employee_id: employeeId,
+      date: entry.date || new Date().toISOString().split('T')[0],
+      hours,
+      project: entry.project || null,
+      task: entry.task,
+      notes: entry.notes || null,
+    })
+    .select()
+    .single();
+  return { data, error };
 }
 
 export async function startTimer(employeeId, projectId, description = '') {

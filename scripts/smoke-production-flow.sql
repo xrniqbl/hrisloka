@@ -1,5 +1,5 @@
 -- ============================================================
--- HRIS Loka — Production smoke: tables + company-scoped flow
+-- KiniKerja — Production smoke: tables + company-scoped flow
 -- Jalankan di Supabase SQL Editor
 -- ============================================================
 -- Prasyarat: create_missing_tables.sql + announcements_company_id.sql

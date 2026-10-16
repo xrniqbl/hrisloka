@@ -12,6 +12,50 @@ export async function getAllOffboarding(companyId) {
   return { data: data || [], error };
 }
 
+// Get offboarding records for one employee (PWA) — optional companyId scope.
+// offboarding has no company_id column (RLS scopes via employees); when
+// companyId is given the employee must belong to that company.
+export async function getMyOffboarding(employeeId, companyId = null) {
+  if (!employeeId) return { data: [], error: null };
+  if (companyId) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', employeeId)
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (!emp) return { data: [], error: null };
+  }
+  const { data, error } = await supabase
+    .from('offboarding')
+    .select('*')
+    .eq('employee_id', employeeId)
+    .order('created_at', { ascending: true });
+  return { data: data || [], error };
+}
+
+// Toggle one employee's offboarding item (PWA) — verifies the record belongs
+// to the employee (and to companyId when given) before writing.
+export async function toggleMyOffboardingItem(id, completed, employeeId, companyId = null) {
+  if (!id) return { data: null, error: { message: 'id required' } };
+  if (companyId && employeeId) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', employeeId)
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (!emp) return { data: null, error: { message: 'Employee not found in your company' } };
+  }
+  let query = supabase
+    .from('offboarding')
+    .update({ completed, completed_at: completed ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (employeeId) query = query.eq('employee_id', employeeId);
+  const { data, error } = await query.select().single();
+  return { data, error };
+}
+
 // Get offboarding by ID
 export async function getOffboardingById(id) {
   const { data, error } = await supabase

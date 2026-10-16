@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -107,7 +107,7 @@ export default function NotRegistered() {
         }}>
           Alamat email{' '}
           <strong style={{ color: '#CBD5E1' }}>{email}</strong>
-          {' '}tidak ditemukan dalam sistem HRIS Loka.
+          {' '}tidak ditemukan dalam sistem KiniKerja.
         </p>
 
         <p style={{
@@ -204,8 +204,8 @@ export default function NotRegistered() {
           transition: 'opacity 0.4s ease 0.5s',
         }}>
           Butuh bantuan? Hubungi{' '}
-          <a href="mailto:support@hrisloka.com" style={{ color: '#6366F1', textDecoration: 'none' }}>
-            support@hrisloka.com
+          <a href="mailto:support@kinikerja.id" style={{ color: '#6366F1', textDecoration: 'none' }}>
+            support@kinikerja.id
           </a>
         </p>
       </div>

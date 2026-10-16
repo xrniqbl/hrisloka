@@ -168,26 +168,57 @@ function calculateVariance(arr) {
 /**
  * Get approximate location from IP address.
  * Uses free ipapi.co service.
+ * NOTE: third-party, rate-limited (~1000 req/day free) — failures return null
+ * by design (no behavior change); GPS remains the source of truth. Only call
+ * after user consents to location/clock-in, not speculatively on page load.
  * @returns {{ lat, lng, city, country, isp }} or null
  */
 export async function getIPLocation() {
-  try {
-    const res = await fetch('https://ipapi.co/json/', {
-      signal: AbortSignal.timeout(5000)
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return {
-      lat: parseFloat(data.latitude),
-      lng: parseFloat(data.longitude),
-      city: data.city,
-      region: data.region,
-      country: data.country_name,
-      isp: data.org,
-    };
-  } catch {
-    return null;
+  // Two free providers with independent rate limits — the second is only
+  // tried when the first fails/rate-limits, halving false ip_unavailable
+  // flags on corporate NAT/VPN where one provider often throttles.
+  const providers = [
+    async () => {
+      const res = await fetch('https://ipapi.co/json/', {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return {
+        lat: parseFloat(data.latitude),
+        lng: parseFloat(data.longitude),
+        city: data.city,
+        region: data.region,
+        country: data.country_name,
+        isp: data.org,
+      };
+    },
+    async () => {
+      const res = await fetch('http://ip-api.com/json/?fields=lat,lon,city,regionName,country,org,status', {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.status !== 'success') return null;
+      return {
+        lat: parseFloat(data.lat),
+        lng: parseFloat(data.lon),
+        city: data.city,
+        region: data.regionName,
+        country: data.country,
+        isp: data.org,
+      };
+    },
+  ];
+  for (const provider of providers) {
+    try {
+      const loc = await provider();
+      if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) return loc;
+    } catch {
+      /* try next provider */
+    }
   }
+  return null;
 }
 
 /**

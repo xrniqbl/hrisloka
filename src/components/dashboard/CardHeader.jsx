@@ -1,4 +1,5 @@
-import { FiMoreHorizontal } from 'react-icons/fi';
+import { Icon } from '@astryxdesign/core/Icon';
+import { MoreHorizontal } from 'lucide-react';
 
 export default function CardHeader({ icon, title, badge, badgeColor = 'purple', rightContent, onMenu }) {
   return (
@@ -13,8 +14,8 @@ export default function CardHeader({ icon, title, badge, badgeColor = 'purple', 
       <div className="dash-card-header-right">
         {rightContent}
         {onMenu !== false && (
-          <button className="dash-card-menu-btn" onClick={onMenu}>
-            <FiMoreHorizontal size={20} />
+          <button type="button" className="dash-card-menu-btn" onClick={onMenu} aria-label="Menu">
+            <Icon icon={MoreHorizontal} size="sm" color="inherit" />
           </button>
         )}
       </div>
