@@ -92,8 +92,14 @@ function wrapHandler(handler) {
 async function loadHandler(relativePath) {
   const full = path.join(API_DIR, relativePath);
   if (!fs.existsSync(full)) return null;
-  const mod = await import(pathToFileURL(full).href);
-  return mod.default || mod.handler || null;
+  try {
+    const mod = await import(pathToFileURL(full).href);
+    return mod.default || mod.handler || null;
+  } catch (err) {
+    // One broken api/*.js must never kill the whole VPS process at boot.
+    console.error(`[server] failed to load API handler ${relativePath}:`, err?.message || err);
+    return null;
+  }
 }
 
 const API_ROUTES = [
@@ -273,6 +279,8 @@ if (fs.existsSync(DIST)) {
   app.get('/daftar-perusahaan/', (req, res) => res.sendFile(path.join(DIST, 'daftar-perusahaan.html')));
 
   // SPA fallback — inject per-request CSP nonce into index.html (strict script-src)
+  // NOTE: /app/* is part of the SAME React SPA (EmployeeLayout in App.jsx),
+  // not a separate dist/app build — always serve dist/index.html.
   app.use((req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
     if (req.path.startsWith('/api')) return next();
@@ -280,7 +288,7 @@ if (fs.existsSync(DIST)) {
     if (path.extname(req.path) && !req.path.endsWith('.html')) return next();
 
     const isApp = req.path === '/app' || req.path.startsWith('/app/');
-    const indexHtml = isApp ? path.join(APP_DIR, 'index.html') : path.join(DIST, 'index.html');
+    const indexHtml = path.join(DIST, 'index.html');
     if (!fs.existsSync(indexHtml)) {
       return res.status(503).send('Build missing. Run: npm run build');
     }
