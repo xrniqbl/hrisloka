@@ -51,6 +51,24 @@ export function initSentry() {
         if (frames.some((f) => /chrome-extension:|moz-extension:/.test(f.filename || ''))) {
           return null;
         }
+        // Scrub tokens/PII from URLs and headers before upload.
+        try {
+          const scrubUrl = (u) => typeof u === 'string'
+            ? u
+              .replace(/([?&](access_token|id_token|refresh_token|token|code|secret)[^&]*)/gi, '$1=[REDACTED]')
+              .replace(/(Bearer\s+)[A-Za-z0-9\-._~+/=]+/gi, '$1[REDACTED]')
+            : u;
+          if (event.request?.url) event.request.url = scrubUrl(event.request.url);
+          const hdrs = event.request?.headers;
+          if (hdrs) {
+            for (const k of Object.keys(hdrs)) {
+              if (/authorization|cookie|token|secret|api[-_]?key/i.test(k)) hdrs[k] = '[REDACTED]';
+            }
+          }
+          for (const b of event.breadcrumbs || []) {
+            if (b.data?.url) b.data.url = scrubUrl(b.data.url);
+          }
+        } catch { /* scrub is best-effort */ }
         return event;
       },
     });

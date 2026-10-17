@@ -68,7 +68,26 @@ function isValidEmail(email) {
 // Sanitize string: strip tags, limit length
 function sanitizeStr(val, maxLen = 500) {
   if (typeof val !== 'string') return '';
-  return val.replace(/<[^>]*>/g, '').slice(0, maxLen);
+  // Loop until stable: single-pass strip is bypassable with nested payloads
+  // (e.g. <<script>script> leaves a tag after one pass).
+  let out = val;
+  for (let i = 0; i < 5; i++) {
+    const next = out.replace(/<[^>]*>/g, '');
+    if (next === out) break;
+    out = next;
+  }
+  return esc(out.slice(0, maxLen));
+}
+
+// HTML-escape for email builders (defense in depth: builders escape their own
+// interpolations so safety never depends on callers pre-sanitizing).
+function esc(val) {
+  return String(val ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -134,36 +153,36 @@ function buildLeaveEmail({ employeeName, status, leaveType, startDate, endDate, 
           <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:13px">Human Resource Information System</p>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
-          <p style="margin:0 0 16px">Halo, <strong>${employeeName}</strong>,</p>
+          <p style="margin:0 0 16px">Halo, <strong>${esc(employeeName)}</strong>,</p>
           <p>Pengajuan cuti kamu telah diproses:</p>
           <div style="background:#F9FAFB;border-radius:12px;padding:16px;margin:16px 0;border-left:4px solid ${statusColor}">
             <div style="font-size:18px;font-weight:700;color:${statusColor};margin-bottom:12px">${statusLabel}</div>
             <table style="width:100%;font-size:13px;color:#374151">
-              <tr><td style="padding:4px 0;color:#6B7280">Jenis Cuti</td><td style="font-weight:600">${leaveType}</td></tr>
-              <tr><td style="padding:4px 0;color:#6B7280">Tanggal Mulai</td><td style="font-weight:600">${startDate}</td></tr>
-              <tr><td style="padding:4px 0;color:#6B7280">Tanggal Selesai</td><td style="font-weight:600">${endDate}</td></tr>
-              ${notes ? `<tr><td style="padding:4px 0;color:#6B7280;vertical-align:top">Catatan</td><td style="font-weight:600">${notes}</td></tr>` : ''}
+              <tr><td style="padding:4px 0;color:#6B7280">Jenis Cuti</td><td style="font-weight:600">${esc(leaveType)}</td></tr>
+              <tr><td style="padding:4px 0;color:#6B7280">Tanggal Mulai</td><td style="font-weight:600">${esc(startDate)}</td></tr>
+              <tr><td style="padding:4px 0;color:#6B7280">Tanggal Selesai</td><td style="font-weight:600">${esc(endDate)}</td></tr>
+              ${notes ? `<tr><td style="padding:4px 0;color:#6B7280;vertical-align:top">Catatan</td><td style="font-weight:600">${esc(notes)}</td></tr>` : ''}
             </table>
           </div>
           <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh KiniKerja. Jangan balas email ini.</p>
         </div>
       </div>
     `,
-    text: `Halo ${employeeName}, pengajuan cuti kamu ${statusLabel}. Jenis: ${leaveType}, ${startDate} — ${endDate}.`,
+    text: `Halo ${esc(employeeName)}, pengajuan cuti kamu ${statusLabel}. Jenis: ${esc(leaveType)}, ${esc(startDate)} — ${esc(endDate)}.`,
   };
 }
 
 function buildPayslipEmail({ employeeName, month, year, netSalary }) {
   return {
-    subject: `[KiniKerja] Slip Gaji ${month} ${year} Tersedia`,
+    subject: `[KiniKerja] Slip Gaji ${esc(month)} ${esc(year)} Tersedia`,
     html: `
       <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;padding:24px">
         <div style="background:linear-gradient(135deg,#0047AB,#2563eb);padding:24px;border-radius:16px 16px 0 0">
           <h1 style="color:#fff;margin:0;font-size:20px">KiniKerja</h1>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
-          <p>Halo, <strong>${employeeName}</strong>,</p>
-          <p>Slip gaji kamu untuk periode <strong>${month} ${year}</strong> sudah tersedia.</p>
+          <p>Halo, <strong>${esc(employeeName)}</strong>,</p>
+          <p>Slip gaji kamu untuk periode <strong>${esc(month)} ${esc(year)}</strong> sudah tersedia.</p>
           <div style="background:#EFF6FF;border-radius:12px;padding:16px;margin:16px 0;text-align:center">
             <div style="font-size:12px;color:#2563EB;font-weight:600;text-transform:uppercase;letter-spacing:1px">Total Diterima</div>
             <div style="font-size:28px;font-weight:800;color:#0047AB">Rp ${Number(netSalary).toLocaleString('id-ID')}</div>
@@ -173,7 +192,7 @@ function buildPayslipEmail({ employeeName, month, year, netSalary }) {
         </div>
       </div>
     `,
-    text: `Halo ${employeeName}, slip gaji ${month} ${year} sudah tersedia. Total: Rp ${Number(netSalary).toLocaleString('id-ID')}.`,
+    text: `Halo ${esc(employeeName)}, slip gaji ${esc(month)} ${esc(year)} sudah tersedia. Total: Rp ${Number(netSalary).toLocaleString('id-ID')}.`,
   };
 }
 
@@ -187,13 +206,13 @@ function buildReimbursementEmail({ employeeName, status, amount, category }) {
           <h1 style="color:#fff;margin:0;font-size:20px">KiniKerja</h1>
         </div>
         <div style="background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 16px 16px;padding:24px">
-          <p>Halo, <strong>${employeeName}</strong>,</p>
-          <p>Pengajuan reimbursement kamu untuk <strong>${category}</strong> sebesar <strong>Rp ${Number(amount).toLocaleString('id-ID')}</strong> telah: <strong>${statusLabel}</strong></p>
+          <p>Halo, <strong>${esc(employeeName)}</strong>,</p>
+          <p>Pengajuan reimbursement kamu untuk <strong>${esc(category)}</strong> sebesar <strong>Rp ${Number(amount).toLocaleString('id-ID')}</strong> telah: <strong>${statusLabel}</strong></p>
           <p style="font-size:12px;color:#9CA3AF;margin-top:24px">Email ini dikirim otomatis oleh KiniKerja.</p>
         </div>
       </div>
     `,
-    text: `Reimbursement ${category} Rp ${Number(amount).toLocaleString('id-ID')} kamu: ${statusLabel}`,
+    text: `Reimbursement ${esc(category)} Rp ${Number(amount).toLocaleString('id-ID')} kamu: ${statusLabel}`,
   };
 }
 
@@ -227,7 +246,8 @@ export default async function handler(req, res) {
   // Rate limiting (IP shared quota + per-user quota).
   // Client IP uses the socket address — X-Forwarded-For is client-controlled
   // and must not be trusted as a rate-limit key (trivial bypass).
-  const ip = req.socket?.remoteAddress || 'unknown';
+  // req.ip respects trust proxy (nginx X-Forwarded-For, single proxy). socket address would be 127.0.0.1 for all clients behind proxy_pass.
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }

@@ -13,6 +13,7 @@ import {
   dismissBroadcastLocally,
 } from '../services/ownerPlatformService';
 import './PlatformBroadcastBanner.css';
+import { safeExternalUrl } from '../lib/safeUrl';
 
 export default function PlatformBroadcastBanner() {
   const { employee, subscription } = useAuth();
@@ -96,7 +97,7 @@ export default function PlatformBroadcastBanner() {
         {broadcast.action_url && (
           <a
             className="pbb-link"
-            href={broadcast.action_url}
+            href={safeExternalUrl(broadcast.action_url) || undefined}
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -144,16 +144,24 @@ export async function rejectOvertime(id, companyId) {
   return { data, error };
 }
 
-// Delete overtime — MANDATORY company ownership
-export async function deleteOvertime(id, companyId) {
-  if (companyId) {
-    const { data: ot } = await supabase
-      .from('overtime_requests')
-      .select('id, employees!inner(company_id)')
-      .eq('id', id)
-      .eq('employees.company_id', companyId)
-      .maybeSingle();
-    if (!ot) return { error: { message: 'Overtime request not found in your company' } };
+// Delete overtime — MANDATORY scope: company (HR) or owner employee (PWA withdraw).
+// companyId alone is NOT enough for PWA (any coworker could delete by id);
+// employeeId pins the row to its owner.
+export async function deleteOvertime(id, companyId, employeeId = null) {
+  const { data: ot } = await supabase
+    .from('overtime_requests')
+    .select('id, employee_id, employees!inner(company_id)')
+    .eq('id', id)
+    .maybeSingle();
+  if (!ot) return { error: { message: 'Overtime request not found' } };
+  if (companyId && String(ot.employees?.company_id) !== String(companyId)) {
+    return { error: { message: 'Overtime request not found in your company' } };
+  }
+  if (employeeId && String(ot.employee_id) !== String(employeeId)) {
+    return { error: { message: 'not your overtime request' } };
+  }
+  if (!companyId && !employeeId) {
+    return { error: { message: 'company_id or employeeId required' } };
   }
   const { error } = await supabase.from('overtime_requests').delete().eq('id', id);
   return { error };

@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getEmployeeByEmail } from '../../services/employeeService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
+import { safeExternalUrl } from '../../lib/safeUrl';
 import {
   getMyReimbursements,
   submitReimbursement,
@@ -191,11 +192,11 @@ export default function EmpReimbursement() {
                         : item.status === 'approved' ? (locale === 'en' ? 'Approved' : 'Disetujui')
                         : (locale === 'en' ? 'Rejected' : 'Ditolak')}
                     </span>
-                    {item.receipt_url && (
-                      <a href={item.receipt_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                    {item.receipt_url && safeExternalUrl(item.receipt_url) ? (
+                      <a href={safeExternalUrl(item.receipt_url)} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
                         <HiDocument size={11} /> {locale === 'en' ? 'Receipt' : 'Bukti'}
                       </a>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>

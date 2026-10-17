@@ -182,6 +182,16 @@ export default function ExpenseOCR() {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Receipts are photos/PDF only: reject SVG/HTML polyglots (stored-XSS
+    // via direct object URL) and oversized files before OCR/upload.
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 10MB.');
+      return;
+    }
+    if (file.type && !/^(application\/pdf|image\/(jpeg|jpg|png|webp))$/i.test(file.type)) {
+      toast.error('Format harus JPG, PNG, atau PDF.');
+      return;
+    }
     setReceiptFile(file);
     const reader = new FileReader();
     reader.onload = () => setReceiptPreview(reader.result);

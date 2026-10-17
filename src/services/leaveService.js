@@ -46,16 +46,20 @@ export async function getMyLeaves(employeeId) {
   return { data: data || [], error };
 }
 
-// Cancel leave request — update status instead of hard delete (preserves audit trail)
+// Cancel leave request — update status instead of hard delete (preserves audit trail).
+// MANDATORY owner scope: employeeId is required (PWA callers always pass the
+// session employee). Without it any tenant could cancel any pending leave.
 export async function cancelLeave(leaveId, employeeId) {
   if (!leaveId) return { data: null, error: { message: 'leaveId required' } };
-  let query = supabase
+  if (!employeeId) return { data: null, error: { message: 'employeeId required' } };
+  const { data, error } = await supabase
     .from('leave_requests')
     .update({ status: 'cancelled' })
     .eq('id', leaveId)
-    .eq('status', 'pending');
-  if (employeeId) query = query.eq('employee_id', employeeId);
-  const { data, error } = await query.select().maybeSingle();
+    .eq('status', 'pending')
+    .eq('employee_id', employeeId)
+    .select()
+    .maybeSingle();
   if (!error && !data) {
     return { data: null, error: { message: 'Pengajuan tidak ditemukan atau sudah diproses' } };
   }

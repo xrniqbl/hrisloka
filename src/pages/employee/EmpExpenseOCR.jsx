@@ -94,6 +94,14 @@ export default function EmpExpenseOCR() {
 
   const handleImage = async (file) => {
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast?.error(locale === 'en' ? 'Max file size 10MB.' : 'Ukuran file maksimal 10MB.');
+      return;
+    }
+    if (file.type && !/^(application\/pdf|image\/(jpeg|jpg|png|webp))$/i.test(file.type)) {
+      toast?.error(locale === 'en' ? 'Format must be JPG, PNG, or PDF.' : 'Format harus JPG, PNG, atau PDF.');
+      return;
+    }
     await loadEmp();
     setImageFile(file);
     setImageUrl(URL.createObjectURL(file));

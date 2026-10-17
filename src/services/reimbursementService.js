@@ -66,6 +66,12 @@ export async function uploadReimbursementReceipt(file, employeeId) {
   if (file.size > 10 * 1024 * 1024) {
     return { url: null, error: { message: 'Ukuran file maksimal 10MB' } };
   }
+  // MIME allowlist: receipts are photos/PDF only. SVG/HTML polyglots are
+  // rejected (stored-XSS via direct object URL navigation).
+  const allowed = /^(application\/pdf|image\/(jpeg|jpg|png|webp))$/i;
+  if (file.type && !allowed.test(file.type)) {
+    return { url: null, error: { message: 'Format harus JPG, PNG, atau PDF' } };
+  }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.id) return { url: null, error: { message: 'Not authenticated' } };
   const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';

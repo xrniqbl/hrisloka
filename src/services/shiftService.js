@@ -78,10 +78,19 @@ export async function getShiftAssignments(companyId) {
   return { data: data || [], error };
 }
 
-/** Get assignments for one employee (PWA) — still requires company scope */
+/** Get assignments for one employee (PWA) — employee must be in company */
 export async function getMyShiftAssignments(employeeId, companyId) {
   if (!employeeId) return { data: [], error: null };
   if (!guardCompanyId(companyId, 'getMyShiftAssignments')) return { data: [], error: null };
+  // Verify the requested employee belongs to the caller's company (blocks
+  // tenant A reading tenant B shifts by passing a victim employeeId).
+  const { data: owner } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('id', employeeId)
+    .eq('company_id', companyId)
+    .maybeSingle();
+  if (!owner) return { data: [], error: null };
   const { data, error } = await supabase
     .from('shift_assignments')
     .select('*, shifts(name, start_time, end_time, color)')
@@ -90,8 +99,18 @@ export async function getMyShiftAssignments(employeeId, companyId) {
   return { data: data || [], error };
 }
 
-// Assign shift to employee
-export async function assignShift(employeeId, shiftId, dayOfWeek, effectiveDate) {
+// Assign shift to employee — MANDATORY company scope: shift, employee, and
+// assignment must all belong to the same company (blocks cross-tenant assign).
+export async function assignShift(employeeId, shiftId, dayOfWeek, effectiveDate, companyId = null) {
+  if (!guardCompanyId(companyId, 'assignShift')) {
+    return { data: null, error: { message: 'company_id required' } };
+  }
+  const [{ data: shift }, { data: target }] = await Promise.all([
+    supabase.from('shifts').select('id').eq('id', shiftId).eq('company_id', companyId).maybeSingle(),
+    supabase.from('employees').select('id').eq('id', employeeId).eq('company_id', companyId).maybeSingle(),
+  ]);
+  if (!shift) return { data: null, error: { message: 'shift not found in your company' } };
+  if (!target) return { data: null, error: { message: 'employee not found in your company' } };
   const { data, error } = await supabase
     .from('shift_assignments')
     .upsert({

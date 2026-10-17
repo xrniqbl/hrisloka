@@ -1,5 +1,30 @@
 import { supabase } from '../lib/supabase';
-import { guardCompanyId } from '../lib/tenantGuard';
+import { guardCompanyId, resolveMyEmployee } from '../lib/tenantGuard';
+
+/**
+ * Owner check for timesheet rows: the row's employee_id must equal the
+ * session employee (timesheets has no company_id column — ownership via
+ * employees join is the tenant boundary; RLS remains the DB backstop).
+ * Returns { employeeId } or { error }.
+ */
+async function assertTimesheetOwner(id, context) {
+  const me = await resolveMyEmployee();
+  if (!me?.id) {
+    return { error: { message: `${context}: employee identity unavailable`, code: 'IDENTITY_UNAVAILABLE' } };
+  }
+  const { data, error } = await supabase
+    .from('timesheets')
+    .select('id, employee_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (error || !data) {
+    return { error: { message: `${context}: timesheet not found`, code: 'NOT_FOUND' } };
+  }
+  if (String(data.employee_id) !== String(me.id)) {
+    return { error: { message: `${context}: not your timesheet entry`, code: 'FORBIDDEN' } };
+  }
+  return { employeeId: me.id };
+}
 
 // ─── Projects CRUD ───
 
@@ -215,6 +240,8 @@ export async function startTimer(employeeId, projectId, description = '') {
 }
 
 export async function stopTimer(id) {
+  const ownership = await assertTimesheetOwner(id, 'stopTimer');
+  if (ownership.error) return { data: null, error: ownership.error };
   const now = new Date();
   // First get the start_time to calculate hours
   const { data: entry } = await supabase.from('timesheets').select('start_time').eq('id', id).single();
@@ -244,6 +271,8 @@ export async function getActiveTimer(employeeId) {
 }
 
 export async function updateTimesheet(id, updates) {
+  const ownership = await assertTimesheetOwner(id, 'updateTimesheet');
+  if (ownership.error) return { data: null, error: ownership.error };
   const { data, error } = await supabase
     .from('timesheets')
     .update(updates)
@@ -254,6 +283,8 @@ export async function updateTimesheet(id, updates) {
 }
 
 export async function deleteTimesheet(id) {
+  const ownership = await assertTimesheetOwner(id, 'deleteTimesheet');
+  if (ownership.error) return { error: ownership.error };
   const { error } = await supabase.from('timesheets').delete().eq('id', id);
   return { error };
 }

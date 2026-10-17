@@ -4,6 +4,7 @@ import { Megaphone, Sparkles, Users } from 'lucide-react';
 import MetricStatCards from '../../components/MetricStatCards';
 import * as founderService from '../../services/founderService';
 import { useToast } from '../../components/Toast';
+import { safeExternalUrl } from '../../lib/safeUrl';
 import './founder.css';
 // \u2500\u2500 Skeleton helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function SkeletonBox({ w = '100%', h = 28, style = {} }) {
@@ -348,11 +349,11 @@ export default function FounderBroadcast() {
               </div>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', marginBottom: 10 }}>{preview.title}</div>
               <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{preview.message}</div>
-              {preview.action_url && (
-                <a href={preview.action_url} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 16, color: 'var(--primary)', fontSize: 13, fontWeight: 600 }}>
+              {preview.action_url && safeExternalUrl(preview.action_url) ? (
+                <a href={safeExternalUrl(preview.action_url)} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 16, color: 'var(--primary)', fontSize: 13, fontWeight: 600 }}>
                   {preview.action_label || 'View Link'}
                 </a>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

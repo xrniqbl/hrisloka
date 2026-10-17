@@ -26,11 +26,12 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // office IP share the IP bucket but each get their own user bucket).
 // NOTE: in-memory limits are per process — effective on the single-node
 // VPS deployment (see docs/ENVIRONMENT.md).
-// Client IP: req.socket.remoteAddress is primary. X-Forwarded-For is NOT
-// trusted (spoofable when clients can reach the function directly) — same
-// rule as the server/index.js cron route.
+// Client IP: req.ip (trust proxy, nginx X-Forwarded-For, single proxy).
+// Raw X-Forwarded-For is NOT trusted directly (spoofable) — same rule as
+// the server/index.js cron route. Socket address alone would be 127.0.0.1
+// for all clients behind proxy_pass.
 function getClientIp(req) {
-  return req.socket?.remoteAddress || 'unknown';
+  return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 const ipRateLimitMap = new Map();
 const userRateLimitMap = new Map();

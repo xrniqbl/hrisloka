@@ -104,7 +104,7 @@ export default function Payslips() {
  // Open a new window with the payslip and trigger browser print dialog
  const printWindow = window.open('', '_blank', 'width=800,height=600');
  if (!printWindow) { handleDownloadPDF(slip); return; }
- const formatCurrency = (v) => `Rp ${(v || 0).toLocaleString('id-ID')}`;
+ const formatCurrency = (v) => `Rp ${(Number(v) || 0).toLocaleString('id-ID')}`;
  const emp = slip.employee || slip;
  const companyName = (() => { try { return JSON.parse(localStorage.getItem('hrisync_company_settings'))?.name || 'KiniKerja'; } catch { return 'KiniKerja'; } })();
  // Escape user-controlled strings before interpolating into print HTML
@@ -126,7 +126,7 @@ export default function Payslips() {
  <tr><td class="label">Jabatan</td><td class="value">${esc(emp.position) || '-'}</td></tr></table>
  <table><tr><td class="label">Gaji Pokok</td><td class="value">${formatCurrency(slip.baseSalary)}</td></tr>
  <tr><td class="label">Tunjangan</td><td class="value">${formatCurrency(slip.allowance)}</td></tr>
- ${slip.overtimePay ? `<tr><td class="label">Lembur (${slip.overtimeHours || 0} jam)</td><td class="value">${formatCurrency(slip.overtimePay)}</td></tr>` : ''}
+ ${slip.overtimePay ? `<tr><td class="label">Lembur (${esc(slip.overtimeHours ?? 0)} jam)</td><td class="value">${formatCurrency(slip.overtimePay)}</td></tr>` : ''}
  <tr><td class="label">BPJS</td><td class="value deduction">- ${formatCurrency(slip.bpjs?.total || 0)}</td></tr>
  <tr><td class="label">PPh 21</td><td class="value deduction">- ${formatCurrency(slip.pph21 || 0)}</td></tr></table>
  <div class="total"><span>Take Home Pay</span><span>${formatCurrency(slip.takeHomePay || slip.total)}</span></div>

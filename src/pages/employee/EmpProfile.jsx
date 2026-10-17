@@ -614,7 +614,7 @@ export default function EmpProfile() {
                     <div style={{ fontSize: 11, color: 'var(--muted)' }}>{new Date(d.created_at).toLocaleDateString()}</div>
                   </div>
                 </div>
-                <DocLink docRef={d.url} title="Lihat" className="" style={{ color: 'var(--primary)', fontSize: 12, fontWeight: 600 }}>{locale === 'en' ? 'View' : 'Lihat'}</DocLink>
+                <DocLink docRef={d.url} title="Lihat" className="" ownerEmployeeId={d.employee_id || emp?.id} style={{ color: 'var(--primary)', fontSize: 12, fontWeight: 600 }}>{locale === 'en' ? 'View' : 'Lihat'}</DocLink>
               </div>
             )) : (
               <div className="profile-info-value empty" style={{ padding: '8px 0' }}>{locale === 'en' ? 'No documents yet' : 'Belum ada dokumen'}</div>
@@ -712,7 +712,7 @@ export default function EmpProfile() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: statusColor(d.status), textTransform: 'uppercase' }}>{d.status}</span>
-                      <DocLink docRef={d.url} title="Lihat" className="" style={{ color: 'var(--primary)', fontSize: 12 }}>{locale === 'en' ? 'View' : 'Lihat'}</DocLink>
+                      <DocLink docRef={d.url} title="Lihat" className="" ownerEmployeeId={d.employee_id || emp?.id} style={{ color: 'var(--primary)', fontSize: 12 }}>{locale === 'en' ? 'View' : 'Lihat'}</DocLink>
                     </div>
                   </div>
                 ))}

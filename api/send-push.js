@@ -11,6 +11,7 @@
  */
 import { applyCors } from './_shared/cors.js';
 import { enforceJsonBodyLimit } from './_shared/securityHeaders.js';
+import { checkUserRateLimit } from './_shared/tenantAuth.js';
 import crypto from 'node:crypto';
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
@@ -105,7 +106,8 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Origin not allowed' });
   }
   // Socket address is the key — X-Forwarded-For is not trusted.
-  const ip = req.socket?.remoteAddress || 'unknown';
+  // req.ip respects trust proxy (nginx X-Forwarded-For, single proxy). socket address would be 127.0.0.1 for all clients behind proxy_pass.
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }
@@ -129,6 +131,14 @@ export default async function handler(req, res) {
   }
 
   const { employeeId, companyId: bodyCompanyId, broadcast, title, body, url } = req.body || {};
+
+  // Per-user quota (same 10/min as email/WA): IP-only limit is drainable
+  // via IP rotation; user quota caps a single compromised account.
+  if (caller.kind === 'user' && caller.user?.id) {
+    if (!checkUserRateLimit(`push:${caller.user.id}`, 10, 60_000)) {
+      return res.status(429).json({ error: 'Too many requests. Try again later.' });
+    }
+  }
 
   if (!title || typeof title !== 'string' || !title.trim()) {
     return res.status(400).json({ error: 'Missing or invalid title' });

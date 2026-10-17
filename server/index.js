@@ -171,16 +171,10 @@ function rateLimit(req, res, next) {
   // bersihkan map tiap 5 menit
   if (rateMap.size > 10000) rateMap.clear();
 }
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.removeHeader('X-Powered-By');
-  next();
-});
+// NOTE: no second header block here — applySecurityHeaders() above is the
+// single source (Permissions-Policy camera=(self) for face attendance).
+// A duplicate block used to overwrite camera=(self) with camera=(), which
+// denied getUserMedia in production. Defense-in-depth lives in nginx.
 // ── Honeypot: jebak scanner ──
 app.use('/wp-admin', (req, res) => res.status(404).send('Not Found'));
 app.use('/wp-login.php', (req, res) => res.status(404).send('Not Found'));
@@ -231,7 +225,6 @@ if (fs.existsSync(DIST)) {
   const MOBILE_RE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i;
   const isMobileUA = (req) => MOBILE_RE.test(req.headers['user-agent'] || '');
   if (fs.existsSync(APP_DIR)) {
-    try { serveUpload(app, express); } catch(e) {}
   app.use('/app', express.static(APP_DIR, {
       maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
       index: 'index.html',

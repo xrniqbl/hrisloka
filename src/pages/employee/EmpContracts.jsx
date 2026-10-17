@@ -66,7 +66,7 @@ export default function EmpContracts() {
     setSigning(true);
     try {
       const signatureData = `Ditandatangani secara digital oleh ${emp?.name} pada ${new Date().toLocaleString('id-ID')}`;
-      const { error } = await signContract(contract.id, signatureData, 'employee');
+      const { error } = await signContract(contract.id, signatureData, 'employee', { employeeId: emp?.id });
       if (error) throw error;
       toast?.success(locale === 'en' ? 'Contract signed successfully!' : 'Kontrak berhasil ditandatangani!');
       setShowDetail(false);

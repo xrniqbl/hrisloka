@@ -73,7 +73,7 @@ export default function ShiftManagement() {
   // Verify employee belongs to this company (list already company-scoped)
   const target = employees.find((e) => e.id === empId);
   if (!target || (target.company_id && target.company_id !== companyId)) return;
-  await shiftService.assignShift(empId, shiftId, day);
+  await shiftService.assignShift(empId, shiftId, day, undefined, companyId);
   setActiveCell(null);
   fetchData();
  };

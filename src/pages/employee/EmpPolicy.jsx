@@ -12,6 +12,7 @@ import {
 import { getAllPolicies } from '../../services/policyService';
 import { useTranslation } from '../../lib/i18n';
 import { useAuth } from '../../context/AuthContext';
+import { safeExternalUrl } from '../../lib/safeUrl';
 import { isDemoMode } from '../../lib/demoGuard';
 import '../../styles/shared.css';
 import EmpEmptyState from '../../components/EmpEmptyState';
@@ -171,9 +172,11 @@ export default function EmpPolicy() {
                     <div className="td-muted-sm" style={{ paddingTop: 12, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{p.description}</div>
                     <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between' }}>
                       <span className="td-muted-sm">{locale === 'en' ? 'Last updated' : 'Terakhir diupdate'}: {p.updated_at}</span>
-                      {p.file_url && <a href={p.file_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, color, fontWeight: 700, textDecoration: 'none' }}>
+                      {safeExternalUrl(p.file_url) ? (
+                      <a href={safeExternalUrl(p.file_url)} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 4, color, fontWeight: 700, textDecoration: 'none' }}>
                         <HiArrowTopRightOnSquare size={12} /> {locale === 'en' ? 'Open Document' : 'Buka Dokumen'}
-                      </a>}
+                      </a>
+                      ) : null}
                     </div>
                   </div>
                 )}

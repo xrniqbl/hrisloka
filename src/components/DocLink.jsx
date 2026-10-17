@@ -7,7 +7,9 @@ import { getDocumentUrl } from '../services/documentService';
  * signed, short-lived URL and open it. Avoids exposing employee documents
  * (KTP/NPWP) via world-readable public URLs.
  *
- * Props: { docRef, title, download, children, className, style }
+ * Props: { docRef, title, download, children, className, style, ownerEmployeeId }
+ * ownerEmployeeId pins the storage path to its owner (IDOR guard in
+ * getDocumentUrl). Pass the row's employee_id; omit only for legacy https URLs.
  */
 export default function DocLink({
   docRef,
@@ -16,6 +18,7 @@ export default function DocLink({
   children,
   className = 'action-btn',
   style = {},
+  ownerEmployeeId = null,
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -24,7 +27,7 @@ export default function DocLink({
     if (busy) return;
     setBusy(true);
     try {
-      const url = await getDocumentUrl(docRef);
+      const url = await getDocumentUrl(docRef, 3600, ownerEmployeeId);
       if (url) {
         if (download) {
           // Trigger a download via a temporary anchor.

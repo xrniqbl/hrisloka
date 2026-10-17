@@ -9,9 +9,15 @@ export async function getContractTemplates(companyId) {
     .select('*')
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true });
-  // Show default templates + company-specific ones
+  // Show default templates + company-specific ones.
+  // Scalar allowlist before .or() interpolation (blocks filter-breakout
+  // chars like ,() — companyId comes from DB/session today, hardened anyway).
   if (companyId) {
-    query = query.or(`is_default.eq.true,company_id.eq.${companyId}`);
+    const cid = String(companyId).trim();
+    if (!/^[A-Za-z0-9-]{1,64}$/.test(cid)) {
+      return { data: [], error: { message: 'invalid company_id' } };
+    }
+    query = query.or(`is_default.eq.true,company_id.eq.${cid}`);
   }
   const { data, error } = await query;
   return { data: data || [], error };
@@ -63,12 +69,20 @@ export async function getAllContracts(companyId) {
   return { data: data || [], error };
 }
 
-export async function getContractById(id) {
-  return await supabase
+export async function getContractById(id, companyId = null) {
+  let query = supabase
     .from('employee_contracts')
     .select('*, employees(*), contract_templates(name, type)')
-    .eq('id', id)
-    .single();
+    .eq('id', id);
+  if (guardCompanyId(companyId, 'getContractById')) {
+    // Scope via employees join (employee_contracts has no company_id column)
+    query = supabase
+      .from('employee_contracts')
+      .select('*, employees!inner(*), contract_templates(name, type)')
+      .eq('id', id)
+      .eq('employees.company_id', companyId);
+  }
+  return await query.single();
 }
 
 export async function getContractsByEmployee(employeeId) {
@@ -125,16 +139,27 @@ export async function deleteContract(id, companyId) {
   return await supabase.from('employee_contracts').delete().eq('id', id);
 }
 
-// Sign contract — verify ownership via employee join
-export async function signContract(id, signatureData, signedBy = 'employee', companyId) {
-  if (companyId) {
-    const { data: contract } = await supabase
-      .from('employee_contracts')
-      .select('id, employees!inner(company_id)')
-      .eq('id', id)
-      .eq('employees.company_id', companyId)
-      .maybeSingle();
-    if (!contract) return { data: null, error: { message: 'Contract not found in your company' } };
+// Sign contract — MANDATORY ownership: the contract's employee_id must equal
+// the session employee (PWA), or the contract must belong to companyId (HR).
+// Both callers must pass scope — fail-closed when neither is provided.
+export async function signContract(id, signatureData, signedBy = 'employee', scope = {}) {
+  // Back-compat: legacy callers passed companyId as 4th arg (scalar).
+  const { companyId = null, employeeId = null } =
+    (scope && typeof scope === 'object' ? scope : { companyId: scope });
+  if (!guardCompanyId(companyId, 'signContract') && !employeeId) {
+    return { data: null, error: { message: 'company_id or employeeId required' } };
+  }
+  const { data: contract } = await supabase
+    .from('employee_contracts')
+    .select('id, employee_id, employees!inner(company_id)')
+    .eq('id', id)
+    .maybeSingle();
+  if (!contract) return { data: null, error: { message: 'Contract not found' } };
+  if (companyId && String(contract.employees?.company_id) !== String(companyId)) {
+    return { data: null, error: { message: 'Contract not found in your company' } };
+  }
+  if (!companyId && employeeId && String(contract.employee_id) !== String(employeeId)) {
+    return { data: null, error: { message: 'not your contract' } };
   }
   const updates = {
     status: 'signed',

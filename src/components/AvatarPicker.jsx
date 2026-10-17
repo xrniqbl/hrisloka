@@ -82,8 +82,10 @@ export default function AvatarPicker({ open, onClose, onSelect, currentAvatar, g
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) handleFileUpload(file);
-    else if (file) setError('File harus berupa gambar.');
+    // Explicit allowlist (uploadProfilePhoto enforces the same server-side):
+    // image/svg+xml executes script on direct navigation.
+    if (file && /^(image\/(jpeg|jpg|png|webp))$/i.test(file.type || '')) handleFileUpload(file);
+    else if (file) setError('File harus berupa gambar (JPG/PNG/WEBP).');
   };
 
   const handleConfirm = () => {
@@ -285,7 +287,7 @@ export default function AvatarPicker({ open, onClose, onSelect, currentAvatar, g
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   style={{ display: 'none' }}
                   onChange={(e) => handleFileUpload(e.target.files?.[0])}
                 />

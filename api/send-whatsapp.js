@@ -71,7 +71,8 @@ export default async function handler(req, res) {
 
   // Rate limiting (IP shared quota + per-user quota).
   // Socket address is the key — X-Forwarded-For is not trusted.
-  const ip = req.socket?.remoteAddress || 'unknown';
+  // req.ip respects trust proxy (nginx X-Forwarded-For, single proxy). socket address would be 127.0.0.1 for all clients behind proxy_pass.
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Too many requests. Try again later.' });
   }

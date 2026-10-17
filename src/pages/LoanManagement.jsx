@@ -59,7 +59,7 @@ export default function LoanManagement() {
  const openPayment = (loan) => { setSelected(loan); setPaymentAmount(loan.monthly_deduction || ''); setModal('payment'); };
  const handlePayment = async () => {
  if (!selected || !paymentAmount) return;
- await loanService.recordPayment(selected.id, Number(paymentAmount));
+ await loanService.recordPayment(selected.id, Number(paymentAmount), { companyId: employee?.company_id });
  setModal(null);
  fetchData();
  };

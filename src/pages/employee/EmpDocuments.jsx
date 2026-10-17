@@ -256,6 +256,7 @@ export default function EmpDocuments() {
                       docRef={doc.file_url || doc.url}
                       title={locale === 'en' ? 'Download' : 'Unduh'}
                       download
+                      ownerEmployeeId={doc.employee_id || emp?.id}
                       style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}
                     >
                       <HiArrowDownTray size={12} /> {locale === 'en' ? 'Download' : 'Unduh'}

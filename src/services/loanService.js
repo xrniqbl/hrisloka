@@ -147,15 +147,28 @@ export async function rejectLoan(id, companyId) {
   return { data, error };
 }
 
-// Record loan payment (salary deduction) — ATOMIC update to prevent race conditions
-export async function recordPayment(loanId, amount) {
-  // First get current remaining
+// Record loan payment (salary deduction) — ATOMIC update to prevent race conditions.
+// HR path: pass companyId (verified via loans.company_id, mirrors approveLoan).
+// Employee path: pass the caller's employeeId (verified: loan must belong to
+// that employee). At least one must be provided — fail-closed otherwise.
+export async function recordPayment(loanId, amount, scope = {}) {
+  const { companyId = null, employeeId = null } = scope || {};
+  if (!guardCompanyId(companyId, 'recordPayment') && !employeeId) {
+    return { error: { message: 'company_id or employeeId required' } };
+  }
+  // First get current remaining (+ owner for verification)
   const { data: loan, error: fetchErr } = await supabase
     .from('loans')
-    .select('remaining')
+    .select('remaining, employee_id, company_id')
     .eq('id', loanId)
     .single();
   if (fetchErr) return { error: fetchErr };
+  if (companyId && String(loan?.company_id) !== String(companyId)) {
+    return { error: { message: 'loan not found in your company' } };
+  }
+  if (!companyId && employeeId && String(loan?.employee_id) !== String(employeeId)) {
+    return { error: { message: 'not your loan' } };
+  }
 
   const newRemaining = Math.max(0, (loan?.remaining || 0) - amount);
 
@@ -212,8 +225,26 @@ export async function recordPayment(loanId, amount) {
   return { data: updated, error: null };
 }
 
-// Get payment history
-export async function getLoanPayments(loanId) {
+// Get payment history — scoped to company (HR) or owner employee (PWA).
+export async function getLoanPayments(loanId, scope = {}) {
+  const { companyId = null, employeeId = null } = scope || {};
+  if (!guardCompanyId(companyId, 'getLoanPayments') && !employeeId) {
+    return { data: [], error: { message: 'company_id or employeeId required' } };
+  }
+  if (companyId || employeeId) {
+    const { data: loan } = await supabase
+      .from('loans')
+      .select('id, employee_id, company_id')
+      .eq('id', loanId)
+      .maybeSingle();
+    if (!loan) return { data: [], error: { message: 'loan not found' } };
+    if (companyId && String(loan.company_id) !== String(companyId)) {
+      return { data: [], error: { message: 'loan not found in your company' } };
+    }
+    if (!companyId && employeeId && String(loan.employee_id) !== String(employeeId)) {
+      return { data: [], error: { message: 'not your loan' } };
+    }
+  }
   const { data, error } = await supabase
     .from('loan_payments')
     .select('*')

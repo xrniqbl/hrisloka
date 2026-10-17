@@ -12,7 +12,7 @@
   <!-- ── 1. HOMEPAGE / LANDING (Priority Tertinggi) ── -->
   <url>
     <loc>https://kinikerja.id/</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/"/>
@@ -22,7 +22,7 @@
   <!-- ── 2. LANDING PAGE (explicit route) ── -->
   <url>
     <loc>https://kinikerja.id/landing</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
     <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/landing"/>
@@ -33,7 +33,7 @@
   <!-- Target keyword: "cara install aplikasi HRIS", "download KiniKerja", "HRIS mobile app" -->
   <url>
     <loc>https://kinikerja.id/install</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/install"/>
@@ -43,7 +43,7 @@
   <!-- Termasuk agar Google indexing login page (brand name search) -->
   <url>
     <loc>https://kinikerja.id/login</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -52,7 +52,7 @@
   <!-- Untuk indexing "beli KiniKerja", "harga KiniKerja" -->
   <url>
     <loc>https://kinikerja.id/checkout</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
@@ -63,7 +63,7 @@
   <!-- Target: "harga HRIS Indonesia", "biaya software HR", "paket HRIS gratis", "HRIS murah" -->
   <url>
     <loc>https://kinikerja.id/harga</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.92</priority>
     <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/harga"/>
@@ -74,7 +74,7 @@
   <!-- Target: "fitur HRIS Indonesia", "absensi GPS karyawan", "penggajian otomatis BPJS" -->
   <url>
     <loc>https://kinikerja.id/fitur</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.92</priority>
     <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/fitur"/>
@@ -88,7 +88,7 @@
   <!-- 🔵 KEBIJAKAN PRIVASI — E-E-A-T Trust Signal -->
   <url>
     <loc>https://kinikerja.id/privacy</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.30</priority>
   </url>
@@ -100,7 +100,7 @@
   <!-- Target: "blog HR Indonesia", "panduan HRIS", "tips manajemen SDM" -->
   <url>
     <loc>https://kinikerja.id/blog</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.88</priority>
     <xhtml:link rel="alternate" hreflang="id" href="https://kinikerja.id/blog"/>
@@ -109,7 +109,7 @@
   <!-- Target: "apa itu HRIS", "HRIS adalah", "sistem HR digital" -->
   <url>
     <loc>https://kinikerja.id/blog/apa-itu-hris</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -117,7 +117,7 @@
   <!-- Target: "absensi karyawan digital", "sistem absensi online", "absensi GPS" -->
   <url>
     <loc>https://kinikerja.id/blog/absensi-karyawan-digital</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.82</priority>
   </url>
@@ -125,7 +125,7 @@
   <!-- Target: "penggajian otomatis", "hitung gaji BPJS PPh21", "payroll Indonesia" -->
   <url>
     <loc>https://kinikerja.id/blog/penggajian-otomatis-bpjs</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.82</priority>
   </url>
@@ -133,7 +133,7 @@
   <!-- Target: "software HR terbaik Indonesia", "HRIS terbaik", "aplikasi HR perusahaan" -->
   <url>
     <loc>https://kinikerja.id/blog/software-hr-terbaik-indonesia</loc>
-    <lastmod>2026-10-16</lastmod>
+    <lastmod>2026-10-17</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
   </url>

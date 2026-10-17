@@ -301,7 +301,7 @@ export default function EmpSubmissions() {
     }
 
     const { error } = isOvertime
-      ? await deleteOvertime(id, emp?.company_id)
+      ? await deleteOvertime(id, emp?.company_id, emp?.id)
       : await deleteReimbursement(id, emp?.id);
     setCancellingId(null);
     if (error) {

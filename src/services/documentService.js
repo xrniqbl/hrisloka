@@ -11,13 +11,28 @@ const BUCKET_CANDIDATES = ['documents'];
  * Prefer STORAGE PATH + signed URL (private). Legacy absolute https URLs
  * are returned as-is so old public uploads still open.
  *
+ * IDOR guard: when ownerEmployeeId is provided, the path must belong to
+ * that employee ({employeeId}/... or {authUid}/...). Storage paths are
+ * predictable ({id}/{type}_{ts}.ext), so an unchecked ref lets tenant A
+ * download tenant B's KTP by guessing. Callers that render another
+ * employee's docs (HR) must pass that employee's id explicitly.
+ *
  * @param {string} ref - storage path or legacy https URL
  * @param {number} expiresIn - seconds (default 1 hour)
+ * @param {string|number|null} ownerEmployeeId - expected path owner
  */
-export async function getDocumentUrl(ref, expiresIn = 3600) {
+export async function getDocumentUrl(ref, expiresIn = 3600, ownerEmployeeId = null) {
   if (!ref) return null;
   if (/^https?:\/\//i.test(ref)) return ref;
   if (ref === '#' || ref.startsWith('data:')) return null;
+
+  if (ownerEmployeeId != null && !/^https?:\/\//i.test(ref)) {
+    const firstSeg = String(ref).split('/')[0];
+    if (firstSeg !== String(ownerEmployeeId)) {
+      console.warn('[documentService] getDocumentUrl: path owner mismatch — refused');
+      return null;
+    }
+  }
 
   for (const bucket of BUCKET_CANDIDATES) {
     const { data, error } = await supabase.storage

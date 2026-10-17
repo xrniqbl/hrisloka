@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import '../styles/admin.css';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
 import { TextAlign } from '@tiptap/extension-text-align';
@@ -51,6 +52,7 @@ export default function ContractEditor({ isTemplate = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { employee } = useAuth();
   const [contract, setContract] = useState(null);
   const [, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,9 @@ export default function ContractEditor({ isTemplate = false }) {
 
   const fetchContract = useCallback(async () => {
     setLoading(true);
-    const fetcher = isTemplate ? contractService.getTemplateById : contractService.getContractById;
+    const fetcher = isTemplate
+      ? contractService.getTemplateById
+      : (cid) => contractService.getContractById(cid, employee?.company_id);
     const [{ data }, companiesRes] = await Promise.all([
       fetcher(id),
       getAllCompanies(),
@@ -103,7 +107,7 @@ export default function ContractEditor({ isTemplate = false }) {
       setCompany(companiesRes.data[0]);
     }
     setLoading(false);
-  }, [id, isTemplate, editor?.commands]);
+  }, [id, isTemplate, editor?.commands, employee?.company_id]);
 
   useEffect(() => { fetchContract(); }, [fetchContract]);
 
@@ -179,7 +183,7 @@ export default function ContractEditor({ isTemplate = false }) {
     }
     try {
     const sigData = sigPadRef.current.toDataURL('image/png');
-    await contractService.signContract(id, sigData, signFor);
+    await contractService.signContract(id, sigData, signFor, { companyId: employee?.company_id });
     if (signFor === 'employee') setHasEmployeeSig(true);
     else setHasCompanySig(true);
     setShowSignModal(false);

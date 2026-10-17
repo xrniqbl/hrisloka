@@ -50,6 +50,11 @@ export async function getMyPayrollHistory(employeeId, limit = 12) {
 // `period` match first, then a period/month text fallback.
 export async function getMyPayrollByPeriod(employeeId, monthStr) {
   if (!employeeId) return { data: null, error: null };
+  // Strict allowlist: month keys are YYYY-MM generated internally. Anything
+  // else (filter-breakout chars like ,()%) is refused before .or() interpolation.
+  if (!/^\d{4}-\d{2}$/.test(String(monthStr || ''))) {
+    return { data: null, error: { message: 'invalid month format' } };
+  }
   const q1 = await supabase
     .from('payroll_records')
     .select('*')

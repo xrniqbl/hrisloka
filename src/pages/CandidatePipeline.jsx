@@ -8,6 +8,7 @@ import '../styles/shared.css';
 import '../styles/admin.css';
 import { TableSkeleton, CardSkeleton } from '../components/SkeletonLoader';
 import EmptyState from '../components/EmptyState';
+import { safeExternalUrl } from '../lib/safeUrl';
 
 const stages = ['applied', 'screening', 'interview', 'offered', 'hired', 'rejected'];
 const stageLabels = {
@@ -212,9 +213,21 @@ export default function CandidatePipeline() {
               )}
               {(selected.linkedin_url || selected.portfolio_url || selected.resume_url) && (
                 <div className="btn-icon-row" style={{ flexWrap: 'wrap' }}>
-                  {selected.resume_url && <a href={selected.resume_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline' }}>Resume/CV</a>}
-                  {selected.linkedin_url && <a href={selected.linkedin_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>LinkedIn</a>}
-                  {selected.portfolio_url && <a href={selected.portfolio_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>Portfolio</a>}
+                  {(() => {
+                    // Applicant-supplied URLs: scheme-validate before linking
+                    // (javascript:/data: href would execute in HR session).
+                    const links = [
+                      [selected.resume_url, 'Resume/CV'],
+                      [selected.linkedin_url, 'LinkedIn'],
+                      [selected.portfolio_url, 'Portfolio'],
+                    ];
+                    return links.map(([raw, label]) => {
+                      const safe = safeExternalUrl(raw);
+                      return safe ? (
+                        <a key={label} href={safe} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, textDecoration: label === 'Resume/CV' ? 'underline' : 'none' }}>{label}</a>
+                      ) : null;
+                    });
+                  })()}
                 </div>
               )}
               {selected.notes && (

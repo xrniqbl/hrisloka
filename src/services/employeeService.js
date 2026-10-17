@@ -172,7 +172,9 @@ export async function updateEmployeeDirectFields(id, fields, authUserId) {
  */
 export async function uploadProfilePhoto(employeeIdOrUserId, file, { updateEmployee = true } = {}) {
   if (!file) return { error: { message: 'File tidak ditemukan' }, url: null };
-  if (!file.type?.startsWith('image/')) {
+  // Explicit allowlist: startsWith('image/') would admit image/svg+xml
+  // (stored-XSS via direct object URL navigation).
+  if (!/^(image\/(jpeg|jpg|png|webp))$/i.test(file.type || '')) {
     return { error: { message: 'File harus berupa gambar (JPG/PNG/WEBP)' }, url: null };
   }
   if (file.size > 5 * 1024 * 1024) {

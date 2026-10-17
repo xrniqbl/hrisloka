@@ -109,7 +109,7 @@ export default function EmpLoan() {
     if (expandedLoan === loan.id) { setExpandedLoan(null); return; }
     setExpandedLoan(loan.id);
     if (!payments[loan.id]) {
-      const { data } = await getLoanPayments(loan.id);
+      const { data } = await getLoanPayments(loan.id, { employeeId: emp?.id });
       setPayments(prev => ({ ...prev, [loan.id]: data || [] }));
     }
   };

@@ -245,10 +245,10 @@ export function AuthProvider({ children }) {
 
         if (_event === 'SIGNED_IN') {
           safeSetItem('hrisync_login_time', Date.now().toString());
+          // Never log token material (even fragments) to analytics.
           trackEvent('login', {
             path: window.location.pathname,
             deviceType: window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop',
-            sessionId: s?.access_token?.slice(-8) || null,
           });
         }
 

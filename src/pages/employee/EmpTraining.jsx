@@ -16,6 +16,7 @@ import { getEmployeeByEmail } from '../../services/employeeService';
 import { getAllTrainings, enrollTraining } from '../../services/trainingService';
 import { useToast } from '../../components/Toast';
 import { useTranslation } from '../../lib/i18n';
+import { safeExternalUrl } from '../../lib/safeUrl';
 import '../../styles/shared.css';
 import EmpEmptyState from '../../components/EmpEmptyState';
 
@@ -182,12 +183,19 @@ export default function EmpTraining() {
                       <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{locale === 'en' ? 'Learning Materials' : 'Materi Pembelajaran'}</div>
                       {t.training_materials.map(m => {
                         const ytId = getYouTubeId(m.url);
+                        const safeUrl = safeExternalUrl(m.url);
                         return (
                           <div key={m.id} style={{ marginBottom: 12 }}>
                             {ytId && <div style={{ borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}><iframe width="100%" height="180" src={`https://www.youtube.com/embed/${ytId}`} title={m.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ borderRadius: 10 }} /></div>}
-                            <a href={m.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, textDecoration: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, border: '1px solid var(--border)' }}>
+                            {safeUrl ? (
+                            <a href={safeUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, textDecoration: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, border: '1px solid var(--border)' }}>
                               {ytId ? <HiPlayCircle size={14} /> : <HiArrowTopRightOnSquare size={14} />}{m.title}
                             </a>
+                            ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, color: 'var(--muted)', fontSize: 13, fontWeight: 600, border: '1px solid var(--border)' }}>
+                              <HiArrowTopRightOnSquare size={14} />{m.title}
+                            </div>
+                            )}
                             {m.description && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, marginLeft: 4 }}>{m.description}</p>}
                           </div>
                         );
@@ -267,15 +275,18 @@ export default function EmpTraining() {
             </div>
           ) : materials.map(m => {
             const ytId = getYouTubeId(m.url);
+            const safeUrl = safeExternalUrl(m.url);
             return (
               <div key={m.id} className="emp-card emp-card-stagger" style={{ padding: 16 }}>
                 {ytId && <div style={{ borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}><iframe width="100%" height="180" src={`https://www.youtube.com/embed/${ytId}`} title={m.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{ borderRadius: 10 }} /></div>}
                 <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{m.title}</div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>{m.trainingTitle}</div>
                 {m.description && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8, lineHeight: 1.5 }}>{m.description}</p>}
-                <a href={m.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'var(--primary)', color: '#fff', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
+                {safeUrl ? (
+                <a href={safeUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 99, background: 'var(--primary)', color: '#fff', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
                   {ytId ? <HiPlayCircle size={12} /> : <HiArrowTopRightOnSquare size={12} />} {locale === 'en' ? 'Open Material' : 'Buka Materi'}
                 </a>
+                ) : null}
               </div>
             );
           })}
