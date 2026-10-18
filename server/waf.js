@@ -18,7 +18,7 @@ const SCANNER_UA = [
 
 const BAD_PATH_RE = /(\/wp-(admin|login|content|includes)|\/xmlrpc\.php|\/phpmyadmin|\/pma\/|\/actuator|\/console\/|\/_profiler\/|\/debug\/|\/server-status|\/\.git(\/|$)|\/\.env(\.|$)|\/\.svn\/|\/\.hg\/|\/\.aws\/|\/\.DS_Store|\/crossdomain\.xml|~$|\.bak$|\.sql$|\/backup(\/|$)|\/shell(\/|$)|\/cmd(\/|$)|\/eval(\/|$))/i;
 
-const ATTACK_QS_RE = /(union\s+select|union\s+all\s+select|\.\.\/|\.\.\\|;\s*--|<\s*script)/i;
+const ATTACK_QS_RE = /(union(\s|\+|%20)+select|union(\s|\+|%20)+all(\s|\+|%20)+select|\.\.(\/|\\|%2f|%5c)|;\s*--|<\s*script|['"]\s*(or|and)\s+['"0-9]|sleep\s*\(|benchmark\s*\(|load_file\s*\(|into\s+(outfile|dumpfile))/i;
 
 const hits = new Map(); // ip -> count (observability only)
 
